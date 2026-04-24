@@ -104,6 +104,14 @@ export async function insertDefaultSlotsForItems(
   }
 }
 
+// ══════════════════════════════════════════════════════
+// setAsMaster — 에디터 상단 툴바의 "👑 마스터로 지정" 버튼
+// 역할 구분 (3가지 전파 함수 중 #3):
+//   • [#1] handleApplyStyleToAll (에디터 SlotPanel) — 프로젝트 전체 같은 slot_key의 fontSize·y만
+//   • [#2] handleMasterBroadcast (/info 페이지 🎯) — slot_styles 테이블이 소스, 프로젝트 전체
+//   • [#3] 이 함수 — 같은 category 범위만, 이 아이템의 모든 슬롯을 복제 (ko/en 텍스트만 유지)
+// 사용 시점: "X배너 한 장 완성했고 다른 X배너들도 똑같이"
+// ══════════════════════════════════════════════════════
 /** 특정 아이템을 해당 category의 마스터로 지정 + 같은 category의 나머지에 서식 전파 */
 export async function setAsMaster(
   supabase: SupabaseClient,

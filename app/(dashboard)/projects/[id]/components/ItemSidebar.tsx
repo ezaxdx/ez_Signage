@@ -97,7 +97,13 @@ export function ItemSidebar({ items, selectedItemId, onSelect, projectId, onItem
     }
   }
 
-  // 시리즈 생성 — 같은 설정의 제작물 복제 (웨이파인딩 ←/→ 등)
+  // ══════════════════════════════════════════════════════
+  // handleDuplicateItem — 단일 빠른 복제 (1클릭, 모달 없음)
+  // 역할 구분:
+  //   • 이 함수      : 1클릭 즉시 1장 복제 (item_contents 그대로)
+  //   • SeriesGenerator (🪄 아이콘): 모달 → 변형 축(방향/언어/키워드) N장 생성
+  //   • setAsMaster  (👑 아이콘): 이 아이템을 category 마스터로 지정 + 같은 category 전체에 서식 전파
+  // ══════════════════════════════════════════════════════
   const handleDuplicateItem = async (sourceItem: DesignItem) => {
     setIsAdding(true)
     const supabase = createClient()

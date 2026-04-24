@@ -333,6 +333,14 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
       .then(({ count }) => setItemCount(count ?? 0))
   }, [supabase, project.id])
 
+  // ══════════════════════════════════════════════════════
+  // handleMasterBroadcast — 행사 기본 양식 슬롯의 "🎯 마스터 전파" 버튼
+  // 역할 구분 (3가지 전파 함수 중 #2):
+  //   • [#1] handleApplyStyleToAll (에디터 SlotPanel) — fontSize·y만, 소스=현재 아이템
+  //   • [#2] 이 함수 — slot_styles 테이블의 모든 필드(폰트·색·자간·위치) 전체 필드 일괄
+  //   • [#3] setAsMaster (에디터 툴바 👑) — 같은 category만, 아이템 전체 슬롯 복제
+  // 사용 시점: "PPT 슬라이드 마스터처럼 프로젝트 서식 뼈대 확정"
+  // ══════════════════════════════════════════════════════
   const handleMasterBroadcast = async (slotKey: string) => {
     const confirmed = window.confirm(
       `'${DEFAULT_SLOTS[slotKey]?.label ?? slotKey}' 마스터 스타일을 이 프로젝트의 ${itemCount}개 제작물에 즉시 반영합니다.\n\n` +

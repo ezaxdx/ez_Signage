@@ -318,6 +318,14 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
     [allContents, selectedItemId, updateSlot]
   )
 
+  // ══════════════════════════════════════════════════════
+  // handleApplyStyleToAll — SlotPanel의 "전체 제작물에 적용" 버튼
+  // 역할 구분 (3가지 전파 함수 중 #1):
+  //   • [#1] 이 함수 — 프로젝트 전체 같은 slot_key의 fontSize·y만 복사, 소스=현재 아이템
+  //   • [#2] handleMasterBroadcast (/info 페이지, 🎯 버튼) — slot_styles 테이블이 소스, 전체 필드 적용
+  //   • [#3] setAsMaster (에디터 툴바, 👑 버튼) — 같은 category만 범위, 이 아이템 전체 복제
+  // 사용 시점: "이 슬롯의 크기 하나만 모든 배너에 통일하고 싶을 때"
+  // ══════════════════════════════════════════════════════
   // ── 슬롯 서식 전체 제작물 적용 ───────────────────────────
   const handleApplyStyleToAll = useCallback(
     async (slotKey: string) => {
