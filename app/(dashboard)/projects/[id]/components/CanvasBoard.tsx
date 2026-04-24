@@ -108,17 +108,22 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
     canvas.renderAll()
   }, [])
 
-  // ── 슬롯 내부 이미지 동기화 (다중 이미지 그리드) ──────────
+  // ── 슬롯 내부 이미지 동기화 (URL 기반 diff — race condition 방지) ─
+  const imageKeyMapRef = useRef<Map<string, Map<string, any>>>(new Map())  // slotKey → (url → FabricImage)
   const syncSlotImages = useCallback(
     (canvas: any, fabricLib: any, map: ContentsMap) => {
       const cw = (canvas.width as number) || 1
       const ch = (canvas.height as number) || 1
 
-      // 기존 이미지 전부 제거 후 재생성 (간단 + 안정)
-      for (const imgs of Array.from(imageMapRef.current.values())) {
-        for (const im of imgs) canvas.remove(im)
+      const incomingSlotKeys = new Set(Object.keys(map).filter(k => (map[k].images ?? []).length > 0))
+
+      // 1) 제거된 슬롯의 이미지 정리
+      for (const [slotKey, urlMap] of Array.from(imageKeyMapRef.current.entries())) {
+        if (!incomingSlotKeys.has(slotKey)) {
+          for (const im of Array.from(urlMap.values())) canvas.remove(im)
+          imageKeyMapRef.current.delete(slotKey)
+        }
       }
-      imageMapRef.current.clear()
 
       for (const [slotKey, slot] of Object.entries(map)) {
         const imageUrls = slot.images ?? []
@@ -128,40 +133,59 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
         const slotH = Math.max(30, ch * 0.12 * (slot.h ?? 1))
         const cx = (slot.x / 100) * cw
         const top = (slot.y / 100) * ch
-
-        // 이미지 가로 배치 (후원사 로고 줄)
         const per = slotW / imageUrls.length
-        const objs: any[] = []
-        imageMapRef.current.set(slotKey, objs)
 
+        const existingUrlMap = imageKeyMapRef.current.get(slotKey) ?? new Map<string, any>()
+        const incomingUrls = new Set(imageUrls)
+
+        // 2) 더 이상 없는 URL의 이미지 제거
+        for (const [url, img] of Array.from(existingUrlMap.entries())) {
+          if (!incomingUrls.has(url)) {
+            canvas.remove(img)
+            existingUrlMap.delete(url)
+          }
+        }
+
+        // 3) 기존 이미지 위치·스케일만 갱신 + 새 URL은 비동기 로드
         imageUrls.forEach((url, idx) => {
-          fabricLib.Image.fromURL(
-            url,
-            (img: any) => {
-              if (!img) return
-              // 최대한 꽉 채우기 — 박스 내부 98% 사용 (contain 방식, 비율 유지)
-              const maxW = per * 0.98
-              const maxH = slotH * 0.98
-              const scale = Math.min(maxW / img.width, maxH / img.height)
-              img.set({
-                left: cx - slotW / 2 + per * idx + per / 2,
-                top: top + slotH / 2,
-                originX: 'center',
-                originY: 'center',
-                scaleX: scale,
-                scaleY: scale,
-                selectable: false,
-                evented: false,
-              })
-              ;(img as any).__slotKey = slotKey
-              canvas.add(img)
-              objs.push(img)
-              canvas.renderAll()
-            },
-            { crossOrigin: 'anonymous' }
-          )
+          const targetLeft = cx - slotW / 2 + per * idx + per / 2
+          const targetTop = top + slotH / 2
+          const maxW = per * 0.98
+          const maxH = slotH * 0.98
+
+          const existing = existingUrlMap.get(url)
+          if (existing) {
+            const scale = Math.min(maxW / existing.width, maxH / existing.height)
+            existing.set({ left: targetLeft, top: targetTop, scaleX: scale, scaleY: scale })
+            existing.setCoords()
+          } else {
+            fabricLib.Image.fromURL(
+              url,
+              (img: any) => {
+                if (!img) return
+                // 로드 완료 시점에 슬롯이 여전히 존재하는지 검증 (race 방지)
+                if (!imageKeyMapRef.current.get(slotKey)) return
+                const scale = Math.min(maxW / img.width, maxH / img.height)
+                img.set({
+                  left: targetLeft, top: targetTop,
+                  originX: 'center', originY: 'center',
+                  scaleX: scale, scaleY: scale,
+                  selectable: false, evented: false,
+                })
+                ;(img as any).__slotKey = slotKey
+                canvas.add(img)
+                const curMap = imageKeyMapRef.current.get(slotKey) ?? new Map()
+                curMap.set(url, img)
+                imageKeyMapRef.current.set(slotKey, curMap)
+                canvas.renderAll()
+              },
+              { crossOrigin: 'anonymous' }
+            )
+          }
         })
+        if (existingUrlMap.size > 0) imageKeyMapRef.current.set(slotKey, existingUrlMap)
       }
+      canvas.renderAll()
     },
     []
   )
@@ -262,8 +286,9 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
         // 빈 슬롯이면 실제 텍스트 색상은 옅게, 내용 있으면 본 색상
         const textFillOverride = empty ? 'rgba(255,255,255,0.55)' : undefined
 
-        // Fabric charSpacing: 1/1000 em 단위 (1pt 자간 ≈ charSpacing 50)
-        const charSpacing = letterSpacing * 50
+        // Fabric charSpacing: 1/1000 em 단위. 폰트 크기에 비례해 시각적으로 일정하게
+        // letterSpacing(pt) → px → em (fontSize 기준) → 1000배
+        const charSpacing = fontSize > 0 ? Math.round((letterSpacing * 1000) / fontSize) : 0
 
         const finalFill = textFillOverride ?? fill
 
@@ -341,37 +366,23 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
         obj.top  = Math.max(0, Math.min(ch - objH, obj.top))
       })
 
-      // ── 리사이즈 중: 범위 클램핑 + 반응형 폰트 실시간 적용 ──
+      // ── 리사이즈 중: 범위 클램핑 (실시간 폰트 조정은 하지 않음) ──
+      // 이유: object:modified에서 최종 크기 기준으로 한 번만 재계산해야 double-apply 방지
       canvas.on('object:scaling', (e: any) => {
         const obj = e.target
-        const slotKey = (obj as any).__slotKey
-        if (!slotKey) return
+        if (!(obj as any).__slotKey) return
+        ;(obj as any).__userResizing = true
         const cw = (canvas.width as number) || 1
         const ch = (canvas.height as number) || 1
         const scaledW = obj.getScaledWidth()
         const scaledH = obj.getScaledHeight()
 
-        // 캔버스 이탈 방지
+        // 캔버스 이탈 방지 — scaleX/scaleY로 통일
         if (scaledW > cw) obj.scaleX = cw / obj.width
         if (scaledH > ch - obj.top) obj.scaleY = (ch - obj.top) / obj.height
-
-        // 실시간 폰트 재조정 — 너비 변화율만큼 fontSize 즉시 반영
-        const slot = contentsRef.current[slotKey]
-        if (slot) {
-          const originalWPct = slot.w ?? 70
-          const currentWPct = (obj.width / cw) * 100
-          if (originalWPct > 0 && currentWPct > 0) {
-            const ratio = currentWPct / originalWPct
-            const base = slot.fontSize ?? 16
-            const newSize = Math.max(8, Math.min(120, Math.round(base * ratio)))
-            if (!(obj as any).isEditing && obj.fontSize !== newSize) {
-              obj.set({ fontSize: newSize })
-            }
-          }
-        }
       })
 
-      // ── 드래그/리사이즈 완료 → 위치 + 너비 + 높이 + 반응형 폰트 ──
+      // ── 드래그/리사이즈 완료 → 위치 + 너비 + 높이 + 반응형 폰트 (1회) ──
       canvas.on('object:modified', (e: any) => {
         const obj = e.target
         const slotKey: string | undefined = (obj as any).__slotKey
@@ -383,16 +394,27 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
         const ch = (canvas.height as number) || 1
         const xPct = parseFloat(((obj.left / cw) * 100).toFixed(1))
         const yPct = parseFloat(((obj.top  / ch) * 100).toFixed(1))
-        const wPct = parseFloat(((obj.width  / cw) * 100).toFixed(1))
+        // getScaledWidth() 사용 — Textbox는 scaleX 변경되므로 width만으로는 부정확
+        const scaledW = obj.getScaledWidth()
+        const wPct = parseFloat(((scaledW / cw) * 100).toFixed(1))
         const hVal = parseFloat((obj.scaleY ?? 1).toFixed(3))
 
-        // 반응형 폰트 — 박스 너비 변경 비율에 따라 fontSize 자동 조정
-        // 원본 대비 너비 변화율을 적용하되 min 8, max 120으로 제한
-        const originalWPct = slot.w ?? 70
-        const widthRatio = wPct / originalWPct
+        // scaleX가 1 아니면 width × scaleX로 저장한 후 scaleX=1로 정규화
+        // (다음 렌더 때 width 기반 재계산이 정확하도록)
+        if (obj.scaleX !== 1) {
+          obj.set({ width: scaledW, scaleX: 1 })
+        }
+
+        // 반응형 폰트: 사용자 리사이즈일 때만 박스 변화율 적용
+        const wasUserResizing = !!(obj as any).__userResizing
         let newFontSize = slot.fontSize ?? 16
-        if (widthRatio !== 1 && originalWPct > 0) {
-          newFontSize = Math.max(8, Math.min(120, Math.round(newFontSize * widthRatio)))
+        if (wasUserResizing) {
+          const originalWPct = slot.w ?? 70
+          const widthRatio = originalWPct > 0 ? wPct / originalWPct : 1
+          if (widthRatio !== 1) {
+            newFontSize = Math.max(8, Math.min(120, Math.round(newFontSize * widthRatio)))
+          }
+          ;(obj as any).__userResizing = false
         }
 
         onUpdateRef.current(slotKey, { ...slot, x: xPct, y: yPct, w: wPct, h: hVal, fontSize: newFontSize })
@@ -440,6 +462,7 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
       instanceRef.current = null
       textMapRef.current.clear()
       imageMapRef.current.clear()
+      imageKeyMapRef.current.clear()
     }
   }, [resizeCanvas, syncTextObjects])
 

@@ -1,4 +1,5 @@
 import type { DesignItem, ContentsMap } from '@/lib/types'
+import { SLOT_MAX_CHARS } from '@/lib/constants'
 
 export type IssueLevel = 'error' | 'warning' | 'info'
 
@@ -106,6 +107,32 @@ export function runPreflight(
         code: 'NO_QUANTITY', message: '수량 0 — 발주 누락 위험',
       })
     }
+    // 파트 누락
+    if (!item.part) {
+      issues.push({
+        itemId: item.id, itemNo: item.no, level: 'warning',
+        code: 'NO_PART', message: '파트 미입력 — 엑셀 담당자 그룹핑 혼선',
+      })
+    }
+    // SLOT_MAX 초과 — 인쇄 시 잘림 위험
+    for (const [slotKey, slot] of Object.entries(contents)) {
+      const max = SLOT_MAX_CHARS[slotKey]
+      if (!max) continue
+      const totalChars = (slot.ko?.length ?? 0) + (slot.en?.length ?? 0)
+      if (totalChars > max) {
+        issues.push({
+          itemId: item.id, itemNo: item.no, level: 'warning',
+          code: 'OVERFLOW', message: `${slotKey} 글자 수 초과 (${totalChars}/${max}자) — 자동 축소되나 확인 권장`,
+        })
+      }
+    }
+    // 이미지 업로드 확인 — 배경 시안 없음
+    if (!item.image_url) {
+      issues.push({
+        itemId: item.id, itemNo: item.no, level: 'info',
+        code: 'NO_BACKGROUND', message: '배경 시안 이미지 미업로드 — 기본 프레임으로 출력',
+      })
+    }
 
     // ── INFO: 검수 미완료 ─────────────────────────
     if (item.review_status === '작업중' || item.review_status === '확인필요') {
@@ -118,6 +145,24 @@ export function runPreflight(
       issues.push({
         itemId: item.id, itemNo: item.no, level: 'info',
         code: 'NEVER_EDITED', message: '미편집 — 기본 시안 상태',
+      })
+    }
+  }
+
+  // ── 프로젝트 레벨 점검 — 마스터 vs sibling 규격 불일치 ──
+  const mastersByCategory: Record<string, DesignItem> = {}
+  for (const it of items) {
+    if (it.is_master && it.category) mastersByCategory[it.category] = it
+  }
+  for (const it of items) {
+    if (it.is_master || !it.category) continue
+    const master = mastersByCategory[it.category]
+    if (!master) continue
+    if (master.width_mm !== it.width_mm || master.height_mm !== it.height_mm) {
+      issues.push({
+        itemId: it.id, itemNo: it.no, level: 'info',
+        code: 'MASTER_SIZE_DIFF',
+        message: `마스터(${master.width_mm}×${master.height_mm})와 규격 다름 (${it.width_mm}×${it.height_mm}) — 레이아웃 자동 비율 조정됨`,
       })
     }
   }

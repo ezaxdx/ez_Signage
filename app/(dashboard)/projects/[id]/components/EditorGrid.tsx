@@ -163,9 +163,9 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
               <div className={BASE_CELL} onDoubleClick={(e) => { e.stopPropagation(); startEdit(item.id, 'part', item.part ?? '') }}>
                 {cellContent('part', item.part ?? '')}
               </div>
-              {/* 구분 = 장소의 큰 느낌 (장소와 동일값 표시) */}
+              {/* 구분 = 제작물 종류 (명세 10-2) */}
               <div className={`${BASE_CELL} text-slate-500 text-[11px] truncate`}>
-                {item.location || '—'}
+                {item.category || '—'}
               </div>
               <div className={BASE_CELL} onDoubleClick={(e) => { e.stopPropagation(); startEdit(item.id, 'location', item.location ?? '') }}>
                 {cellContent('location', item.location ?? '')}

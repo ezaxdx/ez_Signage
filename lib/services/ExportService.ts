@@ -164,10 +164,10 @@ export async function exportToPPT(
         [
           cellOpts(item.no ?? ''),
           cellOpts(item.part ?? ''),
-          cellOpts(item.location ?? ''),
-          cellOpts(item.location ?? ''),
+          cellOpts(item.category ?? ''),  // 구분 = 제작물 종류 (명세 10-2)
+          cellOpts(item.location ?? ''),  // 장소 = 실제 설치 위치
           cellOpts(item.purpose ?? ''),
-          cellOpts(item.category ?? ''),
+          cellOpts(item.category ?? ''),  // 품목 = 구분과 동일 (명세)
           cellOpts(item.language ?? ''),
           cellOpts(`${widthMm}×${heightMm}`),
           cellOpts(item.material ?? ''),
@@ -352,10 +352,11 @@ export async function exportToExcel(
     return project.client_name ?? ''
   })()
 
-  // 좌상단: "환경 제작물 (행사명)" / 우상단: 행사 로고
+  // 좌상단: "환경 제작물 (행사명)" (1~15열 병합) / 우상단: 행사 로고 (16~17열 병합)
+  const logoStartCol = HEADERS.length - 2  // 15 → '디자인업체' 시작부터
   const titleRow: (string | number)[] = new Array(HEADERS.length).fill('')
   titleRow[0] = `환경 제작물  (${project.name})`
-  titleRow[HEADERS.length - 1] = logoText
+  titleRow[logoStartCol] = logoText
 
   const dataRows = items.map(item => {
     const contents = allContents[item.id] ?? {}
@@ -378,10 +379,10 @@ export async function exportToExcel(
     return [
       item.no ?? '',
       item.part ?? '',
-      item.location ?? '',
-      item.location ?? '',
+      item.category ?? '',   // 구분 = 제작물 종류 (명세 10-2)
+      item.location ?? '',   // 장소 = 실제 설치 위치
       item.purpose ?? '',
-      item.category ?? '',
+      item.category ?? '',   // 품목 = 구분과 동일 (명세)
       item.language ?? '',
       dims,
       item.material ?? '',
