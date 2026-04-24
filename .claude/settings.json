@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(git status)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(ls *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(rm -rf .next)",
+      "Bash(taskkill *)",
+      "Bash(curl *)",
+      "Bash(grep *)",
+      "Bash(tail *)",
+      "Bash(head *)",
+      "Bash(cat *)",
+      "Bash(wc *)",
+      "Bash(sleep *)",
+      "Bash(echo *)",
+      "Bash(sed *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_FILE_PATH\" | grep -qE '\\.(ts|tsx)$'; then cd \"$(dirname \"$CLAUDE_PROJECT_DIR\")\" 2>/dev/null; cd mice-design-guide 2>/dev/null; npx tsc --noEmit --incremental false 2>&1 | head -20 || true; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
