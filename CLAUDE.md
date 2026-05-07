@@ -324,7 +324,7 @@ PPT 파일명: `{project.name}_디자인의뢰가이드_{YYYYMMDD}.pptx`
 
 ### Supabase 설정
 - URL: `https://ujpftfiemlijfdpluyfp.supabase.co`
-- ANON KEY: `sb_publishable_Xf7WX0Gl_7QaSLTuP1crtQ_eEAF8K39`
+- ANON KEY: (`.env.local` 참조 — JWT 형식)
 - Realtime 활성화: `ALTER PUBLICATION supabase_realtime ADD TABLE item_contents;`
 
 ---

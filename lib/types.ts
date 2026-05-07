@@ -1,5 +1,37 @@
 export type ProjectStatus = '준비중' | '진행중' | '완료'
+export type ProjectStage = '의뢰서작성' | '발주완료' | '시안검수' | '수정중' | '확정' | '납품완료'
 export type ItemLanguage = 'KOR' | 'EN' | 'EN/KOR'
+export type UserRole = 'admin' | 'user'
+
+// 환경장식물 동의어 사전 (signage_aliases 테이블)
+export interface SignageAlias {
+  id?: string
+  alias_name: string
+  canonical_name: string
+  kind: string             // category 키 (x_banner, vertical_banner …)
+  default_size: string | null
+  note: string | null
+}
+
+// 외부 공유 토큰 (share_tokens 테이블)
+export interface ShareToken {
+  id: string
+  project_id: string
+  token: string
+  created_by: string
+  expires_at: string | null
+  enabled: boolean
+  created_at: string
+}
+
+// Profile 확장 (role 추가)
+export interface Profile {
+  id: string
+  email: string
+  display_name: string | null
+  role: UserRole
+  created_at: string
+}
 
 // ─── DB 엔티티 ────────────────────────────────────────────────
 
@@ -16,6 +48,7 @@ export interface Project {
   purposes: string[]               // 사용 목적 5종 (main_promo, registration, wayfinding, program_info, experience)
   share_token: string | null       // 클라이언트 공유용 토큰 (로그인 없이 미리보기)
   share_enabled: boolean           // 공유 활성화 여부
+  stage?: ProjectStage             // 행사 진행 단계 (의뢰서작성→납품완료) — migration_v4 이후 필수
   created_at: string
   updated_at: string
 }
@@ -80,6 +113,7 @@ export interface DesignItem {
   is_master: boolean             // 같은 category의 마스터 디자인 (기본값)
   review_status: '작업중' | '확인필요' | '검수완료' | '발주완료' | '수정요청'
   review_note: string | null     // 관리자 코멘트
+  revision_count?: number        // 수정 횟수 (3회 이상 시 경고) — migration_v4 이후 필수
   created_at: string
   updated_at: string
 }

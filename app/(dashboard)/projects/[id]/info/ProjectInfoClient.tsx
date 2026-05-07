@@ -7,7 +7,7 @@ import { ArrowLeft, Plus, Trash2, Save, LayoutGrid, Users, Settings2, Palette, S
 import { createClient } from '@/lib/supabase/client'
 import { DEFAULT_SLOTS } from '@/lib/types'
 import { STYLE_PRESETS } from '@/lib/constants'
-import type { Project, ProjectMember, ProjectStatus, SlotStyle, Profile, OrgLogoAsset } from '@/lib/types'
+import type { Project, ProjectMember, ProjectStatus, ProjectStage, SlotStyle, Profile, OrgLogoAsset } from '@/lib/types'
 
 interface Props {
   project: Project
@@ -17,6 +17,14 @@ interface Props {
 }
 
 const STATUS_OPTIONS: ProjectStatus[] = ['준비중', '진행중', '완료']
+const STAGE_OPTIONS: { value: ProjectStage; label: string; color: string; desc: string }[] = [
+  { value: '의뢰서작성', label: '의뢰서 작성', color: 'border-slate-500 text-slate-400',    desc: '제작물 목록 작성 중' },
+  { value: '발주완료',   label: '발주 완료',   color: 'border-blue-500 text-blue-400',     desc: '디자인 업체에 발주됨' },
+  { value: '시안검수',   label: '시안 검수',   color: 'border-violet-500 text-violet-400', desc: '초안 확인 중' },
+  { value: '수정중',     label: '수정 중',     color: 'border-amber-500 text-amber-400',   desc: '수정 요청 반영 중' },
+  { value: '확정',       label: '확정',         color: 'border-emerald-500 text-emerald-400', desc: '최종 시안 확정' },
+  { value: '납품완료',   label: '납품 완료',   color: 'border-slate-400 text-slate-300',   desc: '파일 납품 완료' },
+]
 const ALIGN_OPTIONS: Array<'left' | 'center' | 'right'> = ['left', 'center', 'right']
 const FONT_OPTIONS = [
   // ── 로컬 폰트 (사용자 제공) ─────────────
@@ -106,6 +114,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
   const [eventDate, setEventDate] = useState(project.event_date ?? '')
   const [eventVenue, setEventVenue] = useState(project.event_venue ?? '')
   const [status, setStatus] = useState<ProjectStatus>(project.status)
+  const [stage, setStage] = useState<ProjectStage>(project.stage ?? '의뢰서작성')
   const [isSavingInfo, setIsSavingInfo] = useState(false)
   const [infoSaved, setInfoSaved] = useState(false)
 
@@ -117,6 +126,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
       event_date: eventDate || null,
       event_venue: eventVenue.trim() || null,
       status,
+      stage,
     }).eq('id', project.id)
     setIsSavingInfo(false)
     setInfoSaved(true)
@@ -203,12 +213,15 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
     setIsUploadingMaster(true)
     try {
       const { compressToWebP } = await import('@/lib/services/imageUtils')
+      const { buildStoragePath, explainStorageError } = await import('@/lib/services/storagePaths')
       const blob = await compressToWebP(file)
-      const path = `${project.id}/master.webp`
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('로그인이 필요합니다')
+      const path = buildStoragePath('master', { userId: user.id, projectId: project.id })
       const { error: uploadError } = await supabase.storage
         .from('design-images')
-        .upload(path, blob, { contentType: 'image/webp', upsert: true })
-      if (uploadError) throw uploadError
+        .upload(path, blob, { contentType: blob.type || 'image/webp', upsert: true })
+      if (uploadError) { alert(explainStorageError(uploadError.message || '')); throw uploadError }
       const { data: { publicUrl } } = supabase.storage.from('design-images').getPublicUrl(path)
       const urlWithTs = `${publicUrl}?t=${Date.now()}`
 
@@ -521,12 +534,19 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
     setUploadingLogo(true)
     try {
       const { compressToWebP } = await import('@/lib/services/imageUtils')
+      const { buildStoragePath, explainStorageError } = await import('@/lib/services/storagePaths')
       const blob = await compressToWebP(file)
-      const path = `${project.id}/logos/${Date.now()}-${name}.webp`
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('로그인이 필요합니다')
+      const path = buildStoragePath('logo', {
+        userId: user.id,
+        projectId: project.id,
+        suffix: `${Date.now()}-${name}`,
+      })
       const { error: uploadError } = await supabase.storage
         .from('design-images')
-        .upload(path, blob, { contentType: 'image/webp', upsert: false })
-      if (uploadError) throw uploadError
+        .upload(path, blob, { contentType: blob.type || 'image/webp', upsert: true })
+      if (uploadError) { alert(explainStorageError(uploadError.message || '')); throw uploadError }
       const { data: { publicUrl } } = supabase.storage.from('design-images').getPublicUrl(path)
 
       const { data: inserted } = await supabase
@@ -606,6 +626,42 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
               <select value={status} onChange={e => setStatus(e.target.value as ProjectStatus)} className={INPUT_CLS}>
                 {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
+            </div>
+          </div>
+
+          {/* 행사 단계 선택기 */}
+          <div className="mt-5">
+            <label className={LABEL_CLS}>행사 진행 단계</label>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              {STAGE_OPTIONS.map((opt, idx) => {
+                const isActive = stage === opt.value
+                const isPast = STAGE_OPTIONS.findIndex(o => o.value === stage) > idx
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    disabled={!isOwner}
+                    onClick={() => setStage(opt.value)}
+                    className={`relative flex flex-col items-center gap-1 p-2.5 rounded-lg border text-center transition-all disabled:cursor-not-allowed ${
+                      isActive
+                        ? `${opt.color} bg-slate-800/80 ring-1 ring-current`
+                        : isPast
+                        ? 'border-slate-700 text-slate-500 bg-slate-800/40'
+                        : 'border-slate-800 text-slate-700 hover:border-slate-600 hover:text-slate-500 bg-slate-900/40'
+                    }`}
+                  >
+                    <span className={`text-xs font-mono w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      isActive ? 'bg-current/20 text-current' : isPast ? 'bg-slate-700 text-slate-500' : 'bg-slate-800 text-slate-700'
+                    }`}>
+                      {isPast ? '✓' : idx + 1}
+                    </span>
+                    <span className="text-[10px] font-medium leading-tight">{opt.label}</span>
+                    {isActive && (
+                      <span className="text-[9px] leading-tight opacity-70">{opt.desc}</span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           </div>
 

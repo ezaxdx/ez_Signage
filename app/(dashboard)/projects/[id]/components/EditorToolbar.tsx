@@ -70,25 +70,24 @@ export function EditorToolbar({
     setIsUploadingImage(true)
     try {
       const { compressToWebP } = await import('@/lib/services/imageUtils')
+      const { buildStoragePath, explainStorageError } = await import('@/lib/services/storagePaths')
       const blob = await compressToWebP(file)
 
       const supabase = createClient()
-      const path = `${selectedItem.project_id}/${selectedItem.id}.webp`
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('로그인이 필요합니다')
+      const path = buildStoragePath('item-image', {
+        userId: user.id,
+        projectId: selectedItem.project_id,
+        itemId: selectedItem.id,
+      })
 
       const { error: uploadError } = await supabase.storage
         .from('design-images')
-        .upload(path, blob, { contentType: 'image/webp', upsert: true })
+        .upload(path, blob, { contentType: blob.type || 'image/webp', upsert: true })
 
       if (uploadError) {
-        // 자세한 원인 알림 — 가장 흔한: 버킷 미생성 / 정책 미설정
-        const msg = uploadError.message || ''
-        if (/bucket|not found/i.test(msg)) {
-          alert('Supabase Storage에 design-images 버킷이 없습니다.\n\nSupabase Dashboard → Storage → New Bucket → 이름: design-images, Public on\n또는 supabase/migration_all.sql 실행')
-        } else if (/policy|permission|denied/i.test(msg)) {
-          alert('Storage 업로드 권한이 없습니다.\nsupabase/migration_all.sql의 storage 정책을 실행해주세요.')
-        } else {
-          alert('이미지 업로드 실패: ' + msg)
-        }
+        alert(explainStorageError(uploadError.message || ''))
         throw uploadError
       }
 

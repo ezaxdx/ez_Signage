@@ -510,6 +510,7 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
               selectedSlotKey={selectedSlotKey}
               onUpdate={updateSlot}
               onSlotSelect={setSelectedSlotKey}
+              onSlotPanelOpen={() => setSlotPanelOpen(true)}
             />
           </div>
         </div>
@@ -520,6 +521,7 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
             contents={contents}
             selectedSlotKey={selectedSlotKey}
             selectedItemId={selectedItemId}
+            projectId={project.id}
             onSlotSelect={setSelectedSlotKey}
             onSlotAdd={handleSlotAdd}
             onSlotDelete={handleSlotDelete}

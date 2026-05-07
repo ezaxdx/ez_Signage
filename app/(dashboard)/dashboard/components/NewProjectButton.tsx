@@ -2,11 +2,27 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, X, Loader2, ChevronRight, ChevronLeft, Check, UserPlus, Trash2, Search, Target } from 'lucide-react'
+import { Plus, X, Loader2, ChevronRight, ChevronLeft, Check, UserPlus, Trash2, Search, Target, Upload, FileSpreadsheet, AlertCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { insertDefaultSlotsForItems } from '@/lib/services/itemService'
 import { PURPOSE_PRESETS } from '@/lib/constants'
 import type { ProjectStatus, Profile } from '@/lib/types'
+
+// 엑셀 헤더 fuzzy 매칭용 키워드 (17컬럼 중 핵심 7개)
+const EXCEL_COLUMN_KEYS = [
+  { key: 'no',       names: ['NO', '번호', 'NO.', '순번'] },
+  { key: 'part',     names: ['파트', '업무파트', '담당파트'] },
+  { key: 'category', names: ['구분', '품목', '제작물', '종류', '환경장식물'] },
+  { key: 'location', names: ['장소', '설치위치', '위치'] },
+  { key: 'size',     names: ['규격', '사이즈', '크기'] },
+  { key: 'material', names: ['재질', '소재'] },
+  { key: 'quantity', names: ['수량', '개수'] },
+] as const
+
+interface ParsedExcelRow {
+  no?: string; part?: string; category?: string; location?: string
+  size?: string; material?: string; quantity?: string
+}
 
 const inputCls =
   'w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3.5 py-2.5 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition'
@@ -63,6 +79,10 @@ export function NewProjectButton({ userId, userEmail }: Props) {
   const [newPart, setNewPart] = useState('')
   const [formats, setFormats] = useState<Record<string, FormatState>>(makeInitialFormats)
   const [customFormats, setCustomFormats] = useState<CustomFormat[]>([])
+  const [excelFile, setExcelFile] = useState<File | null>(null)
+  const [excelRows, setExcelRows] = useState<ParsedExcelRow[]>([])
+  const [excelParsing, setExcelParsing] = useState(false)
+  const [excelError, setExcelError] = useState<string | null>(null)
 
   // 이름/이메일 검색 (debounced)
   useEffect(() => {
@@ -90,6 +110,50 @@ export function NewProjectButton({ userId, userEmail }: Props) {
     setMembers([{ email: userEmail, part: '' }])
     setSearchQuery(''); setSelectedProfile(null); setNewPart('')
     setFormats(makeInitialFormats()); setCustomFormats([]); setError(null)
+  setExcelFile(null); setExcelRows([]); setExcelError(null)
+  }
+
+  const handleExcelFile = async (file: File) => {
+    setExcelParsing(true)
+    setExcelError(null)
+    try {
+      const XLSX = await import('xlsx')
+      const buf = await file.arrayBuffer()
+      const wb = XLSX.read(buf, { type: 'array' })
+      const ws = wb.Sheets[wb.SheetNames[0]]
+      const aoa: string[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as string[][]
+      if (aoa.length < 2) { setExcelError('엑셀에 데이터가 없습니다'); return }
+
+      let headerIdx = aoa.findIndex(row => row.some(c => /^(NO|번호)$/i.test(String(c).trim())))
+      if (headerIdx === -1) headerIdx = 0
+
+      const header = aoa[headerIdx].map(c => String(c).trim())
+      const colMap: Record<string, number> = {}
+      for (const { key, names } of EXCEL_COLUMN_KEYS) {
+        const i = header.findIndex(h =>
+          names.some(n => h.replace(/\s+/g, '').includes(n.replace(/\s+/g, '')))
+        )
+        if (i >= 0) colMap[key] = i
+      }
+
+      const rows: ParsedExcelRow[] = aoa.slice(headerIdx + 1)
+        .filter(r => r.some(c => String(c).trim() !== ''))
+        .map(r => {
+          const out: ParsedExcelRow = {}
+          for (const { key } of EXCEL_COLUMN_KEYS) {
+            const i = colMap[key]
+            if (i !== undefined) out[key] = String(r[i] ?? '').trim()
+          }
+          return out
+        })
+
+      setExcelRows(rows)
+      setExcelFile(file)
+    } catch (e) {
+      setExcelError(e instanceof Error ? e.message : '파싱 실패')
+    } finally {
+      setExcelParsing(false)
+    }
   }
 
   const renameFormat = (id: string, name: string) => {
@@ -214,10 +278,37 @@ export function NewProjectButton({ userId, userEmail }: Props) {
       if (memberRes.error) console.warn('project_members 삽입 실패 (마이그레이션 미실행 가능):', memberRes.error.message)
     }
 
-    // 제작물 생성 (count만큼 반복) — 프리셋 + 커스텀 통합
+    let idx = 1
+    const allItemIds: string[] = []
+
+    // ── Excel 행 우선 삽입 (alias 정규화 포함) ────────────────
+    if (excelRows.length > 0) {
+      const { loadAliases, resolveAliasSync } = await import('@/lib/services/aliasResolver')
+      const aliases = await loadAliases(supabase)
+      const excelItems = excelRows.map((r, i) => {
+        const sizeMatch = (r.size || '').match(/(\d+)\s*[\*x×]\s*(\d+)/)
+        const resolved = resolveAliasSync(r.category || '', aliases)
+        return {
+          project_id: project.id,
+          no: r.no || String(idx + i).padStart(2, '0'),
+          part: r.part || null,
+          category: resolved.canonical || r.category || null,
+          location: r.location || null,
+          quantity: parseInt(r.quantity || '1', 10) || 1,
+          material: r.material || null,
+          width_mm: sizeMatch ? parseInt(sizeMatch[1]) : null,
+          height_mm: sizeMatch ? parseInt(sizeMatch[2]) : null,
+        }
+      })
+      idx += excelRows.length
+      const { data: createdExcel } = await supabase.from('design_items').insert(excelItems).select('id')
+      if (createdExcel) allItemIds.push(...createdExcel.map((i: { id: string }) => i.id))
+    }
+
+    // ── 프리셋 + 커스텀 제작물 생성 ─────────────────────────
     const selectedList: { name: string; width: number; height: number; material: string; count: number }[] = [
       ...FORMAT_PRESETS.filter(f => formats[f.id]?.selected).map(f => ({
-        name: formats[f.id].name,  // 사용자가 변경한 이름 사용
+        name: formats[f.id].name,
         width: formats[f.id].width,
         height: formats[f.id].height,
         material: formats[f.id].material,
@@ -231,9 +322,6 @@ export function NewProjectButton({ userId, userEmail }: Props) {
         count: f.count || 1,
       })),
     ]
-
-    let idx = 1
-    const allItemIds: string[] = []
 
     for (const f of selectedList) {
       const rows = Array.from({ length: f.count }, () => ({
@@ -340,6 +428,59 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                       <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">행사일</label>
                       <input type="date" value={info.event_date} onChange={e => setInfo(p => ({ ...p, event_date: e.target.value }))} className={`${inputCls} [color-scheme:dark]`} />
                     </div>
+                  </div>
+
+                  {/* 엑셀 업로드 (선택) */}
+                  <div>
+                    <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">
+                      발주서 엑셀 <span className="text-slate-600 font-normal normal-case">(선택 — 제작물 목록 자동 입력)</span>
+                    </label>
+                    {excelRows.length > 0 ? (
+                      <div className="flex items-center gap-2 bg-emerald-950/30 border border-emerald-800/50 rounded-lg px-3 py-2.5">
+                        <FileSpreadsheet className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-emerald-300 text-xs font-medium truncate">{excelFile?.name}</p>
+                          <p className="text-emerald-500 text-[10px]">{excelRows.length}건 인식됨 → 4단계에서 확인</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { setExcelFile(null); setExcelRows([]); setExcelError(null) }}
+                          className="text-slate-500 hover:text-slate-300 p-0.5 rounded transition"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="block border border-dashed border-slate-700 hover:border-slate-600 rounded-lg p-4 text-center cursor-pointer hover:bg-slate-800/30 transition">
+                        <input
+                          type="file"
+                          accept=".xlsx,.xls"
+                          className="hidden"
+                          onChange={e => {
+                            const f = e.target.files?.[0]
+                            if (f) handleExcelFile(f)
+                            e.target.value = ''
+                          }}
+                        />
+                        {excelParsing ? (
+                          <div className="flex items-center justify-center gap-2 text-slate-400">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span className="text-xs">파일 읽는 중...</span>
+                          </div>
+                        ) : (
+                          <>
+                            <Upload className="w-5 h-5 mx-auto text-slate-600 mb-1" />
+                            <p className="text-slate-500 text-xs">엑셀 파일 선택 (.xlsx)</p>
+                          </>
+                        )}
+                      </label>
+                    )}
+                    {excelError && (
+                      <div className="flex items-center gap-1.5 text-rose-400 text-[10px] mt-1">
+                        <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                        {excelError}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -508,6 +649,44 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                 <div className="space-y-3">
                   <p className="text-slate-400 text-sm">제작물 종류를 선택하세요. <strong className="text-slate-200">이름 변경/규격 수정/추가</strong> 모두 가능합니다.</p>
 
+                  {/* 엑셀 불러온 목록 미리보기 */}
+                  {excelRows.length > 0 && (
+                    <div className="rounded-xl border border-emerald-800/50 bg-emerald-950/20 overflow-hidden">
+                      <div className="px-3 py-2 flex items-center justify-between border-b border-emerald-800/40">
+                        <div className="flex items-center gap-1.5">
+                          <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                          <span className="text-emerald-300 text-xs font-medium">엑셀에서 불러온 목록 ({excelRows.length}건)</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { setExcelFile(null); setExcelRows([]); setExcelError(null) }}
+                          className="text-slate-500 hover:text-rose-400 text-[10px] transition"
+                        >
+                          제거
+                        </button>
+                      </div>
+                      <div className="max-h-48 overflow-auto divide-y divide-emerald-900/30 text-xs">
+                        {excelRows.slice(0, 30).map((r, i) => {
+                          const sizeMatch = (r.size || '').match(/(\d+)\s*[\*x×]\s*(\d+)/)
+                          return (
+                            <div key={i} className="px-3 py-1.5 grid grid-cols-[24px_1fr_90px_60px_30px] gap-2 items-center">
+                              <span className="text-emerald-600">{r.no || String(i + 1).padStart(2, '0')}</span>
+                              <span className="text-slate-200 truncate">{r.category || '—'}</span>
+                              <span className="text-slate-500 text-[10px]">
+                                {sizeMatch ? `${sizeMatch[1]}×${sizeMatch[2]}mm` : (r.size || '—')}
+                              </span>
+                              <span className="text-slate-500 text-[10px] truncate">{r.material || '—'}</span>
+                              <span className="text-slate-400 text-center">{r.quantity || 1}</span>
+                            </div>
+                          )
+                        })}
+                        {excelRows.length > 30 && (
+                          <div className="px-3 py-1.5 text-slate-600 text-[10px]">… +{excelRows.length - 30}건 더</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-[20px_1fr_110px_70px_40px_24px] gap-2 px-3 text-[10px] text-slate-500 uppercase tracking-wide">
                     <span></span>
                     <span>종류명 (편집 가능)</span>
@@ -579,8 +758,11 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                     제작물 종류 직접 추가 (목록에 없는 것)
                   </button>
 
-                  {selectedCount > 0 && (
-                    <p className="text-indigo-400 text-xs px-1">총 {totalItemCount}개 제작물이 생성됩니다</p>
+                  {(selectedCount > 0 || excelRows.length > 0) && (
+                    <p className="text-indigo-400 text-xs px-1">
+                      총 {excelRows.length + totalItemCount}개 제작물이 생성됩니다
+                      {excelRows.length > 0 && <span className="text-emerald-500 ml-1">(엑셀 {excelRows.length}건 포함)</span>}
+                    </p>
                   )}
                 </div>
               )}
@@ -605,7 +787,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                 ) : (
                   <button type="button" disabled={isLoading} onClick={handleCreate} className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm py-2.5 rounded-lg transition">
                     {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {isLoading ? '생성 중...' : selectedCount > 0 ? `프로젝트 만들기 (${totalItemCount}개 제작물)` : '프로젝트 만들기'}
+                    {isLoading ? '생성 중...' : (excelRows.length + selectedCount) > 0 ? `프로젝트 만들기 (${excelRows.length + totalItemCount}개 제작물)` : '프로젝트 만들기'}
                   </button>
                 )}
               </div>

@@ -39,3 +39,6 @@ next-env.d.ts
 
 # OS
 Thumbs.db
+
+# 로컬 아카이브 (GitHub에 올리지 않음)
+/archive/

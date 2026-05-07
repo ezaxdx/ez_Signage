@@ -11,6 +11,7 @@ interface Props {
   selectedSlotKey?: string | null
   onUpdate: (slotKey: string, updated: SlotContent) => void
   onSlotSelect?: (key: string) => void
+  onSlotPanelOpen?: () => void
 }
 
 interface FabricInstance {
@@ -36,7 +37,7 @@ function isSlotEmpty(slot: SlotContent): boolean {
   return !(slot.ko || slot.en)
 }
 
-export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, onUpdate, onSlotSelect }: Props) {
+export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, onUpdate, onSlotSelect, onSlotPanelOpen }: Props) {
   const outerRef = useRef<HTMLDivElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasElRef = useRef<HTMLCanvasElement>(null)
@@ -58,6 +59,8 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
   useEffect(() => { onSlotSelectRef.current = onSlotSelect }, [onSlotSelect])
   useEffect(() => { itemRef.current = item }, [item])
   useEffect(() => { selectedSlotKeyRef.current = selectedSlotKey }, [selectedSlotKey])
+  const onSlotPanelOpenRef = useRef(onSlotPanelOpen)
+  useEffect(() => { onSlotPanelOpenRef.current = onSlotPanelOpen }, [onSlotPanelOpen])
 
   // ── 캔버스 크기 계산 및 적용 ────────────────────────────
   const resizeCanvas = useCallback((canvas: any) => {
@@ -183,7 +186,8 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
             )
           }
         })
-        if (existingUrlMap.size > 0) imageKeyMapRef.current.set(slotKey, existingUrlMap)
+        // 항상 등록 (비어있어도) — 비동기 로드 callback의 guard가 올바르게 동작하도록
+        imageKeyMapRef.current.set(slotKey, existingUrlMap)
       }
       canvas.renderAll()
     },
@@ -430,6 +434,16 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
         const obj = e.selected?.[0]
         const slotKey: string | undefined = obj?.__slotKey
         if (slotKey) onSlotSelectRef.current?.(slotKey)
+      })
+
+      // 더블클릭 → 해당 구역 선택 + SlotPanel 열기
+      canvas.on('mouse:dblclick', (e: any) => {
+        const obj = e.target
+        const slotKey: string | undefined = (obj as any)?.__slotKey
+        if (slotKey) {
+          onSlotSelectRef.current?.(slotKey)
+          onSlotPanelOpenRef.current?.()
+        }
       })
 
       // 텍스트 직접 편집 완료 → 첫 줄=ko, 나머지=en

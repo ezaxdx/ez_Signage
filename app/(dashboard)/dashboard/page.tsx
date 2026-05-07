@@ -67,7 +67,9 @@ export default async function DashboardPage() {
             <h1 className="text-slate-100 text-xl font-bold">내 프로젝트</h1>
             <p className="text-slate-500 text-sm mt-0.5">MICE 행사 제작물을 관리하세요</p>
           </div>
-          <NewProjectButton userId={user.id} userEmail={user.email ?? ''} />
+          <div className="flex items-center gap-2">
+            <NewProjectButton userId={user.id} userEmail={user.email ?? ''} />
+          </div>
         </div>
 
         {/* 상황 기반 추천 위젯 */}

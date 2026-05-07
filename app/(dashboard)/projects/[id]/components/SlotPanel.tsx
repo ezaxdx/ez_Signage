@@ -10,6 +10,7 @@ interface Props {
   contents: ContentsMap
   selectedSlotKey: string | null
   selectedItemId?: string
+  projectId: string
   onSlotSelect: (key: string) => void
   onSlotAdd: (label: string, position?: { x: number; y: number }) => void
   onSlotDelete: (key: string) => void
@@ -39,6 +40,7 @@ export function SlotPanel({
   contents,
   selectedSlotKey,
   selectedItemId,
+  projectId,
   onSlotSelect,
   onSlotAdd,
   onSlotDelete,
@@ -101,21 +103,22 @@ export function SlotPanel({
     setUploadingImage(slotKey)
     try {
       const { compressToWebP } = await import('@/lib/services/imageUtils')
+      const { buildStoragePath, explainStorageError } = await import('@/lib/services/storagePaths')
       const blob = await compressToWebP(file)
       const supabase = createClient()
-      const path = `${selectedItemId}/slot-${slotKey}-${Date.now()}.webp`
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('로그인이 필요합니다')
+      const path = buildStoragePath('slot-image', {
+        userId: user.id,
+        projectId: projectId,
+        itemId: selectedItemId,
+        slotKey,
+      })
       const { error: uploadError } = await supabase.storage
         .from('design-images')
-        .upload(path, blob, { contentType: 'image/webp', upsert: false })
+        .upload(path, blob, { contentType: blob.type || 'image/webp', upsert: true })
       if (uploadError) {
-        const msg = uploadError.message || ''
-        if (/bucket|not found/i.test(msg)) {
-          alert('Supabase Storage에 design-images 버킷이 없습니다.\n\nSupabase Dashboard → Storage → New Bucket\n이름: design-images, Public 체크\n또는 supabase/migration_all.sql 실행')
-        } else if (/policy|permission|denied|row.*level/i.test(msg)) {
-          alert('Storage 권한 부족.\nsupabase/migration_all.sql의 Storage 정책을 실행해주세요.')
-        } else {
-          alert('이미지 업로드 실패: ' + msg)
-        }
+        alert(explainStorageError(uploadError.message || ''))
         throw uploadError
       }
       const { data: { publicUrl } } = supabase.storage.from('design-images').getPublicUrl(path)
@@ -153,19 +156,20 @@ export function SlotPanel({
       const blob = dataUrlToBlob(dataUrl)
 
       const supabase = createClient()
-      const path = `${selectedItemId}/qr-${slotKey}-${Date.now()}.png`
+      const { buildStoragePath, explainStorageError } = await import('@/lib/services/storagePaths')
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('로그인이 필요합니다')
+      const path = buildStoragePath('qr', {
+        userId: user.id,
+        projectId: projectId,
+        itemId: selectedItemId,
+        slotKey,
+      })
       const { error: uploadError } = await supabase.storage
         .from('design-images')
-        .upload(path, blob, { contentType: 'image/png', upsert: false })
+        .upload(path, blob, { contentType: 'image/png', upsert: true })
       if (uploadError) {
-        const msg = uploadError.message || ''
-        if (/bucket|not found/i.test(msg)) {
-          alert('Supabase Storage에 design-images 버킷이 없습니다.\nmigration_all.sql 실행 필요')
-        } else if (/policy|permission|denied|row.*level/i.test(msg)) {
-          alert('Storage 권한 부족.\nmigration_all.sql 실행 필요')
-        } else {
-          alert('QR 업로드 실패: ' + msg)
-        }
+        alert(explainStorageError(uploadError.message || ''))
         throw uploadError
       }
 
