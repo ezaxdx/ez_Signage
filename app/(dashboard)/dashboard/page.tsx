@@ -1,12 +1,22 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { LayoutGrid, FolderOpen, Archive } from 'lucide-react'
+import {
+  LayoutGrid, Archive, AlignLeft, Image, Table2, PenSquare,
+  FileSpreadsheet, Presentation, ChevronRight, MapPin
+} from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { ProjectCard } from './components/ProjectCard'
 import { NewProjectButton } from './components/NewProjectButton'
 import { LogoutButton } from './components/LogoutButton'
-import { RecommenderWidget } from './components/RecommenderWidget'
+import { DashboardContent } from './components/DashboardContent'
+import { groupVenuesByRegion } from '@/lib/venueIntel'
 import type { ProjectWithCount } from '@/lib/types'
+
+function calcDdayDiff(eventDate: string | null): number {
+  if (!eventDate) return Infinity
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const event = new Date(eventDate); event.setHours(0, 0, 0, 0)
+  return Math.round((event.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+}
 
 export default async function DashboardPage() {
   const supabase = createClient()
@@ -14,7 +24,6 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // 소유 + 초대된 프로젝트 모두 가져오기 (RLS가 멤버 접근 허용)
   const { data: projects } = await supabase
     .from('projects')
     .select('*, design_items(count)')
@@ -22,11 +31,27 @@ export default async function DashboardPage() {
 
   const typedProjects = (projects ?? []) as ProjectWithCount[]
 
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+
   const stats = {
     total: typedProjects.length,
-    active: typedProjects.filter((p) => p.status === '진행중').length,
-    ready: typedProjects.filter((p) => p.status === '준비중').length,
+    urgent: typedProjects.filter(p => {
+      const d = calcDdayDiff(p.event_date)
+      return d >= 0 && d <= 7
+    }).length,
+    thisMonth: typedProjects.filter(p => {
+      if (!p.event_date) return false
+      const ev = new Date(p.event_date)
+      return ev >= monthStart && ev <= monthEnd
+    }).length,
+    inProgress: typedProjects.filter(p =>
+      p.stage && ['발주완료', '시안검수', '수정중', '확정'].includes(p.stage)
+    ).length,
   }
+
+  const venueGroups = groupVenuesByRegion()
 
   return (
     <div className="min-h-screen bg-slate-950">
@@ -41,7 +66,6 @@ export default async function DashboardPage() {
               MICE 디자인 가이드
             </span>
           </div>
-
           <div className="flex items-center gap-3">
             <Link
               href="/archive"
@@ -60,64 +84,181 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+
         {/* 페이지 헤더 */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-slate-100 text-xl font-bold">내 프로젝트</h1>
             <p className="text-slate-500 text-sm mt-0.5">MICE 행사 제작물을 관리하세요</p>
           </div>
-          <div className="flex items-center gap-2">
-            <NewProjectButton userId={user.id} userEmail={user.email ?? ''} />
-          </div>
+          <NewProjectButton userId={user.id} userEmail={user.email ?? ''} />
         </div>
 
-        {/* 상황 기반 추천 위젯 */}
-        <RecommenderWidget />
+        {/* 시작 방식 안내 — 입력 여부와 관계없이 동일한 출력 */}
+        <Link href="/projects/new" className="block group">
+          <div className="bg-slate-900/60 border border-slate-800 hover:border-indigo-600/40 rounded-xl p-4 transition-all">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
+              <p className="text-slate-300 text-sm font-medium">새 프로젝트 시작</p>
+              <div className="flex items-center gap-1.5 text-[10px] text-slate-600 sm:ml-auto">
+                <span>어떤 방법이든</span>
+                <ChevronRight className="w-3 h-3" />
+                <FileSpreadsheet className="w-3 h-3 text-emerald-600" />
+                <span>Excel 의뢰목록</span>
+                <span>+</span>
+                <Presentation className="w-3 h-3 text-indigo-500" />
+                <span>PPT 디자인가이드</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {ENTRY_CASES.map(c => (
+                <div key={c.case} className="bg-slate-800/50 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className={`w-6 h-6 rounded-md flex items-center justify-center ${c.iconBg}`}>
+                      <c.Icon className={`w-3 h-3 ${c.iconColor}`} />
+                    </div>
+                    <p className="text-slate-200 text-xs font-medium">{c.title}</p>
+                  </div>
+                  <p className="text-slate-500 text-[10px] leading-relaxed">{c.desc}</p>
+                  <p className="text-slate-700 text-[9px] mt-1.5 italic">{c.optional}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Link>
 
         {/* 통계 카드 */}
         {typedProjects.length > 0 && (
-          <div className="grid grid-cols-3 gap-3 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { label: '전체 프로젝트', value: stats.total, color: 'text-slate-100' },
-              { label: '진행중', value: stats.active, color: 'text-emerald-400' },
-              { label: '준비중', value: stats.ready, color: 'text-amber-400' },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3"
-              >
+              { label: '전체 프로젝트', value: stats.total, color: 'text-slate-100', sub: null },
+              { label: 'D-7 이내', value: stats.urgent, color: stats.urgent > 0 ? 'text-red-400' : 'text-slate-100', sub: '긴급 마감' },
+              { label: '이번달 행사', value: stats.thisMonth, color: 'text-amber-400', sub: null },
+              { label: '작업 진행중', value: stats.inProgress, color: 'text-emerald-400', sub: '발주~확정' },
+            ].map(stat => (
+              <div key={stat.label} className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3">
                 <p className="text-slate-500 text-xs mb-1">{stat.label}</p>
                 <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                {stat.sub && <p className="text-slate-600 text-[10px] mt-0.5">{stat.sub}</p>}
               </div>
             ))}
           </div>
         )}
 
-        {/* 프로젝트 그리드 */}
+        {/* 프로젝트 목록 (단계 필터 + 정렬 포함) */}
         {typedProjects.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {typedProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} isOwner={project.owner_id === user.id} />
-            ))}
-          </div>
+          <DashboardContent projects={typedProjects} userId={user.id} />
         )}
+
+        {/* 참고 행사장 — 향후 샘플 데이터 기반 추천 예정 */}
+        <details className="group">
+          <summary className="flex items-center gap-2 cursor-pointer list-none select-none">
+            <div className="flex items-center gap-1.5 text-slate-500 hover:text-slate-300 transition text-xs">
+              <MapPin className="w-3.5 h-3.5" />
+              <span>참고 행사장 — 샘플 데이터 보유 ({Object.values(venueGroups).flat().length}개소)</span>
+              <span className="text-slate-700 text-[10px]">▼ 클릭해서 보기</span>
+            </div>
+            <span className="ml-auto text-[9px] text-indigo-500/60 hidden sm:block">향후: 행사장별 표준 품목 추천 예정</span>
+          </summary>
+
+          <div className="mt-4 bg-slate-900/50 border border-slate-800 rounded-xl p-4">
+            <p className="text-[10px] text-slate-600 mb-4">
+              아래 행사장은 과거 제작물 샘플 폴더에 데이터가 있는 장소입니다.
+              향후 분석 완료 시 프로젝트 생성 시 자동으로 권장 품목과 수량을 제안할 예정입니다.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {Object.entries(venueGroups).map(([region, venues]) => (
+                <div key={region}>
+                  <p className="text-[10px] font-semibold text-slate-500 mb-2 uppercase tracking-wider">{region}</p>
+                  <div className="space-y-1">
+                    {venues.map(v => (
+                      <div key={v.displayName} className="flex items-center gap-2 text-xs text-slate-400">
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                          v.type === '컨벤션' ? 'bg-indigo-500' :
+                          v.type === '전시장' ? 'bg-violet-500' :
+                          v.type === '호텔'   ? 'bg-amber-500' :
+                          v.type === '야외'   ? 'bg-emerald-500' : 'bg-slate-600'
+                        }`} />
+                        <span className="truncate">{v.displayName}</span>
+                        <span className="ml-auto text-slate-700 text-[9px] flex-shrink-0">{v.type}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 mt-4 pt-3 border-t border-slate-800 text-[9px] text-slate-700 flex-wrap gap-y-1">
+              {[
+                { color: 'bg-indigo-500', label: '컨벤션' },
+                { color: 'bg-violet-500', label: '전시장' },
+                { color: 'bg-amber-500',  label: '호텔' },
+                { color: 'bg-emerald-500',label: '야외' },
+                { color: 'bg-slate-600',  label: '기타' },
+              ].map(({ color, label }) => (
+                <span key={label} className="flex items-center gap-1">
+                  <span className={`w-1.5 h-1.5 rounded-full ${color}`} />
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
+        </details>
+
       </main>
     </div>
   )
 }
 
+const ENTRY_CASES = [
+  {
+    case: 'a',
+    Icon: PenSquare,
+    iconBg: 'bg-indigo-600/20',
+    iconColor: 'text-indigo-400',
+    title: '빈 상태로',
+    desc: '프로젝트 정보만 입력해 바로 시작',
+    optional: '입력 없이도 OK',
+  },
+  {
+    case: 'b',
+    Icon: Table2,
+    iconBg: 'bg-emerald-600/20',
+    iconColor: 'text-emerald-400',
+    title: '엑셀 가져오기',
+    desc: '기존 제작물 목록 .xlsx 업로드',
+    optional: '선택 사항',
+  },
+  {
+    case: 'c',
+    Icon: Image,
+    iconBg: 'bg-violet-600/20',
+    iconColor: 'text-violet-400',
+    title: '시안 이미지',
+    desc: '디자인 시안 또는 행사장 배치도 업로드',
+    optional: '선택 사항',
+  },
+  {
+    case: 'd',
+    Icon: AlignLeft,
+    iconBg: 'bg-amber-600/20',
+    iconColor: 'text-amber-400',
+    title: '텍스트 붙여넣기',
+    desc: '행사 정보 텍스트로 내용 자동 분류',
+    optional: '선택 사항',
+  },
+]
+
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center py-28 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mb-4">
-        <FolderOpen className="w-8 h-8 text-slate-600" />
+    <div className="flex flex-col items-center justify-center py-24 text-center">
+      <div className="w-14 h-14 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mb-4">
+        <LayoutGrid className="w-7 h-7 text-slate-600" />
       </div>
-      <h3 className="text-slate-300 font-semibold mb-1.5">프로젝트가 없습니다</h3>
-      <p className="text-slate-500 text-sm">
-        첫 번째 MICE 행사 프로젝트를 만들어보세요.
+      <h3 className="text-slate-300 font-semibold mb-1.5">첫 프로젝트를 만들어보세요</h3>
+      <p className="text-slate-500 text-sm mb-6 max-w-xs">
+        위의 4가지 방법 중 하나로 MICE 행사 프로젝트를 시작하세요
       </p>
     </div>
   )
