@@ -1,12 +1,23 @@
 // 환경장식물 동의어 → 표준명 변환.
 // signage_aliases 테이블에서 한 번 fetch 후 메모리 캐시.
+// DB 미시딩 시 SEED_SYNONYMS(dashboardSeed)로 폴백 → 두 데이터 소스를 통합.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { SignageAlias } from '@/lib/types'
+import { SEED_SYNONYMS } from '@/lib/data/dashboardSeed'
 
 let cache: SignageAlias[] | null = null
 let cachedAt = 0
 const TTL = 1000 * 60 * 10 // 10분
+
+/** SEED_SYNONYMS → SignageAlias 형식 변환 (DB 폴백용) */
+const SEED_FALLBACK: SignageAlias[] = SEED_SYNONYMS.map(s => ({
+  alias_name: s.alias,
+  canonical_name: s.canonical_name,
+  kind: 'category',
+  default_size: null,
+  note: s.note ?? null,
+}))
 
 export async function loadAliases(supabase: SupabaseClient): Promise<SignageAlias[]> {
   const now = Date.now()
@@ -14,7 +25,16 @@ export async function loadAliases(supabase: SupabaseClient): Promise<SignageAlia
   const { data } = await supabase
     .from('signage_aliases')
     .select('alias_name, canonical_name, kind, default_size, note')
-  cache = (data ?? []) as SignageAlias[]
+  // DB가 비었거나 테이블이 없으면 시드 폴백
+  if (!data || data.length === 0) {
+    cache = SEED_FALLBACK
+  } else {
+    // DB + 시드 병합 (DB 우선, 시드는 DB에 없는 항목만 보강)
+    const dbAliases = data as SignageAlias[]
+    const dbAliasNames = new Set(dbAliases.map(a => a.alias_name))
+    const additional = SEED_FALLBACK.filter(s => !dbAliasNames.has(s.alias_name))
+    cache = [...dbAliases, ...additional]
+  }
   cachedAt = now
   return cache
 }
