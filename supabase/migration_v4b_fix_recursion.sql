@@ -7,16 +7,16 @@
 --
 -- 해결: SECURITY DEFINER 헬퍼 함수로 RLS 우회.
 --
+-- 주의: 기존 DB에 is_project_owner(p_id uuid)가 등록되어 있어
+--       파라미터 이름을 그대로 p_id로 통일 (CREATE OR REPLACE 호환).
+--
 -- 실행: Supabase Studio → SQL Editor 에서 전체 RUN
 -- ============================================================
 
 -- ──────────────────────────────────────────────────────────────
 -- 1. is_project_owner — owner_id 직접 체크 (재귀 없음)
 -- ──────────────────────────────────────────────────────────────
--- 기존 함수가 다른 파라미터 이름(p_id)으로 존재할 수 있음 → DROP 먼저
-DROP FUNCTION IF EXISTS public.is_project_owner(uuid);
-
-CREATE FUNCTION public.is_project_owner(p_project_id uuid)
+CREATE OR REPLACE FUNCTION public.is_project_owner(p_id uuid)
 RETURNS boolean
 LANGUAGE sql
 SECURITY DEFINER
@@ -25,7 +25,7 @@ SET search_path = public
 AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.projects
-    WHERE id = p_project_id
+    WHERE id = p_id
       AND owner_id = auth.uid()
   );
 $$;
@@ -33,9 +33,7 @@ $$;
 -- ──────────────────────────────────────────────────────────────
 -- 2. is_project_member — RLS 우회로 재귀 방지
 -- ──────────────────────────────────────────────────────────────
-DROP FUNCTION IF EXISTS public.is_project_member(uuid);
-
-CREATE FUNCTION public.is_project_member(p_project_id uuid)
+CREATE OR REPLACE FUNCTION public.is_project_member(p_id uuid)
 RETURNS boolean
 LANGUAGE sql
 SECURITY DEFINER
@@ -44,7 +42,7 @@ SET search_path = public
 AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.project_members
-    WHERE project_id = p_project_id
+    WHERE project_id = p_id
       AND user_email = (auth.jwt() ->> 'email')
   );
 $$;
