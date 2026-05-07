@@ -2,6 +2,27 @@
 
 > 1차 출시에서 제거되었으나 사용자 요청에 의해 향후 다시 추가될 기능들. 코드는 git history와 주석에 보존됨.
 
+## 2026-05-07 — 구버전 계획안에서 빠진 3가지
+
+사용자 결정으로 명세에서 제외된 항목들.
+
+### A. PM 사업부 / 부서별 납기 패턴 / 팀 단위 필터
+- 위치: /data 페이지 PM 탭 / 납기 패턴 탭 (제거됨)
+- 상태: TabKey enum에서 제외 (DataDashboard.tsx)
+- 시드: SEED_PERFLIST의 pm_* 필드는 매칭 호환성 위해 남김
+- 복귀: TabKey에 'pm', 'leadtime' 재추가
+
+### B. 사외 사람과 편집 / 공유 링크 (`/share/[token]`)
+- 위치: `app/share/[token]/page.tsx`, `ClientReviewView.tsx`
+- 상태: 라우트 잔존 / 토큰 생성 UI 없음 → 사실상 사용 불가
+- 시드: lib/types.ts의 share_token, ShareToken 잔존
+- 복귀: 프로젝트 info 페이지에 "공유 링크 생성" 버튼 추가
+
+### C. "7페이지 2번" (확인 필요)
+- 사용자 메모: 정확한 항목은 구버전 계획안 PDF 참조 필요
+
+---
+
 ## 1. 좌측 제작물 사이드바 (`ItemSidebar`)
 
 **제거 시점**: 2026-05-07 사용자 명시 요청
