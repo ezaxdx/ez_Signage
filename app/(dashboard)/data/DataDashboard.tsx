@@ -24,23 +24,27 @@ interface Props {
   venues?: unknown[]
 }
 
-type TabKey = 'overview' | 'signage' | 'synonyms' | 'venues' | 'events' | 'pm' | 'clients' | 'eventcat' | 'designers' | 'materials' | 'leadtime' | 'categories' | 'analysis' | 'dna'
+// 사용자 결정 (2026-05-07): 명세 1.2 (수행실적 PM 부서·팀단위) 빠짐
+// → PM 사업부 / 납기 패턴 (팀단위 필터 의존) 탭 제거
+// 흐름 이해: 1.1 환경장식물 파일 → 가공 → 추천 적용
+type TabKey = 'overview' | 'signage' | 'synonyms' | 'venues' | 'events' | 'clients' | 'eventcat' | 'designers' | 'materials' | 'categories' | 'analysis' | 'dna'
 
 const TABS: { key: TabKey; label: string; icon: React.ElementType; badge?: string }[] = [
   { key: 'overview',   label: '개요',          icon: BarChart3 },
-  { key: 'analysis',   label: '실측 분석',     icon: AlertCircle, badge: '신규' },
-  { key: 'dna',        label: '레이아웃 DNA',  icon: Layers3, badge: 'AI' },
-  { key: 'events',     label: '행사 이력',     icon: Calendar },
-  { key: 'pm',         label: 'PM 사업부',     icon: Briefcase },
-  { key: 'clients',    label: '발주처',        icon: Building2 },
-  { key: 'eventcat',   label: '행사분류 통계', icon: Layers3 },
+  // 폼 입력으로 누적되는 통계
+  { key: 'events',     label: '행사 이력',     icon: Calendar,    badge: '입력 누적' },
+  { key: 'clients',    label: '발주처',        icon: Building2,   badge: '입력 누적' },
+  { key: 'eventcat',   label: '행사분류 통계', icon: Layers3,     badge: '폼 추가 예정' },
+  { key: 'designers',  label: '디자인 업체',   icon: Users,       badge: '폼 추가 예정' },
+  { key: 'materials',  label: '재질',          icon: FolderOpen,  badge: '입력 누적' },
+  // 시스템 마스터 (관리자 관리)
   { key: 'signage',    label: '환경장식물',    icon: Tag },
   { key: 'synonyms',   label: '동의어',        icon: Shuffle },
   { key: 'venues',     label: '행사장',        icon: MapPin },
   { key: 'categories', label: '분류·권장',    icon: Layers3 },
-  { key: 'materials',  label: '재질',          icon: FolderOpen },
-  { key: 'designers',  label: '디자인 업체',   icon: Users },
-  { key: 'leadtime',   label: '납기 패턴',     icon: Truck, badge: '예정' },
+  // 초기 시드 (분석 도구)
+  { key: 'analysis',   label: '실측 분석',     icon: AlertCircle, badge: '시드' },
+  { key: 'dna',        label: '레이아웃 DNA',  icon: Layers3,     badge: '시드' },
 ]
 
 export function DataDashboard(_props: Props) {
@@ -126,7 +130,7 @@ export function DataDashboard(_props: Props) {
         </div>
 
         {/* 검색 (대부분의 탭에서 사용) */}
-        {(activeTab === 'events' || activeTab === 'synonyms' || activeTab === 'venues' || activeTab === 'clients' || activeTab === 'eventcat' || activeTab === 'pm') && (
+        {(activeTab === 'events' || activeTab === 'synonyms' || activeTab === 'venues' || activeTab === 'clients' || activeTab === 'eventcat') && (
           <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
             <input
@@ -147,13 +151,11 @@ export function DataDashboard(_props: Props) {
           {activeTab === 'synonyms' && <SynonymsTab search={search} />}
           {activeTab === 'venues' && <VenuesTab search={search} />}
           {activeTab === 'events' && <EventsTab search={search} />}
-          {activeTab === 'pm' && <PmTab search={search} />}
           {activeTab === 'clients' && <ClientsTab search={search} />}
           {activeTab === 'eventcat' && <EventCategoryStatsTab search={search} />}
           {activeTab === 'categories' && <CategoriesTab />}
           {activeTab === 'materials' && <MaterialsTab />}
           {activeTab === 'designers' && <DesignersTab />}
-          {activeTab === 'leadtime' && <LeadTimeTab />}
         </div>
 
         {/* 하단 — 데이터 수집 계획 (명세 6번 매핑) */}
