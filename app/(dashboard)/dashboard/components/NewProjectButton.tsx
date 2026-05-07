@@ -56,6 +56,28 @@ const inputCls =
 const smallInputCls =
   'w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-slate-100 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition disabled:opacity-40 disabled:cursor-not-allowed'
 
+// 환경장식물 종류별 인라인 설명 (회의록 2순위 목적 분류 + 명세 인라인 헬프)
+// "X배너는 행사 입구에 세우는 세로 배너로..." 패턴
+const FORMAT_DESCRIPTIONS: Record<string, { purpose: string; usage: string }> = {
+  x_banner:           { purpose: '입구·등록 / 동선 안내', usage: '행사 입구 양쪽에 세우는 세로 배너. 행사명·메인 메시지 강조. 보통 2개씩 사용' },
+  i_banner:           { purpose: '실내 안내', usage: '회의실·세션장 입구의 단순 안내. X배너보다 슬림' },
+  streetlight_banner: { purpose: '외부 동선 / 행사장 진입', usage: '가로등에 매다는 양면 인쇄. 행사장 외부 도로변 다수 부착' },
+  horizontal_banner:  { purpose: '메인 무대 홍보', usage: '무대 정면 또는 행사장 정문 가로형. 행사명+영문 병기 권장' },
+  vertical_banner:    { purpose: '행사장 환경 조성', usage: '천장에서 떨어뜨리는 세로 현수막. 로비·메인홀 환경 조성' },
+  chunchen_banner:    { purpose: '대형 환경 조성', usage: '천장에 매다는 초대형. MOU·국제회의 등 격식 행사' },
+  podium:             { purpose: '연단 브랜딩', usage: '연단 전면 부착. 행사 로고·타이틀 강조' },
+  l_board:            { purpose: '룸 사인 / 단일 장소 안내', usage: 'L자 폼보드. 회의실 입구 명패 / 룸 안내' },
+  foamboard:          { purpose: '정보 안내 / 단계별 설명', usage: '평면 폼보드. 등록 절차·프로그램·행사 안내' },
+  hardpaper:          { purpose: '인쇄물 / 자료', usage: '하드지 인쇄. 안내 카드·프로그램북' },
+  coated_paper:       { purpose: '핸드아웃', usage: '코팅지 인쇄. 사용자 배포용' },
+  pop_guide:          { purpose: '안내 POP', usage: 'A3 PET POP. 데스크 안내 / 미니 사인' },
+  backwall:           { purpose: '메인 백드롭', usage: '대형 백월. 무대 뒷면 / 포토존 배경' },
+  a4_portrait:        { purpose: '소형 안내 / 룸 사인', usage: 'A4 세로 인쇄. 좌석 명패·룸사인' },
+  a4_landscape:       { purpose: '손피켓 / 좌석 안내', usage: 'A4 가로 인쇄. 영접 피켓·좌석 표시' },
+  a3_portrait:        { purpose: '안내 POP', usage: 'A3 세로 인쇄. 동선 안내·이벤트 알림' },
+  a3_landscape:       { purpose: '손피켓 / 안내', usage: 'A3 가로 인쇄. 큰 손피켓·중간 안내' },
+}
+
 const FORMAT_PRESETS = [
   { id: 'x_banner',           name: 'X-배너',        width: 600,  height: 1800, material: 'PET' },
   { id: 'i_banner',           name: 'I-배너',        width: 600,  height: 1600, material: 'PET' },
@@ -1269,6 +1291,15 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                               onChange={e => renameFormat(f.id, e.target.value)}
                               className={`bg-transparent text-sm font-medium px-1 py-0.5 rounded focus:bg-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 min-w-0 flex-1 ${s.selected ? 'text-slate-100' : 'text-slate-400'}`}
                             />
+                            {/* 인라인 설명 — 마우스 hover/tap 시 표시 (명세 명시: "X배너는...") */}
+                            {FORMAT_DESCRIPTIONS[f.id] && (
+                              <span
+                                className="flex-shrink-0 w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 hover:bg-indigo-700 hover:text-indigo-200 text-[9px] flex items-center justify-center cursor-help transition"
+                                title={`📍 ${FORMAT_DESCRIPTIONS[f.id].purpose}\n\n${FORMAT_DESCRIPTIONS[f.id].usage}`}
+                              >
+                                ?
+                              </span>
+                            )}
                           </div>
                           {/* 선택률 % 배지 */}
                           <div className="text-center">
