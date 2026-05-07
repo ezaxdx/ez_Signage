@@ -174,7 +174,7 @@ export function ArchiveClient({ initialItems }: { initialItems: ItemRow[] }) {
                   <div className="min-w-0">
                     <div className="text-slate-400 truncate">{extractContent(row)}</div>
                     {row.review_note && (
-                      <div className="text-amber-400/80 text-[10px] truncate italic mt-0.5">📝 {row.review_note}</div>
+                      <div className="text-amber-400/80 text-[10px] truncate italic mt-0.5">{row.review_note}</div>
                     )}
                   </div>
                   <span className="text-slate-500 truncate text-[11px]">

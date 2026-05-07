@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Calendar, MapPin, Package, ArrowRight, Settings, AlertTriangle } from 'lucide-react'
 import type { ProjectWithCount, ProjectStatus, ProjectStage } from '@/lib/types'
+import { DeleteProjectButton } from './DeleteProjectButton'
 
 const STAGES: ProjectStage[] = ['의뢰서작성', '발주완료', '시안검수', '수정중', '확정', '납품완료']
 const STAGE_COLORS: Record<ProjectStage, string> = {
@@ -60,12 +61,18 @@ export function ProjectCard({ project, isOwner = true }: Props) {
         ? 'border-red-700/60 hover:border-red-600/80'
         : 'border-slate-800 hover:border-slate-700 hover:bg-slate-900/80'
     }`}>
-      {/* 상단 뱃지 + D-day + 항목 수 */}
+      {/* 상단 뱃지 + D-day + 항목 수 — stage가 있으면 stage 표시, 없으면 status (사용자 요청) */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${status.className}`}>
-            {status.label}
-          </span>
+          {project.stage ? (
+            <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+              {project.stage}
+            </span>
+          ) : (
+            <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${status.className}`}>
+              {status.label}
+            </span>
+          )}
           {!isOwner && (
             <span className="text-[10px] font-medium px-2 py-0.5 rounded-full text-sky-300 bg-sky-500/10 border border-sky-500/25">
               초대됨
@@ -147,6 +154,7 @@ export function ProjectCard({ project, isOwner = true }: Props) {
         >
           <Settings className="w-3.5 h-3.5" />
         </Link>
+        <DeleteProjectButton projectId={project.id} projectName={project.name} isOwner={isOwner} />
         <Link
           href={`/projects/${project.id}`}
           className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-2 rounded-lg transition-all ${

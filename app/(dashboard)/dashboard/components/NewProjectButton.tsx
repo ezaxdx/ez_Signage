@@ -13,20 +13,27 @@ import { SEED_PERFLIST } from '@/lib/data/dashboardSeed'
 const KNOWN_CLIENTS_NPB = Array.from(new Set(SEED_PERFLIST.map(p => p.client))).sort()
 const KNOWN_VENUES_NPB = Array.from(new Set(SEED_PERFLIST.map(p => p.venue))).sort()
 
-// 엑셀 헤더 fuzzy 매칭용 키워드 (17컬럼 중 핵심 7개)
+// 엑셀 헤더 fuzzy 매칭 — 명세 17컬럼 + 다양한 양식 별칭 (양식 다양성 대응)
+// 매칭 우선순위: 정확 일치 → 부분 포함 → 핵심 키워드 일치
 const EXCEL_COLUMN_KEYS = [
-  { key: 'no',       names: ['NO', '번호', 'NO.', '순번'] },
-  { key: 'part',     names: ['파트', '업무파트', '담당파트'] },
-  { key: 'category', names: ['구분', '품목', '제작물', '종류', '환경장식물'] },
-  { key: 'location', names: ['장소', '설치위치', '위치'] },
-  { key: 'size',     names: ['규격', '사이즈', '크기'] },
-  { key: 'material', names: ['재질', '소재'] },
-  { key: 'quantity', names: ['수량', '개수'] },
+  { key: 'no',       names: ['NO', 'NO.', '번호', '순번', '연번', '연 번', '#'] },
+  { key: 'part',     names: ['파트', '업무파트', '담당파트', '담당'] },
+  { key: 'category', names: ['품목', '제작물', '환경장식물', '품명', '항목', '종류'] },
+  { key: 'bigarea',  names: ['구분', '구 분', '구분1', '구 분 1', '대분류'] },
+  { key: 'location', names: ['장소', '설치장소', '설치위치', '위치', '설 치 장 소', '행사장'] },
+  { key: 'purpose',  names: ['사용목적', '목적', '용도'] },
+  { key: 'language', names: ['언어', '언 어'] },
+  { key: 'size',     names: ['규격', '사이즈', '사 이 즈', '크기', '치수', '규격(mm)'] },
+  { key: 'material', names: ['재질', '재 질', '소재', '재료'] },
+  { key: 'quantity', names: ['수량', '수 량', '개수', '갯수', '수'] },
+  { key: 'content',  names: ['내용', '내 용', '본문', '텍스트'] },
+  { key: 'note',     names: ['비고', '비 고', '메모', '참고'] },
 ] as const
 
 interface ParsedExcelRow {
-  no?: string; part?: string; category?: string; location?: string
-  size?: string; material?: string; quantity?: string
+  no?: string; part?: string; category?: string; bigarea?: string; location?: string
+  purpose?: string; language?: string; size?: string; material?: string; quantity?: string
+  content?: string; note?: string
 }
 
 const inputCls =
@@ -65,7 +72,8 @@ const makeInitialFormats = (): Record<string, FormatState> =>
 
 interface Props { userId: string; userEmail: string }
 
-const STEP_LABELS = ['기본 정보', '사용 목적', '팀원 초대', '제작물 선택']
+// 사용 목적 단계 제거 (행사 유형과 기능 중복)
+const STEP_LABELS = ['기본 정보', '팀원 초대', '제작물 선택']
 
 export function NewProjectButton({ userId, userEmail }: Props) {
   const router = useRouter()
@@ -437,7 +445,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
 
-          <div className={`relative bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl flex flex-col w-full max-h-[92vh] transition-all duration-200 ${step === 4 ? 'max-w-2xl' : 'max-w-lg'}`}>
+          <div className={`relative bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl flex flex-col w-full max-h-[92vh] transition-all duration-200 ${step === 3 ? 'max-w-2xl' : 'max-w-lg'}`}>
             {/* 헤더 */}
             <div className="flex items-start justify-between p-6 pb-5 flex-shrink-0">
               <div>
@@ -615,14 +623,15 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                     )}
                   </div>
 
-                  {/* 디자인 시안 업로드 (선택) */}
+                  {/* 디자인 시안 업로드 — 1차에서 제작물 선택 단계로 이동 (사용자 결정) */}
+                  {false && (
                   <div>
                     <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">
                       디자인 시안 <span className="text-slate-600 font-normal normal-case">(선택 — 마스터 레이아웃 기준 이미지)</span>
                     </label>
                     {mockupPreview ? (
                       <div className="relative">
-                        <img src={mockupPreview} alt="시안 미리보기" className="w-full max-h-36 object-contain rounded-lg border border-slate-700 bg-slate-800" />
+                        <img src={mockupPreview ?? undefined} alt="시안 미리보기" className="w-full max-h-36 object-contain rounded-lg border border-slate-700 bg-slate-800" />
                         <button
                           type="button"
                           onClick={() => { setMockupFile(null); setMockupPreview(null) }}
@@ -656,6 +665,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                       </label>
                     )}
                   </div>
+                  )}
 
                   {/* 행사장 배치도 업로드 (선택) */}
                   <div>
@@ -701,8 +711,8 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                 </div>
               )}
 
-              {/* Step 2: 사용 목적 (회의록 핵심 — 형태보다 목적 우선) */}
-              {step === 2 && (
+              {/* Step 2: 사용 목적 — 1차 출시에서 제거 (행사 유형과 기능 중복) */}
+              {false && step === 2 && (
                 <div className="space-y-4">
                   <div className="bg-indigo-950/30 border border-indigo-900/40 rounded-lg p-3">
                     <div className="flex items-start gap-2">
@@ -764,8 +774,8 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                 </div>
               )}
 
-              {/* Step 3: 파트 담당자 초대 */}
-              {step === 3 && (
+              {/* Step 2: 팀원 초대 (사용 목적 제거로 단계 번호 변경) */}
+              {step === 2 && (
                 <div className="space-y-4">
                   <p className="text-slate-400 text-sm leading-relaxed">
                     프로젝트에 참여할 <strong className="text-slate-200">팀원</strong>과 각자 담당하는 <strong className="text-slate-200">파트명</strong>을 입력하세요.<br />
@@ -860,8 +870,8 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                 </div>
               )}
 
-              {/* Step 4: 제작물 선택 — 이름 변경 + 커스텀 추가 가능 */}
-              {step === 4 && (
+              {/* Step 3: 제작물 선택 (사용 목적 제거로 단계 번호 변경) */}
+              {step === 3 && (
                 <div className="space-y-3">
                   <p className="text-slate-400 text-sm">제작물 종류를 선택하세요. <strong className="text-slate-200">이름 변경/규격 수정/추가</strong> 모두 가능합니다.</p>
 
@@ -1060,7 +1070,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                   <button type="button" onClick={handleClose} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm py-2.5 rounded-lg transition">취소</button>
                 )}
 
-                {step < 4 ? (
+                {step < 3 ? (
                   <button type="button" disabled={step === 1 && !info.name.trim()} onClick={() => setStep(step + 1)} className="flex-1 flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm py-2.5 rounded-lg transition">
                     다음 <ChevronRight className="w-4 h-4" />
                   </button>
