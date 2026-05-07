@@ -16,6 +16,20 @@ import { SEED_PERFLIST } from '@/lib/data/dashboardSeed'
 const KNOWN_CLIENTS = Array.from(new Set(SEED_PERFLIST.map(p => p.client))).sort()
 const KNOWN_VENUES = Array.from(new Set(SEED_PERFLIST.map(p => p.venue))).sort()
 
+// 명세 6.2.4 — 행사 장소별 역대 사용 환경장식물 매칭
+function matchVenueHistory(venueInput: string) {
+  if (!venueInput.trim()) return null
+  const matched = SEED_PERFLIST.filter(p =>
+    p.venue.includes(venueInput) || venueInput.includes(p.venue.split(' ')[0])
+  )
+  if (matched.length === 0) return null
+  return {
+    count: matched.length,
+    pastEvents: matched.slice(0, 3).map(p => p.project_name),
+    clients: Array.from(new Set(matched.map(p => p.client))).slice(0, 3),
+  }
+}
+
 const PURPOSE_OPTIONS = [
   { id: 'main_promo',     label: '행사 메인 홍보' },
   { id: 'registration',   label: '등록 안내' },
@@ -249,6 +263,20 @@ export default function CaseAPage() {
                   {KNOWN_VENUES.map(v => <option key={v} value={v} />)}
                 </datalist>
               </Field>
+              {/* 명세 6.2.4 — 입력된 장소의 과거 행사 매칭 알림 */}
+              {(() => {
+                const match = matchVenueHistory(venue)
+                if (!match) return null
+                return (
+                  <div className="bg-emerald-950/30 border border-emerald-800/40 rounded-lg p-2.5">
+                    <p className="text-emerald-300 text-xs font-medium">
+                      📍 이 장소에서 과거 행사 <strong>{match.count}건</strong> 진행 (수행실적 매핑)
+                    </p>
+                    <p className="text-emerald-500/70 text-[10px] mt-1 truncate">{match.pastEvents.join(' · ')}</p>
+                    <p className="text-emerald-500/60 text-[10px] mt-0.5">발주처: {match.clients.join(', ')}</p>
+                  </div>
+                )
+              })()}
             </div>
 
             {/* ── 2. 권장 정보 (추천 정확도 ↑) ─────── */}
