@@ -46,6 +46,30 @@
 - TSC 0 에러 / Next 빌드 16/16 라우트 통과
 - harness.mjs 70/72 통과 (실패 0)
 
+## 2026-05-07 (저녁) — UX 단순화 + 데이터 연결 강화 사이클
+
+### 신규 프로젝트 흐름 단순화
+- 4단계 위자드 → **3단계** ("사용 목적" 단계 제거 — 행사 유형과 기능 중복)
+- 시안 업로드 step 1 → step 3 (제작물 선택 단계로 통합)
+- 행사 유형 선택 시 권장 환경장식물 자동 체크 (명세 6.2.6 — `EVENT_TYPE_RECOMMEND`)
+- 행사 장소 입력 시 과거 행사 매칭 알림 표시 (명세 6.2.4 — `matchVenueHistory`)
+
+### 새 기능
+- **DeleteProjectButton** — owner만 프로젝트 삭제 (제작물·슬롯·연관 데이터 cascade)
+- **엑셀 헤더 매핑 강화** — 12컬럼 별칭 다양화 (예: `구 분 1`, `사 이 즈`, `연 번` 등 다양한 양식 대응)
+- **메인 대시보드 stage 표시** — `project.stage` 우선 표시 (없으면 status fallback)
+
+### UI 정리
+- 📝 이모지 잔존 제거 (ArchiveClient 비고 표시)
+- README.md 신설 — 외부 공유용 진입 가이드
+
+### Case A 동기화
+- NewProjectButton과 동일하게 발주처·행사장 매칭 알림 표시 (UX 일관성)
+
+### 검증
+- TSC 0 / 빌드 16/16 / harness 70/72 (실패 0)
+- 5개 commit 누적: NewProjectButton 단순화 + 행사 유형 자동 체크 + venue 매칭(NPB) + venue 매칭(Case A) + README
+
 ---
 
 ## 2026-05-06 (저녁) — v3 1차안 Phase 1~6 완료
