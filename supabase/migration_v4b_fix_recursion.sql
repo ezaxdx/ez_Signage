@@ -13,7 +13,10 @@
 -- ──────────────────────────────────────────────────────────────
 -- 1. is_project_owner — owner_id 직접 체크 (재귀 없음)
 -- ──────────────────────────────────────────────────────────────
-CREATE OR REPLACE FUNCTION public.is_project_owner(p_project_id uuid)
+-- 기존 함수가 다른 파라미터 이름(p_id)으로 존재할 수 있음 → DROP 먼저
+DROP FUNCTION IF EXISTS public.is_project_owner(uuid);
+
+CREATE FUNCTION public.is_project_owner(p_project_id uuid)
 RETURNS boolean
 LANGUAGE sql
 SECURITY DEFINER
@@ -30,7 +33,9 @@ $$;
 -- ──────────────────────────────────────────────────────────────
 -- 2. is_project_member — RLS 우회로 재귀 방지
 -- ──────────────────────────────────────────────────────────────
-CREATE OR REPLACE FUNCTION public.is_project_member(p_project_id uuid)
+DROP FUNCTION IF EXISTS public.is_project_member(uuid);
+
+CREATE FUNCTION public.is_project_member(p_project_id uuid)
 RETURNS boolean
 LANGUAGE sql
 SECURITY DEFINER
