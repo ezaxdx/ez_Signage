@@ -55,6 +55,73 @@
 - TSC 0 에러 / Next 빌드 16/16 라우트 통과
 - harness.mjs 70/72 통과 (실패 0)
 
+## 2026-05-07 (야간) — v4.1 대전환: 학습 기반 추천으로 방향 전환
+
+명령본 v4.1 통합본 수신 → 9개 단위 + 갱신 5개 + 신규 2개 일괄 처리.
+
+### 단위 2 + 신규-F: 메인 페이지 정리 + 명칭 변경 일괄
+- 시스템명: "MICE 디자인 가이드" → **"제작물 리스트 가이드"** (UI/문서/PPT 파일명)
+- 메인 헤더 4메뉴 분리: 프로젝트 / 관리자 페이지 / 데이터 학습 관리자 / 저장된 제작물
+- AI 사전학습 카드 메인에서 삭제 (관리자 페이지로 이동)
+- 단계 필터 7개 탭 (의뢰서작성·발주완료·시안검수·수정중·확정·납품완료) 삭제
+- ExportService 파일명 prefix: "제작물리스트_{name}_{date}.{ext}"
+- 영향 파일: 12개 (헤더·라벨·메타데이터·SQL 코멘트 등)
+
+### 단위 3 + 갱신-A: 새 프로젝트 폼 재설계 + 프로그램 파트
+- 행사장: datalist → optgroup 드롭다운 (권역별 + 학습 안된 amber 경고)
+- VenueRequestModal 신설: "신규 행사장 등록 요청" 도면 첨부 가능
+- 본인 요청 행사장은 즉시 "내가 요청한" 그룹에 노출
+- lib/programParts.ts: EZ 폴더링 40.04~40.20 12종 정의
+- 행사 유형 단일 → 프로그램 파트 다중선택 + 권장 환경장식물 자동 체크
+- supabase/migration_v6_v4_1.sql: program_parts text[] + venues + venue_halls + venue_requests + learning_jobs + usage_logs 통합 마이그레이션
+
+### 단위 4: "내용" 컬럼 자유 텍스트 + #N prefix
+- EditorGrid 'content': 슬롯 합산 → purpose 매핑 자유 텍스트 (placeholder "예: 등록 안내 배너, 화살표")
+- EditorGrid 'bigarea': 같은 카테고리 2개+ 시 "X-배너 #1" 자동 prefix
+- ExportService 'bigarea': items 인자 추가 + #N suffix 동기화
+
+### 단위 5-1: 관리자 페이지 정리 + 프로젝트 관리 탭
+- 행사이력·레이아웃 DNA 탭 삭제
+- 프로젝트 관리 탭 신설: 4 KPI + 행사장 분포 + 파트 분포 + 학습 요청 대기
+
+### 단위 5-2: 데이터 학습 관리자 (/admin/learning)
+- 4개 섹션: 행사장 추가 / 사용자 요청 대기 / 도면 학습 큐 / 학습된 행사장
+- 도면 업로드 시 자동 learning_jobs INSERT (Vision 호출은 다음 사이클)
+- venue_requests 승인 시 venues + 학습 큐 자동 트리거
+
+### 단위 5-3: 헤더 admin 메뉴 라우팅
+- /data, /admin/learning, /archive 헤더 라벨 정합화
+
+### 단위 6 + 갱신-C: docs/IA_v4.md
+- 페이지 트리·권한 매트릭스·자동 누적 학습 사이클 다이어그램
+- EZ 폴더링 가이드 ↔ 본 시스템 매핑표
+
+### 단위 7 + 갱신-B/D: docs/AI_LEARNING_PIPELINE.md + 동선배너 룰
+- INPUT 4종 (발주리스트·결과보고서·도면·라이브) 정의
+- 컨벤션센터·호텔 우선 카테고리
+- lib/recommendation/dongseonBanner.ts: 룰베이스 (인원/200 + 홀분리 + 주출입구 + 대형행사장)
+
+### 단위 8 + 갱신-E: parse_signage_lists_v4.mjs
+- 행사 폴더 203개 분석 → program_parts 추론 + 도면 보유 여부
+- 도면 보유: 33/203
+- 프로그램 파트 분포 TOP 5: 전시 23, 회의 19, 공식행사 7, 홍보 5, 등록 5
+
+### 신규-G: PPT 빈 슬라이드 + usage_logs
+- PPT 시안 없을 때: dashed 빈 박스 "디자이너 작업 영역"
+- 다운로드 시 usage_logs INSERT (best-effort)
+
+### 검증
+- TSC 0 / 빌드 17/17 (신규 /admin/learning) / harness 70/72 통과 (실패 0)
+- 9개 commits 누적 (이전 29 + v4.1 9)
+
+### PM 후속 액션
+1. Supabase Studio에서 `migration_v6_v4_1.sql` 실행 (필수)
+2. 본인 profiles.role = 'admin' 확인
+3. /admin/learning 진입해 컨벤션센터·호텔 도면 5~10건 등록 권장
+4. 현재 ahead commits push: `git push v2 auto/v4-stage-20260507:main`
+
+---
+
 ## 2026-05-07 (저녁) — UX 단순화 + 데이터 연결 강화 사이클
 
 ### 신규 프로젝트 흐름 단순화
