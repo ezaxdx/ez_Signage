@@ -72,15 +72,16 @@ export interface EventHistorySeed {
   category_tag: '핵심' | '일반' | '미분류' | '해외'
   has_excel: boolean   // 제작물리스트.xlsx 존재 여부
   has_image: boolean   // 시안 이미지 존재 여부
+  analyzed_item_count?: number   // 실제 엑셀 파싱 시그너지 개수 (있는 경우만)
 }
 
 // 폴더명에서 추출 — 패턴: "행사명 6자리코드" 또는 "행사명 코드 (면적)"
 export const SEED_EVENT_HISTORY: EventHistorySeed[] = [
   // 코엑스
-  { project_name: '2018 스마트국토엑스포',                        project_code: '183080',  year: 2018, venue: '코엑스',                        category_tag: '일반', has_excel: true,  has_image: true  },
+  { project_name: '2018 스마트국토엑스포',                        project_code: '183080',  year: 2018, venue: '코엑스',                        category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 41 },
   { project_name: '2019 국제방송영상마켓 (BCWW 2019)',             project_code: '193800',  year: 2019, venue: '코엑스',                        category_tag: '일반', has_excel: true,  has_image: true  },
   { project_name: '2019 스마트국토엑스포',                        project_code: '193700',  year: 2019, venue: '코엑스',                        category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: 'BCWW 2018',                                   project_code: '183090',  year: 2018, venue: '코엑스',                        category_tag: '일반', has_excel: true,  has_image: true  },
+  { project_name: 'BCWW 2018',                                   project_code: '183090',  year: 2018, venue: '코엑스',                        category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 36 },
   { project_name: 'NextRise 2022, Seoul',                        project_code: '221030',  year: 2022, venue: '코엑스',                        category_tag: '일반', has_excel: true,  has_image: true  },
   { project_name: '공정경제 전략회의',                            project_code: '182090',  year: 2018, venue: '코엑스',                        category_tag: '일반', has_excel: true,  has_image: true  },
   { project_name: '콘텐츠 IP 마켓 2023',                          project_code: '231009',  year: 2023, venue: '코엑스 그랜드볼룸 외',           category_tag: '일반', has_excel: true,  has_image: true  },
@@ -91,12 +92,12 @@ export const SEED_EVENT_HISTORY: EventHistorySeed[] = [
   { project_name: '제6회 월드 스마트시티 엑스포 (WSCE 2022)',      project_code: '222020',  year: 2022, venue: '킨텍스 제1전시장 3·4·5홀',       category_tag: '핵심', has_excel: true,  has_image: true  },
   { project_name: '2023 대한민국 순환경제 페스티벌',              project_code: '232033',  year: 2023, venue: '킨텍스 제2전시장 9B홀',          category_tag: '핵심', has_excel: true,  has_image: true  },
   // 송도
-  { project_name: 'KOREA MICE EXPO 2018',                        project_code: '183000-1',year: 2018, venue: '송도컨벤시아',                  category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: 'KOREA MICE EXPO 2019',                        project_code: '193100',  year: 2019, venue: '송도컨벤시아',                  category_tag: '일반', has_excel: true,  has_image: true  },
+  { project_name: 'KOREA MICE EXPO 2018',                        project_code: '183000-1',year: 2018, venue: '송도컨벤시아',                  category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 62 },
+  { project_name: 'KOREA MICE EXPO 2019',                        project_code: '193100',  year: 2019, venue: '송도컨벤시아',                  category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 9 },
   // ICC JEJU·제주
   { project_name: 'APEC 중소기업 장관회의',                       project_code: '251004',  year: 2025, venue: 'ICC JEJU 및 인근호텔',           category_tag: '일반', has_excel: true,  has_image: true  },
   { project_name: '2022 제주 IUCN리더스포럼',                     project_code: '223060',  year: 2022, venue: '제주국제컨벤션센터 (ICC JEJU)',  category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '제2회 세계리더스보전포럼',                     project_code: '183060',  year: 2018, venue: '제주국제컨벤션센터 (ICC JEJU)',  category_tag: '일반', has_excel: true,  has_image: true  },
+  { project_name: '제2회 세계리더스보전포럼',                     project_code: '183060',  year: 2018, venue: '제주국제컨벤션센터 (ICC JEJU)',  category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 33 },
   // 호텔
   { project_name: 'SPP 국제콘텐츠마켓 2024',                      project_code: '245006',  year: 2024, venue: '그랜드하얏트 서울',              category_tag: '일반', has_excel: true,  has_image: true  },
   { project_name: '2024 국제농업협력 정책 홍보 및 행사',          project_code: '242008',  year: 2024, venue: '더플라자 호텔 서울 그랜드볼룸',  category_tag: '일반', has_excel: true,  has_image: true  },
@@ -112,9 +113,9 @@ export const SEED_EVENT_HISTORY: EventHistorySeed[] = [
   // 광화문 광장
   { project_name: '2018 실패박람회',                              project_code: '182040',  year: 2018, venue: '광화문 광장',                    category_tag: '일반', has_excel: true,  has_image: true  },
   { project_name: '2019 실패박람회',                              project_code: '192400',  year: 2019, venue: '광화문 광장',                    category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '제100주년 3.1절 중앙기념식',                   project_code: '192000',  year: 2019, venue: '광화문 광장',                    category_tag: '일반', has_excel: true,  has_image: true  },
+  { project_name: '제100주년 3.1절 중앙기념식',                   project_code: '192000',  year: 2019, venue: '광화문 광장',                    category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 52 },
   // DDP·서울스퀘어 추정
-  { project_name: '제1회 대한민국 정부혁신박람회',                project_code: '191400',  year: 2019, venue: '동대문디자인플라자 (DDP)',       category_tag: '일반', has_excel: true,  has_image: true  },
+  { project_name: '제1회 대한민국 정부혁신박람회',                project_code: '191400',  year: 2019, venue: '동대문디자인플라자 (DDP)',       category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 22 },
   { project_name: '농식품 청년해외개척단 8기 발대식',             project_code: '191600',  year: 2019, venue: '서울스퀘어',                     category_tag: '일반', has_excel: true,  has_image: true  },
   // aT
   { project_name: '2019 대한민국 식품대전',                       project_code: '191200',  year: 2019, venue: 'aT센터',                         category_tag: '일반', has_excel: true,  has_image: true  },
