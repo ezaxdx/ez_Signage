@@ -320,7 +320,7 @@ export async function exportToPPT(
   }
 
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  await pptx.writeFile({ fileName: `${project.name}_디자인의뢰가이드_${dateStr}.pptx` })
+  await pptx.writeFile({ fileName: `제작물리스트_${project.name}_${dateStr}.pptx` })
 }
 
 /** 단일 제작물 PPT — 현재 선택된 1개 제작물만 */
@@ -497,7 +497,7 @@ export async function exportToExcel(
   XLSX.utils.book_append_sheet(wb, ws, '디자인 의뢰 목록')
 
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  XLSX.writeFile(wb, `${project.name}_제작물 리스트_${dateStr}.xlsx`)
+  XLSX.writeFile(wb, `제작물리스트_${project.name}_${dateStr}.xlsx`)
 }
 
 /** EditorGrid에서 편집된 컬럼 상태(표시·순서·커스텀 컬럼)를 그대로 반영해 엑셀 출력 */
@@ -561,5 +561,5 @@ async function exportToExcelDynamic(
   XLSX.utils.book_append_sheet(wb, ws, '디자인 의뢰 목록')
 
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  XLSX.writeFile(wb, `${project.name}_제작물 리스트_${dateStr}.xlsx`)
+  XLSX.writeFile(wb, `제작물리스트_${project.name}_${dateStr}.xlsx`)
 }

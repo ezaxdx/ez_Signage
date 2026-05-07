@@ -69,7 +69,7 @@ export function DataDashboard(_props: Props) {
               href="/dashboard"
               className="text-slate-100 hover:text-indigo-300 font-semibold text-sm tracking-tight transition"
             >
-              MICE 디자인 가이드
+              제작물 리스트 가이드
             </Link>
           </div>
           <Link href="/dashboard" className="flex items-center gap-1.5 text-slate-400 hover:text-indigo-300 text-xs transition">

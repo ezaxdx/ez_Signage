@@ -44,9 +44,9 @@ export default function LoginPage() {
             <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center glow-indigo">
               <LayoutGrid className="w-5 h-5 text-white" />
             </div>
-            <span className="text-slate-100 font-bold text-lg tracking-tight">MICE 디자인 가이드</span>
+            <span className="text-slate-100 font-bold text-lg tracking-tight">제작물 리스트 가이드</span>
           </div>
-          <p className="text-slate-500 text-sm">제작물 디자인 의뢰 자동화 시스템</p>
+          <p className="text-slate-500 text-sm">환경장식물 리스트 추천·발주 자동화</p>
         </div>
 
         {/* 카드 */}

@@ -5,8 +5,8 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'MICE 디자인 가이드',
-  description: '제작물 디자인 의뢰 자동화 시스템',
+  title: '제작물 리스트 가이드',
+  description: '환경장식물 제작물 리스트 추천·발주 가이드 자동화 시스템',
 }
 
 export default function RootLayout({

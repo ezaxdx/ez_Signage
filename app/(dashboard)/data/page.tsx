@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { DataDashboard } from './DataDashboard'
 import { isAdmin } from '@/lib/auth/role'
 
-export const metadata = { title: '데이터 관리 | MICE 디자인 가이드' }
+export const metadata = { title: '관리자 페이지 | 제작물 리스트 가이드' }
 
 export default async function DataPage() {
   const supabase = createClient()

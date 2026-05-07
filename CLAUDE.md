@@ -1,4 +1,7 @@
-# MICE 제작물 디자인 의뢰 가이드 자동화 시스템 — 프로젝트 지침
+# 제작물 리스트 가이드 — 프로젝트 지침
+
+> 명칭 변경 (2026-05-07, v4.1): "MICE 제작물 디자인 의뢰 가이드" → "**제작물 리스트 가이드**".
+> repo명(`mice-design-guide`)·DB 테이블명·env 변수는 모두 유지. UI 라벨·문서·헤더만 변경.
 
 > 참조 파일: BANNER_GENERATOR_DESIGN.md / logic_definition.md / technical_spec.md / Figma 보드 / banner_gen_os 프로토타입
 > 이 파일이 모든 세션의 기본 지침. 변경 시 반드시 여기도 업데이트.
