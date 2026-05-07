@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { LayoutGrid, Archive, MapPin } from 'lucide-react'
+import { LayoutGrid, Archive, MapPin, Database } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { NewProjectButton } from './components/NewProjectButton'
 import { LogoutButton } from './components/LogoutButton'
@@ -70,6 +70,13 @@ export default async function DashboardPage() {
             >
               <Archive className="w-3.5 h-3.5" />
               저장된 제작물
+            </Link>
+            <Link
+              href="/data"
+              className="flex items-center gap-1.5 text-slate-400 hover:text-indigo-300 text-xs transition"
+            >
+              <Database className="w-3.5 h-3.5" />
+              데이터 관리
             </Link>
             <div className="w-px h-4 bg-slate-800 hidden sm:block" />
             <span className="text-slate-500 text-xs hidden sm:block truncate max-w-[200px]">
