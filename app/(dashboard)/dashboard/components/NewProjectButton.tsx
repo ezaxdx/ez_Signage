@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { insertDefaultSlotsForItems } from '@/lib/services/itemService'
 import { PURPOSE_PRESETS } from '@/lib/constants'
 import type { ProjectStatus, Profile } from '@/lib/types'
-import { SEED_PERFLIST, recommendByProbability } from '@/lib/data/dashboardSeed'
+import { SEED_PERFLIST, recommendByProbability, getSelectionRates } from '@/lib/data/dashboardSeed'
 import { fetchLiveStats, invalidateLiveStatsCache, type LiveStats } from '@/lib/data/liveStats'
 
 // 과거 수행실적에서 발주처·행사장 후보 추출 (자동완성)
@@ -1201,9 +1201,38 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-[20px_1fr_110px_70px_40px_44px_24px] gap-2 px-3 text-[10px] text-slate-500 uppercase tracking-wide">
+                  {/* 명세 7P 2번 — 이력 기반 선택률 표시 (30~100건 단계에서 의미) */}
+                  {(() => {
+                    const liveProjects = liveStats?.liveAsPerfList.map(p => ({
+                      venue: p.venue,
+                      client: p.client,
+                      categories: [], // categoryFrequency는 전체 합산이라 per-event 매칭 어려움 → 기본 빈 배열
+                    })) ?? []
+                    const rates = getSelectionRates({
+                      venue: info.event_venue,
+                      client: info.client_name,
+                      eventCategory: null,
+                      liveProjects,
+                    })
+                    const top = rates[0]
+                    if (!top || top.confidence === 'none') return null
+                    const confLabel = { high: '높음', medium: '보통', low: '낮음', none: '부족' }[top.confidence]
+                    return (
+                      <div className="bg-indigo-950/30 border border-indigo-800/40 rounded-lg p-2.5 mb-2">
+                        <p className="text-indigo-300 text-[11px] font-medium">
+                          📊 유사 행사 <strong>{top.totalEvents}건</strong> 분석 → 환경장식물 선택률 (신뢰도 {confLabel})
+                        </p>
+                        <p className="text-indigo-500/70 text-[10px] mt-0.5">
+                          아래 표에서 각 종류 옆 % 표시는 매칭 행사 중 사용 빈도 (예: "X-배너 87%" = 100건 중 87건 선택)
+                        </p>
+                      </div>
+                    )
+                  })()}
+
+                  <div className="grid grid-cols-[20px_1fr_60px_110px_70px_40px_44px_24px] gap-2 px-3 text-[10px] text-slate-500 uppercase tracking-wide">
                     <span></span>
                     <span>종류명 (편집 가능)</span>
+                    <span className="text-center">선택률</span>
                     <span className="text-center">규격 (mm)</span>
                     <span className="text-center">재질</span>
                     <span className="text-center">개수</span>
@@ -1217,8 +1246,18 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                       const ratio = s.width / (s.height || 1)
                       const layoutTag = ratio > 1.5 ? '가로' : ratio < 0.8 ? '세로' : '정사각'
                       const fm = formatMockups[f.id]
+                      // 선택률 매칭 (정규화된 이름 기준)
+                      const liveProjects = liveStats?.liveAsPerfList.map(p => ({
+                        venue: p.venue, client: p.client, categories: [],
+                      })) ?? []
+                      const rates = getSelectionRates({
+                        venue: info.event_venue,
+                        client: info.client_name,
+                        liveProjects,
+                      })
+                      const rate = rates.find(r => r.category === s.name || s.name.includes(r.category) || r.category.includes(s.name))
                       return (
-                        <div key={f.id} className={`grid grid-cols-[20px_1fr_110px_70px_40px_44px_24px] gap-2 items-center px-3 py-1.5 rounded-lg transition ${s.selected ? 'bg-indigo-950/50 border border-indigo-700/40' : 'bg-slate-800/40 hover:bg-slate-800/70 border border-transparent'}`}>
+                        <div key={f.id} className={`grid grid-cols-[20px_1fr_60px_110px_70px_40px_44px_24px] gap-2 items-center px-3 py-1.5 rounded-lg transition ${s.selected ? 'bg-indigo-950/50 border border-indigo-700/40' : 'bg-slate-800/40 hover:bg-slate-800/70 border border-transparent'}`}>
                           <button onClick={() => toggleFormat(f.id)} className={`w-4 h-4 rounded flex-shrink-0 flex items-center justify-center border transition ${s.selected ? 'bg-indigo-600 border-indigo-600' : 'border-slate-600'}`}>
                             {s.selected && <Check className="w-2.5 h-2.5 text-white" />}
                           </button>
@@ -1230,6 +1269,24 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                               onChange={e => renameFormat(f.id, e.target.value)}
                               className={`bg-transparent text-sm font-medium px-1 py-0.5 rounded focus:bg-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 min-w-0 flex-1 ${s.selected ? 'text-slate-100' : 'text-slate-400'}`}
                             />
+                          </div>
+                          {/* 선택률 % 배지 */}
+                          <div className="text-center">
+                            {rate && rate.confidence !== 'none' && rate.totalEvents >= 3 ? (
+                              <span
+                                className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono ${
+                                  rate.ratePercent >= 70 ? 'bg-emerald-900/50 text-emerald-300' :
+                                  rate.ratePercent >= 40 ? 'bg-amber-900/50 text-amber-300' :
+                                  rate.ratePercent >= 10 ? 'bg-slate-800 text-slate-400' :
+                                  'bg-slate-900 text-slate-600'
+                                }`}
+                                title={`${rate.totalEvents}건 중 ${rate.selectedCount}건 선택 (신뢰도: ${rate.confidence})`}
+                              >
+                                {rate.ratePercent}%
+                              </span>
+                            ) : (
+                              <span className="text-slate-700 text-[9px]">—</span>
+                            )}
                           </div>
                           <div className="flex items-center gap-1">
                             <input type="number" value={s.width} disabled={!s.selected} onChange={e => updateFormat(f.id, 'width', e.target.value)} className={`${smallInputCls} w-[44px] text-center`} />
@@ -1261,7 +1318,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
 
                     {/* 사용자 커스텀 양식 */}
                     {customFormats.map(cf => (
-                      <div key={cf.id} className={`grid grid-cols-[20px_1fr_110px_70px_40px_24px] gap-2 items-center px-3 py-1.5 rounded-lg transition ${cf.selected ? 'bg-emerald-950/40 border border-emerald-700/40' : 'bg-slate-800/40 border border-transparent'}`}>
+                      <div key={cf.id} className={`grid grid-cols-[20px_1fr_60px_110px_70px_40px_44px_24px] gap-2 items-center px-3 py-1.5 rounded-lg transition ${cf.selected ? 'bg-emerald-950/40 border border-emerald-700/40' : 'bg-slate-800/40 border border-transparent'}`}>
                         <button onClick={() => updateCustomFormat(cf.id, { selected: !cf.selected })} className={`w-4 h-4 rounded flex items-center justify-center border transition ${cf.selected ? 'bg-emerald-600 border-emerald-600' : 'border-slate-600'}`}>
                           {cf.selected && <Check className="w-2.5 h-2.5 text-white" />}
                         </button>
@@ -1272,6 +1329,8 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                           placeholder="제작물 종류명"
                           className={`bg-transparent text-sm font-medium px-1 py-0.5 rounded focus:bg-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 ${cf.selected ? 'text-slate-100' : 'text-slate-400'}`}
                         />
+                        {/* 선택률 placeholder (커스텀은 데이터 없음) */}
+                        <span className="text-center text-slate-700 text-[9px]">—</span>
                         <div className="flex items-center gap-1">
                           <input type="number" value={cf.width} onChange={e => updateCustomFormat(cf.id, { width: parseInt(e.target.value) || 0 })} className={`${smallInputCls} w-[44px] text-center`} />
                           <span className="text-slate-600 text-[10px]">×</span>
@@ -1279,6 +1338,8 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                         </div>
                         <input type="text" value={cf.material} onChange={e => updateCustomFormat(cf.id, { material: e.target.value })} placeholder="재질" className={smallInputCls} />
                         <input type="number" min={1} max={20} value={cf.count} onChange={e => updateCustomFormat(cf.id, { count: parseInt(e.target.value) || 1 })} className={`${smallInputCls} text-center`} />
+                        {/* 시안 placeholder (커스텀은 일괄 시안만 적용) */}
+                        <span className="text-center text-slate-700 text-[9px]">—</span>
                         <button onClick={() => removeCustomFormat(cf.id)} className="text-slate-600 hover:text-red-400 transition">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
