@@ -42,25 +42,72 @@ export interface SynonymSeed {
 }
 
 export const SEED_SYNONYMS: SynonymSeed[] = [
-  // 명세에 명시된 동의어
+  // ── 명세 1번 명시 동의어 ──
   { alias: '스프링배너',     canonical_name: 'X배너',        note: '명세 1번 명시 동의어' },
-  // 추가 보강
+
+  // ── 거치대·재질 변형 (X배너) ──
+  { alias: '롤업배너',       canonical_name: 'X배너',        note: '입구 거치형' },
+  { alias: '배너스탠드',     canonical_name: 'X배너',        note: '거치대 일반화' },
+  { alias: '철재스프링배너', canonical_name: 'X배너',        note: '2021 평창평화포럼 시트' },
+  { alias: 'A배너',          canonical_name: 'X배너',        note: 'A형 거치대' },
+  { alias: '물통배너',       canonical_name: 'X배너',        note: '물통 무게추' },
+  { alias: '기타 배너',      canonical_name: 'X배너',        note: '기본 X배너 추정' },
+
+  // ── 세로형 (세로 현수막) ──
   { alias: '드롭배너',       canonical_name: '세로 현수막',  note: '천장 매다는 형태' },
   { alias: '난간배너',       canonical_name: '세로 현수막',  note: '난간·계단 부착' },
-  { alias: '천장배너',       canonical_name: '통천 배너',    note: '천장 매다는 대형' },
-  { alias: '빵빠레배너',     canonical_name: '가로등 배너',  note: '외부 동선용' },
-  { alias: '피켓 A4',        canonical_name: 'A4 세로',      note: '손피켓 형태' },
-  { alias: '피켓 A3',        canonical_name: 'A3 세로',      note: '손피켓 형태' },
-  { alias: '롤업배너',       canonical_name: 'X배너',        note: '비슷한 입구 거치형' },
-  { alias: '배너스탠드',     canonical_name: 'X배너',        note: '거치대 일반화' },
+
+  // ── 가로형 (가로 현수막) ──
   { alias: '실사출력',       canonical_name: '가로 현수막',  note: '재질 기반 통칭' },
-  { alias: '철재스프링배너', canonical_name: 'X배너',        note: '폴더 엑셀 시트명 발견 (2021 평창평화포럼)' },
-  { alias: 'A배너',          canonical_name: 'X배너',        note: 'A형 거치대 X배너 (2021 평창평화포럼 시트)' },
-  { alias: '물통배너',       canonical_name: 'X배너',        note: '물통 무게추 X배너' },
+  { alias: '투어용 현수막',  canonical_name: '가로 현수막',  note: '이동용 가로 현수막' },
+  { alias: '상단 배너',      canonical_name: '가로 현수막',  note: '상단 부착 가로형' },
+
+  // ── 천장형 (통천 배너) — 신규 다수 발견 ──
+  { alias: '천장배너',       canonical_name: '통천 배너',    note: '천장 매다는 대형' },
+  { alias: '천정배너',       canonical_name: '통천 배너',    note: '천정 매다는 형태 (천장 동일)' },
+  { alias: '장폭_천정배너_단면', canonical_name: '통천 배너', note: '장폭 천정 단면 인쇄' },
+  { alias: '장폭_천정배너_양면', canonical_name: '통천 배너', note: '장폭 천정 양면 인쇄' },
+  { alias: '행잉 배너',      canonical_name: '통천 배너',    note: '천장 매달기 영문 표현' },
+  { alias: '출입구 천정 배너', canonical_name: '통천 배너',  note: '출입구 V자형 천장 배너' },
+
+  // ── 가로등 배너 ──
+  { alias: '빵빠레배너',     canonical_name: '가로등 배너',  note: '외부 동선용' },
+
+  // ── 포디움 변형 ──
+  { alias: '포디움 1',       canonical_name: '포디움 타이틀', note: '복수 포디움 표기' },
+  { alias: '포디움 2',       canonical_name: '포디움 타이틀', note: '복수 포디움 표기' },
+  { alias: '1인용 포디움',   canonical_name: '포디움 타이틀', note: '단상 형태' },
+  { alias: '개막식 포디움',  canonical_name: '포디움 타이틀', note: '특정 행사용' },
+  { alias: '연단',           canonical_name: '포디움 타이틀', note: '한자어 표기' },
+
+  // ── A4·A3 (사용자 결정: 피켓은 가로형) ──
+  { alias: '피켓 A4',        canonical_name: 'A4 가로',      note: '손피켓은 가로 기본 (사용자 결정 2026-05-07)' },
+  { alias: '피켓A4',         canonical_name: 'A4 가로',      note: '손피켓 (공백 없는 표기)' },
+  { alias: '피켓 A3',        canonical_name: 'A3 가로',      note: '손피켓은 가로 기본' },
+  { alias: '피켓A3',         canonical_name: 'A3 가로',      note: '손피켓 (공백 없는 표기)' },
+  { alias: '영접A4',         canonical_name: 'A4 가로',      note: '영접용 안내 피켓' },
+  { alias: 'A4안내',         canonical_name: 'A4 가로',      note: '안내용 A4' },
+  { alias: 'A3안내',         canonical_name: 'A3 가로',      note: '안내용 A3' },
+  { alias: 'A3안내POP',      canonical_name: 'A3 가로',      note: 'A3 POP 안내' },
+
+  // ── 폼보드 변형 ──
   { alias: '스탠드POP',      canonical_name: 'I배너',        note: '폼보드형 스탠드 POP' },
-  { alias: '안내폼보드',     canonical_name: '폼보드 (확장)', note: 'L보드·폼보드 통칭' },
-  { alias: '큐방',           canonical_name: '폼보드 (확장)', note: '안내용 큐방' },
-  { alias: '바닥스티커',     canonical_name: '시트지',        note: '바닥 부착 시트지' },
+  { alias: '안내폼보드',     canonical_name: '폼보드',       note: 'L보드 통칭' },
+  { alias: 'L보드',          canonical_name: '폼보드',       note: 'L자형 폼보드' },
+  { alias: '큐방',           canonical_name: '폼보드',       note: '안내용 큐방' },
+  { alias: '큐방시트',       canonical_name: '폼보드',       note: '큐방 시트 형태' },
+  { alias: '셔틀버스 큐방시트', canonical_name: '폼보드',    note: '셔틀버스용 큐방' },
+  { alias: '컨설팅폼보드',   canonical_name: '폼보드',       note: '4단계 안내용' },
+  { alias: '좌석배치도 안내사인', canonical_name: '폼보드',  note: '배치도 안내판' },
+  { alias: '시상보드',       canonical_name: '폼보드',       note: '시상식용 보드' },
+  { alias: '기념촬영보드',   canonical_name: '폼보드',       note: '포토존 보드' },
+  { alias: '화이트보드판',   canonical_name: '폼보드',       note: '하드보드 변형' },
+  { alias: '안내사인',       canonical_name: '폼보드',       note: '일반 안내판' },
+
+  // ── 바닥·시트지 ──
+  { alias: '바닥스티커',     canonical_name: '시트지',       note: '바닥 부착' },
+  { alias: '바닥시트',       canonical_name: '시트지',       note: '바닥 시트 약어' },
+  { alias: '유도사인',       canonical_name: '시트지',       note: '바닥 유도 시트' },
 ]
 
 // ── 3. 행사 폴더 → 행사 이력 (54개) ──────────────────────────

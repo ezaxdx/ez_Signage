@@ -60,6 +60,15 @@ export async function fetchLiveStats(supabase: SupabaseClient): Promise<LiveStat
   const ps = projects as LiveProject[]
   const projectIds = ps.map(p => p.id)
 
+  // 1b) 삭제된 프로젝트의 아카이브 (통계 보존용)
+  // v4d 마이그레이션 미실행 시 테이블 없음 → 빈 배열 처리
+  const { data: archived } = await supabase
+    .from('project_archive')
+    .select('original_project_id, name, client_name, event_venue, event_date, item_count, item_categories')
+    .order('event_date', { ascending: false })
+    .limit(500)
+    .then(r => r, () => ({ data: [] }))
+
   // 2) design_items 집계 — 프로젝트별 item count + 카테고리 (동의어 정규화 적용)
   let aggregates: LiveItemAggregate[] = []
   if (projectIds.length > 0) {
@@ -113,6 +122,7 @@ export async function fetchLiveStats(supabase: SupabaseClient): Promise<LiveStat
   }
 
   // 4) 라이브 프로젝트 → PerfListEntry 형식 변환 (SEED와 합치기 위해)
+  // 활성 프로젝트 + 아카이브된 프로젝트 모두 포함 (삭제해도 통계 보존)
   const liveAsPerfList: PerfListEntry[] = ps.map(p => ({
     code: `live_${p.id.slice(0, 8)}`,
     pm_division: '',
@@ -131,6 +141,35 @@ export async function fetchLiveStats(supabase: SupabaseClient): Promise<LiveStat
     organizer: '',
     host: '',
   }))
+
+  // 5) 아카이브 프로젝트도 통계에 포함
+  const archivedList = (archived ?? []) as Array<{ original_project_id: string; name: string; client_name: string | null; event_venue: string | null; event_date: string | null; item_count: number; item_categories: string[] }>
+  for (const ar of archivedList) {
+    liveAsPerfList.push({
+      code: `archive_${ar.original_project_id.slice(0, 8)}`,
+      pm_division: '', pm_team: '', pm_name: '',
+      project_name: `${ar.name} (삭제됨)`,
+      year: ar.event_date ? new Date(ar.event_date).getFullYear() : new Date().getFullYear(),
+      start_date: ar.event_date ?? '', end_date: ar.event_date ?? '',
+      region: '', venue: ar.event_venue ?? '', client: ar.client_name ?? '',
+      event_category: '', industry: '', event_format: '', organizer: '', host: '',
+    })
+    // 아카이브 item count도 매핑에 추가
+    itemCountByProject[`archive_${ar.original_project_id}`] = ar.item_count
+    // 카테고리 빈도에 누적
+    for (const cat of ar.item_categories) {
+      categoryFrequency[cat] = (categoryFrequency[cat] ?? 0) + 1
+    }
+    // venue 평균에도 반영
+    if (ar.event_venue && ar.item_count > 0) {
+      const cur = avgItemCountByVenue[ar.event_venue]
+      if (cur === undefined) {
+        avgItemCountByVenue[ar.event_venue] = ar.item_count
+      } else {
+        avgItemCountByVenue[ar.event_venue] = Math.round((cur + ar.item_count) / 2)
+      }
+    }
+  }
 
   const result: LiveStats = {
     liveAsPerfList,
