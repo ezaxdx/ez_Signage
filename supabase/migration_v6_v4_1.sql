@@ -211,4 +211,20 @@ create policy "usage_logs_self_insert" on public.usage_logs
 create index if not exists projects_event_venue_idx on public.projects(event_venue) where event_venue is not null;
 create index if not exists projects_program_parts_idx on public.projects using gin(program_parts);
 
+-- ── 7. design_items.program_part (사용자 답변 — 질문 4) ──────
+-- 엑셀 "파트" 컬럼 = design_items.program_part(코드) → PROGRAM_PARTS 한글
+-- 단일값 (text). 다중일 경우 쉼표 구분 ("40.04,40.19")
+alter table public.design_items
+  add column if not exists program_part text;
+
+comment on column public.design_items.program_part is
+  'EZ 폴더링 40.xx 코드 (단일 또는 쉼표 구분 다중). 엑셀 "파트" 컬럼 출력 시 한글 자동 매핑. lib/programParts.ts 참조.';
+
+create index if not exists design_items_program_part_idx on public.design_items(program_part) where program_part is not null;
+
+-- ── 8. setup_date / teardown_date 컬럼 보존 (사용자 답변 — 질문 5) ──
+-- UI에서는 제거하지만 DB 컬럼은 nullable 유지 (기존 데이터 보호).
+-- v5에서 운영 캘린더 기능 추가 시 다시 입력 받을 수 있도록.
+-- (별도 마이그레이션 액션 없음 — 컬럼 그대로 유지)
+
 -- 완료. 다음 단계: PM이 Supabase Studio에서 실행.

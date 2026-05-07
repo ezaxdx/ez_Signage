@@ -893,17 +893,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                     )
                   })()}
 
-                  {/* 세팅·철거일 */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">세팅 시작일</label>
-                      <input type="date" value={info.setup_date} onChange={e => setInfo(p => ({ ...p, setup_date: e.target.value }))} className={`${inputCls} [color-scheme:dark]`} />
-                    </div>
-                    <div>
-                      <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">철거일</label>
-                      <input type="date" value={info.teardown_date} onChange={e => setInfo(p => ({ ...p, teardown_date: e.target.value }))} className={`${inputCls} [color-scheme:dark]`} />
-                    </div>
-                  </div>
+                  {/* v4.1 질문 5: 세팅일·철거일 입력 UI 제거 (DB 컬럼은 보존) */}
 
                   {/* 참가자 수 + 언어 */}
                   <div className="grid grid-cols-2 gap-3">

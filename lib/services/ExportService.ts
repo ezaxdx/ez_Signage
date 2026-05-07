@@ -1,4 +1,5 @@
 import type { Project, DesignItem, ContentsMap } from '@/lib/types'
+import { PROGRAM_PART_BY_CODE } from '@/lib/programParts'
 
 const DEFAULT_SLOT_ORDER = ['header_brand', 'hero_title', 'sub_title', 'body', 'arrow', 'qr_code', 'footer_credits']
 
@@ -60,7 +61,23 @@ function getCellValue(
   }
   switch (colId) {
     case 'no': return item.no ?? ''
-    case 'part': return item.part ?? ''
+    case 'part': {
+      // v4.1 (질문 4): design_items.program_part(코드) → PROGRAM_PARTS 한글 이름
+      // null이면 빈칸. 다중 코드는 쉼표 구분 ("40.04,40.19" → "회의, 등록").
+      // 매핑 실패 시 빈칸 + console.warn (학습 데이터 누락 추적).
+      // legacy fallback: program_part null일 때 design_items.part(자유입력) 사용
+      const code = item.program_part?.trim()
+      if (!code) return item.part ?? ''
+      const labels = code.split(/[,，]/).map(c => c.trim()).filter(Boolean).map(c => {
+        const part = PROGRAM_PART_BY_CODE.get(c)
+        if (!part) {
+          if (typeof console !== 'undefined') console.warn(`[ExportService] program_part 매핑 실패: ${c} (item ${item.id})`)
+          return null
+        }
+        return part.name
+      }).filter((s): s is string => Boolean(s))
+      return labels.join(', ')
+    }
     case 'bigarea': {
       const cat = item.category ?? ''
       if (!cat || !items) return cat
@@ -580,10 +597,22 @@ async function exportToExcelDynamic(
   titleRow[0] = `환경 제작물  (${project.name})`
   if (headers.length >= 2) titleRow[headers.length - 1] = logoText
 
+  // v4.1 질문 5: 시트 정렬 — 파트 한글 가나다순 → 종류명 가나다순
+  const partLabel = (it: DesignItem) => {
+    const code = it.program_part?.split(/[,，]/)[0]?.trim()
+    return code ? (PROGRAM_PART_BY_CODE.get(code)?.name ?? '￿') : (it.part ?? '￿')
+  }
+  const sortedItems = [...items].sort((a, b) => {
+    const pa = partLabel(a), pb = partLabel(b)
+    const pcmp = pa.localeCompare(pb, 'ko')
+    if (pcmp !== 0) return pcmp
+    return (a.category ?? '').localeCompare(b.category ?? '', 'ko')
+  })
+
   // 데이터 행
-  const dataRows = items.map(item => {
+  const dataRows = sortedItems.map(item => {
     const contents = allContents[item.id] ?? {}
-    return visibleColIds.map(colId => getCellValue(colId, item, contents, state.customValues, items))
+    return visibleColIds.map(colId => getCellValue(colId, item, contents, state.customValues, sortedItems))
   })
 
   const ws = XLSX.utils.aoa_to_sheet([titleRow, headers, ...dataRows])

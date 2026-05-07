@@ -96,7 +96,8 @@ export interface DesignItem {
   id: string
   project_id: string
   no: string           // 순번 "01", "02" …
-  part: string | null  // 파트 "종합안내", "세션" …
+  part: string | null  // 업무파트 자유입력 (예: "종합안내", "세션") — legacy
+  program_part: string | null  // v4.1: EZ 폴더링 40.xx 코드 (단일 또는 쉼표 구분). 엑셀 출력 시 한글 변환.
   category: string | null   // 구분 "X-Banner", "현수막" …
   location: string | null   // 설치 장소
   purpose: string | null    // 사용 목적
