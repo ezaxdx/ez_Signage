@@ -5,6 +5,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PerfListEntry } from '@/lib/data/dashboardSeed'
+import { resolveAliasSync, loadAliases } from '@/lib/services/aliasResolver'
 
 interface LiveProject {
   id: string
@@ -59,9 +60,12 @@ export async function fetchLiveStats(supabase: SupabaseClient): Promise<LiveStat
   const ps = projects as LiveProject[]
   const projectIds = ps.map(p => p.id)
 
-  // 2) design_items 집계 — 프로젝트별 item count + 카테고리
+  // 2) design_items 집계 — 프로젝트별 item count + 카테고리 (동의어 정규화 적용)
   let aggregates: LiveItemAggregate[] = []
   if (projectIds.length > 0) {
+    // 동의어 시드 + DB 정책 통합 로드 (한 번만)
+    const aliases = await loadAliases(supabase)
+
     const { data: items } = await supabase
       .from('design_items')
       .select('project_id, category')
@@ -72,7 +76,11 @@ export async function fetchLiveStats(supabase: SupabaseClient): Promise<LiveStat
       if (!aggMap.has(it.project_id)) aggMap.set(it.project_id, { count: 0, cats: new Set() })
       const a = aggMap.get(it.project_id)!
       a.count += 1
-      if (it.category) a.cats.add(it.category)
+      if (it.category) {
+        // 동의어 → 표준명 정규화 (스프링배너 → X배너 등)
+        const normalized = resolveAliasSync(it.category, aliases).canonical
+        a.cats.add(normalized)
+      }
     }
     aggregates = Array.from(aggMap.entries()).map(([pid, v]) => ({
       project_id: pid, item_count: v.count, categories: Array.from(v.cats),
