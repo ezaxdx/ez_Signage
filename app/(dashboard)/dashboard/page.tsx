@@ -1,9 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import {
-  LayoutGrid, Archive, AlignLeft, Image, Table2, PenSquare,
-  FileSpreadsheet, Presentation, ChevronRight, MapPin
-} from 'lucide-react'
+import { LayoutGrid, Archive, MapPin } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { NewProjectButton } from './components/NewProjectButton'
 import { LogoutButton } from './components/LogoutButton'
@@ -95,38 +92,6 @@ export default async function DashboardPage() {
           <NewProjectButton userId={user.id} userEmail={user.email ?? ''} />
         </div>
 
-        {/* 시작 방식 안내 — 입력 여부와 관계없이 동일한 출력 */}
-        <Link href="/projects/new" className="block group">
-          <div className="bg-slate-900/60 border border-slate-800 hover:border-indigo-600/40 rounded-xl p-4 transition-all">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
-              <p className="text-slate-300 text-sm font-medium">새 프로젝트 시작</p>
-              <div className="flex items-center gap-1.5 text-[10px] text-slate-600 sm:ml-auto">
-                <span>어떤 방법이든</span>
-                <ChevronRight className="w-3 h-3" />
-                <FileSpreadsheet className="w-3 h-3 text-emerald-600" />
-                <span>Excel 의뢰목록</span>
-                <span>+</span>
-                <Presentation className="w-3 h-3 text-indigo-500" />
-                <span>PPT 디자인가이드</span>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {ENTRY_CASES.map(c => (
-                <div key={c.case} className="bg-slate-800/50 rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <div className={`w-6 h-6 rounded-md flex items-center justify-center ${c.iconBg}`}>
-                      <c.Icon className={`w-3 h-3 ${c.iconColor}`} />
-                    </div>
-                    <p className="text-slate-200 text-xs font-medium">{c.title}</p>
-                  </div>
-                  <p className="text-slate-500 text-[10px] leading-relaxed">{c.desc}</p>
-                  <p className="text-slate-700 text-[9px] mt-1.5 italic">{c.optional}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Link>
-
         {/* 통계 카드 */}
         {typedProjects.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -211,45 +176,6 @@ export default async function DashboardPage() {
   )
 }
 
-const ENTRY_CASES = [
-  {
-    case: 'a',
-    Icon: PenSquare,
-    iconBg: 'bg-indigo-600/20',
-    iconColor: 'text-indigo-400',
-    title: '빈 상태로',
-    desc: '프로젝트 정보만 입력해 바로 시작',
-    optional: '입력 없이도 OK',
-  },
-  {
-    case: 'b',
-    Icon: Table2,
-    iconBg: 'bg-emerald-600/20',
-    iconColor: 'text-emerald-400',
-    title: '엑셀 가져오기',
-    desc: '기존 제작물 목록 .xlsx 업로드',
-    optional: '선택 사항',
-  },
-  {
-    case: 'c',
-    Icon: Image,
-    iconBg: 'bg-violet-600/20',
-    iconColor: 'text-violet-400',
-    title: '시안 이미지',
-    desc: '완성된 디자인 시안 업로드 → 레이아웃 자동 추출',
-    optional: '선택 사항',
-  },
-  {
-    case: 'd',
-    Icon: AlignLeft,
-    iconBg: 'bg-amber-600/20',
-    iconColor: 'text-amber-400',
-    title: '텍스트 붙여넣기',
-    desc: '행사 정보 텍스트로 내용 자동 분류',
-    optional: '선택 사항',
-  },
-]
-
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -257,8 +183,8 @@ function EmptyState() {
         <LayoutGrid className="w-7 h-7 text-slate-600" />
       </div>
       <h3 className="text-slate-300 font-semibold mb-1.5">첫 프로젝트를 만들어보세요</h3>
-      <p className="text-slate-500 text-sm mb-6 max-w-xs">
-        위의 4가지 방법 중 하나로 MICE 행사 프로젝트를 시작하세요
+      <p className="text-slate-500 text-sm max-w-xs">
+        새 프로젝트 버튼으로 시작하세요
       </p>
     </div>
   )
