@@ -132,9 +132,13 @@ export function EditorToolbar({
           <span className="text-xs">대시보드</span>
         </Link>
         <span className="text-slate-700 text-xs">/</span>
-        <span className="text-slate-300 text-xs font-medium truncate max-w-[140px]">
+        <Link
+          href="/dashboard"
+          className="text-slate-300 hover:text-indigo-300 text-xs font-medium truncate max-w-[140px] transition"
+          title="메인 대시보드로 돌아가기"
+        >
           {project.name}
-        </span>
+        </Link>
         {/* 선택된 제작물 NO 표시 — 1차에서 제거 (사용자 요청) */}
       </div>
 

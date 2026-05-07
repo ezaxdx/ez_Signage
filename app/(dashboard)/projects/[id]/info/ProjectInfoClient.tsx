@@ -582,7 +582,13 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
               대시보드
             </Link>
             <span className="text-slate-700 text-xs">/</span>
-            <span className="text-slate-300 text-xs font-medium truncate max-w-[160px]">{project.name}</span>
+            <Link
+              href="/dashboard"
+              className="text-slate-300 hover:text-indigo-300 text-xs font-medium truncate max-w-[160px] transition"
+              title="메인 대시보드로 돌아가기"
+            >
+              {project.name}
+            </Link>
             <span className="text-slate-700 text-xs">/</span>
             <span className="text-slate-500 text-xs">프로젝트 정보</span>
           </div>
