@@ -398,6 +398,8 @@ export function NewProjectButton({ userId, userEmail }: Props) {
       })),
     ]
 
+    // 카테고리별 item_id 추적 (formatMockups 일괄 적용용)
+    const idsByFormat: Record<string, string[]> = {}
     for (const f of selectedList) {
       const rows = Array.from({ length: f.count }, () => ({
         project_id: project.id,
@@ -409,25 +411,60 @@ export function NewProjectButton({ userId, userEmail }: Props) {
         quantity: 1,
       }))
       const { data: created } = await supabase.from('design_items').insert(rows).select('id')
-      if (created) allItemIds.push(...created.map((i: { id: string }) => i.id))
+      if (created) {
+        const ids = created.map((i: { id: string }) => i.id)
+        allItemIds.push(...ids)
+        // FORMAT_PRESETS의 id로 매칭 (커스텀은 name 기준)
+        const presetId = FORMAT_PRESETS.find(p => p.name === f.name)?.id ?? f.name
+        idsByFormat[presetId] = (idsByFormat[presetId] ?? []).concat(ids)
+      }
     }
 
     if (allItemIds.length > 0) {
       await insertDefaultSlotsForItems(supabase, allItemIds, project.id)
     }
 
-    // 시안 이미지 업로드 → master_image_url
-    if (mockupFile) {
-      const ext = mockupFile.name.split('.').pop() ?? 'jpg'
+    // ── 시안 이미지 처리 (3가지 경로) ──
+    // (사용자 요청: "디자인 시안 입력시 환경장식물에 일괄 적용 / 일괄 or 각각 가능")
+    // 우선순위: batchMockup → mockupFile (legacy) → formatMockups (개별)
+
+    let masterUrl: string | null = null
+
+    // 1) 일괄 시안 (batchMockup) — step 3의 신규 경로
+    const primaryMockup = batchMockup?.file ?? mockupFile
+    if (primaryMockup) {
+      const ext = primaryMockup.name.split('.').pop() ?? 'jpg'
       const path = `${userId}/master/${project.id}.${ext}`
       const { data: uploaded } = await supabase.storage
         .from('design-images')
-        .upload(path, mockupFile, { upsert: true, contentType: mockupFile.type })
+        .upload(path, primaryMockup, { upsert: true, contentType: primaryMockup.type })
       if (uploaded?.path) {
         const { data: { publicUrl } } = supabase.storage.from('design-images').getPublicUrl(uploaded.path)
+        masterUrl = publicUrl
         await supabase.from('projects').update({ master_image_url: publicUrl }).eq('id', project.id)
+        // 모든 제작물에 동일한 시안 일괄 적용 — 사용자가 편집창에서 항목별로 교체 가능
+        if (allItemIds.length > 0) {
+          await supabase.from('design_items').update({ image_url: publicUrl }).in('id', allItemIds)
+        }
       }
     }
+
+    // 2) 품목별 시안 (formatMockups) — 일괄을 덮어쓰는 형태로 적용
+    for (const [formatId, mockup] of Object.entries(formatMockups)) {
+      const ids = idsByFormat[formatId] ?? []
+      if (ids.length === 0) continue
+      const ext = mockup.file.name.split('.').pop() ?? 'jpg'
+      const path = `${userId}/format-mockup/${project.id}/${formatId}.${ext}`
+      const { data: uploaded } = await supabase.storage
+        .from('design-images')
+        .upload(path, mockup.file, { upsert: true, contentType: mockup.file.type })
+      if (uploaded?.path) {
+        const { data: { publicUrl } } = supabase.storage.from('design-images').getPublicUrl(uploaded.path)
+        await supabase.from('design_items').update({ image_url: publicUrl }).in('id', ids)
+      }
+    }
+
+    void masterUrl  // 향후 마스터 URL 별도 사용 시
 
     // 배치도 업로드 (선택 사항 — floor_plan_url 컬럼이 없으면 무시됨)
     if (floorPlanFile) {
