@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { EditorGrid } from './components/EditorGrid'
 import { CanvasBoard } from './components/CanvasBoard'
 import { EditorToolbar } from './components/EditorToolbar'
+import { PreflightModal } from './components/PreflightModal'
 import { DEFAULT_SLOTS } from '@/lib/types'
 import type { Project, DesignItem, SlotContent, ContentsMap, SlotStylesMap } from '@/lib/types'
 
@@ -39,6 +40,7 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [slotPanelOpen, setSlotPanelOpen] = useState(false)
   const [selectedSlotKey, setSelectedSlotKey] = useState<string | null>(null)
+  const [showPreflight, setShowPreflight] = useState(false)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>()
   const loadedItemIds = useRef(new Set<string>())
 
@@ -549,7 +551,24 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
         onPDFExport={handlePDFExport}
         onSetAsMaster={handleSetAsMaster}
         onToggleSlotPanel={() => { /* 1차 비활성 */ }}
+        onPreflight={() => setShowPreflight(true)}
       />
+
+      {showPreflight && (
+        <PreflightModal
+          items={items}
+          allContents={allContents}
+          onClose={() => setShowPreflight(false)}
+          onGoToItem={(itemId) => {
+            setSelectedItemId(itemId)
+            setShowPreflight(false)
+          }}
+          onExportAll={async () => {
+            await handleExcelExport()
+            await handlePPTExport()
+          }}
+        />
+      )}
 
       <div className="flex flex-1 min-h-0">
         {/* 좌측 제작물 사이드바 — 1차 제거됨 (향후 추가 진행 예정) */}

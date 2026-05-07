@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Download, FileSpreadsheet, ImagePlus, Check, Loader2, LayoutGrid, Layers, Settings, Crown } from 'lucide-react'
+import { ArrowLeft, Download, FileSpreadsheet, ImagePlus, Check, Loader2, LayoutGrid, Layers, Settings, Crown, ClipboardCheck } from 'lucide-react'
 // import { FormatSelector } from './FormatSelector'  // 1차 출시에서 일시 제거 (향후 복귀)
 import { createClient } from '@/lib/supabase/client'
 import type { Project, DesignItem } from '@/lib/types'
@@ -19,6 +19,7 @@ interface Props {
   onPDFExport?: () => Promise<void>
   onSetAsMaster?: () => Promise<void>
   onToggleSlotPanel: () => void
+  onPreflight?: () => void
 }
 
 export function EditorToolbar({
@@ -33,6 +34,7 @@ export function EditorToolbar({
   onPDFExport,
   onSetAsMaster,
   onToggleSlotPanel,
+  onPreflight,
 }: Props) {
   const [isExportingPPT, setIsExportingPPT] = useState(false)
   const [isExportingXLS, setIsExportingXLS] = useState(false)
@@ -181,6 +183,18 @@ export function EditorToolbar({
           )}
           {isUploadingImage ? '업로드 중...' : '시안 업로드'}
         </button>
+
+        {/* 발주 전 자동 점검 */}
+        {onPreflight && (
+          <button
+            onClick={onPreflight}
+            title="발주 전 필수 항목 자동 점검 (누락·오류·주의 확인)"
+            className="flex items-center gap-1.5 bg-indigo-900/40 hover:bg-indigo-800/50 text-indigo-300 text-xs px-3 py-1.5 rounded-md transition"
+          >
+            <ClipboardCheck className="w-3.5 h-3.5" />
+            발주 전 점검
+          </button>
+        )}
 
         {/* Excel 전체 내보내기 */}
         <button

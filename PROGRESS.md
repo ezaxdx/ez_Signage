@@ -3,6 +3,15 @@
 > 이 파일은 자율 작업 완료 시 자동 갱신합니다.
 > 큰 결정은 `decisions.md`, 실패 패턴은 `learnings.md`에 들어갑니다.
 
+## 2026-05-07 (세션 복구) — PreflightModal 에디터 연결
+
+이전 세션에서 구현된 PreflightModal/preflightCheck.ts가 EditorLayout/EditorToolbar와 연결되지 않은 상태였음. 연결 완료.
+
+- `EditorToolbar.tsx`: `onPreflight?: () => void` prop 추가 + "발주 전 점검" 버튼 (ClipboardCheck 아이콘, 인디고 색상)
+- `EditorLayout.tsx`: `showPreflight` 상태 추가 + PreflightModal import + 모달 렌더링 + `onGoToItem` 연결 (해당 제작물 선택 후 모달 닫기)
+- 발주 파일 생성 버튼 클릭 시 Excel + PPT 동시 내보내기
+- TSC 0 에러 / 빌드 17/17 라우트 통과 / harness 70/72 통과 (실패 0)
+
 ## 2026-05-06 — 자율 작업 인프라 셋업
 
 - CLAUDE.md에 one-shot completion 정책 + 자율 작업 가이드 섹션 추가
