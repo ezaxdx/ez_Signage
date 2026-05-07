@@ -172,16 +172,41 @@ export function NewProjectButton({ userId, userEmail }: Props) {
       const aoa: string[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as string[][]
       if (aoa.length < 2) { setExcelError('엑셀에 데이터가 없습니다'); return }
 
-      let headerIdx = aoa.findIndex(row => row.some(c => /^(NO|번호)$/i.test(String(c).trim())))
+      // 헤더 행 감지 — EXCEL_COLUMN_KEYS의 어떤 별칭과도 매치되는 셀이 2개 이상인 행
+      // (단순 NO 매치는 매우 엄격해서 'NO.', '순번', '연번' 같은 변형 인식 못 함)
+      const norm = (s: string) => s.replace(/\s+/g, '').toLowerCase()
+      const allAliases = EXCEL_COLUMN_KEYS.flatMap(c => c.names.map(norm))
+      let headerIdx = aoa.findIndex(row => {
+        const matches = row.filter(c => {
+          const ns = norm(String(c))
+          return ns && allAliases.some(a => ns === a || ns.includes(a) || a.includes(ns))
+        })
+        return matches.length >= 2  // 최소 2개 컬럼 일치 시 헤더로 판단
+      })
       if (headerIdx === -1) headerIdx = 0
 
       const header = aoa[headerIdx].map(c => String(c).trim())
       const colMap: Record<string, number> = {}
       for (const { key, names } of EXCEL_COLUMN_KEYS) {
-        const i = header.findIndex(h =>
-          names.some(n => h.replace(/\s+/g, '').includes(n.replace(/\s+/g, '')))
-        )
+        const i = header.findIndex(h => {
+          const ns = norm(h)
+          return ns && names.some(n => {
+            const an = norm(n)
+            return ns === an || ns.includes(an) || an.includes(ns)
+          })
+        })
         if (i >= 0) colMap[key] = i
+      }
+
+      // 디버그: 매칭된 컬럼 정보 (개발자 도구 콘솔에서 확인 가능)
+      if (typeof window !== 'undefined') {
+        console.log('[Excel Parse] header row:', header)
+        console.log('[Excel Parse] colMap:', colMap)
+        console.log('[Excel Parse] matched cols:', Object.keys(colMap).length)
+      }
+      if (Object.keys(colMap).length === 0) {
+        setExcelError(`헤더를 찾지 못했습니다. 첫 행이 NO/품목/규격/수량 등을 포함하는지 확인하세요. (현재 행: ${header.slice(0, 5).join(' | ')})`)
+        return
       }
 
       const rows: ParsedExcelRow[] = aoa.slice(headerIdx + 1)
@@ -435,16 +460,22 @@ export function NewProjectButton({ userId, userEmail }: Props) {
     if (primaryMockup) {
       const ext = primaryMockup.name.split('.').pop() ?? 'jpg'
       const path = `${userId}/master/${project.id}.${ext}`
-      const { data: uploaded } = await supabase.storage
+      const { data: uploaded, error: upErr } = await supabase.storage
         .from('design-images')
         .upload(path, primaryMockup, { upsert: true, contentType: primaryMockup.type })
-      if (uploaded?.path) {
+      if (upErr) {
+        console.error('[Mockup Upload] 일괄 시안 실패:', upErr.message, { path, size: primaryMockup.size, type: primaryMockup.type })
+        alert(`시안 업로드 실패: ${upErr.message}\n(브라우저 개발자도구 콘솔에서 자세한 정보 확인)`)
+      } else if (uploaded?.path) {
         const { data: { publicUrl } } = supabase.storage.from('design-images').getPublicUrl(uploaded.path)
         masterUrl = publicUrl
-        await supabase.from('projects').update({ master_image_url: publicUrl }).eq('id', project.id)
-        // 모든 제작물에 동일한 시안 일괄 적용 — 사용자가 편집창에서 항목별로 교체 가능
+        const { error: projErr } = await supabase.from('projects').update({ master_image_url: publicUrl }).eq('id', project.id)
+        if (projErr) console.error('[Mockup Upload] master_image_url 저장 실패:', projErr.message)
+        // 모든 제작물에 동일한 시안 일괄 적용
         if (allItemIds.length > 0) {
-          await supabase.from('design_items').update({ image_url: publicUrl }).in('id', allItemIds)
+          const { error: itemErr } = await supabase.from('design_items').update({ image_url: publicUrl }).in('id', allItemIds)
+          if (itemErr) console.error('[Mockup Upload] design_items.image_url 저장 실패:', itemErr.message)
+          else console.log(`[Mockup Upload] ✓ 일괄 시안 ${allItemIds.length}개 항목에 적용:`, publicUrl)
         }
       }
     }
@@ -455,12 +486,16 @@ export function NewProjectButton({ userId, userEmail }: Props) {
       if (ids.length === 0) continue
       const ext = mockup.file.name.split('.').pop() ?? 'jpg'
       const path = `${userId}/format-mockup/${project.id}/${formatId}.${ext}`
-      const { data: uploaded } = await supabase.storage
+      const { data: uploaded, error: upErr } = await supabase.storage
         .from('design-images')
         .upload(path, mockup.file, { upsert: true, contentType: mockup.file.type })
-      if (uploaded?.path) {
+      if (upErr) {
+        console.error(`[Mockup Upload] ${formatId} 품목 시안 실패:`, upErr.message)
+      } else if (uploaded?.path) {
         const { data: { publicUrl } } = supabase.storage.from('design-images').getPublicUrl(uploaded.path)
-        await supabase.from('design_items').update({ image_url: publicUrl }).in('id', ids)
+        const { error: itemErr } = await supabase.from('design_items').update({ image_url: publicUrl }).in('id', ids)
+        if (itemErr) console.error(`[Mockup Upload] ${formatId} item update 실패:`, itemErr.message)
+        else console.log(`[Mockup Upload] ✓ ${formatId} 품목 시안 ${ids.length}개 항목에 적용`)
       }
     }
 
