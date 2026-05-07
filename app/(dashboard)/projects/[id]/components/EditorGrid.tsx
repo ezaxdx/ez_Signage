@@ -193,15 +193,26 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
               </div>
               <div className={`${BASE_CELL} text-slate-400 text-[11px]`}>{koText || '—'}</div>
               <div className={`${BASE_CELL} text-slate-400 text-[11px]`}>{enText || '—'}</div>
-              <div className={`${BASE_CELL} text-amber-400/80 text-[10px]`}>
+              <div className={`${BASE_CELL} text-[10px] flex items-center gap-1 flex-wrap`}>
                 {(() => {
                   const tags: string[] = []
                   const ar = contents['arrow']
                   if (ar && (ar.ko || ar.en)) tags.push('화살표')
                   const qr = contents['qr_code']
                   if (qr && (qr.ko || qr.en || (qr.images && qr.images.length > 0))) tags.push('QR')
-                  return tags.length > 0 ? tags.join('·') : '—'
+                  return tags.length > 0
+                    ? tags.map(t => <span key={t} className="text-amber-400/80">{t}</span>)
+                    : null
                 })()}
+                {(item.revision_count ?? 0) > 0 && (
+                  <span className={`font-medium ${(item.revision_count ?? 0) >= 3 ? 'text-red-400' : 'text-slate-400'}`}
+                    title={`수정 ${item.revision_count}회${(item.revision_count ?? 0) >= 3 ? ' — 과다 수정' : ''}`}
+                  >
+                    수정{item.revision_count}
+                    {(item.revision_count ?? 0) >= 3 && ' ⚠'}
+                  </span>
+                )}
+                {(item.revision_count ?? 0) === 0 && !contents['arrow'] && !contents['qr_code'] && '—'}
               </div>
               <div className={`${BASE_CELL} text-slate-500 text-[10px] truncate`} title={item.last_edited_by ?? ''}>
                 {editorShort || <span className="text-slate-700 italic">미편집</span>}
