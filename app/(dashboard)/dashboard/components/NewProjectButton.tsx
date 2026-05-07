@@ -235,6 +235,33 @@ export function NewProjectButton({ userId, userEmail }: Props) {
     }
   }
 
+  // 명세 6.2.6 — 행사 유형 선택 시 해당 환경장식물 자동 체크
+  // 매핑: 행사 유형 → 권장 환경장식물 IDs (FORMAT_PRESETS 기준)
+  const EVENT_TYPE_RECOMMEND: Record<string, string[]> = {
+    conference: ['x_banner', 'podium', 'foamboard', 'a3_portrait'],
+    exhibition: ['horizontal_banner', 'vertical_banner', 'chunchen_banner', 'foamboard'],
+    fair:       ['chunchen_banner', 'vertical_banner', 'streetlight_banner', 'foamboard'],
+    awards:     ['podium', 'x_banner', 'vertical_banner'],
+    forum:      ['x_banner', 'podium', 'foamboard', 'a4_landscape'],
+    workshop:   ['foamboard', 'a3_portrait', 'x_banner'],
+    experience: ['x_banner', 'foamboard', 'a3_portrait'],
+    ceremony:   ['vertical_banner', 'podium', 'horizontal_banner'],
+    launching:  ['x_banner', 'horizontal_banner', 'podium'],
+  }
+  const selectEventType = (typeId: '' | typeof info.event_type) => {
+    const newType = info.event_type === typeId ? '' : typeId
+    setInfo(p => ({ ...p, event_type: newType as typeof p.event_type }))
+    if (newType && EVENT_TYPE_RECOMMEND[newType]) {
+      setFormats(prev => {
+        const next = { ...prev }
+        for (const fid of EVENT_TYPE_RECOMMEND[newType]) {
+          if (next[fid]) next[fid] = { ...next[fid], selected: true }
+        }
+        return next
+      })
+    }
+  }
+
   const addMember = () => {
     if (!selectedProfile) return
     const email = selectedProfile.email
@@ -499,7 +526,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                           <button
                             key={t.id}
                             type="button"
-                            onClick={() => setInfo(p => ({ ...p, event_type: on ? '' : t.id as typeof p.event_type }))}
+                            onClick={() => selectEventType(t.id as typeof info.event_type)}
                             className={`px-1 py-1.5 rounded-lg border text-[10px] flex flex-col items-center gap-0.5 transition ${on ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:bg-slate-800'}`}
                           >
                             <span className="text-sm">{t.emoji}</span>
