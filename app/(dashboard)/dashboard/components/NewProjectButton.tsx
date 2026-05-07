@@ -8,6 +8,7 @@ import { insertDefaultSlotsForItems } from '@/lib/services/itemService'
 import { PURPOSE_PRESETS } from '@/lib/constants'
 import type { ProjectStatus, Profile } from '@/lib/types'
 import { SEED_PERFLIST, recommendByProbability } from '@/lib/data/dashboardSeed'
+import { fetchLiveStats, invalidateLiveStatsCache, type LiveStats } from '@/lib/data/liveStats'
 
 // 과거 수행실적에서 발주처·행사장 후보 추출 (자동완성)
 const KNOWN_CLIENTS_NPB = Array.from(new Set(SEED_PERFLIST.map(p => p.client))).sort()
@@ -129,6 +130,9 @@ export function NewProjectButton({ userId, userEmail }: Props) {
   const [formatMockups, setFormatMockups] = useState<Record<string, { file: File; preview: string }>>({})
   const [batchMockup, setBatchMockup] = useState<{ file: File; preview: string } | null>(null)
 
+  // 라이브 통계 (사용자가 만든 프로젝트 누적 데이터)
+  const [liveStats, setLiveStats] = useState<LiveStats | null>(null)
+
   // 이름/이메일 검색 (debounced)
   useEffect(() => {
     if (!searchQuery.trim() || selectedProfile) {
@@ -162,6 +166,15 @@ export function NewProjectButton({ userId, userEmail }: Props) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, isLoading])
+
+  // 모달 열릴 때 라이브 통계 fetch (5분 캐시)
+  useEffect(() => {
+    if (!isOpen) return
+    const supabase = createClient()
+    fetchLiveStats(supabase).then(setLiveStats).catch(err => {
+      console.error('[LiveStats] fetch 실패:', err)
+    })
+  }, [isOpen])
 
   const handleClose = () => {
     setIsOpen(false); setStep(1)
@@ -573,6 +586,9 @@ export function NewProjectButton({ userId, userEmail }: Props) {
       }
     }
 
+    // 라이브 통계 캐시 무효화 — 다음 모달 열 때 새 프로젝트 반영
+    invalidateLiveStatsCache()
+
     setIsLoading(false)
     router.push(`/projects/${project.id}`)
   }
@@ -704,12 +720,17 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                     </div>
                   </div>
 
-                  {/* 명세 6.2.4 — 입력된 장소의 과거 행사 매칭 알림 + 확률 기반 추천 */}
+                  {/* 명세 6.2.4 — 입력된 장소의 과거 행사 매칭 알림 + 확률 기반 추천 (시드 + 라이브) */}
                   {(() => {
                     const probResult = recommendByProbability({
                       venue: info.event_venue,
                       client: info.client_name,
                       eventCategory: null,
+                      liveData: liveStats ? {
+                        liveAsPerfList: liveStats.liveAsPerfList,
+                        itemCountByProject: liveStats.itemCountByProject,
+                        avgItemCountByVenue: liveStats.avgItemCountByVenue,
+                      } : null,
                     })
                     const hasMatch = probResult.matchedPastEvents.length > 0
                     if (!hasMatch && probResult.confidenceLevel === 'none') return null
@@ -722,19 +743,28 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                     }
                     const labelMap = { high: '✅ 높음', medium: '🟡 보통', low: '⚠️ 낮음', none: '❌ 부족' }
 
+                    const liveCount = probResult.matchedPastEvents.filter(e => e.isLive).length
+                    const seedCount = probResult.matchedPastEvents.length - liveCount
                     return (
                       <div className={`border rounded-lg p-2.5 space-y-1.5 ${colorMap[probResult.confidenceLevel]}`}>
                         <div className="flex items-center justify-between">
                           <p className="text-[11px] font-medium">
                             📊 확률 기반 추천 (신뢰도: <strong>{labelMap[probResult.confidenceLevel]}</strong>)
                           </p>
-                          <span className="text-[10px] opacity-70">{probResult.matchedPastEvents.length}건 기반</span>
+                          <span className="text-[10px] opacity-70">
+                            {seedCount}건 시드 + {liveCount}건 누적
+                          </span>
                         </div>
                         <p className="text-[10px] opacity-80">{probResult.message}</p>
                         {probResult.matchedPastEvents.length > 0 && (
                           <p className="text-[10px] opacity-70 truncate">
-                            과거: {probResult.matchedPastEvents.slice(0, 3).map(e => `${e.name}(${e.itemCount}건)`).join(' · ')}
+                            과거: {probResult.matchedPastEvents.slice(0, 3).map(e =>
+                              `${e.name}${e.itemCount > 0 ? `(${e.itemCount}건)` : ''}${e.isLive ? '⚡' : ''}`
+                            ).join(' · ')}
                           </p>
+                        )}
+                        {liveCount > 0 && (
+                          <p className="text-[9px] opacity-60">⚡ = 본 앱에서 누적된 데이터 (자동 학습됨)</p>
                         )}
                       </div>
                     )

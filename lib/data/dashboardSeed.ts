@@ -641,7 +641,7 @@ export interface SignageRecommendation {
 }
 
 export interface ProbabilityBasedResult {
-  matchedPastEvents: { name: string; venue: string; itemCount: number; year: number }[]
+  matchedPastEvents: { name: string; venue: string; itemCount: number; year: number; isLive?: boolean }[]
   recommendations: SignageRecommendation[]
   confidenceLevel: 'high' | 'medium' | 'low' | 'none'
   message: string                   // 사용자 안내 메시지
@@ -649,7 +649,10 @@ export interface ProbabilityBasedResult {
 
 /**
  * 확률 기반 환경장식물 추천.
- * SEED_PERFLIST + SEED_EVENT_HISTORY (analyzed_item_count) 결합 분석.
+ * SEED_PERFLIST(정적 17건) + SEED_EVENT_HISTORY + 라이브 사용자 프로젝트 데이터 결합.
+ *
+ * liveData 인자가 있으면 라이브 데이터도 함께 매칭에 사용 (자동 진화).
+ * 사용자가 만든 프로젝트가 누적될수록 신뢰도 자동 상승.
  *
  * 반환 신뢰도 기준:
  * - high: 매칭 5건 이상
@@ -661,27 +664,54 @@ export function recommendByProbability(args: {
   venue?: string | null
   client?: string | null
   eventCategory?: string | null
+  liveData?: {
+    liveAsPerfList: PerfListEntry[]
+    itemCountByProject: Record<string, number>
+    avgItemCountByVenue: Record<string, number>
+  } | null
 }): ProbabilityBasedResult {
-  // 1) 유사 과거 행사 찾기
-  const similar = findSimilarPastEvents({
-    venue: args.venue,
-    client: args.client,
-    category: args.eventCategory,
-    limit: 10,
-  })
+  // 1) SEED + 라이브 합쳐 검색 풀 구성
+  const seedPool = SEED_PERFLIST
+  const livePool = args.liveData?.liveAsPerfList ?? []
+  const allEvents = [...seedPool, ...livePool]
 
-  // 2) 매칭 행사 + analyzed_item_count 결합
+  // 2) 가중치 점수로 유사 행사 찾기 (findSimilarPastEvents 로직 재사용 + 라이브)
+  const scored: { entry: PerfListEntry; score: number; isLive: boolean }[] = []
+  for (const p of allEvents) {
+    let score = 0
+    if (args.venue && p.venue.includes(args.venue)) score += 4
+    if (args.venue && args.venue && p.venue && args.venue.includes(p.venue.split(' ')[0] || '__none__')) score += 2
+    if (args.client && p.client === args.client) score += 5
+    if (args.eventCategory && p.event_category.includes(args.eventCategory)) score += 3
+    if (score > 0) {
+      const isLive = p.code.startsWith('live_')
+      scored.push({ entry: p, score, isLive })
+    }
+  }
+  const similar = scored.sort((a, b) => b.score - a.score).slice(0, 10)
+
+  // 3) 매칭 행사 + item_count 결합 (시드는 SEED_EVENT_HISTORY, 라이브는 itemCountByProject)
+  const liveItemCounts = args.liveData?.itemCountByProject ?? {}
   const matchedPastEvents = similar
-    .map(p => {
-      const hist = SEED_EVENT_HISTORY.find(h => h.project_code === p.code)
+    .map(({ entry: p, isLive }) => {
+      let itemCount = 0
+      if (isLive) {
+        // live_{id_first_8} → 실제 id 매칭
+        const liveProjectId = Object.keys(liveItemCounts).find(id => id.startsWith(p.code.replace('live_', '')))
+        if (liveProjectId) itemCount = liveItemCounts[liveProjectId] || 0
+      } else {
+        const hist = SEED_EVENT_HISTORY.find(h => h.project_code === p.code)
+        itemCount = hist?.analyzed_item_count ?? 0
+      }
       return {
         name: p.project_name,
         venue: p.venue,
-        itemCount: hist?.analyzed_item_count ?? 0,
+        itemCount,
         year: p.year,
+        isLive,
       }
     })
-    .filter(e => e.itemCount > 0 || similar.length <= 5)  // 항상 일부는 표시
+    .filter(e => e.itemCount > 0 || similar.length <= 5)
 
   // 3) 신뢰도 결정
   const matchedCount = matchedPastEvents.length
