@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, X, Loader2, ChevronRight, ChevronLeft, Check, UserPlus, Trash2, Search, Target, Upload, FileSpreadsheet, AlertCircle, Map } from 'lucide-react'
+import { Plus, X, Loader2, ChevronRight, ChevronLeft, Check, UserPlus, Trash2, Search, Target, Upload, FileSpreadsheet, AlertCircle, Map, ImageIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { insertDefaultSlotsForItems } from '@/lib/services/itemService'
 import { PURPOSE_PRESETS } from '@/lib/constants'
@@ -83,6 +83,8 @@ export function NewProjectButton({ userId, userEmail }: Props) {
   const [excelRows, setExcelRows] = useState<ParsedExcelRow[]>([])
   const [excelParsing, setExcelParsing] = useState(false)
   const [excelError, setExcelError] = useState<string | null>(null)
+  const [mockupFile, setMockupFile] = useState<File | null>(null)
+  const [mockupPreview, setMockupPreview] = useState<string | null>(null)
   const [floorPlanFile, setFloorPlanFile] = useState<File | null>(null)
   const [floorPlanPreview, setFloorPlanPreview] = useState<string | null>(null)
 
@@ -113,6 +115,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
     setSearchQuery(''); setSelectedProfile(null); setNewPart('')
     setFormats(makeInitialFormats()); setCustomFormats([]); setError(null)
   setExcelFile(null); setExcelRows([]); setExcelError(null)
+  setMockupFile(null); setMockupPreview(null)
   setFloorPlanFile(null); setFloorPlanPreview(null)
   }
 
@@ -344,6 +347,19 @@ export function NewProjectButton({ userId, userEmail }: Props) {
       await insertDefaultSlotsForItems(supabase, allItemIds, project.id)
     }
 
+    // 시안 이미지 업로드 → master_image_url
+    if (mockupFile) {
+      const ext = mockupFile.name.split('.').pop() ?? 'jpg'
+      const path = `${userId}/master/${project.id}.${ext}`
+      const { data: uploaded } = await supabase.storage
+        .from('design-images')
+        .upload(path, mockupFile, { upsert: true, contentType: mockupFile.type })
+      if (uploaded?.path) {
+        const { data: { publicUrl } } = supabase.storage.from('design-images').getPublicUrl(uploaded.path)
+        await supabase.from('projects').update({ master_image_url: publicUrl }).eq('id', project.id)
+      }
+    }
+
     // 배치도 업로드 (선택 사항 — floor_plan_url 컬럼이 없으면 무시됨)
     if (floorPlanFile) {
       const ext = floorPlanFile.name.split('.').pop() ?? 'jpg'
@@ -496,6 +512,48 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                         <AlertCircle className="w-3 h-3 flex-shrink-0" />
                         {excelError}
                       </div>
+                    )}
+                  </div>
+
+                  {/* 디자인 시안 업로드 (선택) */}
+                  <div>
+                    <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">
+                      디자인 시안 <span className="text-slate-600 font-normal normal-case">(선택 — 마스터 레이아웃 기준 이미지)</span>
+                    </label>
+                    {mockupPreview ? (
+                      <div className="relative">
+                        <img src={mockupPreview} alt="시안 미리보기" className="w-full max-h-36 object-contain rounded-lg border border-slate-700 bg-slate-800" />
+                        <button
+                          type="button"
+                          onClick={() => { setMockupFile(null); setMockupPreview(null) }}
+                          className="absolute top-2 right-2 bg-slate-900/80 text-slate-400 hover:text-slate-200 p-1 rounded-md transition"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          <ImageIcon className="w-3 h-3 text-violet-400" />
+                          <span className="text-violet-400 text-[10px] truncate">{mockupFile?.name}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="block border border-dashed border-slate-700 hover:border-slate-600 rounded-lg p-4 text-center cursor-pointer hover:bg-slate-800/30 transition">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={e => {
+                            const f = e.target.files?.[0]
+                            if (!f) return
+                            setMockupFile(f)
+                            const reader = new FileReader()
+                            reader.onload = ev => setMockupPreview(ev.target?.result as string)
+                            reader.readAsDataURL(f)
+                            e.target.value = ''
+                          }}
+                        />
+                        <ImageIcon className="w-5 h-5 mx-auto text-slate-600 mb-1" />
+                        <p className="text-slate-500 text-xs">시안 이미지 선택 (jpg / png)</p>
+                      </label>
                     )}
                   </div>
 
