@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { LayoutGrid, Archive, MapPin, Database, AlertTriangle } from 'lucide-react'
+import { LayoutGrid, Archive, MapPin, Database } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { NewProjectButton } from './components/NewProjectButton'
 import { LogoutButton } from './components/LogoutButton'
@@ -108,19 +108,6 @@ export default async function DashboardPage() {
             <p className="text-slate-500 text-sm mt-0.5">MICE 행사 제작물을 관리하세요</p>
           </div>
           <NewProjectButton userId={user.id} userEmail={user.email ?? ''} />
-        </div>
-
-        {/* PM 처리 필요 알림 — Supabase migration */}
-        <div className="bg-amber-950/30 border border-amber-900/40 rounded-xl p-4 flex items-start gap-3">
-          <div className="w-8 h-8 rounded-lg bg-amber-900/50 border border-amber-700/40 flex items-center justify-center flex-shrink-0">
-            <AlertTriangle className="w-4 h-4 text-amber-400" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-amber-200 text-sm font-medium">PM 처리 필요 — Supabase 마이그레이션 1건</p>
-            <p className="text-amber-300/70 text-[11px] mt-0.5 leading-relaxed">
-              <code className="text-amber-200">supabase/migration_v4_pm_removal.sql</code> Studio에서 실행하면 행사 진행 단계·수정 횟수·배치도 URL 기능이 활성화됩니다.
-            </p>
-          </div>
         </div>
 
         {/* 데이터 관리 안내 (관리자 전용 — 사용자 정책 2026-05-07) */}
