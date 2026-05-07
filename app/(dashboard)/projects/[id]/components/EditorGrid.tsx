@@ -88,7 +88,7 @@ const DEFAULT_COLS: ColumnDef[] = [
   { id: 'size',     label: '규격(mm)', width: '86px', field: 'size' },
   { id: 'material', label: '재질',     width: '70px', field: 'material' },
   { id: 'quantity', label: '수량',     width: '44px', field: 'quantity' },
-  { id: 'content',  label: '내용',     width: '1.5fr', field: null },
+  { id: 'content',  label: '내용',     width: '1.5fr', field: 'purpose' }, // v4.1 단위 4: purpose에 매핑하여 자유 텍스트 편집
   { id: 'note',     label: '비고',     width: '76px', field: null },
   { id: 'editor',   label: '담당자',   width: '88px', field: null },
 ]
@@ -299,7 +299,18 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
     switch (col.id) {
       case 'no':       return renderEditable(item.no ?? '', isEditing)
       case 'part':     return renderEditable(item.part ?? '', isEditing)
-      case 'bigarea':  return <span className="text-slate-500 text-[11px] truncate">{item.category || '—'}</span>
+      case 'bigarea': {
+        // v4.1 단위 4: 같은 카테고리 항목이 2개 이상이면 자동 #N prefix
+        if (!item.category) return <span className="text-slate-700 italic text-[10px]">—</span>
+        const sameCat = items.filter(it => it.category === item.category)
+        const sameIdx = sameCat.findIndex(it => it.id === item.id) + 1
+        const showHashtag = sameCat.length >= 2
+        return (
+          <span className="text-slate-500 text-[11px] truncate" title={`${item.category} — ${sameCat.length}개`}>
+            {item.category}{showHashtag && <span className="text-slate-600 ml-0.5">#{sameIdx}</span>}
+          </span>
+        )
+      }
       case 'location': return renderEditable(item.location ?? '', isEditing)
       case 'purpose':  return renderEditable(item.purpose ?? '', isEditing)
       case 'category': return renderEditable(item.category ?? '', isEditing)
@@ -332,9 +343,42 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
       case 'material': return renderEditable(item.material ?? '', isEditing)
       case 'quantity': return renderEditable(String(item.quantity ?? 1), isEditing, 'number')
       case 'content': {
-        // 국문·영문 통합
-        const combined = gatherCombinedText(contents)
-        return <span className="text-slate-400 text-[11px] truncate" title={combined}>{combined || '—'}</span>
+        // v4.1 단위 4: "내용" 컬럼은 같은 종류 X배너끼리 구분하기 위한 자유 텍스트.
+        // - 데이터 저장: design_items.purpose 재활용 (마이그레이션 불필요)
+        // - prefix: 같은 category 항목이 2개 이상이면 "#N" 자동 표시
+        // - placeholder: "예: 등록 안내 배너, 화살표"
+        const sameCat = items.filter(it => it.category === item.category)
+        const sameIdx = sameCat.findIndex(it => it.id === item.id) + 1
+        const showHashtag = sameCat.length >= 2
+        const purpose = item.purpose ?? ''
+        if (isEditing) {
+          return (
+            <input
+              ref={inputRef}
+              type="text"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={handleKeyDown}
+              placeholder="예: 등록 안내 배너, 화살표"
+              className="w-full bg-indigo-900/80 border border-indigo-400 rounded px-1 text-indigo-100 outline-none text-xs caret-indigo-300 placeholder-indigo-400/60"
+            />
+          )
+        }
+        if (!purpose) {
+          return (
+            <span className="text-slate-700 italic text-[10px] truncate">
+              {showHashtag && <span className="text-slate-500 not-italic mr-1">#{sameIdx}</span>}
+              예: 등록 안내 배너, 화살표
+            </span>
+          )
+        }
+        return (
+          <span className="text-slate-300 text-[11px] truncate" title={`${item.category} #${sameIdx} — ${purpose}`}>
+            {showHashtag && <span className="text-slate-500 mr-1">#{sameIdx}</span>}
+            {purpose}
+          </span>
+        )
       }
       case 'note': {
         const tags: string[] = []
@@ -520,6 +564,7 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
                     case 'part': return item.part ?? ''
                     case 'location': return item.location ?? ''
                     case 'purpose': return item.purpose ?? ''
+                    case 'content': return item.purpose ?? ''      // v4.1 단위 4: purpose 재활용
                     case 'category': return item.category ?? ''
                     case 'language': return item.language ?? 'KOR'
                     case 'size': return item.width_mm && item.height_mm ? `${item.width_mm}×${item.height_mm}` : ''

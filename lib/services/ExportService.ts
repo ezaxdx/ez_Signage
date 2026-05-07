@@ -13,10 +13,12 @@ interface EditorColState {
   customValues: Record<string, Record<string, string>>
 }
 
+// v4.1 단위 4 (2026-05-07): 'purpose' 라벨 "사용목적" → "내용" 으로 의미 변경.
+// 회의 결정 — 같은 종류 X배너 구분용 자유 텍스트. ko_text/en_text는 슬롯 합산 잔존물.
 const DEFAULT_LABELS: Record<EditorColumnId, string> = {
-  no: 'NO.', part: '파트', bigarea: '구분', location: '장소', purpose: '사용목적',
+  no: 'NO.', part: '파트', bigarea: '구분', location: '장소', purpose: '내용',
   category: '품목', language: '언어', size: '규격(mm)', material: '재질', quantity: '수량',
-  ko_text: '국문내용', en_text: '영문내용', note: '비고', editor: '담당자',
+  ko_text: '국문 시안', en_text: '영문 시안', note: '비고', editor: '담당자',
 }
 
 const DEFAULT_ORDER: EditorColumnId[] = [
@@ -39,8 +41,19 @@ function loadEditorColState(): EditorColState | null {
   } catch { return null }
 }
 
-/** 컬럼 ID + 행 데이터 → 셀 값 변환 */
-function getCellValue(colId: EditorColumnId, item: DesignItem, contents: ContentsMap, customValues: Record<string, Record<string, string>>): string | number {
+/** 컬럼 ID + 행 데이터 → 셀 값 변환
+ *
+ * v4.1 단위 4 (2026-05-07):
+ *   - 'bigarea' (구분): 같은 카테고리 항목이 2개 이상일 때 자동 #N suffix ("X-배너 #1")
+ *   - 'purpose' (사용목적): 회의 결정으로 "내용" 의미 — 사용자 자유 텍스트 그대로 출력
+ */
+function getCellValue(
+  colId: EditorColumnId,
+  item: DesignItem,
+  contents: ContentsMap,
+  customValues: Record<string, Record<string, string>>,
+  items?: DesignItem[],
+): string | number {
   // 커스텀 컬럼
   if (colId.startsWith('custom_')) {
     return customValues[item.id]?.[colId] ?? ''
@@ -48,7 +61,14 @@ function getCellValue(colId: EditorColumnId, item: DesignItem, contents: Content
   switch (colId) {
     case 'no': return item.no ?? ''
     case 'part': return item.part ?? ''
-    case 'bigarea': return item.category ?? ''
+    case 'bigarea': {
+      const cat = item.category ?? ''
+      if (!cat || !items) return cat
+      const sameCat = items.filter(it => it.category === cat)
+      if (sameCat.length < 2) return cat
+      const idx = sameCat.findIndex(it => it.id === item.id) + 1
+      return `${cat} #${idx}`
+    }
     case 'location': return item.location ?? ''
     case 'purpose': return item.purpose ?? ''
     case 'category': return item.category ?? ''
@@ -533,7 +553,7 @@ async function exportToExcelDynamic(
   // 데이터 행
   const dataRows = items.map(item => {
     const contents = allContents[item.id] ?? {}
-    return visibleColIds.map(colId => getCellValue(colId, item, contents, state.customValues))
+    return visibleColIds.map(colId => getCellValue(colId, item, contents, state.customValues, items))
   })
 
   const ws = XLSX.utils.aoa_to_sheet([titleRow, headers, ...dataRows])
