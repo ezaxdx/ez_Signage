@@ -236,7 +236,7 @@ const ENTRY_CASES = [
     iconBg: 'bg-violet-600/20',
     iconColor: 'text-violet-400',
     title: '시안 이미지',
-    desc: '디자인 시안 또는 행사장 배치도 업로드',
+    desc: '완성된 디자인 시안 업로드 → 레이아웃 자동 추출',
     optional: '선택 사항',
   },
   {

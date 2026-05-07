@@ -60,3 +60,20 @@ BEGIN
       ADD COLUMN revision_count integer NOT NULL DEFAULT 0;
   END IF;
 END $$;
+
+-- ──────────────────────────────────────────────────────────────
+-- 4. projects.floor_plan_url — 행사장 배치도 이미지 (AI 분석용)
+--    프로젝트 생성 위자드 step 1에서 선택적으로 업로드
+-- ──────────────────────────────────────────────────────────────
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'projects'
+      AND column_name = 'floor_plan_url'
+  ) THEN
+    ALTER TABLE public.projects
+      ADD COLUMN floor_plan_url text NULL;
+  END IF;
+END $$;

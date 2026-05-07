@@ -45,6 +45,7 @@ export interface Project {
   status: ProjectStatus
   allowed_users: string[]        // 접근 허용 사용자 이메일 목록
   master_image_url: string | null  // 총괄자가 업로드한 마스터 시안 (전체 디자인 기준)
+  floor_plan_url: string | null    // 행사장 배치도 이미지 (향후 AI 설치위치 추천용)
   purposes: string[]               // 사용 목적 5종 (main_promo, registration, wayfinding, program_info, experience)
   share_token: string | null       // 클라이언트 공유용 토큰 (로그인 없이 미리보기)
   share_enabled: boolean           // 공유 활성화 여부
