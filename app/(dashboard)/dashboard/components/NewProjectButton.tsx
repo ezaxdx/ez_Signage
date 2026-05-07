@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { insertDefaultSlotsForItems } from '@/lib/services/itemService'
 import { PURPOSE_PRESETS } from '@/lib/constants'
 import type { ProjectStatus, Profile } from '@/lib/types'
-import { SEED_PERFLIST } from '@/lib/data/dashboardSeed'
+import { SEED_PERFLIST, recommendByProbability } from '@/lib/data/dashboardSeed'
 
 // 과거 수행실적에서 발주처·행사장 후보 추출 (자동완성)
 const KNOWN_CLIENTS_NPB = Array.from(new Set(SEED_PERFLIST.map(p => p.client))).sort()
@@ -704,18 +704,38 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                     </div>
                   </div>
 
-                  {/* 명세 6.2.4 — 입력된 장소의 과거 행사 매칭 알림 */}
+                  {/* 명세 6.2.4 — 입력된 장소의 과거 행사 매칭 알림 + 확률 기반 추천 */}
                   {(() => {
-                    const match = matchVenueHistory(info.event_venue)
-                    if (!match) return null
+                    const probResult = recommendByProbability({
+                      venue: info.event_venue,
+                      client: info.client_name,
+                      eventCategory: null,
+                    })
+                    const hasMatch = probResult.matchedPastEvents.length > 0
+                    if (!hasMatch && probResult.confidenceLevel === 'none') return null
+
+                    const colorMap = {
+                      high: 'bg-emerald-950/30 border-emerald-800/40 text-emerald-300',
+                      medium: 'bg-amber-950/30 border-amber-800/40 text-amber-300',
+                      low: 'bg-orange-950/30 border-orange-800/40 text-orange-300',
+                      none: 'bg-slate-900/30 border-slate-800/40 text-slate-400',
+                    }
+                    const labelMap = { high: '✅ 높음', medium: '🟡 보통', low: '⚠️ 낮음', none: '❌ 부족' }
+
                     return (
-                      <div className="bg-emerald-950/30 border border-emerald-800/40 rounded-lg p-2.5">
-                        <p className="text-emerald-300 text-[11px] font-medium">
-                          📍 이 장소에서 과거 행사 <strong>{match.count}건</strong> 진행
-                        </p>
-                        <p className="text-emerald-500/70 text-[10px] mt-1 truncate">
-                          {match.pastEvents.join(' · ')}
-                        </p>
+                      <div className={`border rounded-lg p-2.5 space-y-1.5 ${colorMap[probResult.confidenceLevel]}`}>
+                        <div className="flex items-center justify-between">
+                          <p className="text-[11px] font-medium">
+                            📊 확률 기반 추천 (신뢰도: <strong>{labelMap[probResult.confidenceLevel]}</strong>)
+                          </p>
+                          <span className="text-[10px] opacity-70">{probResult.matchedPastEvents.length}건 기반</span>
+                        </div>
+                        <p className="text-[10px] opacity-80">{probResult.message}</p>
+                        {probResult.matchedPastEvents.length > 0 && (
+                          <p className="text-[10px] opacity-70 truncate">
+                            과거: {probResult.matchedPastEvents.slice(0, 3).map(e => `${e.name}(${e.itemCount}건)`).join(' · ')}
+                          </p>
+                        )}
                       </div>
                     )
                   })()}

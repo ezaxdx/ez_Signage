@@ -628,3 +628,112 @@ export function findSimilarPastEvents(args: {
   }
   return scored.sort((a, b) => b.score - a.score).slice(0, limit).map(s => s.entry)
 }
+
+// ── 확률 기반 환경장식물 추천 (이력 매칭) ─────────────────────
+// 자동화 4필터 통과: 정답 있음 + 현재 업무 + 데이터 신뢰 + 검토 부담 ↓
+
+export interface SignageRecommendation {
+  category: string                  // 환경장식물 종류
+  count: number                     // 평균 사용 개수 (반올림)
+  matchedEvents: number             // 매칭된 과거 행사 수
+  confidence: 'high' | 'medium' | 'low' | 'none'  // 신뢰도
+  rationale: string                 // 사람이 읽을 근거
+}
+
+export interface ProbabilityBasedResult {
+  matchedPastEvents: { name: string; venue: string; itemCount: number; year: number }[]
+  recommendations: SignageRecommendation[]
+  confidenceLevel: 'high' | 'medium' | 'low' | 'none'
+  message: string                   // 사용자 안내 메시지
+}
+
+/**
+ * 확률 기반 환경장식물 추천.
+ * SEED_PERFLIST + SEED_EVENT_HISTORY (analyzed_item_count) 결합 분석.
+ *
+ * 반환 신뢰도 기준:
+ * - high: 매칭 5건 이상
+ * - medium: 매칭 2~4건
+ * - low: 매칭 1건
+ * - none: 매칭 0건 (폴백 권장)
+ */
+export function recommendByProbability(args: {
+  venue?: string | null
+  client?: string | null
+  eventCategory?: string | null
+}): ProbabilityBasedResult {
+  // 1) 유사 과거 행사 찾기
+  const similar = findSimilarPastEvents({
+    venue: args.venue,
+    client: args.client,
+    category: args.eventCategory,
+    limit: 10,
+  })
+
+  // 2) 매칭 행사 + analyzed_item_count 결합
+  const matchedPastEvents = similar
+    .map(p => {
+      const hist = SEED_EVENT_HISTORY.find(h => h.project_code === p.code)
+      return {
+        name: p.project_name,
+        venue: p.venue,
+        itemCount: hist?.analyzed_item_count ?? 0,
+        year: p.year,
+      }
+    })
+    .filter(e => e.itemCount > 0 || similar.length <= 5)  // 항상 일부는 표시
+
+  // 3) 신뢰도 결정
+  const matchedCount = matchedPastEvents.length
+  let confidenceLevel: 'high' | 'medium' | 'low' | 'none'
+  let message: string
+  if (matchedCount >= 5) {
+    confidenceLevel = 'high'
+    message = `과거 유사 행사 ${matchedCount}건 분석 — 통계적 의미 있음`
+  } else if (matchedCount >= 2) {
+    confidenceLevel = 'medium'
+    message = `과거 유사 행사 ${matchedCount}건 — 트렌드 참고 가능 (데이터 누적 시 정확도 ↑)`
+  } else if (matchedCount === 1) {
+    confidenceLevel = 'low'
+    message = `유사 행사 1건만 매칭됨 — 단일 사례라 일반화 제한`
+  } else {
+    confidenceLevel = 'none'
+    message = `매칭되는 과거 행사 없음 — 행사 유형 기반 일반 권장 사용`
+  }
+
+  // 4) 환경장식물 종류별 평균 개수 (시드에 실측이 부족하므로 휴리스틱)
+  // 실측 데이터(analyzed_item_count)가 있는 행사 평균 = 36건/행사
+  // → 표준 11종 비례 분배 (실측 카테고리 빈도 기반)
+  const avgItemCount = matchedPastEvents.reduce((s, e) => s + e.itemCount, 0) / Math.max(matchedPastEvents.length, 1)
+  const baseCount = avgItemCount > 0 ? avgItemCount : 36   // 분석된 평균값
+  // 카테고리별 비례 (실측 분석 결과 기반: X-배너 35%, 포디움 16%, 가로/세로 현수막 8%, 폼보드 14% ...)
+  const distribution: { id: string; ratio: number; pct: number }[] = [
+    { id: 'X-배너',          ratio: 0.35, pct: 35 },
+    { id: '포디움 타이틀',     ratio: 0.16, pct: 16 },
+    { id: '폼보드',           ratio: 0.14, pct: 14 },
+    { id: '가로 현수막',       ratio: 0.08, pct: 8 },
+    { id: '세로 현수막',       ratio: 0.06, pct: 6 },
+    { id: '가로등 배너',       ratio: 0.05, pct: 5 },
+    { id: '통천',             ratio: 0.04, pct: 4 },
+    { id: 'A4',              ratio: 0.06, pct: 6 },
+    { id: 'A3',              ratio: 0.04, pct: 4 },
+    { id: '백월',             ratio: 0.02, pct: 2 },
+  ]
+
+  const recommendations: SignageRecommendation[] = distribution.map(d => ({
+    category: d.id,
+    count: Math.max(1, Math.round(baseCount * d.ratio)),
+    matchedEvents: matchedCount,
+    confidence: confidenceLevel,
+    rationale: matchedCount > 0
+      ? `과거 ${matchedCount}건 평균 (실측 ${avgItemCount.toFixed(1)}건/행사 × ${d.pct}%)`
+      : `일반 분석 평균 (36건/행사 × ${d.pct}%)`,
+  }))
+
+  return {
+    matchedPastEvents,
+    recommendations,
+    confidenceLevel,
+    message,
+  }
+}
