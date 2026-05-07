@@ -59,7 +59,7 @@ export default async function ArchivePage() {
             </Link>
             <Link href="/dashboard" className="flex items-center gap-1 text-slate-500 hover:text-slate-300 transition text-xs">
               <ArrowLeft className="w-3.5 h-3.5" />
-              대시보드
+              프로젝트
             </Link>
             <span className="text-slate-700 text-xs">/</span>
             <span className="text-slate-300 text-xs font-medium">검수 · 저장 제작물</span>

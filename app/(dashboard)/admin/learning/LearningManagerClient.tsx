@@ -220,7 +220,7 @@ export function LearningManagerClient({ userId, initialVenues, initialRequests, 
             </Link>
             <Link href="/dashboard" className="flex items-center gap-1.5 text-slate-400 hover:text-indigo-300 text-xs transition">
               <ArrowLeft className="w-3.5 h-3.5" />
-              대시보드로
+              프로젝트로
             </Link>
           </div>
         </div>

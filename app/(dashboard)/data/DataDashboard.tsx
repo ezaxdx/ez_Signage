@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   LayoutGrid, ArrowLeft, Tag, Shuffle, MapPin, Users, Calendar,
   ChevronRight, Search, FolderOpen, Layers3, Truck, AlertCircle, BarChart3,
-  Briefcase, Building2,
+  Briefcase, Building2, GraduationCap,
 } from 'lucide-react'
 import {
   SEED_SIGNAGE_TYPES, SEED_SYNONYMS, SEED_EVENT_HISTORY, SEED_DESIGNERS,
@@ -72,9 +72,13 @@ export function DataDashboard(_props: Props) {
               제작물 리스트 가이드
             </Link>
           </div>
+          <Link href="/admin/learning" className="flex items-center gap-1.5 text-emerald-300 hover:text-emerald-200 text-xs transition">
+            <GraduationCap className="w-3.5 h-3.5" />
+            데이터 학습 관리자
+          </Link>
           <Link href="/dashboard" className="flex items-center gap-1.5 text-slate-400 hover:text-indigo-300 text-xs transition">
             <ArrowLeft className="w-3.5 h-3.5" />
-            대시보드로
+            프로젝트로
           </Link>
         </div>
       </header>
