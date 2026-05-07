@@ -303,10 +303,16 @@ export async function exportToPPT(
     if (item.image_url) {
       slide.addImage({ path: item.image_url, x: designX, y: DESIGN_Y, w: finalW, h: finalH })
     } else {
-      slide.addText('이미지 없음\n(시안 업로드 필요)', {
+      // v4.1 신규-G (회의 결정): 디자인 영역은 빈 박스 — 디자이너가 채울 자리
+      slide.addShape('rect', {
         x: designX, y: DESIGN_Y, w: finalW, h: finalH,
+        fill: { color: 'FFFFFF' },
+        line: { color: 'CBD5E1', dashType: 'dash', width: 1 },
+      })
+      slide.addText(`디자이너 작업 영역\n${widthMm} × ${heightMm} mm`, {
+        x: designX, y: DESIGN_Y + finalH / 2 - 0.25, w: finalW, h: 0.5,
         fontSize: 10, color: '94A3B8', align: 'center', valign: 'middle',
-        fill: { color: '1E293B' }, fontFace: 'Malgun Gothic',
+        fontFace: 'Malgun Gothic',
       })
     }
 
@@ -341,6 +347,29 @@ export async function exportToPPT(
 
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
   await pptx.writeFile({ fileName: `제작물리스트_${project.name}_${dateStr}.pptx` })
+  // v4.1 신규-G: usage_logs (best-effort, fire-and-forget)
+  void logUsage('export_pptx', { project_id: project.id, item_count: items.length })
+}
+
+// ══════════════════════════════════════════════════════════
+// v4.1 신규-G: usage_logs INSERT (다운로드 트리거 기록)
+// ══════════════════════════════════════════════════════════
+async function logUsage(action: 'export_excel' | 'export_pptx' | 'recommend' | 'venue_request', metadata: Record<string, unknown>) {
+  if (typeof window === 'undefined') return
+  try {
+    const { createClient } = await import('@/lib/supabase/client')
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase.from('usage_logs').insert({
+      user_id: user.id,
+      project_id: typeof metadata.project_id === 'string' ? metadata.project_id : null,
+      action,
+      metadata,
+    })
+  } catch {
+    // usage_logs 테이블 없거나 권한 없음 — silent
+  }
 }
 
 /** 단일 제작물 PPT — 현재 선택된 1개 제작물만 */
@@ -518,6 +547,7 @@ export async function exportToExcel(
 
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
   XLSX.writeFile(wb, `제작물리스트_${project.name}_${dateStr}.xlsx`)
+  void logUsage('export_excel', { project_id: project.id, item_count: items.length })
 }
 
 /** EditorGrid에서 편집된 컬럼 상태(표시·순서·커스텀 컬럼)를 그대로 반영해 엑셀 출력 */
@@ -582,4 +612,5 @@ async function exportToExcelDynamic(
 
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
   XLSX.writeFile(wb, `제작물리스트_${project.name}_${dateStr}.xlsx`)
+  void logUsage('export_excel', { project_id: project.id, item_count: items.length })
 }
