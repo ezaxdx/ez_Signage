@@ -11,17 +11,16 @@ interface Props {
   isOwner: boolean
 }
 
-/** 프로젝트 삭제 — 모든 멤버 가능 (정책: 누구나 설정·삭제). 관련 design_items / item_contents / project_members 함께 삭제. */
+/** 프로젝트 삭제 — owner만 가능. 관련 design_items / item_contents / project_members 함께 삭제. */
 export function DeleteProjectButton({ projectId, projectName, isOwner }: Props) {
   const router = useRouter()
   const [isDeleting, setIsDeleting] = useState(false)
 
-  // owner 체크 제거 — 모든 프로젝트 멤버가 삭제 가능 (사용자 정책 결정 2026-05-07)
+  if (!isOwner) return null
 
   const handleDelete = async () => {
     const ok = window.confirm(
       `'${projectName}' 프로젝트를 삭제하시겠습니까?\n\n` +
-      (!isOwner ? `⚠️ 본인이 만든 프로젝트가 아닙니다 (초대받은 멤버)\n\n` : '') +
       `· 모든 제작물·슬롯·이미지가 함께 삭제됩니다\n` +
       `· 초대된 팀원의 접근도 제거됩니다\n` +
       `· 되돌릴 수 없습니다`
