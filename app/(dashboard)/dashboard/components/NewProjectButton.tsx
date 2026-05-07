@@ -13,6 +13,20 @@ import { SEED_PERFLIST } from '@/lib/data/dashboardSeed'
 const KNOWN_CLIENTS_NPB = Array.from(new Set(SEED_PERFLIST.map(p => p.client))).sort()
 const KNOWN_VENUES_NPB = Array.from(new Set(SEED_PERFLIST.map(p => p.venue))).sort()
 
+// 명세 6.2.4 — 행사 장소별 역대 사용 환경장식물 매칭
+function matchVenueHistory(venueInput: string): { venue: string; count: number; pastEvents: string[] } | null {
+  if (!venueInput.trim()) return null
+  const matched = SEED_PERFLIST.filter(p =>
+    p.venue.includes(venueInput) || venueInput.includes(p.venue.split(' ')[0])
+  )
+  if (matched.length === 0) return null
+  return {
+    venue: matched[0].venue,
+    count: matched.length,
+    pastEvents: matched.slice(0, 3).map(p => p.project_name),
+  }
+}
+
 // 엑셀 헤더 fuzzy 매칭 — 명세 17컬럼 + 다양한 양식 별칭 (양식 다양성 대응)
 // 매칭 우선순위: 정확 일치 → 부분 포함 → 핵심 키워드 일치
 const EXCEL_COLUMN_KEYS = [
@@ -558,6 +572,22 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                       <input type="date" value={info.event_date} onChange={e => setInfo(p => ({ ...p, event_date: e.target.value }))} className={`${inputCls} [color-scheme:dark]`} />
                     </div>
                   </div>
+
+                  {/* 명세 6.2.4 — 입력된 장소의 과거 행사 매칭 알림 */}
+                  {(() => {
+                    const match = matchVenueHistory(info.event_venue)
+                    if (!match) return null
+                    return (
+                      <div className="bg-emerald-950/30 border border-emerald-800/40 rounded-lg p-2.5">
+                        <p className="text-emerald-300 text-[11px] font-medium">
+                          📍 이 장소에서 과거 행사 <strong>{match.count}건</strong> 진행
+                        </p>
+                        <p className="text-emerald-500/70 text-[10px] mt-1 truncate">
+                          {match.pastEvents.join(' · ')}
+                        </p>
+                      </div>
+                    )
+                  })()}
 
                   {/* 세팅·철거일 */}
                   <div className="grid grid-cols-2 gap-3">
