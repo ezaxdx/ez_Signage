@@ -30,6 +30,10 @@ export interface LiveStats {
   categoryFrequency: Record<string, number>
   /** 행사장별 평균 item 수 */
   avgItemCountByVenue: Record<string, number>
+  /** v4.1: 프로그램 파트 코드별 출현 빈도 (사용자 핵심 지시 — 자동 누적) */
+  programPartFrequency: Record<string, number>
+  /** v4.1: 프로그램 파트 + 행사장 조합별 평균 item 수 (추천 정확도 강화용) */
+  itemCountByPartVenue: Record<string, number>
   /** 마지막 갱신 시각 */
   fetchedAt: number
 }
@@ -54,7 +58,18 @@ export async function fetchLiveStats(supabase: SupabaseClient): Promise<LiveStat
     .limit(500)
 
   if (pErr || !projects) {
-    return { liveAsPerfList: [], itemCountByProject: {}, categoryFrequency: {}, avgItemCountByVenue: {}, fetchedAt: Date.now() }
+    return { liveAsPerfList: [], itemCountByProject: {}, categoryFrequency: {}, avgItemCountByVenue: {}, programPartFrequency: {}, itemCountByPartVenue: {}, fetchedAt: Date.now() }
+  }
+
+  // 별도 select로 program_parts 가져오기 (컬럼 미존재 시 안전)
+  let projectsWithParts: { id: string; program_parts: string[] | null }[] = []
+  try {
+    const { data: pp } = await supabase.from('projects').select('id, program_parts').limit(500)
+    projectsWithParts = (pp ?? []) as typeof projectsWithParts
+  } catch { /* program_parts 컬럼 없음 (마이그레이션 v6 미적용) */ }
+  const partsByProject = new Map<string, string[]>()
+  for (const p of projectsWithParts) {
+    if (p.program_parts && p.program_parts.length > 0) partsByProject.set(p.id, p.program_parts)
   }
 
   const ps = projects as LiveProject[]
@@ -98,10 +113,26 @@ export async function fetchLiveStats(supabase: SupabaseClient): Promise<LiveStat
 
   const itemCountByProject: Record<string, number> = {}
   const categoryFrequency: Record<string, number> = {}
+  const programPartFrequency: Record<string, number> = {}
+  const itemCountByPartVenue: Record<string, number> = {}
   for (const a of aggregates) {
     itemCountByProject[a.project_id] = a.item_count
     for (const c of a.categories) {
       categoryFrequency[c] = (categoryFrequency[c] ?? 0) + 1
+    }
+    // v4.1: program_parts 누적 (사용자 핵심 지시)
+    const parts = partsByProject.get(a.project_id) ?? []
+    for (const code of parts) {
+      programPartFrequency[code] = (programPartFrequency[code] ?? 0) + 1
+    }
+    // v4.1: program_part × venue 조합 평균 item 수
+    const proj = ps.find(p => p.id === a.project_id)
+    if (proj?.event_venue && parts.length > 0 && a.item_count > 0) {
+      for (const code of parts) {
+        const key = `${code}::${proj.event_venue}`
+        // 단순 누계로 두고 평균은 호출 측에서 사용 — 여기서는 sum 저장
+        itemCountByPartVenue[key] = ((itemCountByPartVenue[key] ?? 0) + a.item_count)
+      }
     }
   }
 
@@ -176,6 +207,8 @@ export async function fetchLiveStats(supabase: SupabaseClient): Promise<LiveStat
     itemCountByProject,
     categoryFrequency,
     avgItemCountByVenue,
+    programPartFrequency,
+    itemCountByPartVenue,
     fetchedAt: Date.now(),
   }
   cache.set(userKey, { data: result, expiry: Date.now() + TTL })
