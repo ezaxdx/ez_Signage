@@ -99,6 +99,23 @@ scripts/
 - `goals/current.md` — 현재 목표·진행 단계
 - `PROGRESS.md` — 작업 이력
 - `docs/reports/` — 자율 세션 보고서·HTML 데모
+- `docs/OVERNIGHT_SAFE.md` — 야간 무중단 자율 실행 안전 가이드
+- `docs/AUTOMATION_PATTERNS.md` — 자동화 패턴 카탈로그 (체크리스트·외부 메모리·verification 루프)
+- `prompt.md.example` — 야간 루프용 작업 명세 템플릿
+
+## 자동화 명령
+
+### 일반 슬래시 커맨드
+- `/check` — 프로젝트 건강도 즉시 점검
+- `/restart` — dev 서버 클린 재시작
+- `/pavr` — Plan-Apply-Verify-Repeat 워크플로우 (5파일+ 변경 시 필수)
+- `/fix-bug` — 버그 재현·수정·테스트 추가 흐름
+
+### 자율 실행
+- `automation/po_loop.sh "<명령>"` — 외부 루프로 Claude Code 반복 호출 (사이클 단위)
+- `Dockerfile.claude-overnight` — 야간 무중단 sandbox 이미지
+
+자세한 안전 가이드: [docs/OVERNIGHT_SAFE.md](docs/OVERNIGHT_SAFE.md)
 
 ## 라이선스
 
