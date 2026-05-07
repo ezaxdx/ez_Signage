@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { LayoutGrid, ArrowLeft, Archive } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { ArchiveClient } from './ArchiveClient'
+import { isAdmin } from '@/lib/auth/role'
 
 interface ItemRow {
   id: string
@@ -26,6 +27,10 @@ export default async function ArchivePage() {
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  // 관리자 페이지 정책 (사용자 결정 2026-05-07)
+  // 저장된 제작물(/archive) + 데이터 관리(/data)는 admin만 접근
+  if (!(await isAdmin(supabase))) redirect('/dashboard')
 
   const { data } = await supabase
     .from('design_items')

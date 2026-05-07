@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { DataDashboard } from './DataDashboard'
+import { isAdmin } from '@/lib/auth/role'
 
 export const metadata = { title: '데이터 관리 | MICE 디자인 가이드' }
 
@@ -8,6 +9,10 @@ export default async function DataPage() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  // 관리자 페이지 정책 (사용자 결정 2026-05-07)
+  // /archive + /data는 admin만 접근. 일반 사용자는 대시보드로 리다이렉트.
+  if (!(await isAdmin(supabase))) redirect('/dashboard')
 
   const [
     { data: signageTypes },

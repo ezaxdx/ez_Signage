@@ -6,6 +6,7 @@ import { NewProjectButton } from './components/NewProjectButton'
 import { LogoutButton } from './components/LogoutButton'
 import { DashboardContent } from './components/DashboardContent'
 import { groupVenuesByRegion } from '@/lib/venueIntel'
+import { isAdmin } from '@/lib/auth/role'
 import type { ProjectWithCount } from '@/lib/types'
 
 function calcDdayDiff(eventDate: string | null): number {
@@ -20,6 +21,9 @@ export default async function DashboardPage() {
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  // 관리자 권한 체크 (메뉴 표시·숨김용)
+  const userIsAdmin = await isAdmin(supabase)
 
   const { data: projects } = await supabase
     .from('projects')
@@ -64,20 +68,27 @@ export default async function DashboardPage() {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              href="/archive"
-              className="flex items-center gap-1.5 text-slate-400 hover:text-indigo-300 text-xs transition"
-            >
-              <Archive className="w-3.5 h-3.5" />
-              저장된 제작물
-            </Link>
-            <Link
-              href="/data"
-              className="flex items-center gap-1.5 text-slate-400 hover:text-indigo-300 text-xs transition"
-            >
-              <Database className="w-3.5 h-3.5" />
-              데이터 관리
-            </Link>
+            {/* 관리자 전용 메뉴 (저장된 제작물 / 데이터 관리) — 사용자 정책 2026-05-07 */}
+            {userIsAdmin && (
+              <>
+                <Link
+                  href="/archive"
+                  className="flex items-center gap-1.5 text-slate-400 hover:text-indigo-300 text-xs transition"
+                  title="관리자 전용 — 전체 제작물 검수 대시보드"
+                >
+                  <Archive className="w-3.5 h-3.5" />
+                  저장된 제작물
+                </Link>
+                <Link
+                  href="/data"
+                  className="flex items-center gap-1.5 text-slate-400 hover:text-indigo-300 text-xs transition"
+                  title="관리자 전용 — 시드·통계 데이터 관리"
+                >
+                  <Database className="w-3.5 h-3.5" />
+                  데이터 관리
+                </Link>
+              </>
+            )}
             <div className="w-px h-4 bg-slate-800 hidden sm:block" />
             <span className="text-slate-500 text-xs hidden sm:block truncate max-w-[200px]">
               {user.email}
@@ -112,7 +123,8 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* 데이터 관리 안내 (1단계 진행 상황 노출) */}
+        {/* 데이터 관리 안내 (관리자 전용 — 사용자 정책 2026-05-07) */}
+        {userIsAdmin && (
         <Link
           href="/data"
           className="block bg-gradient-to-r from-indigo-950/40 to-violet-950/40 border border-indigo-900/40 hover:border-indigo-700/60 rounded-xl p-4 transition group"
@@ -132,6 +144,7 @@ export default async function DashboardPage() {
             <span className="text-indigo-400 text-xs flex-shrink-0 group-hover:translate-x-0.5 transition">데이터 관리 →</span>
           </div>
         </Link>
+        )}
 
         {/* 통계 카드 */}
         {typedProjects.length > 0 && (
