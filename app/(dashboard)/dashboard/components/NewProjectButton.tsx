@@ -2,13 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, X, Loader2, ChevronRight, ChevronLeft, Check, UserPlus, Trash2, Search, Target, Upload, FileSpreadsheet, AlertCircle, Map, ImageIcon } from 'lucide-react'
+import { Plus, X, Loader2, ChevronRight, ChevronLeft, Check, UserPlus, Trash2, Search, Target, Upload, FileSpreadsheet, AlertCircle, Map, ImageIcon, MapPinPlus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { insertDefaultSlotsForItems } from '@/lib/services/itemService'
 import { PURPOSE_PRESETS } from '@/lib/constants'
 import type { ProjectStatus, Profile } from '@/lib/types'
 import { SEED_PERFLIST, recommendByProbability, getSelectionRates } from '@/lib/data/dashboardSeed'
 import { fetchLiveStats, invalidateLiveStatsCache, type LiveStats } from '@/lib/data/liveStats'
+import { VENUE_LIST, groupVenuesByRegion } from '@/lib/venueIntel'
+import { PROGRAM_PARTS, PROGRAM_PART_GROUPS, recommendSignageByParts } from '@/lib/programParts'
+import { VenueRequestModal } from './VenueRequestModal'
 
 // 과거 수행실적에서 발주처·행사장 후보 추출 (자동완성)
 const KNOWN_CLIENTS_NPB = Array.from(new Set(SEED_PERFLIST.map(p => p.client))).sort()
@@ -131,6 +134,12 @@ export function NewProjectButton({ userId, userEmail }: Props) {
     attendees_count: '',
     event_language: '' as '' | 'KOR' | 'EN' | 'EN/KOR' | 'multi',
   })
+  // v4.1 갱신-A: 프로그램 파트 다중선택
+  const [programParts, setProgramParts] = useState<Set<string>>(new Set())
+  // v4.1 단위 3: 신규 행사장 등록 요청 모달
+  const [venueRequestOpen, setVenueRequestOpen] = useState(false)
+  // 사용자가 본 세션에서 요청한 행사장(승인 전이지만 폼에서 즉시 사용 가능하게)
+  const [pendingVenueNames, setPendingVenueNames] = useState<string[]>([])
   const [selectedPurposes, setSelectedPurposes] = useState<Set<string>>(new Set())
   const [members, setMembers] = useState<Member[]>([{ email: userEmail, part: '' }])
   const [searchQuery, setSearchQuery] = useState('')
@@ -201,6 +210,8 @@ export function NewProjectButton({ userId, userEmail }: Props) {
   const handleClose = () => {
     setIsOpen(false); setStep(1)
     setInfo({ name: '', client_name: '', event_venue: '', event_date: '', status: '준비중', event_type: '', setup_date: '', teardown_date: '', attendees_count: '', event_language: '' })
+    setProgramParts(new Set())
+    setVenueRequestOpen(false)
     setSelectedPurposes(new Set())
     setMembers([{ email: userEmail, part: '' }])
     setSearchQuery(''); setSelectedProfile(null); setNewPart('')
@@ -351,6 +362,30 @@ export function NewProjectButton({ userId, userEmail }: Props) {
     }
   }
 
+  // v4.1 갱신-A: 프로그램 파트 다중선택 토글 + 권장 환경장식물 자동 체크
+  const toggleProgramPart = (code: string) => {
+    setProgramParts(prev => {
+      const next = new Set(prev)
+      if (next.has(code)) {
+        next.delete(code)
+      } else {
+        next.add(code)
+      }
+      // 다중선택 결과 → 권장 환경장식물 union 자동 체크 (기존 사용자 체크는 보존)
+      const recommended = recommendSignageByParts(Array.from(next))
+      if (recommended.length > 0) {
+        setFormats(prevF => {
+          const updated = { ...prevF }
+          for (const fid of recommended) {
+            if (updated[fid]) updated[fid] = { ...updated[fid], selected: true }
+          }
+          return updated
+        })
+      }
+      return next
+    })
+  }
+
   const addMember = () => {
     if (!selectedProfile) return
     const email = selectedProfile.email
@@ -402,12 +437,41 @@ export function NewProjectButton({ userId, userEmail }: Props) {
       status: info.status,
       owner_id: userId,
     }
+    const programPartsArr = Array.from(programParts)
 
-    const r1 = await supabase.from('projects').insert({ ...baseInsert, purposes: Array.from(selectedPurposes) }).select().single()
-    if (r1.error && /purposes/i.test(r1.error.message)) {
-      const r2 = await supabase.from('projects').insert(baseInsert).select().single()
-      project = r2.data
-      projectErr = r2.error
+    // 1차: program_parts + purposes 모두 시도
+    const r1 = await supabase.from('projects').insert({
+      ...baseInsert,
+      purposes: Array.from(selectedPurposes),
+      program_parts: programPartsArr,
+    }).select().single()
+    if (r1.error && /program_parts/i.test(r1.error.message)) {
+      // program_parts 컬럼 없음 (마이그레이션 v6 미적용) → 제외하고 재시도
+      const r2 = await supabase.from('projects').insert({
+        ...baseInsert,
+        purposes: Array.from(selectedPurposes),
+      }).select().single()
+      if (r2.error && /purposes/i.test(r2.error.message)) {
+        const r3 = await supabase.from('projects').insert(baseInsert).select().single()
+        project = r3.data
+        projectErr = r3.error
+      } else {
+        project = r2.data
+        projectErr = r2.error
+      }
+    } else if (r1.error && /purposes/i.test(r1.error.message)) {
+      const r2 = await supabase.from('projects').insert({
+        ...baseInsert,
+        program_parts: programPartsArr,
+      }).select().single()
+      if (r2.error && /program_parts/i.test(r2.error.message)) {
+        const r3 = await supabase.from('projects').insert(baseInsert).select().single()
+        project = r3.data
+        projectErr = r3.error
+      } else {
+        project = r2.data
+        projectErr = r2.error
+      }
     } else {
       project = r1.data
       projectErr = r1.error
@@ -686,38 +750,43 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                     <input autoFocus required value={info.name} onChange={e => setInfo(p => ({ ...p, name: e.target.value }))} placeholder="예: 2025 APEC 정상회의" className={inputCls} />
                   </div>
 
-                  {/* 행사 유형 — AI 추천 정확도 핵심 */}
+                  {/* v4.1 갱신-A: 프로그램 파트 다중선택 (EZ 폴더링 40.04~40.20) */}
                   <div>
                     <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">
-                      행사 유형 <span className="text-slate-600 font-normal normal-case">(추천 정확도에 큰 영향)</span>
+                      프로그램 파트 <span className="text-slate-600 font-normal normal-case">(다중선택 — 추천 정확도 핵심)</span>
                     </label>
-                    <div className="grid grid-cols-5 gap-1">
-                      {[
-                        { id: 'conference',  label: '컨퍼런스',  emoji: '🎤' },
-                        { id: 'exhibition',  label: '전시회',    emoji: '🏛️' },
-                        { id: 'fair',        label: '박람회',    emoji: '🎪' },
-                        { id: 'awards',      label: '시상식',    emoji: '🏆' },
-                        { id: 'forum',       label: '포럼',      emoji: '💬' },
-                        { id: 'workshop',    label: '워크숍',    emoji: '🛠️' },
-                        { id: 'experience',  label: '체험',      emoji: '✨' },
-                        { id: 'ceremony',    label: '기념식',    emoji: '🎊' },
-                        { id: 'launching',   label: '런칭',      emoji: '🚀' },
-                        { id: 'other',       label: '기타',      emoji: '📌' },
-                      ].map(t => {
-                        const on = info.event_type === t.id
+                    <div className="space-y-2">
+                      {PROGRAM_PART_GROUPS.map(g => {
+                        const items = PROGRAM_PARTS.filter(p => p.group === g.group)
                         return (
-                          <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => selectEventType(t.id as typeof info.event_type)}
-                            className={`px-1 py-1.5 rounded-lg border text-[10px] flex flex-col items-center gap-0.5 transition ${on ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:bg-slate-800'}`}
-                          >
-                            <span className="text-sm">{t.emoji}</span>
-                            <span>{t.label}</span>
-                          </button>
+                          <div key={g.group}>
+                            <p className="text-[10px] text-slate-500 mb-1">{g.label}</p>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
+                              {items.map(p => {
+                                const on = programParts.has(p.code)
+                                return (
+                                  <button
+                                    key={p.code}
+                                    type="button"
+                                    onClick={() => toggleProgramPart(p.code)}
+                                    title={p.hint}
+                                    className={`px-2 py-1.5 rounded-lg border text-[11px] flex items-center gap-1.5 transition text-left ${on ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'}`}
+                                  >
+                                    {on && <Check className="w-3 h-3 flex-shrink-0" />}
+                                    <span className="truncate">{p.name}</span>
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
                         )
                       })}
                     </div>
+                    {programParts.size > 0 && (
+                      <p className="text-[10px] text-emerald-400 mt-1.5">
+                        선택 {programParts.size}개 · 권장 환경장식물이 다음 단계에서 자동 체크됩니다
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -731,10 +800,42 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">행사 장소</label>
-                      <input list="known-venues-npb" value={info.event_venue} onChange={e => setInfo(p => ({ ...p, event_venue: e.target.value }))} placeholder="예: 코엑스" className={inputCls} />
-                      <datalist id="known-venues-npb">
-                        {KNOWN_VENUES_NPB.map(v => <option key={v} value={v} />)}
-                      </datalist>
+                      {(() => {
+                        const venueGroups = groupVenuesByRegion()
+                        const allRegisteredNames = VENUE_LIST.map(v => v.displayName)
+                        const venueOptions = pendingVenueNames.length > 0
+                          ? [{ region: '내가 요청한 (승인 대기)', items: pendingVenueNames.map(n => ({ displayName: n, key: n })) }, ...Object.entries(venueGroups).map(([r, items]) => ({ region: r, items }))]
+                          : Object.entries(venueGroups).map(([r, items]) => ({ region: r, items }))
+                        return (
+                          <>
+                            <select
+                              value={info.event_venue}
+                              onChange={e => setInfo(p => ({ ...p, event_venue: e.target.value }))}
+                              className={inputCls}
+                            >
+                              <option value="">행사장 선택…</option>
+                              {venueOptions.map(g => (
+                                <optgroup key={g.region} label={g.region}>
+                                  {g.items.map(v => (
+                                    <option key={v.displayName} value={v.displayName}>{v.displayName}</option>
+                                  ))}
+                                </optgroup>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={() => setVenueRequestOpen(true)}
+                              className="mt-1.5 w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-[11px] text-indigo-300 hover:text-indigo-200 bg-indigo-950/30 hover:bg-indigo-950/50 border border-indigo-900/40 rounded transition"
+                            >
+                              <MapPinPlus className="w-3 h-3" />
+                              우리 행사장이 목록에 없어요 — 신규 등록 요청
+                            </button>
+                            {info.event_venue && !allRegisteredNames.includes(info.event_venue) && !pendingVenueNames.includes(info.event_venue) && (
+                              <p className="text-[10px] text-amber-400 mt-1">학습되지 않은 행사장입니다. 추천 정확도가 낮을 수 있어요.</p>
+                            )}
+                          </>
+                        )
+                      })()}
                     </div>
                     <div>
                       <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">행사일</label>
@@ -1479,6 +1580,18 @@ export function NewProjectButton({ userId, userEmail }: Props) {
           </div>
         </div>
       )}
+
+      {/* v4.1 단위 3: 신규 행사장 등록 요청 모달 */}
+      <VenueRequestModal
+        open={venueRequestOpen}
+        onClose={() => setVenueRequestOpen(false)}
+        userId={userId}
+        initialName={info.event_venue}
+        onSubmitted={(_id, name) => {
+          setPendingVenueNames(prev => prev.includes(name) ? prev : [...prev, name])
+          setInfo(p => ({ ...p, event_venue: name }))
+        }}
+      />
     </>
   )
 }
