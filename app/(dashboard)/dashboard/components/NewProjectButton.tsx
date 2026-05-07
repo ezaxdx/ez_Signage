@@ -1356,6 +1356,61 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                     제작물 종류 직접 추가 (목록에 없는 것)
                   </button>
 
+                  {/* 누락 항목 자동 알림 (명세 + 회의록 명시 — "동선 배너 빠졌어요") */}
+                  {(() => {
+                    const liveProjects = liveStats?.liveAsPerfList.map(p => ({
+                      venue: p.venue, client: p.client, categories: [],
+                    })) ?? []
+                    const rates = getSelectionRates({
+                      venue: info.event_venue,
+                      client: info.client_name,
+                      liveProjects,
+                    })
+                    // 선택률 50%+ 인데 사용자가 선택 안 한 항목
+                    const missing = rates.filter(r => {
+                      if (r.confidence === 'none' || r.totalEvents < 3) return false
+                      if (r.ratePercent < 50) return false
+                      // 매칭되는 format이 selected인지 확인
+                      const matchedFormat = FORMAT_PRESETS.find(f =>
+                        f.name === r.category || f.name.includes(r.category) || r.category.includes(f.name)
+                      )
+                      if (matchedFormat && formats[matchedFormat.id]?.selected) return false
+                      return true
+                    })
+                    if (missing.length === 0) return null
+
+                    return (
+                      <div className="bg-amber-950/30 border border-amber-800/40 rounded-lg p-2.5 space-y-1.5">
+                        <p className="text-amber-300 text-[11px] font-medium">
+                          ⚠️ 비슷한 행사에서 자주 사용된 항목인데 선택 안 됐어요
+                        </p>
+                        <div className="space-y-1">
+                          {missing.slice(0, 5).map(r => {
+                            const matchedFormat = FORMAT_PRESETS.find(f =>
+                              f.name === r.category || f.name.includes(r.category) || r.category.includes(f.name)
+                            )
+                            return (
+                              <div key={r.category} className="flex items-center justify-between text-[10px]">
+                                <span className="text-amber-200/90">
+                                  <strong>{r.category}</strong> — 매칭 {r.totalEvents}건 중 <span className="font-mono text-amber-300">{r.ratePercent}%</span> 선택
+                                </span>
+                                {matchedFormat && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleFormat(matchedFormat.id)}
+                                    className="text-amber-300 hover:text-amber-100 underline text-[10px]"
+                                  >
+                                    추가
+                                  </button>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })()}
+
                   {(selectedCount > 0 || excelRows.length > 0) && (
                     <p className="text-indigo-400 text-xs px-1">
                       총 {excelRows.length + totalItemCount}개 제작물이 생성됩니다
