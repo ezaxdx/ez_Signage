@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   LayoutGrid, ArrowLeft, Tag, Shuffle, MapPin, Users, Calendar,
@@ -24,15 +24,16 @@ interface Props {
   venues?: unknown[]
 }
 
+// v4.1 단위 5-1 (2026-05-07): 행사 이력·레이아웃 DNA 탭 삭제 + 프로젝트 관리 탭 신설
 // 사용자 결정 (2026-05-07): 명세 1.2 (수행실적 PM 부서·팀단위) 빠짐
-// → PM 사업부 / 납기 패턴 (팀단위 필터 의존) 탭 제거
 // 흐름 이해: 1.1 환경장식물 파일 → 가공 → 추천 적용
-type TabKey = 'overview' | 'signage' | 'synonyms' | 'venues' | 'events' | 'clients' | 'eventcat' | 'designers' | 'materials' | 'categories' | 'analysis' | 'dna'
+type TabKey = 'overview' | 'projects' | 'signage' | 'synonyms' | 'venues' | 'clients' | 'eventcat' | 'designers' | 'materials' | 'categories' | 'analysis'
 
 const TABS: { key: TabKey; label: string; icon: React.ElementType; badge?: string }[] = [
   { key: 'overview',   label: '개요',          icon: BarChart3 },
+  // KPI · 프로젝트 관리 (v4.1 신설)
+  { key: 'projects',   label: '프로젝트 관리', icon: Briefcase,   badge: 'KPI' },
   // 폼 입력으로 누적되는 통계
-  { key: 'events',     label: '행사 이력',     icon: Calendar,    badge: '입력 누적' },
   { key: 'clients',    label: '발주처',        icon: Building2,   badge: '입력 누적' },
   { key: 'eventcat',   label: '행사분류 통계', icon: Layers3,     badge: '폼 추가 예정' },
   { key: 'designers',  label: '디자인 업체',   icon: Users,       badge: '폼 추가 예정' },
@@ -44,7 +45,6 @@ const TABS: { key: TabKey; label: string; icon: React.ElementType; badge?: strin
   { key: 'categories', label: '분류·권장',    icon: Layers3 },
   // 초기 시드 (분석 도구)
   { key: 'analysis',   label: '실측 분석',     icon: AlertCircle, badge: '시드' },
-  { key: 'dna',        label: '레이아웃 DNA',  icon: Layers3,     badge: '시드' },
 ]
 
 export function DataDashboard(_props: Props) {
@@ -81,10 +81,16 @@ export function DataDashboard(_props: Props) {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-100">데이터 관리</h1>
+          <h1 className="text-xl font-bold text-slate-100">관리자 페이지</h1>
           <p className="text-slate-500 text-sm mt-0.5">
-            AI 사전학습 자료 — 명세 6번 기반. 분석은 향후 진행, 현재는 수집된 자료의 구조 표시
+            프로젝트 관리(KPI) · 사전 학습 자료(시드 + 누적) · 마스터 데이터
           </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Link href="/admin/learning" className="inline-flex items-center gap-1.5 text-[11px] text-emerald-300 hover:text-emerald-200 bg-emerald-950/30 hover:bg-emerald-950/50 border border-emerald-900/40 rounded px-2.5 py-1 transition">
+              <ChevronRight className="w-3 h-3" />
+              데이터 학습 관리자 (행사장·도면 추가)
+            </Link>
+          </div>
         </div>
 
         {/* 핵심 통계 8개 (2행) */}
@@ -130,7 +136,7 @@ export function DataDashboard(_props: Props) {
         </div>
 
         {/* 검색 (대부분의 탭에서 사용) */}
-        {(activeTab === 'events' || activeTab === 'synonyms' || activeTab === 'venues' || activeTab === 'clients' || activeTab === 'eventcat') && (
+        {(activeTab === 'synonyms' || activeTab === 'venues' || activeTab === 'clients' || activeTab === 'eventcat') && (
           <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
             <input
@@ -145,12 +151,11 @@ export function DataDashboard(_props: Props) {
         {/* 탭 콘텐츠 */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
           {activeTab === 'overview' && <OverviewTab eventStats={eventStats} />}
+          {activeTab === 'projects' && <ProjectAdminTab />}
           {activeTab === 'analysis' && <AnalysisTab />}
-          {activeTab === 'dna' && <LayoutDnaTab />}
           {activeTab === 'signage' && <SignageTab />}
           {activeTab === 'synonyms' && <SynonymsTab search={search} />}
           {activeTab === 'venues' && <VenuesTab search={search} />}
-          {activeTab === 'events' && <EventsTab search={search} />}
           {activeTab === 'clients' && <ClientsTab search={search} />}
           {activeTab === 'eventcat' && <EventCategoryStatsTab search={search} />}
           {activeTab === 'categories' && <CategoriesTab />}
@@ -230,6 +235,133 @@ function OverviewTab({ eventStats }: { eventStats: ReturnType<typeof computeEven
         <code className="text-slate-300"> Ezpmp_수행실적리스트_20260506.xlsx</code> 메타.
         분석(엑셀 파싱 + 이미지 카테고리화)은 명세 8장 2단계에서 자동화 예정.
       </div>
+    </div>
+  )
+}
+
+// v4.1 단위 5-1: 프로젝트 관리 탭 (KPI · 라이브 프로젝트 · 행사장별 분포)
+function ProjectAdminTab() {
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<{
+    total: number
+    activeMembers: number
+    monthCreated: number
+    storageMB: number
+    venueDist: { venue: string; count: number; learned: boolean }[]
+    partDist: { code: string; name: string; count: number }[]
+    pendingRequests: number
+  } | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const { PROGRAM_PART_BY_CODE } = await import('@/lib/programParts')
+        const supabase = createClient()
+        const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0)
+        const [
+          totalRes,
+          monthRes,
+          membersRes,
+          projectsRes,
+        ] = await Promise.all([
+          supabase.from('projects').select('*', { count: 'exact', head: true }),
+          supabase.from('projects').select('*', { count: 'exact', head: true }).gte('created_at', monthStart.toISOString()),
+          supabase.from('project_members').select('user_id'),
+          supabase.from('projects').select('event_venue, program_parts').limit(500),
+        ])
+        // venue_requests는 v6 마이그레이션 미적용 시 실패할 수 있음 — 안전 처리
+        let pendingCount = 0
+        try {
+          const { count } = await supabase.from('venue_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending')
+          pendingCount = count ?? 0
+        } catch { /* 테이블 없음 */ }
+
+        if (cancelled) return
+        const venueCounts = new Map<string, number>()
+        const partCounts = new Map<string, number>()
+        const learnedNames = new Set(VENUE_LIST.map(v => v.displayName))
+        for (const p of (projectsRes.data ?? []) as { event_venue: string | null; program_parts: string[] | null }[]) {
+          if (p.event_venue) venueCounts.set(p.event_venue, (venueCounts.get(p.event_venue) ?? 0) + 1)
+          for (const c of p.program_parts ?? []) partCounts.set(c, (partCounts.get(c) ?? 0) + 1)
+        }
+        setStats({
+          total: totalRes.count ?? 0,
+          monthCreated: monthRes.count ?? 0,
+          activeMembers: new Set(((membersRes.data ?? []) as { user_id: string }[]).map(m => m.user_id)).size,
+          storageMB: 0,
+          venueDist: Array.from(venueCounts.entries()).sort(([, a], [, b]) => b - a).slice(0, 12).map(([v, c]) => ({ venue: v, count: c, learned: learnedNames.has(v) })),
+          partDist: Array.from(partCounts.entries()).sort(([, a], [, b]) => b - a).slice(0, 12).map(([code, count]) => ({
+            code,
+            name: PROGRAM_PART_BY_CODE.get(code)?.name ?? code,
+            count,
+          })),
+          pendingRequests: pendingCount,
+        })
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  if (loading) return <div className="p-8 text-center text-slate-500 text-sm">불러오는 중…</div>
+  if (!stats) return <div className="p-8 text-center text-slate-500 text-sm">데이터 없음</div>
+
+  return (
+    <div className="p-5 space-y-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: '전체 프로젝트', value: stats.total,         color: 'text-indigo-400' },
+          { label: '이번 달 생성', value: stats.monthCreated,   color: 'text-emerald-400' },
+          { label: '활성 멤버',    value: stats.activeMembers,  color: 'text-violet-400' },
+          { label: '학습 요청 대기', value: stats.pendingRequests, color: stats.pendingRequests > 0 ? 'text-amber-400' : 'text-slate-300' },
+        ].map(s => (
+          <div key={s.label} className="bg-slate-800/40 border border-slate-800 rounded-lg p-3">
+            <p className="text-slate-500 text-[11px]">{s.label}</p>
+            <p className={`text-2xl font-bold mt-1 ${s.color}`}>{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <Block title={`행사장별 프로젝트 분포 (TOP ${stats.venueDist.length})`}>
+        {stats.venueDist.length === 0 ? (
+          <p className="text-slate-600 text-xs italic">등록된 프로젝트의 행사장이 아직 없습니다.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {stats.venueDist.map(v => (
+              <div key={v.venue} className="flex items-center gap-2 text-xs">
+                <span className={`text-slate-300 truncate flex-1 ${!v.learned ? 'text-amber-400' : ''}`} title={v.learned ? '학습됨' : '학습 안됨 — 데이터 학습 관리자에서 등록 권장'}>
+                  {v.venue}{!v.learned && <span className="ml-1 text-amber-500 text-[10px]">⚠</span>}
+                </span>
+                <span className="text-slate-500 text-[10px]">{v.count}건</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Block>
+
+      <Block title={`프로그램 파트별 프로젝트 분포 (TOP ${stats.partDist.length})`}>
+        {stats.partDist.length === 0 ? (
+          <p className="text-slate-600 text-xs italic">아직 program_parts를 입력한 프로젝트가 없습니다. 마이그레이션 v6 적용 후 누적됩니다.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {stats.partDist.map(p => (
+              <div key={p.code} className="flex items-center gap-2 text-xs">
+                <span className="font-mono text-slate-500 text-[10px] w-12">{p.code}</span>
+                <span className="text-slate-300 truncate flex-1">{p.name}</span>
+                <span className="text-slate-500 text-[10px]">{p.count}건</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Block>
+
+      <p className="text-[10px] text-slate-600 leading-relaxed">
+        ⓘ 자동 누적 학습: 사용자가 새 프로젝트를 만들 때마다 행사장·프로그램 파트가 위 통계에 5분 이내로 반영됩니다.
+        학습 안된 행사장(amber)은 <Link href="/admin/learning" className="text-emerald-400 hover:underline">데이터 학습 관리자</Link>에서 등록·도면 추가하면 추천 정확도가 개선됩니다.
+      </p>
     </div>
   )
 }
