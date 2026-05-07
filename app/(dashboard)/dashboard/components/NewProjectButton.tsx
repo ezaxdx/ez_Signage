@@ -148,6 +148,21 @@ export function NewProjectButton({ userId, userEmail }: Props) {
     return () => clearTimeout(t)
   }, [searchQuery, selectedProfile])
 
+  // ESC 키로 모달 닫기 + 모달 열려있을 때 body 스크롤 잠금 (UX 표준)
+  useEffect(() => {
+    if (!isOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isLoading) handleClose()
+    }
+    document.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, isLoading])
+
   const handleClose = () => {
     setIsOpen(false); setStep(1)
     setInfo({ name: '', client_name: '', event_venue: '', event_date: '', status: '준비중', event_type: '', setup_date: '', teardown_date: '', attendees_count: '', event_language: '' })

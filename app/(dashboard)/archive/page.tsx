@@ -45,9 +45,13 @@ export default async function ArchivePage() {
       <header className="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-md bg-indigo-600 flex items-center justify-center">
+            <Link
+              href="/dashboard"
+              className="w-6 h-6 rounded-md bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center transition"
+              title="메인 대시보드로 이동"
+            >
               <LayoutGrid className="w-3.5 h-3.5 text-white" />
-            </div>
+            </Link>
             <Link href="/dashboard" className="flex items-center gap-1 text-slate-500 hover:text-slate-300 transition text-xs">
               <ArrowLeft className="w-3.5 h-3.5" />
               대시보드

@@ -121,9 +121,13 @@ export function EditorToolbar({
 
       {/* 왼쪽: 브레드크럼 */}
       <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
-        <div className="w-6 h-6 rounded-md bg-indigo-600 flex items-center justify-center flex-shrink-0">
+        <Link
+          href="/dashboard"
+          className="w-6 h-6 rounded-md bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center flex-shrink-0 transition"
+          title="메인 대시보드로 이동"
+        >
           <LayoutGrid className="w-3.5 h-3.5 text-white" />
-        </div>
+        </Link>
         <Link
           href="/dashboard"
           className="flex items-center gap-1 text-slate-500 hover:text-slate-300 transition flex-shrink-0"

@@ -54,10 +54,19 @@ export function DataDashboard(_props: Props) {
       <header className="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
+            <Link
+              href="/dashboard"
+              className="w-7 h-7 rounded-lg bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center transition"
+              title="메인 대시보드로 이동"
+            >
               <LayoutGrid className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-slate-100 font-semibold text-sm tracking-tight">MICE 디자인 가이드</span>
+            </Link>
+            <Link
+              href="/dashboard"
+              className="text-slate-100 hover:text-indigo-300 font-semibold text-sm tracking-tight transition"
+            >
+              MICE 디자인 가이드
+            </Link>
           </div>
           <Link href="/dashboard" className="flex items-center gap-1.5 text-slate-400 hover:text-indigo-300 text-xs transition">
             <ArrowLeft className="w-3.5 h-3.5" />
