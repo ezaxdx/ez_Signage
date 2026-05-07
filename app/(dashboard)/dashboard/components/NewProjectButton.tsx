@@ -472,25 +472,42 @@ export function NewProjectButton({ userId, userEmail }: Props) {
 
     // 1) 일괄 시안 (batchMockup) — step 3의 신규 경로
     const primaryMockup = batchMockup?.file ?? mockupFile
+    const uploadErrors: string[] = []
+    let uploadSuccess = 0
+
     if (primaryMockup) {
       const ext = primaryMockup.name.split('.').pop() ?? 'jpg'
       const path = `${userId}/master/${project.id}.${ext}`
+      console.log('[Mockup Upload] 일괄 시안 업로드 시작:', { path, size: primaryMockup.size, type: primaryMockup.type })
       const { data: uploaded, error: upErr } = await supabase.storage
         .from('design-images')
         .upload(path, primaryMockup, { upsert: true, contentType: primaryMockup.type })
       if (upErr) {
-        console.error('[Mockup Upload] 일괄 시안 실패:', upErr.message, { path, size: primaryMockup.size, type: primaryMockup.type })
-        alert(`시안 업로드 실패: ${upErr.message}\n(브라우저 개발자도구 콘솔에서 자세한 정보 확인)`)
+        const msg = `[일괄 시안] Storage 업로드 실패: ${upErr.message} (path: ${path})`
+        console.error(msg, upErr)
+        uploadErrors.push(msg)
       } else if (uploaded?.path) {
         const { data: { publicUrl } } = supabase.storage.from('design-images').getPublicUrl(uploaded.path)
         masterUrl = publicUrl
+        console.log('[Mockup Upload] ✓ 일괄 시안 storage 업로드 성공:', publicUrl)
+
         const { error: projErr } = await supabase.from('projects').update({ master_image_url: publicUrl }).eq('id', project.id)
-        if (projErr) console.error('[Mockup Upload] master_image_url 저장 실패:', projErr.message)
-        // 모든 제작물에 동일한 시안 일괄 적용
+        if (projErr) {
+          const msg = `[일괄 시안] projects.master_image_url 저장 실패: ${projErr.message}`
+          console.error(msg, projErr)
+          uploadErrors.push(msg)
+        }
+
         if (allItemIds.length > 0) {
           const { error: itemErr } = await supabase.from('design_items').update({ image_url: publicUrl }).in('id', allItemIds)
-          if (itemErr) console.error('[Mockup Upload] design_items.image_url 저장 실패:', itemErr.message)
-          else console.log(`[Mockup Upload] ✓ 일괄 시안 ${allItemIds.length}개 항목에 적용:`, publicUrl)
+          if (itemErr) {
+            const msg = `[일괄 시안] design_items.image_url 저장 실패: ${itemErr.message}`
+            console.error(msg, itemErr)
+            uploadErrors.push(msg)
+          } else {
+            console.log(`[Mockup Upload] ✓ 일괄 시안 ${allItemIds.length}개 항목에 image_url 저장 완료`)
+            uploadSuccess += allItemIds.length
+          }
         }
       }
     }
@@ -501,16 +518,43 @@ export function NewProjectButton({ userId, userEmail }: Props) {
       if (ids.length === 0) continue
       const ext = mockup.file.name.split('.').pop() ?? 'jpg'
       const path = `${userId}/format-mockup/${project.id}/${formatId}.${ext}`
+      console.log(`[Mockup Upload] 품목별 시안 업로드 시작 (${formatId}):`, path)
       const { data: uploaded, error: upErr } = await supabase.storage
         .from('design-images')
         .upload(path, mockup.file, { upsert: true, contentType: mockup.file.type })
       if (upErr) {
-        console.error(`[Mockup Upload] ${formatId} 품목 시안 실패:`, upErr.message)
+        const msg = `[품목별 ${formatId}] Storage 업로드 실패: ${upErr.message}`
+        console.error(msg, upErr)
+        uploadErrors.push(msg)
       } else if (uploaded?.path) {
         const { data: { publicUrl } } = supabase.storage.from('design-images').getPublicUrl(uploaded.path)
         const { error: itemErr } = await supabase.from('design_items').update({ image_url: publicUrl }).in('id', ids)
-        if (itemErr) console.error(`[Mockup Upload] ${formatId} item update 실패:`, itemErr.message)
-        else console.log(`[Mockup Upload] ✓ ${formatId} 품목 시안 ${ids.length}개 항목에 적용`)
+        if (itemErr) {
+          const msg = `[품목별 ${formatId}] design_items 갱신 실패: ${itemErr.message}`
+          console.error(msg, itemErr)
+          uploadErrors.push(msg)
+        } else {
+          console.log(`[Mockup Upload] ✓ ${formatId} 품목 시안 ${ids.length}개 항목에 적용`)
+          uploadSuccess += ids.length
+        }
+      }
+    }
+
+    // 사용자에게 명확한 결과 알림 (시안 업로드 시도한 경우만)
+    if (primaryMockup || Object.keys(formatMockups).length > 0) {
+      if (uploadErrors.length > 0) {
+        alert(
+          `시안 업로드 일부 실패:\n\n` +
+          uploadErrors.map((e, i) => `${i+1}. ${e}`).join('\n\n') +
+          `\n\n원인 가능성:\n` +
+          `• Supabase Storage에 design-images 버킷이 없음 → Studio → Storage에서 생성\n` +
+          `• 버킷 RLS 정책 미설정 → migration_v3_all.sql 실행 필요\n` +
+          `• 파일 크기 10MB 초과\n` +
+          `• 인증 만료 → 재로그인\n\n` +
+          `상세: 브라우저 F12 → Console 탭`
+        )
+      } else if (uploadSuccess > 0) {
+        console.log(`[Mockup Upload] ✓ 총 ${uploadSuccess}개 항목에 시안 적용 완료`)
       }
     }
 
@@ -1022,13 +1066,13 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                   {/* 시안 업로드 — 일괄 or 품목별 */}
                   <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-3 space-y-2">
                     <div className="flex items-center justify-between">
-                      <p className="text-slate-300 text-xs font-medium">시안 이미지 업로드</p>
-                      <span className="text-slate-600 text-[10px]">선택 사항 — 품목별 기본 양식 기준 이미지</span>
+                      <p className="text-slate-300 text-xs font-medium">시안 이미지 업로드 <span className="text-slate-600 font-normal">— 선택 사항</span></p>
+                      <span className="text-slate-600 text-[10px]">업로드 시 캔버스 배경으로 자동 표시</span>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       {/* 일괄 업로드 */}
                       <div>
-                        <p className="text-slate-500 text-[10px] mb-1">일괄 (모든 항목 공통)</p>
+                        <p className="text-slate-500 text-[10px] mb-1">일괄 — 모든 환경장식물에 동일 적용</p>
                         {batchMockup ? (
                           <div className="relative">
                             <img src={batchMockup.preview} alt="" className="w-full h-16 object-cover rounded border border-slate-700" />
@@ -1043,21 +1087,30 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                               reader.readAsDataURL(f); e.target.value = ''
                             }} />
                             <ImageIcon className="w-4 h-4 text-slate-600" />
-                            <span className="text-slate-600 text-[10px]">공통 시안</span>
+                            <span className="text-slate-600 text-[10px]">공통 시안 클릭 업로드</span>
                           </label>
                         )}
                       </div>
                       {/* 품목별 안내 */}
                       <div>
-                        <p className="text-slate-500 text-[10px] mb-1">품목별 (각 행 오른쪽 📎 클릭)</p>
-                        <div className="border border-dashed border-slate-800 rounded-lg h-16 flex items-center justify-center">
-                          <span className="text-slate-700 text-[10px] text-center">선택된 품목 행에서<br />개별 업로드</span>
+                        <p className="text-slate-500 text-[10px] mb-1">품목별 — 환경장식물마다 다른 시안</p>
+                        <div className="border border-dashed border-slate-800 rounded-lg h-16 flex flex-col items-center justify-center px-2">
+                          <ImageIcon className="w-3 h-3 text-slate-700 mb-0.5" />
+                          <span className="text-slate-700 text-[9px] text-center leading-tight">
+                            아래 표에서 각 행 우측 끝<br/>
+                            <ImageIcon className="w-2.5 h-2.5 inline mx-0.5 text-slate-500" />
+                            아이콘 클릭
+                          </span>
                         </div>
                       </div>
                     </div>
                     {Object.keys(formatMockups).length > 0 && (
-                      <p className="text-indigo-400 text-[10px]">{Object.keys(formatMockups).length}개 품목에 시안 설정됨</p>
+                      <p className="text-violet-400 text-[10px]">✓ {Object.keys(formatMockups).length}개 품목에 개별 시안 설정됨 (일괄 시안보다 우선)</p>
                     )}
+                    {/* 우선순위 안내 */}
+                    <p className="text-slate-600 text-[9px] mt-1">
+                      💡 일괄 + 품목별 모두 업로드 시: 품목별 시안이 그 종류에만 적용되고, 나머지는 일괄 시안 적용
+                    </p>
                   </div>
 
                   {/* 엑셀 불러온 목록 미리보기 */}
