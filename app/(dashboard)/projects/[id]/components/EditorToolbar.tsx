@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Download, FileSpreadsheet, ImagePlus, Check, Loader2, LayoutGrid, Layers, Settings, Crown } from 'lucide-react'
-import { FormatSelector } from './FormatSelector'
+// import { FormatSelector } from './FormatSelector'  // 1차 출시에서 일시 제거 (향후 복귀)
 import { createClient } from '@/lib/supabase/client'
 import type { Project, DesignItem } from '@/lib/types'
 
@@ -135,19 +135,13 @@ export function EditorToolbar({
         <span className="text-slate-300 text-xs font-medium truncate max-w-[140px]">
           {project.name}
         </span>
-        {selectedItem && (
-          <>
-            <span className="text-slate-700 text-xs">/</span>
-            <span className="text-slate-600 text-xs font-mono flex-shrink-0">
-              {selectedItem.no}
-            </span>
-          </>
-        )}
+        {/* 선택된 제작물 NO 표시 — 1차에서 제거 (사용자 요청) */}
       </div>
 
-      {/* 중앙: 양식 선택기 */}
+      {/* 중앙: 양식 선택기 — 1차 출시에서 일시 제거 (향후 복귀 예정) */}
+      {/* 규격(mm) 편집은 상단 엑셀 그리드에서 더블클릭으로 가능 */}
       <div className="flex-1 flex justify-center">
-        <FormatSelector item={selectedItem} onItemUpdate={onItemUpdate} />
+        {/* <FormatSelector item={selectedItem} onItemUpdate={onItemUpdate} /> */}
       </div>
 
       {/* 오른쪽: 저장 상태 + 업로드 + 내보내기 */}

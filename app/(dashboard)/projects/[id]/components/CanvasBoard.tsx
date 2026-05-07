@@ -28,9 +28,8 @@ interface BgCache {
 function buildDisplayText(slot: SlotContent): string {
   if (slot.ko && slot.en) return `${slot.ko}\n${slot.en}`
   if (slot.ko || slot.en) return slot.ko || slot.en
-  // 비어있음 — placeholder 힌트 사용, 없으면 라벨
-  if (slot.placeholder) return `📝 ${slot.placeholder}`
-  return `📝 ${slot.label ?? '내용 입력'}`
+  // 1차: 빈 슬롯 placeholder 표시 안 함 (사용자 요청 — 기존 입력값만 보이게)
+  return ''
 }
 
 function isSlotEmpty(slot: SlotContent): boolean {
@@ -283,12 +282,12 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
 
         const isHighlighted = selectedSlotKeyRef.current === slotKey
         const empty = isSlotEmpty(rawSlot)
-        // 빈 슬롯: 더 진한 점선 배경 (사용자에게 "여기에 입력" 시각적 표시)
+        // 1차: 빈 슬롯 시각화 OFF (사용자 요청 — 기존 입력값만 보이게)
+        // 빈 슬롯은 배경 투명 + 텍스트도 빈 문자열 → 사실상 안 보임
         const bgColor = empty
-          ? (isHighlighted ? 'rgba(251,191,36,0.22)' : 'rgba(251,191,36,0.10)')   // amber for empty
-          : (isHighlighted ? 'rgba(99,102,241,0.28)' : 'rgba(99,102,241,0.10)')    // indigo for filled
-        // 빈 슬롯이면 실제 텍스트 색상은 옅게, 내용 있으면 본 색상
-        const textFillOverride = empty ? 'rgba(255,255,255,0.55)' : undefined
+          ? 'transparent'
+          : (isHighlighted ? 'rgba(99,102,241,0.28)' : 'rgba(99,102,241,0.10)')
+        const textFillOverride = empty ? 'rgba(0,0,0,0)' : undefined
 
         // Fabric charSpacing: 1/1000 em 단위. 폰트 크기에 비례해 시각적으로 일정하게
         // letterSpacing(pt) → px → em (fontSize 기준) → 1000배
@@ -542,11 +541,12 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
     >
       <div ref={wrapRef} className="relative shadow-2xl ring-1 ring-slate-700/50">
         <canvas ref={canvasElRef} />
-        {item?.width_mm && item?.height_mm && (
+        {/* 캔버스 하단 규격 표시 — 1차에서 일시 제거 (사용자 요청) */}
+        {/* {item?.width_mm && item?.height_mm && (
           <div className="absolute -bottom-5 left-0 right-0 text-center text-[10px] text-slate-600 font-mono pointer-events-none">
             {item.width_mm} × {item.height_mm} mm{item.category ? ` · ${item.category}` : ''}
           </div>
-        )}
+        )} */}
       </div>
 
       {!item && (

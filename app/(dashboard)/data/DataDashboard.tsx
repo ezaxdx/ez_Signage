@@ -1,83 +1,56 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { LayoutGrid, ArrowLeft, Tag, Shuffle, MapPin, Users, Calendar, ChevronRight } from 'lucide-react'
+import {
+  LayoutGrid, ArrowLeft, Tag, Shuffle, MapPin, Users, Calendar,
+  ChevronRight, Search, FolderOpen, Layers3, Truck, AlertCircle, BarChart3,
+  Briefcase, Building2,
+} from 'lucide-react'
+import {
+  SEED_SIGNAGE_TYPES, SEED_SYNONYMS, SEED_EVENT_HISTORY, SEED_DESIGNERS,
+  SEED_EVENT_CATEGORIES, SEED_MATERIAL_DEFAULTS, SEED_LEAD_TIME, SEED_PERFLIST,
+  SEED_SIGNAGE_ANALYSIS, NON_STANDARD_MAPPINGS, SEED_LAYOUT_DNA, mapEventCategory,
+  computeEventStats, computePmGrouping, computeClientStats, computeEventCategoryStats,
+} from '@/lib/data/dashboardSeed'
+import { VENUE_LIST } from '@/lib/venueIntel'
 
-interface SignageType {
-  id: string
-  name: string
-  width_mm: number
-  height_mm: number
-  material_default: string | null
-  category: string | null
-}
-
-interface Synonym {
-  id: string
-  alias: string
-  canonical_name: string
-  note: string | null
-}
-
-interface Designer {
-  id: string
-  name: string
-  company: string | null
-  note: string | null
-}
-
-interface EventHistory {
-  id: string
-  project_name: string
-  pm_dept: string | null
-  year: number | null
-  event_date: string | null
-  venue: string | null
-  client: string | null
-  event_type: string | null
-}
-
-interface VenueInfo {
-  id: string
-  name: string
-  region: string | null
-  venue_type: string | null
-  address: string | null
-  note: string | null
-}
-
+// 외부 props는 받지만 빈 배열일 때 시드로 폴백
 interface Props {
-  signageTypes: SignageType[]
-  synonyms: Synonym[]
-  designers: Designer[]
-  eventHistory: EventHistory[]
-  venues: VenueInfo[]
+  signageTypes?: unknown[]
+  synonyms?: unknown[]
+  designers?: unknown[]
+  eventHistory?: unknown[]
+  venues?: unknown[]
 }
 
-type TabKey = 'signage' | 'synonyms' | 'venues' | 'designers' | 'events'
+type TabKey = 'overview' | 'signage' | 'synonyms' | 'venues' | 'events' | 'pm' | 'clients' | 'eventcat' | 'designers' | 'materials' | 'leadtime' | 'categories' | 'analysis' | 'dna'
 
-const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
-  { key: 'signage', label: '환경장식물 종류', icon: Tag },
-  { key: 'synonyms', label: '동의어', icon: Shuffle },
-  { key: 'venues', label: '행사장', icon: MapPin },
-  { key: 'designers', label: '디자인 업체', icon: Users },
-  { key: 'events', label: '행사 이력', icon: Calendar },
+const TABS: { key: TabKey; label: string; icon: React.ElementType; badge?: string }[] = [
+  { key: 'overview',   label: '개요',          icon: BarChart3 },
+  { key: 'analysis',   label: '실측 분석',     icon: AlertCircle, badge: '신규' },
+  { key: 'dna',        label: '레이아웃 DNA',  icon: Layers3, badge: 'AI' },
+  { key: 'events',     label: '행사 이력',     icon: Calendar },
+  { key: 'pm',         label: 'PM 사업부',     icon: Briefcase },
+  { key: 'clients',    label: '발주처',        icon: Building2 },
+  { key: 'eventcat',   label: '행사분류 통계', icon: Layers3 },
+  { key: 'signage',    label: '환경장식물',    icon: Tag },
+  { key: 'synonyms',   label: '동의어',        icon: Shuffle },
+  { key: 'venues',     label: '행사장',        icon: MapPin },
+  { key: 'categories', label: '분류·권장',    icon: Layers3 },
+  { key: 'materials',  label: '재질',          icon: FolderOpen },
+  { key: 'designers',  label: '디자인 업체',   icon: Users },
+  { key: 'leadtime',   label: '납기 패턴',     icon: Truck, badge: '예정' },
 ]
 
-export function DataDashboard({ signageTypes, synonyms, designers, eventHistory, venues }: Props) {
-  const [activeTab, setActiveTab] = useState<TabKey>('signage')
+export function DataDashboard(_props: Props) {
+  const [activeTab, setActiveTab] = useState<TabKey>('overview')
+  const [search, setSearch] = useState('')
 
-  const stats = [
-    { label: '제작물 종류', value: signageTypes.length, color: 'text-indigo-400' },
-    { label: '동의어 매핑', value: synonyms.length, color: 'text-emerald-400' },
-    { label: '행사장', value: venues.length, color: 'text-amber-400' },
-    { label: '행사 이력', value: eventHistory.length, color: 'text-violet-400' },
-  ]
+  const eventStats = useMemo(() => computeEventStats(), [])
 
   return (
     <div className="min-h-screen bg-slate-950">
-      {/* 헤더 */}
       <header className="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -86,10 +59,7 @@ export function DataDashboard({ signageTypes, synonyms, designers, eventHistory,
             </div>
             <span className="text-slate-100 font-semibold text-sm tracking-tight">MICE 디자인 가이드</span>
           </div>
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-1.5 text-slate-400 hover:text-indigo-300 text-xs transition"
-          >
+          <Link href="/dashboard" className="flex items-center gap-1.5 text-slate-400 hover:text-indigo-300 text-xs transition">
             <ArrowLeft className="w-3.5 h-3.5" />
             대시보드로
           </Link>
@@ -97,24 +67,35 @@ export function DataDashboard({ signageTypes, synonyms, designers, eventHistory,
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        {/* 타이틀 */}
         <div>
           <h1 className="text-xl font-bold text-slate-100">데이터 관리</h1>
-          <p className="text-slate-500 text-sm mt-0.5">AI 사전학습 데이터 — 동의어·행사장·행사 이력 관리</p>
+          <p className="text-slate-500 text-sm mt-0.5">
+            AI 사전학습 자료 — 명세 6번 기반. 분석은 향후 진행, 현재는 수집된 자료의 구조 표시
+          </p>
         </div>
 
-        {/* 통계 카드 */}
+        {/* 핵심 통계 8개 (2행) */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {stats.map(s => (
+          {[
+            { label: '환경장식물 종류',  value: SEED_SIGNAGE_TYPES.length,    sub: '표준 11종',                  color: 'text-indigo-400' },
+            { label: '동의어 매핑',      value: SEED_SYNONYMS.length,         sub: '비표준→표준 변환',           color: 'text-emerald-400' },
+            { label: '행사 폴더',        value: eventStats.total,              sub: '폴더 직접 매핑',             color: 'text-amber-400' },
+            { label: '행사장',           value: VENUE_LIST.length,             sub: '권역·유형 분류',             color: 'text-violet-400' },
+            { label: '실적 매칭',        value: SEED_PERFLIST.length,          sub: '수행실적 엑셀 ↔ 폴더',       color: 'text-sky-400' },
+            { label: 'PM 사업부',        value: new Set(SEED_PERFLIST.map(p => p.pm_division)).size, sub: '실적 매칭 기준', color: 'text-rose-400' },
+            { label: '발주처',           value: new Set(SEED_PERFLIST.map(p => p.client)).size, sub: '실적 매칭 기준', color: 'text-fuchsia-400' },
+            { label: '행사 분류',        value: SEED_EVENT_CATEGORIES.length,  sub: '권장 환경장식물 매핑',       color: 'text-teal-400' },
+          ].map(s => (
             <div key={s.label} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
               <p className="text-slate-500 text-xs">{s.label}</p>
               <p className={`text-2xl font-bold mt-1 ${s.color}`}>{s.value}</p>
+              <p className="text-slate-600 text-[10px] mt-0.5">{s.sub}</p>
             </div>
           ))}
         </div>
 
         {/* 탭 */}
-        <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1.5 flex-wrap">
+        <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1.5 overflow-x-auto">
           {TABS.map(t => {
             const Icon = t.icon
             return (
@@ -122,56 +103,72 @@ export function DataDashboard({ signageTypes, synonyms, designers, eventHistory,
                 key={t.key}
                 onClick={() => setActiveTab(t.key)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
-                  activeTab === t.key
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-slate-400 hover:text-slate-200'
+                  activeTab === t.key ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
                 {t.label}
+                {t.badge && (
+                  <span className="text-[9px] bg-slate-700 text-slate-300 rounded px-1 ml-0.5">{t.badge}</span>
+                )}
               </button>
             )
           })}
         </div>
 
+        {/* 검색 (대부분의 탭에서 사용) */}
+        {(activeTab === 'events' || activeTab === 'synonyms' || activeTab === 'venues' || activeTab === 'clients' || activeTab === 'eventcat' || activeTab === 'pm') && (
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="검색..."
+              className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+          </div>
+        )}
+
         {/* 탭 콘텐츠 */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          {activeTab === 'signage' && (
-            <SignageTab data={signageTypes} />
-          )}
-          {activeTab === 'synonyms' && (
-            <SynonymsTab data={synonyms} />
-          )}
-          {activeTab === 'venues' && (
-            <VenuesTab data={venues} />
-          )}
-          {activeTab === 'designers' && (
-            <DesignersTab data={designers} />
-          )}
-          {activeTab === 'events' && (
-            <EventsTab data={eventHistory} />
-          )}
+          {activeTab === 'overview' && <OverviewTab eventStats={eventStats} />}
+          {activeTab === 'analysis' && <AnalysisTab />}
+          {activeTab === 'dna' && <LayoutDnaTab />}
+          {activeTab === 'signage' && <SignageTab />}
+          {activeTab === 'synonyms' && <SynonymsTab search={search} />}
+          {activeTab === 'venues' && <VenuesTab search={search} />}
+          {activeTab === 'events' && <EventsTab search={search} />}
+          {activeTab === 'pm' && <PmTab search={search} />}
+          {activeTab === 'clients' && <ClientsTab search={search} />}
+          {activeTab === 'eventcat' && <EventCategoryStatsTab search={search} />}
+          {activeTab === 'categories' && <CategoriesTab />}
+          {activeTab === 'materials' && <MaterialsTab />}
+          {activeTab === 'designers' && <DesignersTab />}
+          {activeTab === 'leadtime' && <LeadTimeTab />}
         </div>
 
-        {/* 데이터 수집 계획 */}
+        {/* 하단 — 데이터 수집 계획 (명세 6번 매핑) */}
         <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
-          <h2 className="text-slate-300 font-semibold text-sm mb-3">데이터 수집 계획</h2>
+          <h2 className="text-slate-300 font-semibold text-sm mb-1">AI 사전 교육 자료 — 수집·분석 단계</h2>
+          <p className="text-slate-600 text-xs mb-4">우선순위 6번 명세 매핑. 현재 1단계, 분석 자동화는 2단계 예정.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
-              { step: '1', title: '동의어 검증', desc: '현장 실무자와 동의어 목록 확인·보완', status: '진행예정' },
-              { step: '2', title: '행사 이력 분석', desc: '행사별 폴더 34개 → 카테고리·수량 패턴 추출', status: '진행예정' },
-              { step: '3', title: '수행실적 연계', desc: 'PM 부서·발주처·행사유형 데이터 입력', status: '진행예정' },
-              { step: '4', title: '이미지 카테고리화', desc: '환경장식물 샘플 → 종류별 분류 및 레이아웃 DNA 추출', status: '진행예정' },
+              { num: '6.1.a',  title: '폴더명 → 행사 메타',     desc: '행사명 + 프로젝트 코드 자동 추출 (54개)',                status: '✅ 수집됨'  },
+              { num: '6.1.b.i',title: '환경장식물 동의어',      desc: '스프링배너=X배너 등 10건 시드 + 향후 보강',               status: '✅ 시드'    },
+              { num: '6.1.b.ii',title: '기본 환경장식물 11종',  desc: 'X·I·가로등·통천·가로/세로현수막·포디움·A4/A3',             status: '✅ 정의됨'  },
+              { num: '6.1.b.iii', title: '디자인 업체',          desc: '업체명만 DB화, 납기·수정률 메트릭 placeholder',          status: '🟡 명단만'  },
+              { num: '6.1.b.iv', title: '재질 기본값',           desc: '환경장식물별 주재질 매핑, 통계 산출 예정',                status: '🟡 기본값'  },
+              { num: '6.1.b.v',  title: '납기일 패턴',           desc: 'PM부서·디자인업체·행사장별 평균 — 분석 단계 진입 후',     status: '⏳ 예정'    },
+              { num: '6.2.1',   title: 'PM 사업부·부서명',       desc: '수행실적 엑셀에서 추출 — 향후 매핑',                     status: '⏳ 예정'    },
+              { num: '6.2.6',   title: '행사분류',              desc: '8종 분류 정의됨, 분류별 권장 환경장식물 매핑',           status: '✅ 시드'    },
             ].map(item => (
-              <div key={item.step} className="flex items-start gap-3 p-3 bg-slate-800/40 rounded-lg">
-                <div className="w-6 h-6 rounded-full bg-indigo-900/60 border border-indigo-700/50 flex items-center justify-center flex-shrink-0">
-                  <span className="text-indigo-400 text-xs font-bold">{item.step}</span>
+              <div key={item.num} className="flex items-start gap-3 p-3 bg-slate-800/40 rounded-lg">
+                <span className="text-[10px] font-mono text-indigo-400/70 flex-shrink-0 mt-0.5">{item.num}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-slate-200 text-xs font-medium">{item.title}</p>
+                  <p className="text-slate-500 text-[10px] mt-0.5 leading-relaxed">{item.desc}</p>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-slate-200 text-sm font-medium">{item.title}</p>
-                  <p className="text-slate-500 text-xs mt-0.5">{item.desc}</p>
-                </div>
-                <span className="text-slate-600 text-xs flex-shrink-0">{item.status}</span>
+                <span className="text-[10px] text-slate-400 flex-shrink-0 whitespace-nowrap">{item.status}</span>
               </div>
             ))}
           </div>
@@ -181,139 +178,850 @@ export function DataDashboard({ signageTypes, synonyms, designers, eventHistory,
   )
 }
 
-function SignageTab({ data }: { data: SignageType[] }) {
-  if (data.length === 0) return <EmptyState message="Supabase migration_v5 실행 후 데이터가 표시됩니다" />
+// ── 탭 컴포넌트 ────────────────────────────────────────────────
+function OverviewTab({ eventStats }: { eventStats: ReturnType<typeof computeEventStats> }) {
+  const yearEntries = Object.entries(eventStats.byYear).sort(([a], [b]) => Number(b) - Number(a))
+  const tagEntries = Object.entries(eventStats.byTag).sort(([, a], [, b]) => b - a)
+  const venueEntries = Object.entries(eventStats.byVenue).sort(([, a], [, b]) => b - a).slice(0, 8)
+
   return (
-    <table className="w-full text-xs">
-      <thead>
-        <tr className="border-b border-slate-800">
-          {['이름', '규격(mm)', '기본 재질', '카테고리'].map(h => (
-            <th key={h} className="text-left text-slate-500 font-medium px-4 py-3">{h}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {data.map(row => (
-          <tr key={row.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-            <td className="px-4 py-2.5 text-slate-200 font-medium">{row.name}</td>
-            <td className="px-4 py-2.5 text-slate-400">{row.width_mm} × {row.height_mm}</td>
-            <td className="px-4 py-2.5 text-slate-400">{row.material_default ?? '—'}</td>
-            <td className="px-4 py-2.5 text-slate-500">{row.category ?? '—'}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div className="p-5 space-y-5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Block title="연도별 행사 분포">
+          <div className="space-y-1.5">
+            {yearEntries.map(([year, count]) => (
+              <BarRow key={year} label={`${year}년`} count={count} max={eventStats.total} color="bg-indigo-500" />
+            ))}
+          </div>
+        </Block>
+        <Block title="분류 태그">
+          <div className="space-y-1.5">
+            {tagEntries.map(([tag, count]) => (
+              <BarRow
+                key={tag} label={tag} count={count} max={eventStats.total}
+                color={tag === '핵심' ? 'bg-amber-500' : tag === '미분류' ? 'bg-slate-500' : tag === '해외' ? 'bg-violet-500' : 'bg-emerald-500'}
+              />
+            ))}
+          </div>
+        </Block>
+        <Block title="자주 쓰인 행사장 TOP 8">
+          <div className="space-y-1.5">
+            {venueEntries.map(([venue, count]) => (
+              <BarRow key={venue} label={venue} count={count} max={eventStats.total} color="bg-sky-500" />
+            ))}
+          </div>
+        </Block>
+      </div>
+
+      <div className="bg-slate-800/40 rounded-lg p-4 text-xs text-slate-400 leading-relaxed border border-slate-800">
+        <strong className="text-slate-200">현재 데이터 출처:</strong> {' '}
+        <code className="text-slate-300">참고자료/환경장식물 행사별/</code> 폴더 직접 매핑 (54건) +
+        <code className="text-slate-300"> Ezpmp_수행실적리스트_20260506.xlsx</code> 메타.
+        분석(엑셀 파싱 + 이미지 카테고리화)은 명세 8장 2단계에서 자동화 예정.
+      </div>
+    </div>
   )
 }
 
-function SynonymsTab({ data }: { data: Synonym[] }) {
-  if (data.length === 0) return <EmptyState message="Supabase migration_v5 실행 후 데이터가 표시됩니다" />
+function SignageTab() {
   return (
-    <table className="w-full text-xs">
-      <thead>
-        <tr className="border-b border-slate-800">
-          {['별칭 (alias)', '표준명 (canonical)', '비고'].map(h => (
-            <th key={h} className="text-left text-slate-500 font-medium px-4 py-3">{h}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {data.map(row => (
-          <tr key={row.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-            <td className="px-4 py-2.5 text-amber-400">{row.alias}</td>
-            <td className="px-4 py-2.5 text-slate-200 flex items-center gap-1.5">
-              <ChevronRight className="w-3 h-3 text-slate-600" />
-              {row.canonical_name}
-            </td>
-            <td className="px-4 py-2.5 text-slate-500">{row.note ?? '—'}</td>
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-slate-800 bg-slate-900/60">
+            {['이름', '규격(mm)', '레이아웃', '기본 재질', '카테고리'].map(h => (
+              <th key={h} className="text-left text-slate-500 font-medium px-4 py-3 whitespace-nowrap">{h}</th>
+            ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {SEED_SIGNAGE_TYPES.map(s => (
+            <tr key={s.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+              <td className="px-4 py-2.5 text-slate-200 font-medium">{s.name}</td>
+              <td className="px-4 py-2.5 text-slate-400 font-mono">{s.width_mm} × {s.height_mm}</td>
+              <td className="px-4 py-2.5">
+                <span className={`text-[10px] px-1.5 py-0.5 rounded ${s.layout === '세로' ? 'bg-violet-900/50 text-violet-300' : s.layout === '가로' ? 'bg-blue-900/50 text-blue-300' : 'bg-slate-700 text-slate-300'}`}>
+                  {s.layout}
+                </span>
+              </td>
+              <td className="px-4 py-2.5 text-slate-400">{s.default_material}</td>
+              <td className="px-4 py-2.5 text-slate-500">{s.category}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
-function VenuesTab({ data }: { data: VenueInfo[] }) {
-  if (data.length === 0) return <EmptyState message="Supabase migration_v5 실행 후 데이터가 표시됩니다" />
+function SynonymsTab({ search }: { search: string }) {
+  const filtered = SEED_SYNONYMS.filter(s =>
+    !search.trim() || s.alias.includes(search) || s.canonical_name.includes(search)
+  )
   return (
-    <table className="w-full text-xs">
-      <thead>
-        <tr className="border-b border-slate-800">
-          {['행사장명', '지역', '유형', '주소', '비고'].map(h => (
-            <th key={h} className="text-left text-slate-500 font-medium px-4 py-3">{h}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {data.map(row => (
-          <tr key={row.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-            <td className="px-4 py-2.5 text-slate-200 font-medium">{row.name}</td>
-            <td className="px-4 py-2.5 text-slate-400">{row.region ?? '—'}</td>
-            <td className="px-4 py-2.5 text-slate-400">{row.venue_type ?? '—'}</td>
-            <td className="px-4 py-2.5 text-slate-500 max-w-[200px] truncate">{row.address ?? '—'}</td>
-            <td className="px-4 py-2.5 text-slate-600">{row.note ?? '—'}</td>
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-slate-800 bg-slate-900/60">
+            {['별칭 (alias)', '표준명 (canonical)', '비고'].map(h => (
+              <th key={h} className="text-left text-slate-500 font-medium px-4 py-3">{h}</th>
+            ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {filtered.length === 0 ? (
+            <tr><td colSpan={3} className="px-4 py-8 text-center text-slate-600">일치 없음</td></tr>
+          ) : filtered.map((s, i) => (
+            <tr key={i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+              <td className="px-4 py-2.5 text-amber-400">{highlight(s.alias, search)}</td>
+              <td className="px-4 py-2.5 text-slate-200 flex items-center gap-1.5">
+                <ChevronRight className="w-3 h-3 text-slate-600" />
+                {highlight(s.canonical_name, search)}
+              </td>
+              <td className="px-4 py-2.5 text-slate-500">{s.note ?? '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
-function DesignersTab({ data }: { data: Designer[] }) {
-  if (data.length === 0) return <EmptyState message="Supabase migration_v5 실행 후 데이터가 표시됩니다" />
+function VenuesTab({ search }: { search: string }) {
+  const filtered = VENUE_LIST.filter(v =>
+    !search.trim() || v.displayName.includes(search) || v.region.includes(search) || v.type.includes(search)
+  )
   return (
-    <table className="w-full text-xs">
-      <thead>
-        <tr className="border-b border-slate-800">
-          {['이름', '업체명', '비고'].map(h => (
-            <th key={h} className="text-left text-slate-500 font-medium px-4 py-3">{h}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {data.map(row => (
-          <tr key={row.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-            <td className="px-4 py-2.5 text-slate-200 font-medium">{row.name}</td>
-            <td className="px-4 py-2.5 text-slate-400">{row.company ?? '—'}</td>
-            <td className="px-4 py-2.5 text-slate-500">{row.note ?? '—'}</td>
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-slate-800 bg-slate-900/60">
+            {['행사장명', '지역', '유형', '샘플 보유'].map(h => (
+              <th key={h} className="text-left text-slate-500 font-medium px-4 py-3">{h}</th>
+            ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {filtered.map(v => (
+            <tr key={v.key} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+              <td className="px-4 py-2.5 text-slate-200 font-medium">{v.displayName}</td>
+              <td className="px-4 py-2.5 text-slate-400">{v.region}</td>
+              <td className="px-4 py-2.5">
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700/60 text-slate-300">{v.type}</span>
+              </td>
+              <td className="px-4 py-2.5">
+                {v.hasSamples
+                  ? <span className="text-emerald-400 text-[10px]">✓ 폴더 있음</span>
+                  : <span className="text-slate-600 text-[10px]">—</span>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
-function EventsTab({ data }: { data: EventHistory[] }) {
-  if (data.length === 0) return <EmptyState message="Supabase migration_v5 실행 후 데이터가 표시됩니다" />
+function EventsTab({ search }: { search: string }) {
+  // 폴더 행사 이력 + 수행실적 매핑 (프로젝트 코드 기준)
+  const perfByCode = new Map(SEED_PERFLIST.map(p => [p.code, p]))
+  const filtered = SEED_EVENT_HISTORY.filter(e =>
+    !search.trim() ||
+    e.project_name.includes(search) ||
+    (e.project_code ?? '').includes(search) ||
+    e.venue.includes(search) ||
+    String(e.year ?? '').includes(search) ||
+    (e.project_code && perfByCode.get(e.project_code)?.client.includes(search)) ||
+    (e.project_code && perfByCode.get(e.project_code)?.pm_team.includes(search))
+  )
   return (
-    <table className="w-full text-xs">
-      <thead>
-        <tr className="border-b border-slate-800">
-          {['행사명', 'PM 부서', '연도', '행사장', '발주처', '행사 유형'].map(h => (
-            <th key={h} className="text-left text-slate-500 font-medium px-4 py-3">{h}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {data.map(row => (
-          <tr key={row.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-            <td className="px-4 py-2.5 text-slate-200 font-medium max-w-[180px] truncate">{row.project_name}</td>
-            <td className="px-4 py-2.5 text-slate-400">{row.pm_dept ?? '—'}</td>
-            <td className="px-4 py-2.5 text-slate-400">{row.year ?? '—'}</td>
-            <td className="px-4 py-2.5 text-slate-400">{row.venue ?? '—'}</td>
-            <td className="px-4 py-2.5 text-slate-400">{row.client ?? '—'}</td>
-            <td className="px-4 py-2.5 text-slate-500">{row.event_type ?? '—'}</td>
+    <div className="overflow-x-auto max-h-[560px] overflow-y-auto">
+      <table className="w-full text-xs">
+        <thead className="sticky top-0 z-10">
+          <tr className="border-b border-slate-800 bg-slate-900">
+            {['행사명', '코드', '연도', '행사장', '발주처', 'PM 부서', '분류', '자료'].map(h => (
+              <th key={h} className="text-left text-slate-500 font-medium px-3 py-3 whitespace-nowrap">{h}</th>
+            ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {filtered.length === 0 ? (
+            <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-600">일치 없음</td></tr>
+          ) : filtered.map((e, i) => {
+            const perf = e.project_code ? perfByCode.get(e.project_code) : null
+            return (
+              <tr key={i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                <td className="px-3 py-2.5 text-slate-200 font-medium max-w-[230px] truncate" title={e.project_name}>{e.project_name}</td>
+                <td className="px-3 py-2.5 text-slate-400 font-mono text-[10px]">{e.project_code ?? '—'}</td>
+                <td className="px-3 py-2.5 text-slate-400">{e.year ?? '—'}</td>
+                <td className="px-3 py-2.5 text-slate-400 max-w-[150px] truncate text-[10px]" title={e.venue}>{e.venue}</td>
+                <td className="px-3 py-2.5 max-w-[140px] truncate text-[10px]" title={perf?.client}>
+                  {perf
+                    ? <span className="text-fuchsia-300">{perf.client}</span>
+                    : <span className="text-slate-700">—</span>}
+                </td>
+                <td className="px-3 py-2.5 text-[10px]">
+                  {perf
+                    ? <span className="text-rose-300">{perf.pm_team}</span>
+                    : <span className="text-slate-700">—</span>}
+                </td>
+                <td className="px-3 py-2.5">
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                    e.category_tag === '핵심' ? 'bg-amber-900/50 text-amber-300' :
+                    e.category_tag === '해외' ? 'bg-violet-900/50 text-violet-300' :
+                    e.category_tag === '미분류' ? 'bg-slate-700 text-slate-400' :
+                    'bg-emerald-900/40 text-emerald-300'
+                  }`}>{e.category_tag}</span>
+                </td>
+                <td className="px-3 py-2.5">
+                  <div className="flex items-center gap-1">
+                    {e.has_excel && <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-900/40 text-emerald-300">XLSX</span>}
+                    {e.has_image && <span className="text-[9px] px-1 py-0.5 rounded bg-indigo-900/40 text-indigo-300">시안</span>}
+                    {perf && <span className="text-[9px] px-1 py-0.5 rounded bg-sky-900/40 text-sky-300" title="수행실적 매핑됨">매칭</span>}
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
-function EmptyState({ message }: { message: string }) {
+function CategoriesTab() {
   return (
-    <div className="py-16 text-center">
-      <p className="text-slate-600 text-sm">{message}</p>
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-slate-800 bg-slate-900/60">
+            {['행사 분류', '권장 환경장식물', '메모'].map(h => (
+              <th key={h} className="text-left text-slate-500 font-medium px-4 py-3">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {SEED_EVENT_CATEGORIES.map(c => {
+            const recommended = c.recommended_signage_keys
+              .map(k => SEED_SIGNAGE_TYPES.find(s => s.id === k)?.name)
+              .filter(Boolean)
+            return (
+              <tr key={c.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                <td className="px-4 py-2.5 text-slate-200 font-medium">{c.label}</td>
+                <td className="px-4 py-2.5">
+                  <div className="flex flex-wrap gap-1">
+                    {recommended.map(name => (
+                      <span key={name} className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-900/40 text-indigo-300">{name}</span>
+                    ))}
+                  </div>
+                </td>
+                <td className="px-4 py-2.5 text-slate-500">{c.note}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function MaterialsTab() {
+  const dist = SEED_SIGNAGE_ANALYSIS.material_distribution
+  const max = Math.max(...dist.map(d => d.count), 1)
+  return (
+    <div className="p-5 space-y-5">
+      {/* 표준 종류별 기본 재질 */}
+      <div>
+        <h3 className="text-slate-200 text-sm font-semibold mb-3">표준 환경장식물별 기본 재질 (명세 6.1.b.iv)</h3>
+        <div className="overflow-x-auto -mx-5 px-5">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-slate-800 bg-slate-900/60">
+                {['환경장식물', '주 재질 (시스템 기본값)', '대체 재질', '실측 출현'].map(h => (
+                  <th key={h} className="text-left text-slate-500 font-medium px-4 py-3">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {SEED_MATERIAL_DEFAULTS.map(m => {
+                const realCount = dist.find(d => d.material === m.primary_material)?.count ?? 0
+                return (
+                  <tr key={m.signage_type_id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                    <td className="px-4 py-2.5 text-slate-200 font-medium">{m.signage_name}</td>
+                    <td className="px-4 py-2.5 text-slate-300">{m.primary_material}</td>
+                    <td className="px-4 py-2.5 text-slate-500">
+                      {m.alternative_materials.length > 0 ? m.alternative_materials.join(', ') : '— (분석 후 추가)'}
+                    </td>
+                    <td className="px-4 py-2.5 text-[10px]">
+                      {realCount > 0
+                        ? <span className="text-violet-300">{realCount}건 폴더 분석에서 발견</span>
+                        : <span className="text-slate-700 italic">미발견</span>}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 실측 분포 */}
+      <div>
+        <h3 className="text-slate-200 text-sm font-semibold mb-3">실측 재질 분포 — 폴더 엑셀 281건 분석</h3>
+        <div className="bg-slate-800/40 border border-slate-800 rounded-lg p-4">
+          <div className="space-y-2">
+            {dist.map(m => (
+              <div key={m.material}>
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-slate-300 text-xs font-medium">{m.material}</span>
+                  <span className="text-slate-500 text-[10px]">{m.count}건 ({m.pct}%)</span>
+                </div>
+                <div className="bg-slate-900 rounded h-1.5 overflow-hidden">
+                  <div className="h-full bg-violet-500" style={{ width: `${(m.count / max) * 100}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-slate-600 text-[10px] mt-3 leading-relaxed">
+            ※ "X-배너", "현수막"이 재질 컬럼에 들어간 케이스는 환경장식물 종류명 → 재질 정규화 룰 마련 필요.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DesignersTab() {
+  return (
+    <div className="space-y-4 p-5">
+      <div className="bg-amber-950/20 border border-amber-900/40 rounded-lg p-3 flex items-start gap-2 text-xs">
+        <AlertCircle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+        <div className="text-amber-200/80">
+          <strong className="text-amber-300">명세 6.1.b.iii</strong> — 디자인 업체 정보가 거의 없으므로
+          현재는 <strong>업체명만 DB화</strong>. 평균 납기 준수율·수정 발생률·평균 수정 횟수·컴펌 소요 일수는
+          향후 행사별 폴더 엑셀 파싱 후 자동 산출.
+        </div>
+      </div>
+      <div className="overflow-x-auto -mx-5 px-5">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-slate-800 bg-slate-900/60">
+              {['업체명', '납기 준수율', '수정 발생률', '평균 수정 횟수', '컴펌 평균 (일)', '비고'].map(h => (
+                <th key={h} className="text-left text-slate-500 font-medium px-4 py-3 whitespace-nowrap">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {SEED_DESIGNERS.map((d, i) => (
+              <tr key={i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                <td className="px-4 py-2.5 text-slate-200 font-medium">{d.name}</td>
+                <td className="px-4 py-2.5 text-slate-500">{d.delivery_compliance_rate ?? '—'}</td>
+                <td className="px-4 py-2.5 text-slate-500">{d.revision_rate ?? '—'}</td>
+                <td className="px-4 py-2.5 text-slate-500">{d.avg_revision_count ?? '—'}</td>
+                <td className="px-4 py-2.5 text-slate-500">{d.avg_confirm_days ?? '—'}</td>
+                <td className="px-4 py-2.5 text-slate-600 text-[10px]">{d.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function LeadTimeTab() {
+  return (
+    <div className="p-5">
+      <div className="bg-amber-950/20 border border-amber-900/30 rounded-lg p-4 mb-4">
+        <div className="flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+          <div className="text-xs">
+            <p className="text-amber-300 font-semibold mb-1">컬럼 조사 결과 — 발주 프로세스 일정 데이터 부재</p>
+            <p className="text-amber-200/80 leading-relaxed">
+              <code className="text-amber-100">scripts/probe_excel_columns.mjs</code>로 폴더 엑셀 6개 컬럼 조사 결과:
+              <strong className="text-amber-100"> 세팅일·철거일·사용기간만 존재, 시안 발주일·컨펌일·출력 발주일 없음</strong>.
+              납기 소요일 패턴(D-N 발주/검수/수정/확정)은 명세 6.2.3 "향후 데이터(4P 라이프사이클)" 누적 후 가능.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div className="bg-slate-800/40 border border-slate-700/50 rounded-lg p-5">
+        <div className="flex items-center gap-2 mb-2">
+          <Truck className="w-4 h-4 text-slate-400" />
+          <h3 className="text-slate-200 text-sm font-semibold">납기 패턴 — 분석 자동화 예정</h3>
+        </div>
+        <p className="text-slate-500 text-xs leading-relaxed mb-4">
+          명세 6.1.b.v + 6.2.3 — PM 부서·디자인 업체·행사장별로 평균 D-N 발주/검토/수정/확정 일수를 산출.
+          현재 자료에는 행사 일정(세팅·철거)만 있어 산출 불가. 향후 본 앱의 워크플로우(발주→시안→수정→확정)
+          데이터가 누적되면 자동 계산 진입.
+        </p>
+        {SEED_LEAD_TIME.length === 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[
+              { scope: 'PM 부서별',     desc: '부서명 → 평균 발주·확정 D-N 패턴' },
+              { scope: '디자인 업체별', desc: '업체명 → 평균 시안 컴펌·수정 일수' },
+              { scope: '행사장별',     desc: '행사장 → 표준 제작물 수량·납기 패턴' },
+            ].map(p => (
+              <div key={p.scope} className="bg-slate-900/60 border border-slate-800 rounded p-3">
+                <p className="text-slate-300 text-xs font-medium">{p.scope}</p>
+                <p className="text-slate-600 text-[10px] mt-1 leading-relaxed">{p.desc}</p>
+                <p className="text-slate-700 text-[9px] mt-2 italic">분석 진입 후 자동 산출</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-slate-800">
+                {['범위', '대상', 'D-발주', 'D-검수', 'D-수정', 'D-확정', '샘플'].map(h => (
+                  <th key={h} className="text-left text-slate-500 font-medium px-3 py-2">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {SEED_LEAD_TIME.map((l, i) => (
+                <tr key={i} className="border-b border-slate-800/50">
+                  <td className="px-3 py-2 text-slate-300">{l.scope_type}</td>
+                  <td className="px-3 py-2 text-slate-200">{l.scope_value}</td>
+                  <td className="px-3 py-2 text-slate-400">{l.avg_d_to_order ?? '—'}</td>
+                  <td className="px-3 py-2 text-slate-400">{l.avg_d_to_review ?? '—'}</td>
+                  <td className="px-3 py-2 text-slate-400">{l.avg_d_to_revision ?? '—'}</td>
+                  <td className="px-3 py-2 text-slate-400">{l.avg_d_to_confirm ?? '—'}</td>
+                  <td className="px-3 py-2 text-slate-600">{l.sample_count}건</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── 실측 분석 탭 (명세 6.1.b.iii.3 + 6.1.b.iv) ─────────────────
+function AnalysisTab() {
+  const a = SEED_SIGNAGE_ANALYSIS
+  const matMax = Math.max(...a.material_distribution.map(m => m.count), 1)
+  const sizeMax = Math.max(...a.non_standard_sizes.map(s => s.count), 1)
+
+  return (
+    <div className="p-5 space-y-5">
+      {/* 핵심 발견 */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-emerald-950/20 border border-emerald-900/40 rounded-lg p-4">
+          <p className="text-emerald-300 text-xs font-semibold mb-1">분석 행사 / 제작물</p>
+          <p className="text-2xl font-bold text-emerald-400">{a.parsed_events} / <span className="text-3xl">{a.total_items}</span></p>
+          <p className="text-emerald-500/60 text-[10px] mt-1">행사별 폴더의 제작물리스트 엑셀 직접 파싱</p>
+        </div>
+        <div className="bg-amber-950/20 border border-amber-900/40 rounded-lg p-4">
+          <p className="text-amber-300 text-xs font-semibold mb-1">비표준 규격 비율</p>
+          <p className="text-2xl font-bold text-amber-400">{a.non_standard_pct}%</p>
+          <p className="text-amber-500/60 text-[10px] mt-1">전체 {a.total_items}건 중 {a.non_standard_total}건 (표준 11종 외)</p>
+        </div>
+        <div className="bg-violet-950/20 border border-violet-900/40 rounded-lg p-4">
+          <p className="text-violet-300 text-xs font-semibold mb-1">실측 재질 종류</p>
+          <p className="text-2xl font-bold text-violet-400">{a.material_distribution.length}종</p>
+          <p className="text-violet-500/60 text-[10px] mt-1">상위: {a.material_distribution.slice(0, 3).map(m => m.material).join(' · ')}</p>
+        </div>
+      </div>
+
+      {/* 명세 6.1.b.iii.3 답변 */}
+      <div className="bg-rose-950/20 border border-rose-900/30 rounded-lg p-4">
+        <div className="flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+          <div className="text-xs">
+            <p className="text-rose-300 font-semibold mb-1">명세 6.1.b.iii.3 결론 — 비표준 규격 다수 여부</p>
+            <p className="text-rose-200/80 leading-relaxed">
+              <strong className="text-rose-100">답: 다수 — 분석 대상의 약 37%가 표준 11종 외</strong>.
+              자주 등장하는 비표준 규격(510×740·100×125·700×150·950×2300 등)은 명패·큐사인·바닥 스티커 등으로 추정.
+              표준 환경장식물 종류에 추가 편입 검토 필요. 향후 사용 빈도 추이 확인 후 결정 권장.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 두 패널 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* 재질 분포 */}
+        <div className="bg-slate-800/40 border border-slate-800 rounded-lg p-4">
+          <h3 className="text-slate-200 text-sm font-semibold mb-3 flex items-center gap-1.5">
+            <FolderOpen className="w-3.5 h-3.5 text-violet-400" />
+            실측 재질 분포 (명세 6.1.b.iv)
+          </h3>
+          <div className="space-y-2">
+            {a.material_distribution.map(m => (
+              <div key={m.material}>
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-slate-300 text-xs font-medium">{m.material}</span>
+                  <span className="text-slate-500 text-[10px]">{m.count}건 ({m.pct}%)</span>
+                </div>
+                <div className="bg-slate-900 rounded h-1.5 overflow-hidden">
+                  <div className="h-full bg-violet-500" style={{ width: `${(m.count / matMax) * 100}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-slate-600 text-[10px] mt-3 leading-relaxed">
+            ※ "X-배너", "현수막"이 재질 컬럼에 들어간 케이스는 환경장식물 종류로 표기된 것 — 추후 정규화 필요.
+          </p>
+        </div>
+
+        {/* 비표준 규격 TOP 17 */}
+        <div className="bg-slate-800/40 border border-slate-800 rounded-lg p-4">
+          <h3 className="text-slate-200 text-sm font-semibold mb-3 flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+            비표준 규격 TOP 17 (명세 6.1.b.iii.3)
+          </h3>
+          <div className="space-y-1">
+            {a.non_standard_sizes.map(s => (
+              <div key={s.size} className="flex items-center gap-2 text-[11px]">
+                <span className="text-slate-300 font-mono w-24 flex-shrink-0">{s.size}</span>
+                <div className="flex-1 bg-slate-900 rounded h-1.5 overflow-hidden">
+                  <div className="h-full bg-amber-500" style={{ width: `${(s.count / sizeMax) * 100}%` }} />
+                </div>
+                <span className="text-slate-500 w-7 text-right text-[10px] flex-shrink-0">{s.count}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-slate-600 text-[10px] mt-3 leading-relaxed">
+            데이터 출처: <code className="text-slate-400">scripts/parse_signage_lists.mjs</code> 일괄 파싱
+          </p>
+        </div>
+      </div>
+
+      {/* 비표준 규격 → 표준 종류 매핑 룰 (신규) */}
+      <div className="bg-slate-800/40 border border-slate-800 rounded-lg p-4">
+        <h3 className="text-slate-200 text-sm font-semibold mb-3 flex items-center gap-1.5">
+          <ChevronRight className="w-3.5 h-3.5 text-emerald-400" />
+          비표준 규격 → 표준 종류 매핑 룰 (적용됨)
+        </h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-slate-800">
+                {['비표준 규격', '출현', '추정 종류', '카테고리', '근접 표준', '비고'].map(h => (
+                  <th key={h} className="text-left text-slate-500 font-medium px-2 py-1.5 whitespace-nowrap text-[10px]">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {NON_STANDARD_MAPPINGS.map(m => {
+                const std = m.closest_standard ? SEED_SIGNAGE_TYPES.find(s => s.id === m.closest_standard)?.name : null
+                return (
+                  <tr key={m.size} className="border-b border-slate-800/40 hover:bg-slate-800/30">
+                    <td className="px-2 py-1.5 text-slate-300 font-mono text-[10px]">{m.size}</td>
+                    <td className="px-2 py-1.5 text-slate-500 text-[10px]">{m.count}건</td>
+                    <td className="px-2 py-1.5 text-slate-300 text-[10px]">{m.inferred_type}</td>
+                    <td className="px-2 py-1.5">
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded ${
+                        m.inferred_category === '데이터 오류' ? 'bg-rose-900/40 text-rose-300' :
+                        m.inferred_category === '디스플레이' ? 'bg-sky-900/40 text-sky-300' :
+                        'bg-emerald-900/40 text-emerald-300'
+                      }`}>{m.inferred_category}</span>
+                    </td>
+                    <td className="px-2 py-1.5 text-emerald-300 text-[10px]">{std ?? <span className="text-slate-700">—</span>}</td>
+                    <td className="px-2 py-1.5 text-slate-600 text-[10px] max-w-[200px] truncate" title={m.note}>{m.note}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-slate-600 text-[10px] mt-2 leading-relaxed">
+          ※ <code className="text-slate-400">suggestStandardType(w, h)</code> 함수로 임의 규격에도 룰 기반 fallback 매핑 가능 (lib/data/dashboardSeed.ts).
+        </p>
+      </div>
+
+      {/* 다음 단계 */}
+      <div className="bg-slate-900/40 border border-slate-800 rounded-lg p-4">
+        <p className="text-slate-300 text-xs font-semibold mb-2">분석 자동화 다음 단계</p>
+        <ul className="text-[11px] text-slate-500 space-y-1 leading-relaxed">
+          <li>• ✅ 비표준 규격 → 표준 종류 매핑 룰 (위 표 + suggestStandardType 함수)</li>
+          <li>• 재질 분포 → 환경장식물 종류별 기본 재질 자동 산출 (현재는 단일 기본값)</li>
+          <li>• 발주일·납기일 컬럼 파싱 → 명세 6.1.b.v 납기 패턴 — <strong>데이터 부재로 4P 라이프사이클 누적 후</strong></li>
+          <li>• 행사장별 typicalItemCount → venueIntel.ts 적용됨 (컨벤션 30~50, 호텔 20~25)</li>
+          <li>• 환경장식물 별 공통 양식 (객체 위치/크기) — 명세 6.1.b.ii — Gemini Vision 이미지 분석 (2단계)</li>
+        </ul>
+      </div>
+    </div>
+  )
+}
+
+// ── PM 사업부·부서 탭 (명세 6.2.1) ─────────────────────────────
+function PmTab({ search }: { search: string }) {
+  const allGroups = computePmGrouping()
+  const groups = !search.trim()
+    ? allGroups
+    : allGroups.map(g => ({
+        ...g,
+        teams: g.teams.filter(t =>
+          t.name.includes(search) ||
+          t.pm_names.some(n => n.includes(search)) ||
+          g.division.includes(search)
+        )
+      })).filter(g => g.teams.length > 0)
+  return (
+    <div className="p-5 space-y-4">
+      <div className="bg-rose-950/20 border border-rose-900/30 rounded-lg p-3 flex items-start gap-2 text-xs text-rose-200/80">
+        <Briefcase className="w-3.5 h-3.5 text-rose-400 flex-shrink-0 mt-0.5" />
+        <div>
+          <strong className="text-rose-300">명세 6.2.1</strong> — PM 사업부·부서별 데이터.
+          향후 부서별 납기 소요일 패턴(D-N 발주/검수/수정/확정) 분석에 활용.
+          현재 17건 매칭 (행사 폴더 ↔ 수행실적 엑셀).
+        </div>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        {groups.map(g => (
+          <div key={g.division} className="bg-slate-800/40 border border-slate-800 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-slate-200 text-sm font-semibold">{g.division}</h3>
+              <span className="text-rose-400 text-xs font-bold">{g.project_count}건</span>
+            </div>
+            <div className="space-y-2">
+              {g.teams.map(t => (
+                <div key={t.name} className="bg-slate-900/60 rounded p-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-300 text-xs font-medium">{t.name}</span>
+                    <span className="text-slate-500 text-[10px]">{t.project_count}건</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {t.pm_names.map(n => (
+                      <span key={n} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">{n}</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── 발주처 탭 (명세 6.2.5) ─────────────────────────────────────
+function ClientsTab({ search }: { search: string }) {
+  const all = computeClientStats()
+  const stats = !search.trim()
+    ? all
+    : all.filter(c =>
+        c.client.includes(search) ||
+        c.event_categories.some(ec => ec.includes(search)) ||
+        c.projects.some(p => p.includes(search))
+      )
+  return (
+    <div className="p-5 space-y-4">
+      <div className="bg-fuchsia-950/20 border border-fuchsia-900/30 rounded-lg p-3 flex items-start gap-2 text-xs text-fuchsia-200/80">
+        <Building2 className="w-3.5 h-3.5 text-fuchsia-400 flex-shrink-0 mt-0.5" />
+        <div>
+          <strong className="text-fuchsia-300">명세 6.2.5</strong> — 발주처(클라이언트) 정보.
+          발주처별 유사한 행사 순위 추천 + 의뢰 빈도 추적에 활용.
+        </div>
+      </div>
+      <div className="overflow-x-auto -mx-5 px-5">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-slate-800 bg-slate-900/60">
+              {['발주처', '의뢰 건수', '최근 연도', '주요 행사분류', '대표 프로젝트'].map(h => (
+                <th key={h} className="text-left text-slate-500 font-medium px-4 py-3 whitespace-nowrap">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {stats.map(c => (
+              <tr key={c.client} className="border-b border-slate-800/50 hover:bg-slate-800/30 align-top">
+                <td className="px-4 py-2.5 text-slate-200 font-medium max-w-[200px]">{highlight(c.client, search)}</td>
+                <td className="px-4 py-2.5">
+                  <span className="text-fuchsia-300 font-semibold">{c.project_count}</span>
+                  <span className="text-slate-600 text-[10px] ml-1">건</span>
+                </td>
+                <td className="px-4 py-2.5 text-slate-400">{c.recent_year}</td>
+                <td className="px-4 py-2.5">
+                  <div className="flex flex-wrap gap-1 max-w-[260px]">
+                    {c.event_categories.slice(0, 4).map(cat => {
+                      const mapped = mapEventCategory(cat)
+                      return (
+                        <span
+                          key={cat}
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-fuchsia-900/40 text-fuchsia-300"
+                          title={mapped ? `→ ${mapped.recommendedId} (매칭: ${mapped.matchedTerm})` : '추천 카테고리 매핑 없음'}
+                        >
+                          {highlight(cat, search)}
+                          {mapped && <span className="text-fuchsia-500/70 ml-0.5">→{mapped.recommendedId}</span>}
+                        </span>
+                      )
+                    })}
+                  </div>
+                </td>
+                <td className="px-4 py-2.5 text-slate-500 text-[10px] max-w-[300px] truncate" title={c.projects.join(' · ')}>
+                  {c.projects[0]}
+                  {c.projects.length > 1 && <span className="text-slate-700"> 외 {c.projects.length - 1}건</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// ── 행사분류 통계 탭 (명세 6.2.6) ───────────────────────────────
+function EventCategoryStatsTab({ search }: { search: string }) {
+  const all = computeEventCategoryStats()
+  const stats = !search.trim()
+    ? all
+    : all.filter(s =>
+        s.category.includes(search) ||
+        s.clients.some(c => c.includes(search))
+      )
+  const max = Math.max(...stats.map(s => s.project_count), 1)
+  return (
+    <div className="p-5 space-y-4">
+      <div className="bg-teal-950/20 border border-teal-900/30 rounded-lg p-3 flex items-start gap-2 text-xs text-teal-200/80">
+        <Layers3 className="w-3.5 h-3.5 text-teal-400 flex-shrink-0 mt-0.5" />
+        <div>
+          <strong className="text-teal-300">명세 6.2.6</strong> — 행사분류별 데이터.
+          행사 분류 선택 시 해당 환경장식물을 자동 선택 상태로 제공할 예정.
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {stats.map(s => (
+          <div key={s.category} className="bg-slate-800/40 border border-slate-800 rounded-lg p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-slate-200 text-sm font-medium">{s.category}</span>
+              <span className="text-teal-300 text-xs font-bold">{s.project_count}건</span>
+            </div>
+            <div className="bg-slate-900 rounded h-1.5 overflow-hidden mb-2">
+              <div className="h-full bg-teal-500" style={{ width: `${(s.project_count / max) * 100}%` }} />
+            </div>
+            <p className="text-slate-500 text-[10px]">
+              주요 발주처: <span className="text-slate-400">{s.clients.slice(0, 3).join(', ')}{s.clients.length > 3 && ` 외 ${s.clients.length - 3}곳`}</span>
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── 레이아웃 DNA 탭 (명세 6.1.b.ii) ─────────────────────────────
+function LayoutDnaTab() {
+  return (
+    <div className="p-5 space-y-5">
+      <div className="bg-violet-950/20 border border-violet-900/30 rounded-lg p-3 flex items-start gap-2 text-xs text-violet-200/80">
+        <Layers3 className="w-3.5 h-3.5 text-violet-400 flex-shrink-0 mt-0.5" />
+        <div>
+          <strong className="text-violet-300">명세 6.1.b.ii</strong> — Gemini Vision으로 환경장식물 시안 이미지 분석.
+          {SEED_LAYOUT_DNA.length}개 종류, 총 {SEED_LAYOUT_DNA.reduce((s, d) => s + d.slots.length, 0)}개 슬롯 추출.
+          <code className="text-violet-100 ml-1">scripts/batch_vision_analysis.mjs</code>로 일괄 추가 가능.
+        </div>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {SEED_LAYOUT_DNA.map(dna => (
+          <div key={dna.type_id} className="bg-slate-800/40 border border-slate-800 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-slate-200 text-sm font-semibold">{dna.type_id}</h3>
+              <span className="text-violet-400 text-[10px]">{dna.slots.length} 슬롯 · {dna.dominant_color}</span>
+            </div>
+            <p className="text-slate-500 text-[11px] mb-3 leading-relaxed">{dna.summary}</p>
+
+            {/* 미니 시각화: 0~1000 영역에 슬롯 박스 표시 */}
+            <div className="relative bg-slate-900 border border-slate-800 rounded mb-3 overflow-hidden" style={{ aspectRatio: '1 / 1' }}>
+              {dna.slots.map((s, i) => {
+                const left = (s.box.xmin / 1000) * 100
+                const top = (s.box.ymin / 1000) * 100
+                const w = ((s.box.xmax - s.box.xmin) / 1000) * 100
+                const h = ((s.box.ymax - s.box.ymin) / 1000) * 100
+                const colors: Record<string, string> = {
+                  logo:     'bg-amber-500/30 border-amber-500/60',
+                  title:    'bg-indigo-500/30 border-indigo-500/60',
+                  subtitle: 'bg-sky-500/30 border-sky-500/60',
+                  body:     'bg-emerald-500/30 border-emerald-500/60',
+                  footer:   'bg-slate-500/30 border-slate-500/60',
+                  image:    'bg-violet-500/30 border-violet-500/60',
+                  arrow:    'bg-rose-500/30 border-rose-500/60',
+                  qr:       'bg-fuchsia-500/30 border-fuchsia-500/60',
+                }
+                return (
+                  <div
+                    key={i}
+                    className={`absolute border ${colors[s.role] ?? 'bg-slate-700/30 border-slate-600'} flex items-center justify-center`}
+                    style={{ left: `${left}%`, top: `${top}%`, width: `${w}%`, height: `${h}%` }}
+                    title={`${s.label} (${s.role})`}
+                  >
+                    <span className="text-[8px] text-slate-200 truncate px-0.5">{s.label}</span>
+                  </div>
+                )
+              })}
+            </div>
+
+            <p className="text-slate-600 text-[10px] leading-relaxed">
+              <strong className="text-slate-400">패턴:</strong> {dna.layout_pattern}
+            </p>
+            <p className="text-slate-700 text-[9px] mt-1 truncate" title={dna.source_file}>
+              출처: {dna.source_file}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* 역할 색상 범례 */}
+      <div className="bg-slate-900/40 border border-slate-800 rounded-lg p-3 flex items-center gap-3 flex-wrap text-[10px]">
+        <span className="text-slate-500 font-semibold">역할 색상:</span>
+        {[
+          { role: 'logo', color: 'bg-amber-500/60', label: '로고' },
+          { role: 'title', color: 'bg-indigo-500/60', label: '타이틀' },
+          { role: 'subtitle', color: 'bg-sky-500/60', label: '부제' },
+          { role: 'body', color: 'bg-emerald-500/60', label: '본문' },
+          { role: 'image', color: 'bg-violet-500/60', label: '이미지' },
+          { role: 'arrow', color: 'bg-rose-500/60', label: '화살표' },
+          { role: 'qr', color: 'bg-fuchsia-500/60', label: 'QR' },
+          { role: 'footer', color: 'bg-slate-500/60', label: '푸터' },
+        ].map(r => (
+          <span key={r.role} className="flex items-center gap-1">
+            <span className={`w-3 h-3 rounded ${r.color}`} />
+            <span className="text-slate-400">{r.label}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// 검색 하이라이트 헬퍼
+function highlight(text: string, query: string) {
+  if (!query.trim()) return text
+  const idx = text.toLowerCase().indexOf(query.toLowerCase())
+  if (idx === -1) return text
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-amber-500/30 text-amber-200 px-0.5 rounded">{text.slice(idx, idx + query.length)}</mark>
+      {text.slice(idx + query.length)}
+    </>
+  )
+}
+
+// ── 공통 UI ────────────────────────────────────────────────────
+function Block({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-slate-800/40 border border-slate-800 rounded-lg p-4">
+      <p className="text-slate-300 text-xs font-semibold mb-3">{title}</p>
+      {children}
+    </div>
+  )
+}
+
+function BarRow({ label, count, max, color }: { label: string; count: number; max: number; color: string }) {
+  const pct = max > 0 ? (count / max) * 100 : 0
+  return (
+    <div className="flex items-center gap-2 text-[10px]">
+      <span className="text-slate-400 w-20 truncate flex-shrink-0" title={label}>{label}</span>
+      <div className="flex-1 bg-slate-900 rounded h-2 overflow-hidden">
+        <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="text-slate-500 w-7 text-right flex-shrink-0">{count}</span>
     </div>
   )
 }

@@ -2,11 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { ItemSidebar } from './components/ItemSidebar'
 import { EditorGrid } from './components/EditorGrid'
 import { CanvasBoard } from './components/CanvasBoard'
 import { EditorToolbar } from './components/EditorToolbar'
-import { SlotPanel } from './components/SlotPanel'
 import { DEFAULT_SLOTS } from '@/lib/types'
 import type { Project, DesignItem, SlotContent, ContentsMap, SlotStylesMap } from '@/lib/types'
 
@@ -253,6 +251,74 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
     [supabase]
   )
 
+  // ── 제작물 추가 (Grid용) — 종류 선택 시 카테고리·규격·재질 자동 채움 ────
+  const handleAddItem = useCallback(async (preset?: { category: string; width_mm: number; height_mm: number; material: string }) => {
+    const nextNo = String(items.length + 1).padStart(2, '0')
+    const newItem: Partial<DesignItem> = {
+      project_id: project.id,
+      no: nextNo,
+      category: preset?.category ?? '',
+      quantity: 1,
+      width_mm: preset?.width_mm ?? 600,
+      height_mm: preset?.height_mm ?? 1800,
+      material: preset?.material ?? null,
+    }
+    const { data, error } = await supabase.from('design_items').insert(newItem).select().single()
+    if (error || !data) {
+      alert('제작물 추가 실패: ' + (error?.message ?? ''))
+      return
+    }
+    const created = data as DesignItem
+    setItems(prev => [...prev, created])
+    setSelectedItemId(created.id)
+    // 종류가 지정된 경우 — 기본 슬롯도 자동 삽입 (SEED_LAYOUT_DNA 우선)
+    if (preset?.category) {
+      const { insertDefaultSlotsForItem } = await import('@/lib/services/itemService')
+      await insertDefaultSlotsForItem(supabase, created.id, project.id)
+    }
+  }, [items.length, project.id, supabase])
+
+  // ── 제작물 삭제 (Grid용) ──────────────────────────────────
+  const handleDeleteItem = useCallback(async (id: string) => {
+    const target = items.find(i => i.id === id)
+    if (!target) return
+    const ok = window.confirm(`'${target.no ?? ''} ${target.category ?? ''}' 제작물을 삭제할까요?\n관련 슬롯·이미지가 함께 사라지며 되돌릴 수 없습니다.`)
+    if (!ok) return
+    await supabase.from('item_contents').delete().eq('item_id', id)
+    await supabase.from('design_items').delete().eq('id', id)
+    setItems(prev => {
+      const next = prev.filter(i => i.id !== id)
+      if (id === selectedItemId && next.length > 0) setSelectedItemId(next[0].id)
+      return next
+    })
+  }, [items, selectedItemId, supabase])
+
+  // ── 제작물 행 순서 변경 (Grid용) ───────────────────────────
+  const handleReorderItems = useCallback((newOrder: DesignItem[]) => {
+    setItems(newOrder)
+    // 1차: 화면 순서만 변경 (DB 저장은 향후 sort_order 컬럼 추가 후)
+    // localStorage에 순서 저장하면 새로고침 후에도 유지
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`mice_item_order_${project.id}`, JSON.stringify(newOrder.map(i => i.id)))
+    }
+  }, [project.id])
+
+  // 초기 로드 시 localStorage 순서 적용
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const stored = localStorage.getItem(`mice_item_order_${project.id}`)
+    if (!stored) return
+    try {
+      const ids = JSON.parse(stored) as string[]
+      setItems(prev => {
+        const map = new Map(prev.map(i => [i.id, i]))
+        const reordered = ids.map(id => map.get(id)).filter((i): i is DesignItem => !!i)
+        const newIds = prev.filter(i => !ids.includes(i.id))   // 새로 추가된 항목
+        return [...reordered, ...newIds]
+      })
+    } catch {}
+  }, [project.id])
+
   // ── 슬롯 추가 ────────────────────────────────────────────
   const handleSlotAdd = useCallback(
     async (label: string) => {
@@ -463,46 +529,50 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
     alert(`✓ '${current.category}' 마스터로 지정됨.\n${res.propagated}개 제작물에 서식·위치 전파 완료.`)
   }, [items, selectedItemId, supabase])
 
+  // 1차 출시는 좌측 제작물 사이드바 + 우측 구역 설정 패널 없이 제공
+  // 슬롯 관련 핸들러는 향후 구역 설정 재도입 시 사용 (현재 비활성)
+  void handleSlotAdd; void handleSlotDelete; void handleSlotRename
+  void handleSlotStyleUpdate; void handleApplyStyleToAll; void handleInitDefaultSlots
+  void slotPanelOpen; void setSlotPanelOpen
+
   return (
     <div className="h-screen flex flex-col bg-slate-950 overflow-hidden">
       <EditorToolbar
         project={project}
         selectedItem={selectedItem}
         saveStatus={saveStatus}
-        slotPanelOpen={slotPanelOpen}
+        slotPanelOpen={false}
         onItemUpdate={handleItemUpdate}
         onExcelExport={handleExcelExport}
         onPPTExport={handlePPTExport}
         onSinglePPTExport={handleSinglePPTExport}
         onPDFExport={handlePDFExport}
         onSetAsMaster={handleSetAsMaster}
-        onToggleSlotPanel={() => setSlotPanelOpen(v => !v)}
+        onToggleSlotPanel={() => { /* 1차 비활성 */ }}
       />
 
       <div className="flex flex-1 min-h-0">
-        <ItemSidebar
-          items={items}
-          selectedItemId={selectedItemId}
-          onSelect={setSelectedItemId}
-          projectId={project.id}
-          onItemsChange={setItems}
-        />
+        {/* 좌측 제작물 사이드바 — 1차 제거됨 (향후 추가 진행 예정) */}
+        {/* 우측 구역 설정 패널 — 1차 제거됨 (향후 추가 진행 예정) */}
 
         <div className="flex-1 flex flex-col min-w-0">
-          {/* 데이터 그리드 — 40% */}
-          <div className="h-[40%] border-b border-slate-800 overflow-hidden">
+          {/* 데이터 그리드 — 50% (사이드바 제거로 비중 ↑) */}
+          <div className="h-[50%] border-b border-slate-800 overflow-hidden">
             <EditorGrid
               items={items}
               allContents={allContents}
               selectedItemId={selectedItemId}
               onSelectItem={setSelectedItemId}
               onUpdateItem={updateItem}
+              onAddItem={handleAddItem}
+              onDeleteItem={handleDeleteItem}
+              onReorderItems={handleReorderItems}
               isLoading={isLoading}
             />
           </div>
 
-          {/* 디자인 캔버스 — 60% */}
-          <div className="h-[60%]">
+          {/* 디자인 캔버스 — 50% */}
+          <div className="h-[50%]">
             <CanvasBoard
               item={selectedItem}
               contents={contents}
@@ -510,27 +580,10 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
               selectedSlotKey={selectedSlotKey}
               onUpdate={updateSlot}
               onSlotSelect={setSelectedSlotKey}
-              onSlotPanelOpen={() => setSlotPanelOpen(true)}
+              onSlotPanelOpen={() => { /* 1차 비활성 */ }}
             />
           </div>
         </div>
-
-        {/* 슬롯 패널 */}
-        {slotPanelOpen && (
-          <SlotPanel
-            contents={contents}
-            selectedSlotKey={selectedSlotKey}
-            selectedItemId={selectedItemId}
-            projectId={project.id}
-            onSlotSelect={setSelectedSlotKey}
-            onSlotAdd={handleSlotAdd}
-            onSlotDelete={handleSlotDelete}
-            onSlotRename={handleSlotRename}
-            onSlotStyleUpdate={handleSlotStyleUpdate}
-            onApplyStyleToAll={handleApplyStyleToAll}
-            onInitDefaultSlots={handleInitDefaultSlots}
-          />
-        )}
       </div>
     </div>
   )

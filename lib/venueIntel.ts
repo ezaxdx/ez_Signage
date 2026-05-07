@@ -23,20 +23,22 @@ export interface VenueInfo {
   specialNotes?: string
 }
 
+// typicalItemCount: 행사별 폴더 8개 / 281개 제작물 분석 결과 평균 ≈ 35건.
+// 컨벤션·전시장은 동선 복잡 → 평균 이상, 호텔·공공시설은 단일 공간 → 평균 이하 가정.
 export const VENUE_LIST: VenueInfo[] = [
-  // 컨벤션센터
-  { key: '코엑스', displayName: '코엑스 (COEX)', region: '서울', type: '컨벤션', hasSamples: true },
-  { key: '킨텍스', displayName: '킨텍스 (KINTEX)', region: '수도권', type: '전시장', hasSamples: true },
-  { key: '송도컨벤시아', displayName: '송도컨벤시아', region: '수도권', type: '컨벤션', hasSamples: true },
-  { key: 'ICC JEJU', displayName: 'ICC JEJU', region: '제주', type: '컨벤션', hasSamples: true },
-  { key: '제주국제컨벤션', displayName: '제주국제컨벤션센터', region: '제주', type: '컨벤션', hasSamples: true },
-  { key: '광주 김대중', displayName: '광주 김대중컨벤션센터', region: '지방', type: '컨벤션', hasSamples: true },
-  { key: 'aT센터', displayName: 'aT센터', region: '서울', type: '컨벤션', hasSamples: true },
-  // 호텔
-  { key: '롯데호텔 서울', displayName: '롯데호텔 서울', region: '서울', type: '호텔', hasSamples: true },
-  { key: '그랜드하얏트', displayName: '그랜드하얏트 서울', region: '서울', type: '호텔', hasSamples: true },
-  { key: '더플라자', displayName: '더플라자 호텔 서울', region: '서울', type: '호텔', hasSamples: true },
-  { key: '웨스틴 조선', displayName: '웨스틴 조선 서울', region: '서울', type: '호텔', hasSamples: true },
+  // 컨벤션센터 — 평균 이상
+  { key: '코엑스', displayName: '코엑스 (COEX)', region: '서울', type: '컨벤션', hasSamples: true, typicalItemCount: 45 },
+  { key: '킨텍스', displayName: '킨텍스 (KINTEX)', region: '수도권', type: '전시장', hasSamples: true, typicalItemCount: 50 },
+  { key: '송도컨벤시아', displayName: '송도컨벤시아', region: '수도권', type: '컨벤션', hasSamples: true, typicalItemCount: 40 },
+  { key: 'ICC JEJU', displayName: 'ICC JEJU', region: '제주', type: '컨벤션', hasSamples: true, typicalItemCount: 35 },
+  { key: '제주국제컨벤션', displayName: '제주국제컨벤션센터', region: '제주', type: '컨벤션', hasSamples: true, typicalItemCount: 35 },
+  { key: '광주 김대중', displayName: '광주 김대중컨벤션센터', region: '지방', type: '컨벤션', hasSamples: true, typicalItemCount: 30 },
+  { key: 'aT센터', displayName: 'aT센터', region: '서울', type: '컨벤션', hasSamples: true, typicalItemCount: 30 },
+  // 호텔 — 평균 이하
+  { key: '롯데호텔 서울', displayName: '롯데호텔 서울', region: '서울', type: '호텔', hasSamples: true, typicalItemCount: 20 },
+  { key: '그랜드하얏트', displayName: '그랜드하얏트 서울', region: '서울', type: '호텔', hasSamples: true, typicalItemCount: 25 },
+  { key: '더플라자', displayName: '더플라자 호텔 서울', region: '서울', type: '호텔', hasSamples: true, typicalItemCount: 20 },
+  { key: '웨스틴 조선', displayName: '웨스틴 조선 서울', region: '서울', type: '호텔', hasSamples: true, typicalItemCount: 20 },
   // 공공시설
   { key: '국립중앙박물관', displayName: '국립중앙박물관', region: '서울', type: '공공시설', hasSamples: true },
   { key: '동대문디자인플라자', displayName: '동대문디자인플라자 (DDP)', region: '서울', type: '공공시설', hasSamples: true },

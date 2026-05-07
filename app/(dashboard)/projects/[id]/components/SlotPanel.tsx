@@ -1,10 +1,36 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { Plus, Trash2, Layers, RotateCcw, CopyCheck, Pencil, Image as ImageIcon, X, QrCode } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Plus, Trash2, Layers, RotateCcw, CopyCheck, Pencil, Image as ImageIcon, X, QrCode, Layout, Save, ChevronDown, ChevronUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { SLOT_MAX_CHARS } from '@/lib/constants'
 import type { ContentsMap, SlotContent } from '@/lib/types'
+
+// ── 레이아웃 템플릿 (localStorage 기반) ───────────────────────────
+interface LayoutTemplate {
+  id: string
+  name: string
+  slots: Record<string, { x: number; y: number; w?: number; fontSize: number; color?: string; align?: 'left' | 'center' | 'right' }>
+  savedAt: number
+}
+
+const TEMPLATES_KEY = 'mice_layout_templates'
+
+function loadTemplates(): LayoutTemplate[] {
+  if (typeof window === 'undefined') return []
+  try { return JSON.parse(localStorage.getItem(TEMPLATES_KEY) ?? '[]') } catch { return [] }
+}
+
+function persistTemplates(tpls: LayoutTemplate[]) {
+  if (typeof window !== 'undefined') localStorage.setItem(TEMPLATES_KEY, JSON.stringify(tpls))
+}
+
+// ── 3×3 위치 단축 (PPT '위치 격자') ─────────────────────────────
+const POSITION_GRID: { x: number; y: number; label: string }[][] = [
+  [{ x: 10, y:  8, label: '좌상' }, { x: 50, y:  8, label: '상중' }, { x: 90, y:  8, label: '우상' }],
+  [{ x: 10, y: 50, label: '좌중' }, { x: 50, y: 50, label: '중앙' }, { x: 90, y: 50, label: '우중' }],
+  [{ x: 10, y: 88, label: '좌하' }, { x: 50, y: 88, label: '하중' }, { x: 90, y: 88, label: '우하' }],
+]
 
 interface Props {
   contents: ContentsMap
@@ -26,6 +52,7 @@ const ALIGN_LABELS: Array<{ v: 'left' | 'center' | 'right'; label: string }> = [
   { v: 'right', label: '오른쪽' },
 ]
 void ALIGN_LABELS
+
 
 const PRESET_COLORS = [
   'FFFFFF', 'F1F5F9', 'CBD5E1', '475569', '0F172A', '000000',
@@ -60,6 +87,44 @@ export function SlotPanel({
   const [generatingQr, setGeneratingQr] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadTargetRef = useRef<string | null>(null)
+
+  // ── 레이아웃 템플릿 state ────────────────────────────────────
+  const [templates, setTemplates] = useState<LayoutTemplate[]>([])
+  const [showTemplates, setShowTemplates] = useState(false)
+  const [templateNameInput, setTemplateNameInput] = useState('')
+  // ── 위치 단축 격자 ────────────────────────────────────────────
+  const [showPositionGrid, setShowPositionGrid] = useState(false)
+
+  useEffect(() => { setTemplates(loadTemplates()) }, [])
+
+  const handleSaveTemplate = () => {
+    const name = templateNameInput.trim()
+    if (!name) return
+    const slots: LayoutTemplate['slots'] = {}
+    for (const [key, slot] of Object.entries(contents)) {
+      slots[key] = { x: slot.x, y: slot.y, w: slot.w, fontSize: slot.fontSize, color: slot.color, align: slot.align }
+    }
+    const tpl: LayoutTemplate = { id: crypto.randomUUID(), name, slots, savedAt: Date.now() }
+    const updated = [...templates, tpl]
+    setTemplates(updated)
+    persistTemplates(updated)
+    setTemplateNameInput('')
+  }
+
+  const handleLoadTemplate = (tpl: LayoutTemplate) => {
+    for (const [key, s] of Object.entries(tpl.slots)) {
+      if (contents[key]) {
+        onSlotStyleUpdate(key, { x: s.x, y: s.y, ...(s.w !== undefined ? { w: s.w } : {}), fontSize: s.fontSize, ...(s.color ? { color: s.color } : {}), ...(s.align ? { align: s.align } : {}) })
+      }
+    }
+    setShowTemplates(false)
+  }
+
+  const handleDeleteTemplate = (id: string) => {
+    const updated = templates.filter(t => t.id !== id)
+    setTemplates(updated)
+    persistTemplates(updated)
+  }
 
   const slotEntries = Object.entries(contents)
 
@@ -199,14 +264,84 @@ export function SlotPanel({
           <Layers className="w-3.5 h-3.5 text-slate-500" />
           <p className="text-slate-400 text-[11px] font-semibold">구역 설정</p>
         </div>
-        <button
-          onClick={() => setShowAddForm(v => !v)}
-          className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300 text-[10px] px-2 py-0.5 rounded hover:bg-indigo-900/30 transition"
-        >
-          <Plus className="w-3 h-3" />
-          추가
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowTemplates(v => !v)}
+            title="레이아웃 템플릿"
+            className={`flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded transition ${showTemplates ? 'bg-violet-800/50 text-violet-300' : 'text-slate-500 hover:text-violet-400 hover:bg-violet-900/20'}`}
+          >
+            <Layout className="w-3 h-3" />
+            <span className="hidden sm:inline">템플릿</span>
+          </button>
+          <button
+            onClick={() => setShowAddForm(v => !v)}
+            className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300 text-[10px] px-2 py-0.5 rounded hover:bg-indigo-900/30 transition"
+          >
+            <Plus className="w-3 h-3" />
+            추가
+          </button>
+        </div>
       </div>
+
+      {/* 레이아웃 템플릿 패널 */}
+      {showTemplates && (
+        <div className="border-b border-slate-800 bg-violet-950/20 px-3 py-2.5 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-violet-300 text-[11px] font-semibold flex items-center gap-1">
+              <Layout className="w-3 h-3" /> 레이아웃 템플릿
+            </p>
+            <button onClick={() => setShowTemplates(false)} className="text-slate-600 hover:text-slate-400 p-0.5 rounded transition"><X className="w-3 h-3" /></button>
+          </div>
+
+          {/* 저장된 템플릿 목록 */}
+          {templates.length === 0 ? (
+            <p className="text-slate-600 text-[10px] italic">저장된 템플릿 없음</p>
+          ) : (
+            <div className="space-y-1 max-h-32 overflow-y-auto">
+              {templates.map(tpl => (
+                <div key={tpl.id} className="flex items-center gap-1.5 group">
+                  <button
+                    onClick={() => handleLoadTemplate(tpl)}
+                    className="flex-1 text-left text-[10px] text-slate-200 bg-slate-800/60 hover:bg-violet-900/30 px-2 py-1 rounded transition truncate"
+                    title={`적용: ${tpl.name}`}
+                  >
+                    {tpl.name}
+                    <span className="ml-1 text-slate-600">{Object.keys(tpl.slots).length}구역</span>
+                  </button>
+                  <button
+                    onClick={() => handleDeleteTemplate(tpl.id)}
+                    className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-red-400 transition p-0.5 rounded flex-shrink-0"
+                    title="삭제"
+                  >
+                    <Trash2 className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 현재 레이아웃 저장 */}
+          <div className="flex gap-1.5 pt-1 border-t border-slate-800/60">
+            <input
+              value={templateNameInput}
+              onChange={e => setTemplateNameInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSaveTemplate()}
+              placeholder="템플릿 이름 (예: 컨퍼런스 기본)"
+              className="flex-1 min-w-0 bg-slate-800 border border-slate-700 rounded px-1.5 py-1 text-[10px] text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-violet-500"
+            />
+            <button
+              onClick={handleSaveTemplate}
+              disabled={!templateNameInput.trim() || Object.keys(contents).length === 0}
+              className="flex items-center gap-0.5 px-2 py-1 bg-violet-700 hover:bg-violet-600 disabled:opacity-40 text-white rounded text-[10px] transition flex-shrink-0"
+              title="현재 구역 레이아웃 저장"
+            >
+              <Save className="w-3 h-3" />
+              저장
+            </button>
+          </div>
+          <p className="text-slate-600 text-[9px]">구역 위치·크기·서식만 저장 (텍스트 제외)</p>
+        </div>
+      )}
 
       {/* 구역 추가 폼 */}
       {showAddForm && (
@@ -332,36 +467,99 @@ export function SlotPanel({
                         <span className="text-[10px] text-slate-600">pt</span>
                       </div>
 
-                      {/* 위치 X/Y */}
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-slate-500 w-12 flex-shrink-0">위치</span>
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={Math.round(slot.x ?? 50)}
-                          onClick={e => e.stopPropagation()}
-                          onChange={e => {
-                            const v = parseInt(e.target.value)
-                            if (!isNaN(v)) onSlotStyleUpdate(key, { x: Math.min(100, Math.max(0, v)) })
-                          }}
-                          placeholder="X"
-                          className="flex-1 min-w-0 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-[10px] text-slate-300 text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                        />
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={Math.round(slot.y ?? 50)}
-                          onClick={e => e.stopPropagation()}
-                          onChange={e => {
-                            const v = parseInt(e.target.value)
-                            if (!isNaN(v)) onSlotStyleUpdate(key, { y: Math.min(100, Math.max(0, v)) })
-                          }}
-                          placeholder="Y"
-                          className="flex-1 min-w-0 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-[10px] text-slate-300 text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                        />
-                        <span className="text-[10px] text-slate-600">%</span>
+                      {/* 위치 X/Y + 단축 격자 */}
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-slate-500 w-12 flex-shrink-0">위치</span>
+                          <div className="flex items-center gap-1 flex-1">
+                            <div className="flex items-center gap-0.5 flex-1">
+                              <span className="text-[9px] text-slate-600">X</span>
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                value={Math.round(slot.x ?? 50)}
+                                onClick={e => e.stopPropagation()}
+                                onChange={e => {
+                                  const v = parseInt(e.target.value)
+                                  if (!isNaN(v)) onSlotStyleUpdate(key, { x: Math.min(100, Math.max(0, v)) })
+                                }}
+                                className="flex-1 min-w-0 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-[10px] text-slate-300 text-center focus:outline-none focus:ring-1 focus:ring-indigo-500 w-10"
+                              />
+                            </div>
+                            <div className="flex items-center gap-0.5 flex-1">
+                              <span className="text-[9px] text-slate-600">Y</span>
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                value={Math.round(slot.y ?? 50)}
+                                onClick={e => e.stopPropagation()}
+                                onChange={e => {
+                                  const v = parseInt(e.target.value)
+                                  if (!isNaN(v)) onSlotStyleUpdate(key, { y: Math.min(100, Math.max(0, v)) })
+                                }}
+                                className="flex-1 min-w-0 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-[10px] text-slate-300 text-center focus:outline-none focus:ring-1 focus:ring-indigo-500 w-10"
+                              />
+                            </div>
+                            <span className="text-[9px] text-slate-600">%</span>
+                          </div>
+                          <button
+                            onClick={e => { e.stopPropagation(); setShowPositionGrid(v => !v) }}
+                            title="빠른 위치 선택"
+                            className={`p-0.5 rounded transition text-[9px] flex-shrink-0 ${showPositionGrid ? 'bg-indigo-800/50 text-indigo-300' : 'text-slate-600 hover:text-indigo-400 hover:bg-indigo-900/20'}`}
+                          >
+                            {showPositionGrid ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          </button>
+                        </div>
+
+                        {/* 3×3 위치 격자 */}
+                        {showPositionGrid && (
+                          <div className="ml-14 p-1.5 bg-slate-950/60 rounded border border-slate-800 inline-block">
+                            <div className="grid grid-cols-3 gap-0.5">
+                              {POSITION_GRID.map((row, ri) =>
+                                row.map((cell, ci) => {
+                                  const isCurrent = Math.abs(Math.round(slot.x ?? 50) - cell.x) < 5 && Math.abs(Math.round(slot.y ?? 50) - cell.y) < 5
+                                  return (
+                                    <button
+                                      key={`${ri}-${ci}`}
+                                      onClick={e => {
+                                        e.stopPropagation()
+                                        onSlotStyleUpdate(key, { x: cell.x, y: cell.y })
+                                        setShowPositionGrid(false)
+                                      }}
+                                      title={cell.label}
+                                      className={`w-8 h-8 rounded flex items-center justify-center transition ${isCurrent ? 'bg-indigo-600 text-white' : 'bg-slate-800 hover:bg-indigo-900/50 text-slate-500 hover:text-indigo-300'}`}
+                                    >
+                                      <div className={`w-1.5 h-1.5 rounded-full ${isCurrent ? 'bg-white' : 'bg-slate-400'}`} />
+                                    </button>
+                                  )
+                                })
+                              )}
+                            </div>
+                            <p className="text-[9px] text-slate-600 text-center mt-1">클릭 → 위치 snap</p>
+                          </div>
+                        )}
+
+                        {/* 너비(W%) */}
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-slate-500 w-12 flex-shrink-0">너비</span>
+                          <div className="flex items-center gap-1 flex-1">
+                            <input
+                              type="number"
+                              min={10}
+                              max={100}
+                              value={Math.round(slot.w ?? 80)}
+                              onClick={e => e.stopPropagation()}
+                              onChange={e => {
+                                const v = parseInt(e.target.value)
+                                if (!isNaN(v)) onSlotStyleUpdate(key, { w: Math.min(100, Math.max(10, v)) })
+                              }}
+                              className="bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-[10px] text-slate-300 text-center focus:outline-none focus:ring-1 focus:ring-indigo-500 w-14"
+                            />
+                            <span className="text-[9px] text-slate-600">% 너비</span>
+                          </div>
+                        </div>
                       </div>
 
                       {/* 텍스트 색상 */}

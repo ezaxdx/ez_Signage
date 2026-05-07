@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { LayoutGrid, Archive, MapPin, Database } from 'lucide-react'
+import { LayoutGrid, Archive, MapPin, Database, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { NewProjectButton } from './components/NewProjectButton'
 import { LogoutButton } from './components/LogoutButton'
@@ -98,6 +98,40 @@ export default async function DashboardPage() {
           </div>
           <NewProjectButton userId={user.id} userEmail={user.email ?? ''} />
         </div>
+
+        {/* PM 처리 필요 알림 — Supabase migration */}
+        <div className="bg-amber-950/30 border border-amber-900/40 rounded-xl p-4 flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-amber-900/50 border border-amber-700/40 flex items-center justify-center flex-shrink-0">
+            <AlertTriangle className="w-4 h-4 text-amber-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-amber-200 text-sm font-medium">PM 처리 필요 — Supabase 마이그레이션 1건</p>
+            <p className="text-amber-300/70 text-[11px] mt-0.5 leading-relaxed">
+              <code className="text-amber-200">supabase/migration_v4_pm_removal.sql</code> Studio에서 실행하면 행사 진행 단계·수정 횟수·배치도 URL 기능이 활성화됩니다.
+            </p>
+          </div>
+        </div>
+
+        {/* 데이터 관리 안내 (1단계 진행 상황 노출) */}
+        <Link
+          href="/data"
+          className="block bg-gradient-to-r from-indigo-950/40 to-violet-950/40 border border-indigo-900/40 hover:border-indigo-700/60 rounded-xl p-4 transition group"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-lg bg-indigo-600/20 border border-indigo-700/40 flex items-center justify-center flex-shrink-0">
+                <Database className="w-4 h-4 text-indigo-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-slate-100 text-sm font-medium">AI 사전 학습 자료 — 1단계 수집 완료</p>
+                <p className="text-slate-500 text-[11px] mt-0.5">
+                  행사 폴더 54건 · 수행실적 매핑 17건 · 환경장식물 11종 · 동의어 10건 · 비표준 규격 분석 (37%)
+                </p>
+              </div>
+            </div>
+            <span className="text-indigo-400 text-xs flex-shrink-0 group-hover:translate-x-0.5 transition">데이터 관리 →</span>
+          </div>
+        </Link>
 
         {/* 통계 카드 */}
         {typedProjects.length > 0 && (

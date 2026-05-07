@@ -2,6 +2,82 @@ import type { Project, DesignItem, ContentsMap } from '@/lib/types'
 
 const DEFAULT_SLOT_ORDER = ['header_brand', 'hero_title', 'sub_title', 'body', 'arrow', 'qr_code', 'footer_credits']
 
+// ── EditorGrid 컬럼 상태 (localStorage) — 엑셀/PDF 내보내기 시 동기화 ──
+const COLS_STORAGE_KEY = 'mice_editor_grid_cols_v1'
+type EditorColumnId = 'no' | 'part' | 'bigarea' | 'location' | 'purpose' | 'category' | 'language' | 'size' | 'material' | 'quantity' | 'ko_text' | 'en_text' | 'note' | 'editor' | string
+interface EditorCustomCol { id: EditorColumnId; label: string; width: string; field: string | null; custom?: boolean }
+interface EditorColState {
+  order: EditorColumnId[]
+  hidden: EditorColumnId[]
+  customCols: EditorCustomCol[]
+  customValues: Record<string, Record<string, string>>
+}
+
+const DEFAULT_LABELS: Record<EditorColumnId, string> = {
+  no: 'NO.', part: '파트', bigarea: '구분', location: '장소', purpose: '사용목적',
+  category: '품목', language: '언어', size: '규격(mm)', material: '재질', quantity: '수량',
+  ko_text: '국문내용', en_text: '영문내용', note: '비고', editor: '담당자',
+}
+
+const DEFAULT_ORDER: EditorColumnId[] = [
+  'no', 'part', 'bigarea', 'location', 'purpose', 'category', 'language',
+  'size', 'material', 'quantity', 'ko_text', 'en_text', 'note', 'editor',
+]
+
+function loadEditorColState(): EditorColState | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(COLS_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<EditorColState>
+    return {
+      order: parsed.order ?? DEFAULT_ORDER,
+      hidden: parsed.hidden ?? [],
+      customCols: parsed.customCols ?? [],
+      customValues: parsed.customValues ?? {},
+    }
+  } catch { return null }
+}
+
+/** 컬럼 ID + 행 데이터 → 셀 값 변환 */
+function getCellValue(colId: EditorColumnId, item: DesignItem, contents: ContentsMap, customValues: Record<string, Record<string, string>>): string | number {
+  // 커스텀 컬럼
+  if (colId.startsWith('custom_')) {
+    return customValues[item.id]?.[colId] ?? ''
+  }
+  switch (colId) {
+    case 'no': return item.no ?? ''
+    case 'part': return item.part ?? ''
+    case 'bigarea': return item.category ?? ''
+    case 'location': return item.location ?? ''
+    case 'purpose': return item.purpose ?? ''
+    case 'category': return item.category ?? ''
+    case 'language': return item.language ?? ''
+    case 'size': return item.width_mm && item.height_mm ? `${item.width_mm}×${item.height_mm}` : ''
+    case 'material': return item.material ?? ''
+    case 'quantity': return item.quantity ?? 1
+    case 'ko_text': {
+      let content = gatherContentText(contents, 'ko')
+      if (content === '기본시안' && (item.location || item.purpose)) {
+        const extras = [item.purpose, item.location].filter(Boolean).join(' ')
+        content = `기본시안 + ${extras}`
+      }
+      return content
+    }
+    case 'en_text': return gatherContentText(contents, 'en')
+    case 'note': {
+      const remarks: string[] = []
+      const auto = detectRemarks(contents)
+      if (auto) remarks.push(auto)
+      if (item.review_status && item.review_status !== '작업중') remarks.push(`[${item.review_status}]`)
+      if (item.review_note) remarks.push(item.review_note)
+      return remarks.join(' · ')
+    }
+    case 'editor': return item.last_edited_by ? item.last_edited_by.split('@')[0] : ''
+    default: return ''
+  }
+}
+
 /** 내용 컬럼 — "기본시안 + 본문 요약 + 추가 객체" 포맷 (REAIM 샘플 기준) */
 function gatherContentText(contents: ContentsMap, field: 'ko' | 'en'): string {
   const parts: string[] = ['기본시안']
@@ -338,6 +414,13 @@ export async function exportToExcel(
 ): Promise<void> {
   const XLSX = await import('xlsx')
 
+  // ── 사용자가 EditorGrid에서 편집한 컬럼 상태가 있으면 그대로 사용 ──
+  const editorState = loadEditorColState()
+  if (editorState) {
+    return exportToExcelDynamic(project, items, allContents, editorState, XLSX)
+  }
+
+  // 폴백: 기존 17컬럼 정적 형식
   const HEADERS = [
     'NO.', '파트', '구분', '장소', '사용목적', '품목', '언어', '규격(mm)', '재질', '수량',
     '내용', '비고', '담당자', '디자인업체', '출력업체', '설치시간', '철거시간',
@@ -408,6 +491,70 @@ export async function exportToExcel(
     { wch: 36 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
     { wch: 10 }, { wch: 10 },
   ]
+  ws['!rows'] = [{ hpt: 28 }, { hpt: 20 }]
+
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, '디자인 의뢰 목록')
+
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+  XLSX.writeFile(wb, `${project.name}_제작물 리스트_${dateStr}.xlsx`)
+}
+
+/** EditorGrid에서 편집된 컬럼 상태(표시·순서·커스텀 컬럼)를 그대로 반영해 엑셀 출력 */
+async function exportToExcelDynamic(
+  project: Project,
+  items: DesignItem[],
+  allContents: Record<string, ContentsMap>,
+  state: EditorColState,
+  XLSX: typeof import('xlsx')
+): Promise<void> {
+  // 표시 컬럼만 (숨김 제외, 순서 유지)
+  const visibleColIds = state.order.filter(id => !state.hidden.includes(id))
+  const headers = visibleColIds.map(id => {
+    if (id.startsWith('custom_')) {
+      return state.customCols.find(c => c.id === id)?.label ?? id
+    }
+    return DEFAULT_LABELS[id] ?? id
+  })
+
+  // 좌상단 타이틀 + 우상단 로고
+  const logoText = (() => {
+    for (const item of items) {
+      const hb = allContents[item.id]?.header_brand
+      if (hb?.ko) return hb.ko
+    }
+    return project.client_name ?? ''
+  })()
+
+  const titleRow: (string | number)[] = new Array(headers.length).fill('')
+  titleRow[0] = `환경 제작물  (${project.name})`
+  if (headers.length >= 2) titleRow[headers.length - 1] = logoText
+
+  // 데이터 행
+  const dataRows = items.map(item => {
+    const contents = allContents[item.id] ?? {}
+    return visibleColIds.map(colId => getCellValue(colId, item, contents, state.customValues))
+  })
+
+  const ws = XLSX.utils.aoa_to_sheet([titleRow, headers, ...dataRows])
+
+  // 좌상단·우상단 병합
+  if (headers.length >= 3) {
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 2 } },
+      { s: { r: 0, c: headers.length - 1 }, e: { r: 0, c: headers.length - 1 } },
+    ]
+  }
+
+  // 컬럼 너비 — 본문 길이 컬럼은 넓게
+  ws['!cols'] = visibleColIds.map(id => {
+    if (id === 'ko_text' || id === 'en_text') return { wch: 36 }
+    if (id === 'note' || id === 'location' || id === 'purpose') return { wch: 16 }
+    if (id === 'editor' || id === 'category' || id === 'material') return { wch: 12 }
+    if (id === 'no' || id === 'quantity') return { wch: 6 }
+    if (id.startsWith('custom_')) return { wch: 14 }
+    return { wch: 10 }
+  })
   ws['!rows'] = [{ hpt: 28 }, { hpt: 20 }]
 
   const wb = XLSX.utils.book_new()

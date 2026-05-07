@@ -7,6 +7,11 @@ import { createClient } from '@/lib/supabase/client'
 import { insertDefaultSlotsForItems } from '@/lib/services/itemService'
 import { PURPOSE_PRESETS } from '@/lib/constants'
 import type { ProjectStatus, Profile } from '@/lib/types'
+import { SEED_PERFLIST } from '@/lib/data/dashboardSeed'
+
+// 과거 수행실적에서 발주처·행사장 후보 추출 (자동완성)
+const KNOWN_CLIENTS_NPB = Array.from(new Set(SEED_PERFLIST.map(p => p.client))).sort()
+const KNOWN_VENUES_NPB = Array.from(new Set(SEED_PERFLIST.map(p => p.venue))).sort()
 
 // 엑셀 헤더 fuzzy 매칭용 키워드 (17컬럼 중 핵심 7개)
 const EXCEL_COLUMN_KEYS = [
@@ -69,7 +74,18 @@ export function NewProjectButton({ userId, userEmail }: Props) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const [info, setInfo] = useState({ name: '', client_name: '', event_venue: '', event_date: '', status: '준비중' as ProjectStatus })
+  const [info, setInfo] = useState({
+    name: '',
+    client_name: '',
+    event_venue: '',
+    event_date: '',
+    status: '준비중' as ProjectStatus,
+    event_type: '' as '' | 'conference' | 'exhibition' | 'fair' | 'awards' | 'forum' | 'workshop' | 'experience' | 'ceremony' | 'launching' | 'other',
+    setup_date: '',
+    teardown_date: '',
+    attendees_count: '',
+    event_language: '' as '' | 'KOR' | 'EN' | 'EN/KOR' | 'multi',
+  })
   const [selectedPurposes, setSelectedPurposes] = useState<Set<string>>(new Set())
   const [members, setMembers] = useState<Member[]>([{ email: userEmail, part: '' }])
   const [searchQuery, setSearchQuery] = useState('')
@@ -87,6 +103,9 @@ export function NewProjectButton({ userId, userEmail }: Props) {
   const [mockupPreview, setMockupPreview] = useState<string | null>(null)
   const [floorPlanFile, setFloorPlanFile] = useState<File | null>(null)
   const [floorPlanPreview, setFloorPlanPreview] = useState<string | null>(null)
+  // step 4: 품목별 시안 (formatId → file+preview) + 일괄 시안
+  const [formatMockups, setFormatMockups] = useState<Record<string, { file: File; preview: string }>>({})
+  const [batchMockup, setBatchMockup] = useState<{ file: File; preview: string } | null>(null)
 
   // 이름/이메일 검색 (debounced)
   useEffect(() => {
@@ -109,7 +128,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
 
   const handleClose = () => {
     setIsOpen(false); setStep(1)
-    setInfo({ name: '', client_name: '', event_venue: '', event_date: '', status: '준비중' })
+    setInfo({ name: '', client_name: '', event_venue: '', event_date: '', status: '준비중', event_type: '', setup_date: '', teardown_date: '', attendees_count: '', event_language: '' })
     setSelectedPurposes(new Set())
     setMembers([{ email: userEmail, part: '' }])
     setSearchQuery(''); setSelectedProfile(null); setNewPart('')
@@ -117,6 +136,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
   setExcelFile(null); setExcelRows([]); setExcelError(null)
   setMockupFile(null); setMockupPreview(null)
   setFloorPlanFile(null); setFloorPlanPreview(null)
+  setFormatMockups({}); setBatchMockup(null)
   }
 
   const handleExcelFile = async (file: File) => {
@@ -447,18 +467,98 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                     <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">프로젝트명 <span className="text-indigo-400">*</span></label>
                     <input autoFocus required value={info.name} onChange={e => setInfo(p => ({ ...p, name: e.target.value }))} placeholder="예: 2025 APEC 정상회의" className={inputCls} />
                   </div>
+
+                  {/* 행사 유형 — AI 추천 정확도 핵심 */}
+                  <div>
+                    <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">
+                      행사 유형 <span className="text-slate-600 font-normal normal-case">(추천 정확도에 큰 영향)</span>
+                    </label>
+                    <div className="grid grid-cols-5 gap-1">
+                      {[
+                        { id: 'conference',  label: '컨퍼런스',  emoji: '🎤' },
+                        { id: 'exhibition',  label: '전시회',    emoji: '🏛️' },
+                        { id: 'fair',        label: '박람회',    emoji: '🎪' },
+                        { id: 'awards',      label: '시상식',    emoji: '🏆' },
+                        { id: 'forum',       label: '포럼',      emoji: '💬' },
+                        { id: 'workshop',    label: '워크숍',    emoji: '🛠️' },
+                        { id: 'experience',  label: '체험',      emoji: '✨' },
+                        { id: 'ceremony',    label: '기념식',    emoji: '🎊' },
+                        { id: 'launching',   label: '런칭',      emoji: '🚀' },
+                        { id: 'other',       label: '기타',      emoji: '📌' },
+                      ].map(t => {
+                        const on = info.event_type === t.id
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => setInfo(p => ({ ...p, event_type: on ? '' : t.id as typeof p.event_type }))}
+                            className={`px-1 py-1.5 rounded-lg border text-[10px] flex flex-col items-center gap-0.5 transition ${on ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:bg-slate-800'}`}
+                          >
+                            <span className="text-sm">{t.emoji}</span>
+                            <span>{t.label}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">주최 / 발주처</label>
-                    <input value={info.client_name} onChange={e => setInfo(p => ({ ...p, client_name: e.target.value }))} placeholder="예: 외교부" className={inputCls} />
+                    <input list="known-clients-npb" value={info.client_name} onChange={e => setInfo(p => ({ ...p, client_name: e.target.value }))} placeholder="예: 외교부 (입력 시 과거 발주처 추천)" className={inputCls} />
+                    <datalist id="known-clients-npb">
+                      {KNOWN_CLIENTS_NPB.map(c => <option key={c} value={c} />)}
+                    </datalist>
                   </div>
+
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">행사 장소</label>
-                      <input value={info.event_venue} onChange={e => setInfo(p => ({ ...p, event_venue: e.target.value }))} placeholder="예: 코엑스" className={inputCls} />
+                      <input list="known-venues-npb" value={info.event_venue} onChange={e => setInfo(p => ({ ...p, event_venue: e.target.value }))} placeholder="예: 코엑스" className={inputCls} />
+                      <datalist id="known-venues-npb">
+                        {KNOWN_VENUES_NPB.map(v => <option key={v} value={v} />)}
+                      </datalist>
                     </div>
                     <div>
                       <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">행사일</label>
                       <input type="date" value={info.event_date} onChange={e => setInfo(p => ({ ...p, event_date: e.target.value }))} className={`${inputCls} [color-scheme:dark]`} />
+                    </div>
+                  </div>
+
+                  {/* 세팅·철거일 */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">세팅 시작일</label>
+                      <input type="date" value={info.setup_date} onChange={e => setInfo(p => ({ ...p, setup_date: e.target.value }))} className={`${inputCls} [color-scheme:dark]`} />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">철거일</label>
+                      <input type="date" value={info.teardown_date} onChange={e => setInfo(p => ({ ...p, teardown_date: e.target.value }))} className={`${inputCls} [color-scheme:dark]`} />
+                    </div>
+                  </div>
+
+                  {/* 참가자 수 + 언어 */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">예상 참가자 수</label>
+                      <input type="number" min={1} value={info.attendees_count} onChange={e => setInfo(p => ({ ...p, attendees_count: e.target.value }))} placeholder="예: 500" className={inputCls} />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">행사 언어</label>
+                      <div className="grid grid-cols-4 gap-1">
+                        {(['KOR', 'EN', 'EN/KOR', 'multi'] as const).map(l => {
+                          const on = info.event_language === l
+                          return (
+                            <button
+                              key={l}
+                              type="button"
+                              onClick={() => setInfo(p => ({ ...p, event_language: on ? '' : l }))}
+                              className={`px-1 py-2 rounded-lg border text-[10px] transition ${on ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:bg-slate-800'}`}
+                            >
+                              {l === 'multi' ? '다국어' : l === 'KOR' ? '국문' : l === 'EN' ? '영문' : '국·영'}
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
                   </div>
 
@@ -765,6 +865,47 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                 <div className="space-y-3">
                   <p className="text-slate-400 text-sm">제작물 종류를 선택하세요. <strong className="text-slate-200">이름 변경/규격 수정/추가</strong> 모두 가능합니다.</p>
 
+                  {/* 시안 업로드 — 일괄 or 품목별 */}
+                  <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-slate-300 text-xs font-medium">시안 이미지 업로드</p>
+                      <span className="text-slate-600 text-[10px]">선택 사항 — 품목별 기본 양식 기준 이미지</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* 일괄 업로드 */}
+                      <div>
+                        <p className="text-slate-500 text-[10px] mb-1">일괄 (모든 항목 공통)</p>
+                        {batchMockup ? (
+                          <div className="relative">
+                            <img src={batchMockup.preview} alt="" className="w-full h-16 object-cover rounded border border-slate-700" />
+                            <button type="button" onClick={() => setBatchMockup(null)} className="absolute top-1 right-1 bg-slate-900/80 text-slate-400 hover:text-white p-0.5 rounded transition"><X className="w-3 h-3" /></button>
+                          </div>
+                        ) : (
+                          <label className="flex items-center justify-center gap-1.5 border border-dashed border-slate-700 hover:border-slate-600 rounded-lg h-16 cursor-pointer hover:bg-slate-800/30 transition">
+                            <input type="file" accept="image/*" className="hidden" onChange={e => {
+                              const f = e.target.files?.[0]; if (!f) return
+                              const reader = new FileReader()
+                              reader.onload = ev => setBatchMockup({ file: f, preview: ev.target?.result as string })
+                              reader.readAsDataURL(f); e.target.value = ''
+                            }} />
+                            <ImageIcon className="w-4 h-4 text-slate-600" />
+                            <span className="text-slate-600 text-[10px]">공통 시안</span>
+                          </label>
+                        )}
+                      </div>
+                      {/* 품목별 안내 */}
+                      <div>
+                        <p className="text-slate-500 text-[10px] mb-1">품목별 (각 행 오른쪽 📎 클릭)</p>
+                        <div className="border border-dashed border-slate-800 rounded-lg h-16 flex items-center justify-center">
+                          <span className="text-slate-700 text-[10px] text-center">선택된 품목 행에서<br />개별 업로드</span>
+                        </div>
+                      </div>
+                    </div>
+                    {Object.keys(formatMockups).length > 0 && (
+                      <p className="text-indigo-400 text-[10px]">{Object.keys(formatMockups).length}개 품목에 시안 설정됨</p>
+                    )}
+                  </div>
+
                   {/* 엑셀 불러온 목록 미리보기 */}
                   {excelRows.length > 0 && (
                     <div className="rounded-xl border border-emerald-800/50 bg-emerald-950/20 overflow-hidden">
@@ -803,29 +944,36 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-[20px_1fr_110px_70px_40px_24px] gap-2 px-3 text-[10px] text-slate-500 uppercase tracking-wide">
+                  <div className="grid grid-cols-[20px_1fr_110px_70px_40px_44px_24px] gap-2 px-3 text-[10px] text-slate-500 uppercase tracking-wide">
                     <span></span>
                     <span>종류명 (편집 가능)</span>
                     <span className="text-center">규격 (mm)</span>
                     <span className="text-center">재질</span>
                     <span className="text-center">개수</span>
+                    <span className="text-center">시안</span>
                     <span></span>
                   </div>
 
                   <div className="space-y-1">
                     {FORMAT_PRESETS.map(f => {
                       const s = formats[f.id]
+                      const ratio = s.width / (s.height || 1)
+                      const layoutTag = ratio > 1.5 ? '가로' : ratio < 0.8 ? '세로' : '정사각'
+                      const fm = formatMockups[f.id]
                       return (
-                        <div key={f.id} className={`grid grid-cols-[20px_1fr_110px_70px_40px_24px] gap-2 items-center px-3 py-1.5 rounded-lg transition ${s.selected ? 'bg-indigo-950/50 border border-indigo-700/40' : 'bg-slate-800/40 hover:bg-slate-800/70 border border-transparent'}`}>
+                        <div key={f.id} className={`grid grid-cols-[20px_1fr_110px_70px_40px_44px_24px] gap-2 items-center px-3 py-1.5 rounded-lg transition ${s.selected ? 'bg-indigo-950/50 border border-indigo-700/40' : 'bg-slate-800/40 hover:bg-slate-800/70 border border-transparent'}`}>
                           <button onClick={() => toggleFormat(f.id)} className={`w-4 h-4 rounded flex-shrink-0 flex items-center justify-center border transition ${s.selected ? 'bg-indigo-600 border-indigo-600' : 'border-slate-600'}`}>
                             {s.selected && <Check className="w-2.5 h-2.5 text-white" />}
                           </button>
-                          <input
-                            type="text"
-                            value={s.name}
-                            onChange={e => renameFormat(f.id, e.target.value)}
-                            className={`bg-transparent text-sm font-medium px-1 py-0.5 rounded focus:bg-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${s.selected ? 'text-slate-100' : 'text-slate-400'}`}
-                          />
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className={`text-[8px] px-1 py-0.5 rounded flex-shrink-0 ${layoutTag === '세로' ? 'bg-violet-900/50 text-violet-400' : layoutTag === '가로' ? 'bg-blue-900/50 text-blue-400' : 'bg-slate-700 text-slate-400'}`}>{layoutTag}</span>
+                            <input
+                              type="text"
+                              value={s.name}
+                              onChange={e => renameFormat(f.id, e.target.value)}
+                              className={`bg-transparent text-sm font-medium px-1 py-0.5 rounded focus:bg-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 min-w-0 flex-1 ${s.selected ? 'text-slate-100' : 'text-slate-400'}`}
+                            />
+                          </div>
                           <div className="flex items-center gap-1">
                             <input type="number" value={s.width} disabled={!s.selected} onChange={e => updateFormat(f.id, 'width', e.target.value)} className={`${smallInputCls} w-[44px] text-center`} />
                             <span className="text-slate-600 text-[10px]">×</span>
@@ -833,6 +981,22 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                           </div>
                           <input type="text" value={s.material} disabled={!s.selected} onChange={e => updateFormat(f.id, 'material', e.target.value)} className={smallInputCls} />
                           <input type="number" min={1} max={20} value={s.count} disabled={!s.selected} onChange={e => updateFormat(f.id, 'count', e.target.value)} className={`${smallInputCls} text-center`} />
+                          {/* 품목별 시안 */}
+                          <label className={`flex items-center justify-center rounded cursor-pointer transition overflow-hidden ${!s.selected ? 'opacity-30 pointer-events-none' : ''}`} title="품목 시안 업로드">
+                            <input type="file" accept="image/*" className="hidden" disabled={!s.selected} onChange={e => {
+                              const file = e.target.files?.[0]; if (!file) return
+                              const reader = new FileReader()
+                              reader.onload = ev => setFormatMockups(prev => ({ ...prev, [f.id]: { file, preview: ev.target?.result as string } }))
+                              reader.readAsDataURL(file); e.target.value = ''
+                            }} />
+                            {fm ? (
+                              <img src={fm.preview} alt="" className="w-10 h-10 object-cover rounded border border-violet-600/50" title={fm.file.name} />
+                            ) : (
+                              <div className="w-10 h-10 border border-dashed border-slate-700 rounded flex items-center justify-center hover:border-slate-500 transition">
+                                <ImageIcon className="w-3.5 h-3.5 text-slate-600" />
+                              </div>
+                            )}
+                          </label>
                           <span></span>
                         </div>
                       )
