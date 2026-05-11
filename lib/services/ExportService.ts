@@ -388,6 +388,7 @@ export async function exportToPPT(
 
 // ══════════════════════════════════════════════════════════
 // v4.1 신규-G: usage_logs INSERT (다운로드 트리거 기록)
+// v9.2 회의록: 엑셀 내보내기 = ′완료본′ → design_items.finalized_at 자동 UPDATE
 // ══════════════════════════════════════════════════════════
 async function logUsage(action: 'export_excel' | 'export_pptx' | 'recommend' | 'venue_request', metadata: Record<string, unknown>) {
   if (typeof window === 'undefined') return
@@ -402,6 +403,15 @@ async function logUsage(action: 'export_excel' | 'export_pptx' | 'recommend' | '
       action,
       metadata,
     })
+    // 엑셀 내보내기 시: 해당 프로젝트의 모든 design_items.finalized_at = now()
+    // (학습 가중치 100% 정답 풀로 자동 편입 — 회의록 ′학습 3종 ②′)
+    if (action === 'export_excel' && typeof metadata.project_id === 'string') {
+      await supabase
+        .from('design_items')
+        .update({ finalized_at: new Date().toISOString(), confirmed: true })
+        .eq('project_id', metadata.project_id)
+        .is('finalized_at', null)
+    }
   } catch {
     // usage_logs 테이블 없거나 권한 없음 — silent
   }

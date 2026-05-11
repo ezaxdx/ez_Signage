@@ -670,9 +670,35 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
         userValue={activeAlert?.userValue}
         venueName={project.event_venue ?? undefined}
         onCorrect={() => setActiveAlert(null)}
-        onProceed={() => {
-          // ′그래도 진행′ — 비고에 자동 표기는 별도 처리, 현재는 알랏만 닫기
+        onProceed={async () => {
+          // ′그래도 진행′ — 회의록 ′학습 3종 ③′: 우리 매뉴얼 정보가 틀렸을 가능성 학습
+          const alert = activeAlert
           setActiveAlert(null)
+          if (!alert) return
+          try {
+            const { data: { user } } = await supabase.auth.getUser()
+            // ① facility_exception_log INSERT (예외 케이스 누적 → 매뉴얼 갱신 신호)
+            await supabase.from('facility_exception_log').insert({
+              project_id: project.id,
+              item_id: alert.itemId,
+              venue: project.event_venue,
+              field: alert.field,
+              rule: alert.rule,
+              standard_value: alert.standardValue ?? null,
+              user_value: alert.userValue ?? null,
+              message: alert.message,
+              created_by: user?.id ?? null,
+            })
+            // ② 비고(review_note)에 자동 표기
+            const it = items.find(i => i.id === alert.itemId)
+            const prevNote = it?.review_note ?? ''
+            const tag = '[시설 가이드 외] 사용자 확인 진행'
+            if (!prevNote.includes(tag)) {
+              updateItem(alert.itemId, { review_note: prevNote ? `${prevNote} · ${tag}` : tag })
+            }
+          } catch {
+            // facility_exception_log 미적용 시 silent (마이그레이션 v8 필요)
+          }
         }}
         onOpenGuide={() => {
           setActiveAlert(null)
