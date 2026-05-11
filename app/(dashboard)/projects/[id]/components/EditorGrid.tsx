@@ -97,16 +97,30 @@ const DEFAULT_COLS: ColumnDef[] = [
   { id: 'content',        label: '내용',       width: '1.5fr', field: 'content_text' },
   { id: 'note',           label: '비고',       width: '76px', field: null },
   { id: 'editor',         label: '담당자',     width: '88px', field: null },
-  { id: 'design_vendor',  label: '디자인업체', width: '96px', field: 'design_vendor' },
-  { id: 'print_vendor',   label: '출력업체',   width: '96px', field: 'print_vendor' },
-  { id: 'install_time',   label: '설치시간',   width: '96px', field: 'install_time' },
-  { id: 'uninstall_time', label: '철거시간',   width: '96px', field: 'uninstall_time' },
+  // v9.3 회의록: design_vendor·print_vendor는 컬럼 노출 X (DB 유지, UI/Export 미사용)
+  // 신규 9컬럼 — 모두 기본 숨김
+  { id: 'type_kind',      label: '유형',       width: '80px',  field: 'type_kind' },
+  { id: 'supplier',       label: '수급업체',   width: '96px',  field: 'supplier' },
+  { id: 'install_date',   label: '설치일자',   width: '90px',  field: 'install_date' },
+  { id: 'install_time',   label: '설치시간',   width: '76px',  field: 'install_time' },
+  { id: 'usage_period',   label: '사용기간',   width: '120px', field: 'usage_period' },
+  { id: 'uninstall_date', label: '철거일자',   width: '90px',  field: 'uninstall_date' },
+  { id: 'uninstall_time', label: '철거시간',   width: '76px',  field: 'uninstall_time' },
+  { id: 'order_contact',  label: '발주 담당자', width: '96px', field: 'order_contact' },
+  { id: 'order_date',     label: '발주일',     width: '80px',  field: 'order_date' },
 ]
 
-// v8: 4개 컬럼은 편집 초기 숨김 (1차안 17컬럼 복원의 어지러움 방지 — §14-2)
-const DEFAULT_HIDDEN_COLS: ColumnId[] = ['design_vendor', 'print_vendor', 'install_time', 'uninstall_time']
-// v9: PPT 기본 제외 3개 (§14-3 기본값 — 담당자·디자인업체·출력업체)
-const DEFAULT_PPT_EXCLUDED: ColumnId[] = ['editor', 'design_vendor', 'print_vendor']
+// v9.3: 신규 9컬럼 모두 편집 초기 숨김 (회의록 — 사용자 부담 최소화)
+const DEFAULT_HIDDEN_COLS: ColumnId[] = [
+  'type_kind', 'supplier', 'install_date', 'install_time',
+  'usage_period', 'uninstall_date', 'uninstall_time', 'order_contact', 'order_date',
+]
+// PPT 기본 제외 — 담당자 + 신규 9컬럼 (PPT는 기존 형태 유지)
+const DEFAULT_PPT_EXCLUDED: ColumnId[] = [
+  'editor',
+  'type_kind', 'supplier', 'install_date', 'install_time',
+  'usage_period', 'uninstall_date', 'uninstall_time', 'order_contact', 'order_date',
+]
 
 const COLS_STORAGE_KEY = 'mice_editor_grid_cols_v9'
 
@@ -493,11 +507,19 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
         const editorShort = item.last_edited_by ? item.last_edited_by.split('@')[0] : ''
         return <span className="text-slate-500 text-[10px] truncate" title={item.last_edited_by ?? ''}>{editorShort || <span className="text-slate-400 italic">미편집</span>}</span>
       }
-      // v8 (2026-05-11): 1차안 17컬럼 복원 신규 4컬럼
+      // v9.3 (2026-05-11): 회의록 — 새 발주 양식 9컬럼 (모두 기본 숨김)
+      case 'type_kind':      return renderEditable(item.type_kind ?? '', isEditing)
+      case 'supplier':       return renderEditable(item.supplier ?? '', isEditing)
+      case 'install_date':   return renderEditable(item.install_date ?? '', isEditing)
+      case 'install_time':   return renderEditable(item.install_time ?? '', isEditing)
+      case 'usage_period':   return renderEditable(item.usage_period ?? '', isEditing)
+      case 'uninstall_date': return renderEditable(item.uninstall_date ?? '', isEditing)
+      case 'uninstall_time': return renderEditable(item.uninstall_time ?? '', isEditing)
+      case 'order_contact':  return renderEditable(item.order_contact ?? '', isEditing)
+      case 'order_date':     return renderEditable(item.order_date ?? '', isEditing)
+      // legacy (회의록 v9.3 — 컬럼 노출 제외, 분기는 보존)
       case 'design_vendor':  return renderEditable(item.design_vendor ?? '', isEditing)
       case 'print_vendor':   return renderEditable(item.print_vendor ?? '', isEditing)
-      case 'install_time':   return renderEditable(item.install_time ?? '', isEditing)
-      case 'uninstall_time': return renderEditable(item.uninstall_time ?? '', isEditing)
       default: return null
     }
   }

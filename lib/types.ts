@@ -119,10 +119,19 @@ export interface DesignItem {
 
   // v8 (2026-05-11): 1차안 17컬럼 복원 — 추가 5개 필드
   content_text: string | null    // 1차안 "내용" (자유 텍스트). 기존 purpose는 "사용 목적"으로 환원
-  design_vendor: string | null   // 디자인업체 (편집 초기 숨김)
-  print_vendor: string | null    // 출력업체 (편집 초기 숨김)
+  design_vendor: string | null   // (legacy — v9.3에서 사용자 결정으로 컬럼 노출 제외)
+  print_vendor: string | null    // (legacy — v9.3에서 사용자 결정으로 컬럼 노출 제외)
   install_time: string | null    // 설치시간 (편집 초기 숨김)
   uninstall_time: string | null  // 철거시간 (편집 초기 숨김)
+
+  // v9.3 (2026-05-11): 회의록 — 새 발주 양식 컬럼 9개 (모두 기본 숨김)
+  type_kind: string | null       // 유형 (임대/구매/출력+설치/디자인)
+  supplier: string | null        // 수급업체
+  install_date: string | null    // 설치일자 (YYYY-MM-DD 또는 ′12/11′ 자유)
+  usage_period: string | null    // 사용기간 (′12/12~12/18′ 자유)
+  uninstall_date: string | null  // 철거일자
+  order_contact: string | null   // 발주 담당자
+  order_date: string | null      // 발주일
 
   // v8: §11-2 입력 데이터 단계별 축적
   confirmed?: boolean            // 사용자 컨펌 플래그 (학습 가중치 70%)

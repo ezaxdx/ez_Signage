@@ -278,7 +278,7 @@ export function LearningManagerClient({
             <h1 className="text-xl font-bold text-slate-900">데이터 학습 관리자</h1>
           </div>
           <p className="text-slate-500 text-sm mt-1">
-            행사장 + 도면을 학습시켜 추천 정확도를 높입니다. 학습 사이클: 추가 → 도면 첨부 → 학습 트리거 → 드롭다운 자동 반영.
+            행사장과 도면을 등록·관리합니다.
           </p>
         </div>
 
@@ -351,7 +351,7 @@ export function LearningManagerClient({
             행사장별 학습 현황
           </h2>
           <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">
-            ′특정 장소 + 특정 행사′ 선택 시 AI(Gemini)에 자동 주입되는 누적 데이터입니다. 단계별 가중치 — 입력 10%·중간 30%·컨펌 70%·완료 100%. 정확도 추정치가 70%를 넘으면 추천 신뢰도가 안정됩니다.
+            행사장별 누적 데이터.
           </p>
           {venueLearningStatus.length === 0 ? (
             <p className="text-slate-400 text-xs italic py-4 text-center">아직 누적된 프로젝트가 없습니다. 신규 프로젝트가 생성되면 5분 이내 반영됩니다.</p>
@@ -393,10 +393,6 @@ export function LearningManagerClient({
               </table>
             </div>
           )}
-          <p className="text-[10px] text-slate-400 leading-relaxed mt-3">
-            ⓘ 정확도 추정 = Σ(단계별 항목 수 × 가중치) ÷ 전체 항목 × 100. 컨펌·완료 비중이 높을수록 ′이 행사장에선 이 카테고리가 정답에 가까움′ 신호가 강해집니다.
-            학습 부족 행사장(정확도 40% 미만)은 도면 업로드·과거 발주엑셀 등록을 우선 권장합니다.
-          </p>
         </section>
 
         </>}
@@ -708,11 +704,6 @@ export function LearningManagerClient({
 
         </>}
 
-        <p className="text-[10px] text-slate-400 leading-relaxed">
-          ⓘ 학습 사이클: ① 관리자가 행사장·도면을 등록 → ② 자동으로 learning_jobs INSERT (queued) →
-          ③ (다음 사이클) Vision API 호출로 주출입구·동선 분석 → ④ venues 메타에 결과 저장 →
-          ⑤ 새 프로젝트 폼 드롭다운에 즉시 노출 → ⑥ 사용자가 사용 → ⑦ liveStats 자동 누적 → ②로 돌아가 정확도 개선.
-        </p>
           </div>
         </div>
       </main>
