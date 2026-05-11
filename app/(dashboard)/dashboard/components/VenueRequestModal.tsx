@@ -110,10 +110,10 @@ export function VenueRequestModal({ open, onClose, userId, initialName = '', onS
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md shadow-2xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
-          <h2 className="text-slate-100 font-semibold text-sm">신규 행사장 등록 요청</h2>
-          <button onClick={handleClose} disabled={submitting} className="text-slate-500 hover:text-slate-300 disabled:opacity-50">
+      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-2xl">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+          <h2 className="text-slate-900 font-semibold text-sm">신규 행사장 등록 요청</h2>
+          <button onClick={handleClose} disabled={submitting} className="text-slate-500 hover:text-slate-400 disabled:opacity-50">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -121,7 +121,7 @@ export function VenueRequestModal({ open, onClose, userId, initialName = '', onS
         {submitted ? (
           <div className="p-6 text-center space-y-3">
             <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
-            <p className="text-slate-100 text-sm font-medium">요청을 보냈습니다.</p>
+            <p className="text-slate-900 text-sm font-medium">요청을 보냈습니다.</p>
             <p className="text-slate-500 text-xs">관리자가 승인하면 새 프로젝트 행사장 드롭다운에 즉시 표시됩니다.</p>
             <button onClick={handleClose} className="mt-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-lg transition">
               닫기
@@ -135,33 +135,33 @@ export function VenueRequestModal({ open, onClose, userId, initialName = '', onS
             </p>
 
             <div>
-              <label className="block text-slate-400 text-[11px] font-medium mb-1">행사장 이름 <span className="text-indigo-400">*</span></label>
+              <label className="block text-slate-500 text-[11px] font-medium mb-1">행사장 이름 <span className="text-indigo-400">*</span></label>
               <input
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="예: BEXCO 1전시장"
-                className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-slate-900 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-400 text-[11px] font-medium mb-1">권역</label>
-                <select value={region} onChange={e => setRegion(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-2 text-slate-100 text-sm">
+                <label className="block text-slate-500 text-[11px] font-medium mb-1">권역</label>
+                <select value={region} onChange={e => setRegion(e.target.value)} className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-2 text-slate-900 text-sm">
                   <option value="">선택</option>
                   {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-slate-400 text-[11px] font-medium mb-1">행사장 유형</label>
-                <select value={venueType} onChange={e => setVenueType(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-2 text-slate-100 text-sm">
+                <label className="block text-slate-500 text-[11px] font-medium mb-1">행사장 유형</label>
+                <select value={venueType} onChange={e => setVenueType(e.target.value)} className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-2 text-slate-900 text-sm">
                   <option value="">선택</option>
                   {VENUE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
               </div>
             </div>
 
-            <label className="flex items-start gap-2 text-slate-300 text-xs cursor-pointer">
+            <label className="flex items-start gap-2 text-slate-400 text-xs cursor-pointer">
               <input
                 type="checkbox"
                 checked={hallSplit}
@@ -177,24 +177,24 @@ export function VenueRequestModal({ open, onClose, userId, initialName = '', onS
             </label>
 
             <div>
-              <label className="block text-slate-400 text-[11px] font-medium mb-1">도면 첨부 (선택, PDF/이미지)</label>
+              <label className="block text-slate-500 text-[11px] font-medium mb-1">도면 첨부 (선택, PDF/이미지)</label>
               <input
                 type="file"
                 accept=".pdf,image/*"
                 onChange={e => setFloorPlanFile(e.target.files?.[0] ?? null)}
-                className="block w-full text-slate-300 text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-slate-800 file:text-slate-300 file:cursor-pointer"
+                className="block w-full text-slate-400 text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-slate-50 file:text-slate-400 file:cursor-pointer"
               />
               {floorPlanFile && <p className="text-slate-500 text-[10px] mt-1 truncate">{floorPlanFile.name}</p>}
             </div>
 
             <div>
-              <label className="block text-slate-400 text-[11px] font-medium mb-1">메모 (선택)</label>
+              <label className="block text-slate-500 text-[11px] font-medium mb-1">메모 (선택)</label>
               <textarea
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 placeholder="주출입구 위치, 면적, 특이사항 등"
                 rows={2}
-                className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-slate-900 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>
 
@@ -205,18 +205,18 @@ export function VenueRequestModal({ open, onClose, userId, initialName = '', onS
               </div>
             )}
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
               <button
                 onClick={handleClose}
                 disabled={submitting}
-                className="px-3 py-1.5 text-slate-400 hover:text-slate-200 text-xs transition disabled:opacity-50"
+                className="px-3 py-1.5 text-slate-500 hover:text-slate-800 text-xs transition disabled:opacity-50"
               >
                 취소
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={submitting || !name.trim()}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-xs rounded transition"
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-200 disabled:text-slate-500 text-white text-xs rounded transition"
               >
                 {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                 요청 보내기

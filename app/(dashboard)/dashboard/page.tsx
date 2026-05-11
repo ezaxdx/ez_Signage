@@ -55,48 +55,53 @@ export default async function DashboardPage() {
   const venueGroups = groupVenuesByRegion()
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-white">
       {/* 네비게이션 */}
-      <header className="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-10">
+      {/* v8 (2026-05-11): 라이트 톤 헤더 + §13 IA 메뉴 구조 (사용자 작업 / 관리자 / 데이터 학습) */}
+      <header className="border-b border-slate-200 bg-white/80 backdrop-blur-md sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
               <LayoutGrid className="w-4 h-4 text-white" />
             </div>
-            <span className="text-slate-100 font-semibold text-sm tracking-tight">
+            <span className="text-slate-900 font-semibold text-sm tracking-tight">
               제작물 리스트 가이드
             </span>
           </div>
           <div className="flex items-center gap-3">
+            {/* 사용자 작업 영역 */}
             <Link
               href="/dashboard"
-              className="flex items-center gap-1.5 text-slate-200 text-xs transition"
-              title="내 프로젝트"
+              className="flex items-center gap-1.5 text-slate-700 hover:text-indigo-600 text-xs transition"
+              title="내 프로젝트 (목록·생성·상세)"
             >
               <LayoutGrid className="w-3.5 h-3.5" />
               프로젝트
             </Link>
             {userIsAdmin && (
               <>
+                <div className="w-px h-4 bg-slate-200 hidden sm:block" />
+                {/* 관리자 페이지: 운영 KPI · 유저 관리 · 전체 프로젝트 · AI 사용량 */}
                 <Link
                   href="/data"
-                  className="flex items-center gap-1.5 text-slate-400 hover:text-indigo-300 text-xs transition"
-                  title="관리자 페이지 — 프로젝트·시드·통계 관리"
+                  className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 text-xs transition"
+                  title="관리자 페이지 — 운영 KPI / 유저 관리 / 전체 프로젝트 / AI 사용량"
                 >
                   <Database className="w-3.5 h-3.5" />
                   관리자 페이지
                 </Link>
+                {/* 데이터 학습 관리자: 행사장·환경장식물·동의어·시설 가이드 */}
                 <Link
                   href="/admin/learning"
-                  className="flex items-center gap-1.5 text-slate-400 hover:text-indigo-300 text-xs transition"
-                  title="데이터 학습 관리자 — 행사장·도면 학습"
+                  className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 text-xs transition"
+                  title="데이터 학습 관리자 — 행사장 / 환경장식물 / 동의어 / 시설 가이드"
                 >
                   <GraduationCap className="w-3.5 h-3.5" />
                   데이터 학습 관리자
                 </Link>
                 <Link
                   href="/archive"
-                  className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-300 text-xs transition"
+                  className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 text-xs transition"
                   title="저장된 제작물 검수"
                 >
                   <Archive className="w-3.5 h-3.5" />
@@ -104,11 +109,11 @@ export default async function DashboardPage() {
                 </Link>
               </>
             )}
-            <div className="w-px h-4 bg-slate-800 hidden sm:block" />
+            <div className="w-px h-4 bg-slate-200 hidden sm:block" />
             <span className="text-slate-500 text-xs hidden sm:block truncate max-w-[200px]">
               {user.email}
             </span>
-            <div className="w-px h-4 bg-slate-800 hidden sm:block" />
+            <div className="w-px h-4 bg-slate-200 hidden sm:block" />
             <LogoutButton />
           </div>
         </div>
@@ -116,28 +121,28 @@ export default async function DashboardPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
 
-        {/* 페이지 헤더 */}
+        {/* v8 (2026-05-11): 라이트 톤 — 페이지 헤더 */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-slate-100 text-xl font-bold">내 프로젝트</h1>
+            <h1 className="text-slate-900 text-xl font-bold">내 프로젝트</h1>
             <p className="text-slate-500 text-sm mt-0.5">MICE 행사 제작물을 관리하세요</p>
           </div>
           <NewProjectButton userId={user.id} userEmail={user.email ?? ''} />
         </div>
 
-        {/* 통계 카드 */}
+        {/* v8: 통계 카드 — 라이트 톤 */}
         {typedProjects.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { label: '전체 프로젝트', value: stats.total, color: 'text-slate-100', sub: null },
-              { label: 'D-7 이내', value: stats.urgent, color: stats.urgent > 0 ? 'text-red-400' : 'text-slate-100', sub: '긴급 마감' },
-              { label: '이번달 행사', value: stats.thisMonth, color: 'text-amber-400', sub: null },
-              { label: '작업 진행중', value: stats.inProgress, color: 'text-emerald-400', sub: '발주~확정' },
+              { label: '전체 프로젝트', value: stats.total, color: 'text-slate-900', sub: null },
+              { label: 'D-7 이내', value: stats.urgent, color: stats.urgent > 0 ? 'text-red-600' : 'text-slate-900', sub: '긴급 마감' },
+              { label: '이번달 행사', value: stats.thisMonth, color: 'text-amber-600', sub: null },
+              { label: '작업 진행중', value: stats.inProgress, color: 'text-emerald-600', sub: '발주~확정' },
             ].map(stat => (
-              <div key={stat.label} className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3">
+              <div key={stat.label} className="bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm">
                 <p className="text-slate-500 text-xs mb-1">{stat.label}</p>
                 <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-                {stat.sub && <p className="text-slate-600 text-[10px] mt-0.5">{stat.sub}</p>}
+                {stat.sub && <p className="text-slate-400 text-[10px] mt-0.5">{stat.sub}</p>}
               </div>
             ))}
           </div>

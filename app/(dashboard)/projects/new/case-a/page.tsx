@@ -232,16 +232,16 @@ export default function CaseAPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-white text-slate-900">
       <StepIndicator current={0} />
       <div className="max-w-3xl mx-auto px-6 py-10">
-        <Link href="/projects/new" className="text-sm text-slate-400 hover:text-slate-200">← 케이스 선택</Link>
+        <Link href="/projects/new" className="text-sm text-slate-500 hover:text-slate-800">← 케이스 선택</Link>
         <div className="flex items-center gap-3 mt-4">
           <Sparkles className="w-6 h-6 text-indigo-400" />
           <h1 className="text-2xl font-bold">Case A · AI 추천으로 시작</h1>
         </div>
 
-        <div className="mt-4 rounded-lg border border-slate-800 bg-slate-900/40 p-4">
+        <div className="mt-4 rounded-lg border border-slate-200 bg-white/40 p-4">
           <GuideBox
             why="행사 유형·규모·기간·언어 정보가 풍부할수록 추천 정확도가 크게 향상됩니다. 도면 없이도 행사 정보만으로 적정 환경장식물 리스트를 받을 수 있도록 설계되었습니다."
             how="필수 2개(행사명·장소) + 핵심 4~5개(유형·일정·규모·언어)를 입력. '추가 정보'는 더 정확한 추천을 위해 선택적으로 채우세요."
@@ -280,8 +280,8 @@ export default function CaseAPage() {
             </div>
 
             {/* ── 2. 권장 정보 (추천 정확도 ↑) ─────── */}
-            <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4 space-y-4">
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide">권장 정보 <span className="text-slate-600 normal-case font-normal">— 추천 정확도 ↑</span></p>
+            <div className="rounded-xl border border-slate-200 bg-white/30 p-4 space-y-4">
+              <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">권장 정보 <span className="text-slate-400 normal-case font-normal">— 추천 정확도 ↑</span></p>
 
               <Field label="행사 유형">
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
@@ -291,7 +291,7 @@ export default function CaseAPage() {
                       <button
                         key={t.id}
                         onClick={() => setEventType(on ? '' : t.id)}
-                        className={`px-2 py-2 rounded-lg border text-xs flex flex-col items-center gap-0.5 transition ${on ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900 border-slate-700 text-slate-400 hover:bg-slate-800'}`}
+                        className={`px-2 py-2 rounded-lg border text-xs flex flex-col items-center gap-0.5 transition ${on ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white border-slate-300 text-slate-500 hover:bg-slate-50'}`}
                       >
                         <span className="text-base">{t.emoji}</span>
                         <span>{t.label}</span>
@@ -323,7 +323,7 @@ export default function CaseAPage() {
                       const on = language === l.id
                       return (
                         <button key={l.id} onClick={() => setLanguage(on ? '' : l.id)}
-                          className={`px-2.5 py-1.5 rounded-lg border text-xs transition ${on ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900 border-slate-700 text-slate-400 hover:bg-slate-800'}`}>
+                          className={`px-2.5 py-1.5 rounded-lg border text-xs transition ${on ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white border-slate-300 text-slate-500 hover:bg-slate-50'}`}>
                           {l.label}
                         </button>
                       )
@@ -338,7 +338,7 @@ export default function CaseAPage() {
                     const on = purposes.has(p.id)
                     return (
                       <button key={p.id} onClick={() => togglePurpose(p.id)}
-                        className={`px-3 py-1.5 rounded-full border text-sm transition ${on ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800'}`}>
+                        className={`px-3 py-1.5 rounded-full border text-sm transition ${on ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white border-slate-300 text-slate-400 hover:bg-slate-50'}`}>
                         {p.label}
                       </button>
                     )
@@ -348,17 +348,17 @@ export default function CaseAPage() {
             </div>
 
             {/* ── 3. 추가 정보 (접힘) ─────── */}
-            <div className="rounded-xl border border-slate-800 bg-slate-900/20">
+            <div className="rounded-xl border border-slate-200 bg-white/20">
               <button
                 type="button"
                 onClick={() => setShowAdvanced(v => !v)}
-                className="w-full flex items-center justify-between px-4 py-3 text-sm text-slate-300 hover:bg-slate-800/40 rounded-xl transition"
+                className="w-full flex items-center justify-between px-4 py-3 text-sm text-slate-400 hover:bg-slate-50/40 rounded-xl transition"
               >
                 <span className="font-medium">추가 정보 <span className="text-slate-500 text-xs">— 더 정확한 추천을 위해</span></span>
                 {showAdvanced ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
               </button>
               {showAdvanced && (
-                <div className="px-4 pb-4 space-y-4 border-t border-slate-800/60 pt-4">
+                <div className="px-4 pb-4 space-y-4 border-t border-slate-200/60 pt-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Field label="주최 / 발주처">
                       <input list="known-clients" value={clientName} onChange={e => setClientName(e.target.value)} placeholder="예: 외교부 (입력 시 과거 발주처 추천)" className={inputCls} />
@@ -370,7 +370,7 @@ export default function CaseAPage() {
                       <input value={hostOrganizer} onChange={e => setHostOrganizer(e.target.value)} placeholder="예: 한국관광공사" className={inputCls} />
                     </Field>
                   </div>
-                  <p className="text-[10px] text-slate-600 -mt-2">
+                  <p className="text-[10px] text-slate-400 -mt-2">
                     💡 과거 수행실적 {SEED_PERFLIST.length}건의 발주처·행사장 자동 완성 (입력란 클릭 시 추천 표시)
                   </p>
                   <Field label="주요 홀·공간">
@@ -414,10 +414,10 @@ export default function CaseAPage() {
                 {inferredScale && <span className="ml-2 text-indigo-400 text-xs">[규모: {inferredScale}]</span>}
               </div>
             )}
-            <div className="rounded-xl border border-slate-800 bg-slate-900/40 overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
-                <div className="text-sm text-slate-300">추천 환경장식물 <span className="font-semibold text-slate-100">{items.length}건</span></div>
-                <button onClick={() => setStage('form')} className="text-xs text-slate-400 hover:text-slate-200">← 입력 수정</button>
+            <div className="rounded-xl border border-slate-200 bg-white/40 overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                <div className="text-sm text-slate-400">추천 환경장식물 <span className="font-semibold text-slate-900">{items.length}건</span></div>
+                <button onClick={() => setStage('form')} className="text-xs text-slate-500 hover:text-slate-800">← 입력 수정</button>
               </div>
               <div className="divide-y divide-slate-800/60 max-h-[420px] overflow-y-auto">
                 {items.map((it, i) => (
@@ -425,13 +425,13 @@ export default function CaseAPage() {
                     <span className="w-6 text-xs text-slate-500">{it.no}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-slate-100">{it.category_label}</span>
+                        <span className="font-medium text-slate-900">{it.category_label}</span>
                         <span className="text-xs text-slate-500">{it.width_mm}×{it.height_mm}mm · {it.material}</span>
                       </div>
-                      <div className="mt-0.5 text-sm text-slate-400 truncate">{it.location} — {it.rationale}</div>
+                      <div className="mt-0.5 text-sm text-slate-500 truncate">{it.location} — {it.rationale}</div>
                     </div>
                     <input type="number" min={1} value={it.quantity} onChange={e => updateItemQuantity(i, parseInt(e.target.value) || 1)}
-                      className="w-16 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm text-right" />
+                      className="w-16 bg-slate-50 border border-slate-300 rounded px-2 py-1 text-sm text-right" />
                     <button onClick={() => removeItem(i)} className="text-xs text-rose-400 hover:text-rose-300">삭제</button>
                   </div>
                 ))}
@@ -442,7 +442,7 @@ export default function CaseAPage() {
 
             <div className="mt-6 grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-3">
               <button onClick={handleDownloadExcel}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 px-4 py-3 font-medium text-slate-200 transition">
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-50 hover:bg-slate-200 border border-slate-300 px-4 py-3 font-medium text-slate-800 transition">
                 <Download className="w-4 h-4" /> 엑셀로만 다운로드
               </button>
               <button onClick={handleCreate}
@@ -454,7 +454,7 @@ export default function CaseAPage() {
         )}
 
         {stage === 'creating' && (
-          <div className="mt-12 text-center text-slate-400">
+          <div className="mt-12 text-center text-slate-500">
             <Loader2 className="w-6 h-6 animate-spin mx-auto" />
             <p className="mt-3">프로젝트를 만들고 추천 항목을 등록 중…</p>
           </div>
@@ -464,12 +464,12 @@ export default function CaseAPage() {
   )
 }
 
-const inputCls = 'w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2.5 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+const inputCls = 'w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 text-slate-900 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <div className="text-sm text-slate-300 mb-1.5">{label}</div>
+      <div className="text-sm text-slate-400 mb-1.5">{label}</div>
       {children}
     </label>
   )
@@ -480,7 +480,7 @@ function CheckboxRow({ checked, onChange, label }: { checked: boolean; onChange:
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs text-left transition ${checked ? 'bg-indigo-600/15 border-indigo-700/50 text-indigo-200' : 'bg-slate-900 border-slate-700 text-slate-400 hover:bg-slate-800'}`}
+      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs text-left transition ${checked ? 'bg-indigo-600/15 border-indigo-700/50 text-indigo-200' : 'bg-white border-slate-300 text-slate-500 hover:bg-slate-50'}`}
     >
       <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${checked ? 'bg-indigo-600 border-indigo-500' : 'border-slate-600'}`}>
         {checked && <CheckCircle2 className="w-3 h-3 text-white" />}

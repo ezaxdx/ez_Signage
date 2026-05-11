@@ -116,8 +116,80 @@ export interface DesignItem {
   review_status: '작업중' | '확인필요' | '검수완료' | '발주완료' | '수정요청'
   review_note: string | null     // 관리자 코멘트
   revision_count?: number        // 수정 횟수 (3회 이상 시 경고) — migration_v4 이후 필수
+
+  // v8 (2026-05-11): 1차안 17컬럼 복원 — 추가 5개 필드
+  content_text: string | null    // 1차안 "내용" (자유 텍스트). 기존 purpose는 "사용 목적"으로 환원
+  design_vendor: string | null   // 디자인업체 (편집 초기 숨김)
+  print_vendor: string | null    // 출력업체 (편집 초기 숨김)
+  install_time: string | null    // 설치시간 (편집 초기 숨김)
+  uninstall_time: string | null  // 철거시간 (편집 초기 숨김)
+
+  // v8: §11-2 입력 데이터 단계별 축적
+  confirmed?: boolean            // 사용자 컨펌 플래그 (학습 가중치 70%)
+  finalized_at?: string | null   // 발주·다운로드 완료 시점 (학습 가중치 100%)
+
   created_at: string
   updated_at: string
+}
+
+// v8 (2026-05-11): 프로젝트별 컬럼 가시성 설정 (§14)
+export interface ProjectColumnSettings {
+  project_id: string
+  show_in_editor: Record<string, boolean>     // 컬럼 ID → 편집 그리드 표시
+  include_in_excel: Record<string, boolean>   // 컬럼 ID → 엑셀 출력 포함
+  include_in_ppt: Record<string, boolean>     // 컬럼 ID → PPT 출력 포함
+  facility_check_mode: 'verbose' | 'silent_icon' | 'off'  // §11-6 시설 알림 강도
+  updated_at?: string
+}
+
+// v8: 행사장별 시설 가이드 (§11-6-2 6종 정보)
+export interface VenueFacilityGuide {
+  id?: string
+  venue_key: string
+  venue_name: string
+  install_allowed: Array<{ category: string; status: 'allowed' | 'conditional' | 'denied'; note?: string }>
+  mount_methods: {
+    taka?: 'allowed' | 'conditional' | 'denied'
+    magnet?: 'allowed' | 'conditional' | 'denied'
+    adhesive?: 'allowed' | 'conditional' | 'denied'
+    hanger?: 'allowed' | 'conditional' | 'denied'
+    rope?: 'allowed' | 'conditional' | 'denied'
+    note?: string
+  }
+  rigging: {
+    available?: boolean
+    grid_lines?: string[]
+    max_load_kg?: number
+    note?: string
+  }
+  safety: {
+    fire?: string
+    fall?: string
+    electric?: string
+    weather?: string
+    note?: string
+  }
+  warnings: Array<{ type: string; description: string }>
+  digital_signage: {
+    allowed_locations?: string[]
+    led_size_limit?: string
+    content_review?: boolean
+    note?: string
+  }
+  last_updated?: string
+  notes?: string
+}
+
+// v8: 시설 가이드 예외 케이스 로그 (§11-6-1 '그래도 진행' 누적)
+export interface FacilityExceptionLog {
+  id?: string
+  project_id: string
+  item_id?: string
+  venue_key: string
+  violated_rule: string
+  user_value?: string
+  user_choice: 'proceed' | 'correct'
+  created_at?: string
 }
 
 export interface ItemContent {

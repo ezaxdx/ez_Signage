@@ -1,5 +1,65 @@
 # 작업 이력
 
+## 2026-05-11 (v9 ++) — 재검증 + 자동 채우기 + localStorage 마이그레이션
+
+### 자동 채우기 (시도 후 ★ 전면 롤백)
+- 시도: `autoFill.ts`로 event_date + OrderingSchedule offset → ′D-1 (YYYY-MM-DD)′ 표시
+- **롤백 사유 (사용자 검증)**: 실제 발주엑셀 4건 점검 결과 — 1차안 결과물 안.xlsx 데이터 행은 빈칸 / 2020 평창평화포럼·2018 스마트국토엑스포는 컬럼 자체 없음 / KME 2019는 ′설치장소′만 존재. 실무에선 행사 당일로 통일 표기하지도 않고 행사마다 다름. D-1 추론값은 잘못된 가정이 됨.
+- 결과: `lib/services/autoFill.ts` 삭제 / EditorGrid·EditorLayout·ExportService 모두 원복. install_time·uninstall_time은 사용자 직접 입력 컬럼으로 환원.
+
+### localStorage 마이그레이션 (v8 → v9)
+- `EditorGrid.loadColState`: v9 키 없으면 v8 데이터를 읽어 변환·저장. order·hidden·customCols·customValues 보존, 신규 excludedFromExcel·excludedFromPpt는 기본값
+- `ExportService.loadEditorColState`: v9 미존재 시 v8 폴백 (마이그레이션 저장 직전에 호출돼도 정상 작동)
+
+### 정리
+- 미사용 상수 `PPT_EXCLUDED_COLS` 제거 (dead code)
+
+### 검증
+- TSC 0 / Next 빌드 16/16
+
+## 2026-05-11 (v9 +) — 기획 문서 미구현 사항 추가 적용
+
+### 학습 관리자 IA 4섹션 + KPI 카드 (§13-3 완성)
+- 상단 KPI 3카드: 학습된 행사장 / 환경장식물 종류 / 동의어 매핑
+- 동의어 매핑 섹션 — `SEED_SYNONYMS` 표 + 검색 필터
+- 시설 가이드 학습 현황 섹션 — 행사장별 ′설치 가능 카테고리·주의사항·정보 완성도(6분의)·학습 시점′ 표
+- `page.tsx` 서버 측에서 시드 가공 후 prop 전달
+
+### 컬럼 우클릭 메뉴 (§14-3,4 완성)
+- `EditorGrid.tsx`: 컬럼 헤더 우클릭 → 컨텍스트 메뉴 (편집 화면 표시 / 엑셀에서 제외 / PPT에서 제외)
+- `SavedColState`에 `excludedFromExcel` · `excludedFromPpt` 추가, 기본 PPT 제외 3개 사전 설정
+- 컬럼 헤더에 ⛔X / ⛔P 뱃지 — 제외 상태 시각 표시
+- localStorage 키 `v8` → `v9` 갱신 (마이그레이션은 폴백 기본값 처리)
+- `ExportService.exportToExcelDynamic` — `excludedFromExcel` 컬럼 자동 제거
+
+### 검증
+- TSC 0 / Next 빌드 16/16
+
+## 2026-05-11 (v9) — 점진적 정확도 향상 + 장소+행사 선택 시 누적 데이터 AI 주입
+
+### 윗선 명문화 반영
+- "기존 + 신규 앱 사용 데이터 누적 → 점차 정확도 상승"
+- "장소 + 행사 유형 선택 시 누적 정보 전체를 AI에 주입 → 최종 출력"
+
+### 핵심 구현
+- `lib/ai/accumulatedContext.ts` (★ 신설) — Supabase에서 venue 매칭 프로젝트 5건의 design_items를 단계별 가중치(10·30·70·100%)로 압축. `buildAccumulatedContext()` + `formatAccumulatedContext()`.
+- `lib/ai/recommendSignage.ts` — seed + venueSignageHelper + accumulatedContext 3종을 단일 Gemini 프롬프트로 자동 통합.
+- 별도 학습 트리거 없음 — `confirmed=true` / `finalized_at` 컬럼만 채우면 다음 추천부터 자동 누적.
+
+### 학습 관리자 가시화
+- `app/(dashboard)/admin/learning/page.tsx` — projects + design_items 조인하여 venue별 단계 집계 (입력/중간/컨펌/완료) + 정확도 추정 산출
+- `LearningManagerClient.tsx` — ′행사장별 학습 현황′ 섹션 신설 (9컬럼 표: 행사장 / 프로젝트 / 항목 / 입력 / 중간 / 컨펌 / 완료 / 정확도 / 학습 카테고리). 정확도 70%+ emerald / 40~70% amber / 40% 미만 rose
+- ProjectAdminTab(`/data`) 5 KPI + 9컬럼 IA 표 완성 (Figma spec)
+
+### 문서
+- `docs/91.2_AI업무파트너기획_..._260511.md` §14-A 신설 (3단계 정확도 곡선 + 흐름도 + 자가 강화 루프 + 구현 위치)
+- `decisions.md` v9 결정 추가 (단계별 가중치 분리, 자동 누적, 환각 방지 짝 정책)
+
+### 검증
+- TSC 0 에러 / Next 빌드 16/16 라우트 통과
+
+
+
 > 이 파일은 자율 작업 완료 시 자동 갱신합니다.
 > 큰 결정은 `decisions.md`, 실패 패턴은 `learnings.md`에 들어갑니다.
 

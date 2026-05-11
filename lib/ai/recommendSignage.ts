@@ -3,6 +3,8 @@
 // .env.local 에 GEMINI_API_KEY=AIzaSy... 추가 필요.
 
 import { findSimilarPastEvents } from '@/lib/data/dashboardSeed'
+import { findSimilarVenueSignage, formatVenueSignageContext } from '@/lib/data/venueSignageHelper'
+import { buildAccumulatedContext, formatAccumulatedContext } from '@/lib/ai/accumulatedContext'
 
 export type EventType =
   | 'conference' | 'exhibition' | 'awards' | 'forum' | 'workshop'
@@ -170,6 +172,28 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
       ).join('\n') + '\n→ 위 과거 행사들의 행사장·발주처·분류 패턴을 참고하여 추천하세요.'
     : ''
 
+  // v8: 같은 행사장 발주엑셀 통합 분석 데이터 (1~3건만 필터링 주입)
+  // 전체 1,856건 항목 통째로 X — 같은 행사장 매칭만
+  const venueSignageContext = findSimilarVenueSignage(input.venue, [], 3)
+  const venueSignageBlock = venueSignageContext.length > 0
+    ? formatVenueSignageContext(venueSignageContext) + '\n→ 같은 행사장의 실제 발주 패턴을 참고하여 카테고리·수량을 추정하세요.'
+    : ''
+
+  // v9: 점진적 정확도 향상 — 앱 누적 데이터 (단계별 가중치 부여)
+  // 사용자가 ′특정 장소 + 특정 행사 유형′을 선택하면, 그 조합으로 누적된 앱 사용 데이터를
+  // Gemini에 컨텍스트로 주입한다. 컨펌(70%)·완료(100%) 항목은 ′정답에 가까움′으로 표기됨.
+  let accumulatedBlock = ''
+  try {
+    const accCtx = await buildAccumulatedContext({
+      venue: input.venue,
+      eventType: input.eventType ?? null,
+      limit: 5,
+    })
+    accumulatedBlock = formatAccumulatedContext(accCtx)
+  } catch {
+    // Supabase 조회 실패 시 seed 데이터만으로 진행
+  }
+
   const userText = [
     `행사명: ${input.eventName}`,
     input.eventType ? `행사 유형: ${eventTypeKo}` : '',
@@ -190,7 +214,7 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
     input.budgetConstrained ? `예산 제약: 있음 (비용 절감 우선)` : '',
     `사용 목적: ${input.purposes.join(', ') || '미지정 — 행사 유형 기준 자동 판단'}`,
     input.notes ? `추가 메모: ${input.notes}` : '',
-  ].filter(Boolean).join('\n') + similarEventsBlock
+  ].filter(Boolean).join('\n') + similarEventsBlock + venueSignageBlock + accumulatedBlock
 
   const body = {
     systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },

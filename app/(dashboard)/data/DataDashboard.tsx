@@ -24,38 +24,45 @@ interface Props {
   venues?: unknown[]
 }
 
-// v4.1 단위 5-1 (2026-05-07): 행사 이력·레이아웃 DNA 탭 삭제 + 프로젝트 관리 탭 신설
-// 사용자 결정 (2026-05-07): 명세 1.2 (수행실적 PM 부서·팀단위) 빠짐
-// 흐름 이해: 1.1 환경장식물 파일 → 가공 → 추천 적용
-type TabKey = 'overview' | 'projects' | 'signage' | 'synonyms' | 'venues' | 'clients' | 'eventcat' | 'designers' | 'materials' | 'categories' | 'analysis'
+// v8 (2026-05-11): IA 장표 기준 4개 영역으로 재정리 (§13)
+// 관리자 페이지 = 운영 KPI / 유저 관리 / 전체 프로젝트 현황 / AI 사용량
+// 학습 데이터(시드·동의어·행사장·환경장식물 등)는 /admin/learning 으로 이동
+type TabKey = 'kpi' | 'users' | 'projects' | 'ai_usage'
+  // 레거시 탭 (학습 관리자로 이동 예정 — 일시 보존)
+  | 'overview' | 'signage' | 'synonyms' | 'venues' | 'clients' | 'eventcat' | 'designers' | 'materials' | 'categories' | 'analysis'
 
+// IA 기준 메인 4탭
 const TABS: { key: TabKey; label: string; icon: React.ElementType; badge?: string }[] = [
-  { key: 'overview',   label: '개요',          icon: BarChart3 },
-  // KPI · 프로젝트 관리 (v4.1 신설)
-  { key: 'projects',   label: '프로젝트 관리', icon: Briefcase,   badge: 'KPI' },
-  // 폼 입력으로 누적되는 통계
-  { key: 'clients',    label: '발주처',        icon: Building2,   badge: '입력 누적' },
-  { key: 'eventcat',   label: '행사분류 통계', icon: Layers3,     badge: '폼 추가 예정' },
-  { key: 'designers',  label: '디자인 업체',   icon: Users,       badge: '폼 추가 예정' },
-  { key: 'materials',  label: '재질',          icon: FolderOpen,  badge: '입력 누적' },
-  // 시스템 마스터 (관리자 관리)
-  { key: 'signage',    label: '환경장식물',    icon: Tag },
-  { key: 'synonyms',   label: '동의어',        icon: Shuffle },
-  { key: 'venues',     label: '행사장',        icon: MapPin },
-  { key: 'categories', label: '분류·권장',    icon: Layers3 },
-  // 초기 시드 (분석 도구)
-  { key: 'analysis',   label: '실측 분석',     icon: AlertCircle, badge: '시드' },
+  { key: 'kpi',      label: '운영 KPI',         icon: BarChart3 },
+  { key: 'users',    label: '유저 관리',         icon: Users,     badge: '신규' },
+  { key: 'projects', label: '전체 프로젝트 현황', icon: Briefcase },
+  { key: 'ai_usage', label: 'AI 사용량',        icon: Layers3,   badge: '신규' },
+]
+
+// 레거시 탭 (학습 관리자에 통합 예정 — 임시 ′상세 데이터′ 메뉴로 분리)
+const LEGACY_TABS: { key: TabKey; label: string; icon: React.ElementType; badge?: string }[] = [
+  { key: 'overview',   label: '개요',           icon: BarChart3 },
+  { key: 'clients',    label: '발주처',         icon: Building2 },
+  { key: 'eventcat',   label: '행사분류 통계',  icon: Layers3 },
+  { key: 'designers',  label: '디자인 업체',    icon: Users },
+  { key: 'materials',  label: '재질',           icon: FolderOpen },
+  { key: 'signage',    label: '환경장식물',     icon: Tag },
+  { key: 'synonyms',   label: '동의어',         icon: Shuffle },
+  { key: 'venues',     label: '행사장',         icon: MapPin },
+  { key: 'categories', label: '분류·권장',     icon: Layers3 },
+  { key: 'analysis',   label: '실측 분석',      icon: AlertCircle, badge: '시드' },
 ]
 
 export function DataDashboard(_props: Props) {
-  const [activeTab, setActiveTab] = useState<TabKey>('overview')
+  const [activeTab, setActiveTab] = useState<TabKey>('kpi')
   const [search, setSearch] = useState('')
+  const [showLegacy, setShowLegacy] = useState(false)
 
   const eventStats = useMemo(() => computeEventStats(), [])
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      <header className="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-10">
+    <div className="min-h-screen bg-white">
+      <header className="border-b border-slate-200/80 bg-white/60 backdrop-blur-md sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <Link
@@ -67,7 +74,7 @@ export function DataDashboard(_props: Props) {
             </Link>
             <Link
               href="/dashboard"
-              className="text-slate-100 hover:text-indigo-300 font-semibold text-sm tracking-tight transition"
+              className="text-slate-900 hover:text-indigo-300 font-semibold text-sm tracking-tight transition"
             >
               제작물 리스트 가이드
             </Link>
@@ -76,7 +83,7 @@ export function DataDashboard(_props: Props) {
             <GraduationCap className="w-3.5 h-3.5" />
             데이터 학습 관리자
           </Link>
-          <Link href="/dashboard" className="flex items-center gap-1.5 text-slate-400 hover:text-indigo-300 text-xs transition">
+          <Link href="/dashboard" className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-300 text-xs transition">
             <ArrowLeft className="w-3.5 h-3.5" />
             프로젝트로
           </Link>
@@ -85,7 +92,7 @@ export function DataDashboard(_props: Props) {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-100">관리자 페이지</h1>
+          <h1 className="text-xl font-bold text-slate-900">관리자 페이지</h1>
           <p className="text-slate-500 text-sm mt-0.5">
             프로젝트 관리(KPI) · 사전 학습 자료(시드 + 누적) · 마스터 데이터
           </p>
@@ -97,7 +104,70 @@ export function DataDashboard(_props: Props) {
           </div>
         </div>
 
-        {/* 핵심 통계 8개 (2행) */}
+        <div className="flex gap-6">
+          {/* 좌측 사이드바 — 페이지 메뉴 (피그마: 각 박스 = 한 페이지) */}
+          <aside className="w-52 flex-shrink-0">
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden sticky top-20">
+              <div className="px-3 py-2 bg-slate-50 border-b border-slate-200">
+                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">관리자 페이지</p>
+              </div>
+              <nav className="p-1.5 space-y-0.5">
+                {TABS.map(t => {
+                  const Icon = t.icon
+                  const active = activeTab === t.key
+                  return (
+                    <button
+                      key={t.key}
+                      onClick={() => setActiveTab(t.key)}
+                      className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium transition text-left ${
+                        active ? 'bg-indigo-600 text-white' : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="flex-1">{t.label}</span>
+                      {t.badge && (
+                        <span className={`text-[9px] rounded px-1 ${active ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'}`}>{t.badge}</span>
+                      )}
+                    </button>
+                  )
+                })}
+              </nav>
+              <div className="border-t border-slate-200">
+                <button
+                  onClick={() => setShowLegacy(v => !v)}
+                  className="w-full px-3 py-2 text-[10px] text-slate-500 hover:text-slate-700 flex items-center gap-1"
+                >
+                  {showLegacy ? '▾' : '▸'} 상세 데이터 ({LEGACY_TABS.length})
+                </button>
+                {showLegacy && (
+                  <nav className="p-1.5 pt-0 space-y-0.5">
+                    {LEGACY_TABS.map(t => {
+                      const Icon = t.icon
+                      const active = activeTab === t.key
+                      return (
+                        <button
+                          key={t.key}
+                          onClick={() => setActiveTab(t.key)}
+                          className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px] transition text-left ${
+                            active ? 'bg-slate-700 text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                          }`}
+                        >
+                          <Icon className="w-3 h-3 flex-shrink-0" />
+                          <span className="flex-1">{t.label}</span>
+                        </button>
+                      )
+                    })}
+                  </nav>
+                )}
+              </div>
+            </div>
+          </aside>
+
+          {/* 우측 페이지 컨텐츠 */}
+          <div className="flex-1 min-w-0 space-y-5">
+
+        {/* 핵심 통계 8개 (2행) — ′운영 KPI′ 페이지에서만 표시 */}
+        {activeTab === 'kpi' && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: '환경장식물 종류',  value: SEED_SIGNAGE_TYPES.length,    sub: '표준 11종',                  color: 'text-indigo-400' },
@@ -109,35 +179,14 @@ export function DataDashboard(_props: Props) {
             { label: '발주처',           value: new Set(SEED_PERFLIST.map(p => p.client)).size, sub: '실적 매칭 기준', color: 'text-fuchsia-400' },
             { label: '행사 분류',        value: SEED_EVENT_CATEGORIES.length,  sub: '권장 환경장식물 매핑',       color: 'text-teal-400' },
           ].map(s => (
-            <div key={s.label} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+            <div key={s.label} className="bg-white border border-slate-200 rounded-xl p-4">
               <p className="text-slate-500 text-xs">{s.label}</p>
               <p className={`text-2xl font-bold mt-1 ${s.color}`}>{s.value}</p>
-              <p className="text-slate-600 text-[10px] mt-0.5">{s.sub}</p>
+              <p className="text-slate-400 text-[10px] mt-0.5">{s.sub}</p>
             </div>
           ))}
         </div>
-
-        {/* 탭 */}
-        <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1.5 overflow-x-auto">
-          {TABS.map(t => {
-            const Icon = t.icon
-            return (
-              <button
-                key={t.key}
-                onClick={() => setActiveTab(t.key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
-                  activeTab === t.key ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {t.label}
-                {t.badge && (
-                  <span className="text-[9px] bg-slate-700 text-slate-300 rounded px-1 ml-0.5">{t.badge}</span>
-                )}
-              </button>
-            )
-          })}
-        </div>
+        )}
 
         {/* 검색 (대부분의 탭에서 사용) */}
         {(activeTab === 'synonyms' || activeTab === 'venues' || activeTab === 'clients' || activeTab === 'eventcat') && (
@@ -147,15 +196,21 @@ export function DataDashboard(_props: Props) {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="검색..."
-              className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-1.5 text-sm text-slate-800 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>
         )}
 
         {/* 탭 콘텐츠 */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          {activeTab === 'overview' && <OverviewTab eventStats={eventStats} />}
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          {/* v8: IA 메인 4탭 */}
+          {activeTab === 'kpi' && <OverviewTab eventStats={eventStats} />}
+          {activeTab === 'users' && <UsersTabPlaceholder />}
           {activeTab === 'projects' && <ProjectAdminTab />}
+          {activeTab === 'ai_usage' && <AIUsagePlaceholder />}
+
+          {/* 레거시 (학습 관리자 이동 예정) */}
+          {activeTab === 'overview' && <OverviewTab eventStats={eventStats} />}
           {activeTab === 'analysis' && <AnalysisTab />}
           {activeTab === 'signage' && <SignageTab />}
           {activeTab === 'synonyms' && <SynonymsTab search={search} />}
@@ -168,9 +223,9 @@ export function DataDashboard(_props: Props) {
         </div>
 
         {/* 하단 — 데이터 수집 계획 (명세 6번 매핑) */}
-        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
-          <h2 className="text-slate-300 font-semibold text-sm mb-1">AI 사전 교육 자료 — 수집·분석 단계</h2>
-          <p className="text-slate-600 text-xs mb-4">우선순위 6번 명세 매핑. 현재 1단계, 분석 자동화는 2단계 예정.</p>
+        <div className="bg-white/50 border border-slate-200 rounded-xl p-5">
+          <h2 className="text-slate-400 font-semibold text-sm mb-1">AI 사전 교육 자료 — 수집·분석 단계</h2>
+          <p className="text-slate-400 text-xs mb-4">우선순위 6번 명세 매핑. 현재 1단계, 분석 자동화는 2단계 예정.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
               { num: '6.1.a',  title: '폴더명 → 행사 메타',     desc: '행사명 + 프로젝트 코드 자동 추출 (54개)',                status: '✅ 수집됨'  },
@@ -182,15 +237,17 @@ export function DataDashboard(_props: Props) {
               { num: '6.2.1',   title: 'PM 사업부·부서명',       desc: '수행실적 엑셀에서 추출 — 향후 매핑',                     status: '⏳ 예정'    },
               { num: '6.2.6',   title: '행사분류',              desc: '8종 분류 정의됨, 분류별 권장 환경장식물 매핑',           status: '✅ 시드'    },
             ].map(item => (
-              <div key={item.num} className="flex items-start gap-3 p-3 bg-slate-800/40 rounded-lg">
+              <div key={item.num} className="flex items-start gap-3 p-3 bg-slate-50/40 rounded-lg">
                 <span className="text-[10px] font-mono text-indigo-400/70 flex-shrink-0 mt-0.5">{item.num}</span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-slate-200 text-xs font-medium">{item.title}</p>
+                  <p className="text-slate-800 text-xs font-medium">{item.title}</p>
                   <p className="text-slate-500 text-[10px] mt-0.5 leading-relaxed">{item.desc}</p>
                 </div>
-                <span className="text-[10px] text-slate-400 flex-shrink-0 whitespace-nowrap">{item.status}</span>
+                <span className="text-[10px] text-slate-500 flex-shrink-0 whitespace-nowrap">{item.status}</span>
               </div>
             ))}
+          </div>
+        </div>
           </div>
         </div>
       </main>
@@ -233,10 +290,10 @@ function OverviewTab({ eventStats }: { eventStats: ReturnType<typeof computeEven
         </Block>
       </div>
 
-      <div className="bg-slate-800/40 rounded-lg p-4 text-xs text-slate-400 leading-relaxed border border-slate-800">
-        <strong className="text-slate-200">현재 데이터 출처:</strong> {' '}
-        <code className="text-slate-300">참고자료/환경장식물 행사별/</code> 폴더 직접 매핑 (54건) +
-        <code className="text-slate-300"> Ezpmp_수행실적리스트_20260506.xlsx</code> 메타.
+      <div className="bg-slate-50/40 rounded-lg p-4 text-xs text-slate-500 leading-relaxed border border-slate-200">
+        <strong className="text-slate-800">현재 데이터 출처:</strong> {' '}
+        <code className="text-slate-400">참고자료/환경장식물 행사별/</code> 폴더 직접 매핑 (54건) +
+        <code className="text-slate-400"> Ezpmp_수행실적리스트_20260506.xlsx</code> 메타.
         분석(엑셀 파싱 + 이미지 카테고리화)은 명세 8장 2단계에서 자동화 예정.
       </div>
     </div>
@@ -247,13 +304,11 @@ function OverviewTab({ eventStats }: { eventStats: ReturnType<typeof computeEven
 function ProjectAdminTab() {
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<{
-    total: number
-    activeMembers: number
-    monthCreated: number
-    storageMB: number
-    venueDist: { venue: string; count: number; learned: boolean }[]
-    partDist: { code: string; name: string; count: number }[]
-    pendingRequests: number
+    total: number; active: number; itemCount: number; downloadCount: number; storageMB: number
+    rows: Array<{
+      id: string; name: string; venue: string; client: string; parts: string[]
+      itemCount: number; downloadCount: number; attendees: number | null; eventDate: string | null; storageMB: number
+    }>
   } | null>(null)
 
   useEffect(() => {
@@ -263,49 +318,56 @@ function ProjectAdminTab() {
         const { createClient } = await import('@/lib/supabase/client')
         const { PROGRAM_PART_BY_CODE } = await import('@/lib/programParts')
         const supabase = createClient()
-        const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0)
-        const [
-          totalRes,
-          monthRes,
-          membersRes,
-          projectsRes,
-        ] = await Promise.all([
-          supabase.from('projects').select('*', { count: 'exact', head: true }),
-          supabase.from('projects').select('*', { count: 'exact', head: true }).gte('created_at', monthStart.toISOString()),
-          supabase.from('project_members').select('user_id'),
-          supabase.from('projects').select('event_venue, program_parts').limit(500),
+        const [pRes, iRes, uRes] = await Promise.all([
+          supabase.from('projects').select('id, name, event_venue, event_date, client_name, program_parts, status, attendees_count'),
+          supabase.from('design_items').select('project_id, image_url'),
+          supabase.from('usage_logs').select('project_id, feature').in('feature', ['export_excel', 'export_ppt']),
         ])
-        // venue_requests는 v6 마이그레이션 미적용 시 실패할 수 있음 — 안전 처리
-        let pendingCount = 0
-        try {
-          const { count } = await supabase.from('venue_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending')
-          pendingCount = count ?? 0
-        } catch { /* 테이블 없음 */ }
-
         if (cancelled) return
-        const venueCounts = new Map<string, number>()
-        const partCounts = new Map<string, number>()
-        const learnedNames = new Set(VENUE_LIST.map(v => v.displayName))
-        for (const p of (projectsRes.data ?? []) as { event_venue: string | null; program_parts: string[] | null }[]) {
-          if (p.event_venue) venueCounts.set(p.event_venue, (venueCounts.get(p.event_venue) ?? 0) + 1)
-          for (const c of p.program_parts ?? []) partCounts.set(c, (partCounts.get(c) ?? 0) + 1)
+
+        const projects = (pRes.data ?? []) as Array<{ id: string; name: string; event_venue: string | null; event_date: string | null; client_name: string | null; program_parts: string[] | null; status: string | null; attendees_count: number | null }>
+        const items = (iRes.data ?? []) as Array<{ project_id: string; image_url: string | null }>
+        const usages = (uRes.data ?? []) as Array<{ project_id: string }>
+
+        const itemByPid = new Map<string, number>()
+        const imgByPid = new Map<string, number>()
+        for (const it of items) {
+          itemByPid.set(it.project_id, (itemByPid.get(it.project_id) ?? 0) + 1)
+          if (it.image_url) imgByPid.set(it.project_id, (imgByPid.get(it.project_id) ?? 0) + 1)
         }
+        const dlByPid = new Map<string, number>()
+        for (const u of usages) dlByPid.set(u.project_id, (dlByPid.get(u.project_id) ?? 0) + 1)
+
+        // 스토리지: 시안 이미지 1건 ≈ 200KB 추정
+        const totalImages = items.filter(i => i.image_url).length
+        const totalStorageMB = Math.round((totalImages * 200) / 1024 * 10) / 10
+
+        const rows = projects.map(p => {
+          const partNames = (p.program_parts ?? []).map(c => PROGRAM_PART_BY_CODE.get(c)?.name ?? c).join(', ')
+          const imgs = imgByPid.get(p.id) ?? 0
+          return {
+            id: p.id,
+            name: p.name,
+            venue: p.event_venue ?? '—',
+            client: p.client_name ?? '—',
+            parts: partNames ? [partNames] : [],
+            itemCount: itemByPid.get(p.id) ?? 0,
+            downloadCount: dlByPid.get(p.id) ?? 0,
+            attendees: p.attendees_count,
+            eventDate: p.event_date,
+            storageMB: Math.round((imgs * 200) / 1024 * 10) / 10,
+          }
+        }).sort((a, b) => (b.eventDate ?? '').localeCompare(a.eventDate ?? ''))
+
         setStats({
-          total: totalRes.count ?? 0,
-          monthCreated: monthRes.count ?? 0,
-          activeMembers: new Set(((membersRes.data ?? []) as { user_id: string }[]).map(m => m.user_id)).size,
-          storageMB: 0,
-          venueDist: Array.from(venueCounts.entries()).sort(([, a], [, b]) => b - a).slice(0, 12).map(([v, c]) => ({ venue: v, count: c, learned: learnedNames.has(v) })),
-          partDist: Array.from(partCounts.entries()).sort(([, a], [, b]) => b - a).slice(0, 12).map(([code, count]) => ({
-            code,
-            name: PROGRAM_PART_BY_CODE.get(code)?.name ?? code,
-            count,
-          })),
-          pendingRequests: pendingCount,
+          total: projects.length,
+          active: projects.filter(p => p.status && p.status !== '완료').length,
+          itemCount: items.length,
+          downloadCount: usages.length,
+          storageMB: totalStorageMB,
+          rows,
         })
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
+      } finally { if (!cancelled) setLoading(false) }
     })()
     return () => { cancelled = true }
   }, [])
@@ -314,68 +376,63 @@ function ProjectAdminTab() {
   if (!stats) return <div className="p-8 text-center text-slate-500 text-sm">데이터 없음</div>
 
   return (
-    <div className="p-5 space-y-5">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: '전체 프로젝트', value: stats.total,         color: 'text-indigo-400' },
-          { label: '이번 달 생성', value: stats.monthCreated,   color: 'text-emerald-400' },
-          { label: '활성 멤버',    value: stats.activeMembers,  color: 'text-violet-400' },
-          { label: '학습 요청 대기', value: stats.pendingRequests, color: stats.pendingRequests > 0 ? 'text-amber-400' : 'text-slate-300' },
-        ].map(s => (
-          <div key={s.label} className="bg-slate-800/40 border border-slate-800 rounded-lg p-3">
-            <p className="text-slate-500 text-[11px]">{s.label}</p>
-            <p className={`text-2xl font-bold mt-1 ${s.color}`}>{s.value}</p>
-          </div>
-        ))}
+    <div className="p-5 space-y-4">
+      {/* 상단 5 KPI */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3"><p className="text-[10px] text-slate-500">전체 프로젝트</p><p className="text-xl font-bold text-slate-800">{stats.total}</p></div>
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3"><p className="text-[10px] text-slate-500">활성 프로젝트</p><p className="text-xl font-bold text-emerald-700">{stats.active}</p></div>
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3"><p className="text-[10px] text-slate-500">전체 스토리지</p><p className="text-xl font-bold text-amber-700">{stats.storageMB}<span className="text-xs text-slate-500 ml-1">MB</span></p></div>
+        <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3"><p className="text-[10px] text-slate-500">전체 환경장식물 수</p><p className="text-xl font-bold text-indigo-700">{stats.itemCount}</p></div>
+        <div className="bg-rose-50 border border-rose-200 rounded-lg p-3"><p className="text-[10px] text-slate-500">전체 다운로드 수</p><p className="text-xl font-bold text-rose-700">{stats.downloadCount}</p></div>
       </div>
 
-      <Block title={`행사장별 프로젝트 분포 (TOP ${stats.venueDist.length})`}>
-        {stats.venueDist.length === 0 ? (
-          <p className="text-slate-600 text-xs italic">등록된 프로젝트의 행사장이 아직 없습니다.</p>
-        ) : (
-          <div className="space-y-1.5">
-            {stats.venueDist.map(v => (
-              <div key={v.venue} className="flex items-center gap-2 text-xs">
-                <span className={`text-slate-300 truncate flex-1 ${!v.learned ? 'text-amber-400' : ''}`} title={v.learned ? '학습됨' : '학습 안됨 — 데이터 학습 관리자에서 등록 권장'}>
-                  {v.venue}{!v.learned && <span className="ml-1 text-amber-500 text-[10px]">⚠</span>}
-                </span>
-                <span className="text-slate-500 text-[10px]">{v.count}건</span>
-              </div>
+      {/* 하단 9컬럼 표 */}
+      <div className="overflow-x-auto border border-slate-200 rounded-lg">
+        <table className="w-full text-xs">
+          <thead className="bg-slate-50 border-b border-slate-200">
+            <tr className="text-slate-600 text-[11px]">
+              <th className="px-2 py-2 text-left font-semibold">프로젝트명</th>
+              <th className="px-2 py-2 text-left font-semibold">행사장</th>
+              <th className="px-2 py-2 text-left font-semibold">발주처</th>
+              <th className="px-2 py-2 text-left font-semibold">행사분류</th>
+              <th className="px-2 py-2 text-right font-semibold">환경장식물</th>
+              <th className="px-2 py-2 text-right font-semibold">다운로드</th>
+              <th className="px-2 py-2 text-right font-semibold">참여인원</th>
+              <th className="px-2 py-2 text-left font-semibold">행사일</th>
+              <th className="px-2 py-2 text-right font-semibold">스토리지</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {stats.rows.length === 0 ? (
+              <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">프로젝트 없음</td></tr>
+            ) : stats.rows.map(r => (
+              <tr key={r.id} className="hover:bg-slate-50">
+                <td className="px-2 py-1.5 text-slate-800 font-medium truncate max-w-[160px]" title={r.name}>{r.name}</td>
+                <td className="px-2 py-1.5 text-slate-600 truncate max-w-[120px]" title={r.venue}>{r.venue}</td>
+                <td className="px-2 py-1.5 text-slate-600 truncate max-w-[100px]" title={r.client}>{r.client}</td>
+                <td className="px-2 py-1.5 text-slate-600 truncate max-w-[140px]" title={r.parts.join(', ')}>{r.parts.join(', ') || '—'}</td>
+                <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{r.itemCount}</td>
+                <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{r.downloadCount}</td>
+                <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{r.attendees ?? '—'}</td>
+                <td className="px-2 py-1.5 text-slate-500 text-[11px]">{r.eventDate ?? '—'}</td>
+                <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{r.storageMB > 0 ? `${r.storageMB} MB` : '—'}</td>
+              </tr>
             ))}
-          </div>
-        )}
-      </Block>
-
-      <Block title={`프로그램 파트별 프로젝트 분포 (TOP ${stats.partDist.length})`}>
-        {stats.partDist.length === 0 ? (
-          <p className="text-slate-600 text-xs italic">아직 program_parts를 입력한 프로젝트가 없습니다. 마이그레이션 v6 적용 후 누적됩니다.</p>
-        ) : (
-          <div className="space-y-1.5">
-            {stats.partDist.map(p => (
-              <div key={p.code} className="flex items-center gap-2 text-xs">
-                <span className="font-mono text-slate-500 text-[10px] w-12">{p.code}</span>
-                <span className="text-slate-300 truncate flex-1">{p.name}</span>
-                <span className="text-slate-500 text-[10px]">{p.count}건</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </Block>
-
-      <p className="text-[10px] text-slate-600 leading-relaxed">
-        ⓘ 자동 누적 학습: 사용자가 새 프로젝트를 만들 때마다 행사장·프로그램 파트가 위 통계에 5분 이내로 반영됩니다.
-        학습 안된 행사장(amber)은 <Link href="/admin/learning" className="text-emerald-400 hover:underline">데이터 학습 관리자</Link>에서 등록·도면 추가하면 추천 정확도가 개선됩니다.
-      </p>
+          </tbody>
+        </table>
+      </div>
+      <p className="text-[10px] text-slate-400">스토리지는 시안 이미지 ≈ 200KB 기준 추정값. attendees·storage는 신규 컬럼 — 빈 경우 ′—′ 표시.</p>
     </div>
   )
 }
+
 
 function SignageTab() {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
-          <tr className="border-b border-slate-800 bg-slate-900/60">
+          <tr className="border-b border-slate-200 bg-white/60">
             {['이름', '규격(mm)', '레이아웃', '기본 재질', '카테고리'].map(h => (
               <th key={h} className="text-left text-slate-500 font-medium px-4 py-3 whitespace-nowrap">{h}</th>
             ))}
@@ -383,15 +440,15 @@ function SignageTab() {
         </thead>
         <tbody>
           {SEED_SIGNAGE_TYPES.map(s => (
-            <tr key={s.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-              <td className="px-4 py-2.5 text-slate-200 font-medium">{s.name}</td>
-              <td className="px-4 py-2.5 text-slate-400 font-mono">{s.width_mm} × {s.height_mm}</td>
+            <tr key={s.id} className="border-b border-slate-200/50 hover:bg-slate-50/30">
+              <td className="px-4 py-2.5 text-slate-800 font-medium">{s.name}</td>
+              <td className="px-4 py-2.5 text-slate-500 font-mono">{s.width_mm} × {s.height_mm}</td>
               <td className="px-4 py-2.5">
-                <span className={`text-[10px] px-1.5 py-0.5 rounded ${s.layout === '세로' ? 'bg-violet-900/50 text-violet-300' : s.layout === '가로' ? 'bg-blue-900/50 text-blue-300' : 'bg-slate-700 text-slate-300'}`}>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded ${s.layout === '세로' ? 'bg-violet-900/50 text-violet-300' : s.layout === '가로' ? 'bg-blue-900/50 text-blue-300' : 'bg-slate-200 text-slate-400'}`}>
                   {s.layout}
                 </span>
               </td>
-              <td className="px-4 py-2.5 text-slate-400">{s.default_material}</td>
+              <td className="px-4 py-2.5 text-slate-500">{s.default_material}</td>
               <td className="px-4 py-2.5 text-slate-500">{s.category}</td>
             </tr>
           ))}
@@ -409,7 +466,7 @@ function SynonymsTab({ search }: { search: string }) {
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
-          <tr className="border-b border-slate-800 bg-slate-900/60">
+          <tr className="border-b border-slate-200 bg-white/60">
             {['별칭 (alias)', '표준명 (canonical)', '비고'].map(h => (
               <th key={h} className="text-left text-slate-500 font-medium px-4 py-3">{h}</th>
             ))}
@@ -417,12 +474,12 @@ function SynonymsTab({ search }: { search: string }) {
         </thead>
         <tbody>
           {filtered.length === 0 ? (
-            <tr><td colSpan={3} className="px-4 py-8 text-center text-slate-600">일치 없음</td></tr>
+            <tr><td colSpan={3} className="px-4 py-8 text-center text-slate-400">일치 없음</td></tr>
           ) : filtered.map((s, i) => (
-            <tr key={i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+            <tr key={i} className="border-b border-slate-200/50 hover:bg-slate-50/30">
               <td className="px-4 py-2.5 text-amber-400">{highlight(s.alias, search)}</td>
-              <td className="px-4 py-2.5 text-slate-200 flex items-center gap-1.5">
-                <ChevronRight className="w-3 h-3 text-slate-600" />
+              <td className="px-4 py-2.5 text-slate-800 flex items-center gap-1.5">
+                <ChevronRight className="w-3 h-3 text-slate-400" />
                 {highlight(s.canonical_name, search)}
               </td>
               <td className="px-4 py-2.5 text-slate-500">{s.note ?? '—'}</td>
@@ -442,7 +499,7 @@ function VenuesTab({ search }: { search: string }) {
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
-          <tr className="border-b border-slate-800 bg-slate-900/60">
+          <tr className="border-b border-slate-200 bg-white/60">
             {['행사장명', '지역', '유형', '샘플 보유'].map(h => (
               <th key={h} className="text-left text-slate-500 font-medium px-4 py-3">{h}</th>
             ))}
@@ -450,16 +507,16 @@ function VenuesTab({ search }: { search: string }) {
         </thead>
         <tbody>
           {filtered.map(v => (
-            <tr key={v.key} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-              <td className="px-4 py-2.5 text-slate-200 font-medium">{v.displayName}</td>
-              <td className="px-4 py-2.5 text-slate-400">{v.region}</td>
+            <tr key={v.key} className="border-b border-slate-200/50 hover:bg-slate-50/30">
+              <td className="px-4 py-2.5 text-slate-800 font-medium">{v.displayName}</td>
+              <td className="px-4 py-2.5 text-slate-500">{v.region}</td>
               <td className="px-4 py-2.5">
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700/60 text-slate-300">{v.type}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200/60 text-slate-400">{v.type}</span>
               </td>
               <td className="px-4 py-2.5">
                 {v.hasSamples
                   ? <span className="text-emerald-400 text-[10px]">✓ 폴더 있음</span>
-                  : <span className="text-slate-600 text-[10px]">—</span>}
+                  : <span className="text-slate-400 text-[10px]">—</span>}
               </td>
             </tr>
           ))}
@@ -485,7 +542,7 @@ function EventsTab({ search }: { search: string }) {
     <div className="overflow-x-auto max-h-[560px] overflow-y-auto">
       <table className="w-full text-xs">
         <thead className="sticky top-0 z-10">
-          <tr className="border-b border-slate-800 bg-slate-900">
+          <tr className="border-b border-slate-200 bg-white">
             {['행사명', '코드', '연도', '행사장', '발주처', 'PM 부서', '분류', '자료'].map(h => (
               <th key={h} className="text-left text-slate-500 font-medium px-3 py-3 whitespace-nowrap">{h}</th>
             ))}
@@ -493,30 +550,30 @@ function EventsTab({ search }: { search: string }) {
         </thead>
         <tbody>
           {filtered.length === 0 ? (
-            <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-600">일치 없음</td></tr>
+            <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">일치 없음</td></tr>
           ) : filtered.map((e, i) => {
             const perf = e.project_code ? perfByCode.get(e.project_code) : null
             return (
-              <tr key={i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-                <td className="px-3 py-2.5 text-slate-200 font-medium max-w-[230px] truncate" title={e.project_name}>{e.project_name}</td>
-                <td className="px-3 py-2.5 text-slate-400 font-mono text-[10px]">{e.project_code ?? '—'}</td>
-                <td className="px-3 py-2.5 text-slate-400">{e.year ?? '—'}</td>
-                <td className="px-3 py-2.5 text-slate-400 max-w-[150px] truncate text-[10px]" title={e.venue}>{e.venue}</td>
+              <tr key={i} className="border-b border-slate-200/50 hover:bg-slate-50/30">
+                <td className="px-3 py-2.5 text-slate-800 font-medium max-w-[230px] truncate" title={e.project_name}>{e.project_name}</td>
+                <td className="px-3 py-2.5 text-slate-500 font-mono text-[10px]">{e.project_code ?? '—'}</td>
+                <td className="px-3 py-2.5 text-slate-500">{e.year ?? '—'}</td>
+                <td className="px-3 py-2.5 text-slate-500 max-w-[150px] truncate text-[10px]" title={e.venue}>{e.venue}</td>
                 <td className="px-3 py-2.5 max-w-[140px] truncate text-[10px]" title={perf?.client}>
                   {perf
                     ? <span className="text-fuchsia-300">{perf.client}</span>
-                    : <span className="text-slate-700">—</span>}
+                    : <span className="text-slate-400">—</span>}
                 </td>
                 <td className="px-3 py-2.5 text-[10px]">
                   {perf
                     ? <span className="text-rose-300">{perf.pm_team}</span>
-                    : <span className="text-slate-700">—</span>}
+                    : <span className="text-slate-400">—</span>}
                 </td>
                 <td className="px-3 py-2.5">
                   <span className={`text-[10px] px-1.5 py-0.5 rounded ${
                     e.category_tag === '핵심' ? 'bg-amber-900/50 text-amber-300' :
                     e.category_tag === '해외' ? 'bg-violet-900/50 text-violet-300' :
-                    e.category_tag === '미분류' ? 'bg-slate-700 text-slate-400' :
+                    e.category_tag === '미분류' ? 'bg-slate-200 text-slate-500' :
                     'bg-emerald-900/40 text-emerald-300'
                   }`}>{e.category_tag}</span>
                 </td>
@@ -541,7 +598,7 @@ function CategoriesTab() {
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
-          <tr className="border-b border-slate-800 bg-slate-900/60">
+          <tr className="border-b border-slate-200 bg-white/60">
             {['행사 분류', '권장 환경장식물', '메모'].map(h => (
               <th key={h} className="text-left text-slate-500 font-medium px-4 py-3">{h}</th>
             ))}
@@ -553,8 +610,8 @@ function CategoriesTab() {
               .map(k => SEED_SIGNAGE_TYPES.find(s => s.id === k)?.name)
               .filter(Boolean)
             return (
-              <tr key={c.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-                <td className="px-4 py-2.5 text-slate-200 font-medium">{c.label}</td>
+              <tr key={c.id} className="border-b border-slate-200/50 hover:bg-slate-50/30">
+                <td className="px-4 py-2.5 text-slate-800 font-medium">{c.label}</td>
                 <td className="px-4 py-2.5">
                   <div className="flex flex-wrap gap-1">
                     {recommended.map(name => (
@@ -579,11 +636,11 @@ function MaterialsTab() {
     <div className="p-5 space-y-5">
       {/* 표준 종류별 기본 재질 */}
       <div>
-        <h3 className="text-slate-200 text-sm font-semibold mb-3">표준 환경장식물별 기본 재질 (명세 6.1.b.iv)</h3>
+        <h3 className="text-slate-800 text-sm font-semibold mb-3">표준 환경장식물별 기본 재질 (명세 6.1.b.iv)</h3>
         <div className="overflow-x-auto -mx-5 px-5">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-slate-800 bg-slate-900/60">
+              <tr className="border-b border-slate-200 bg-white/60">
                 {['환경장식물', '주 재질 (시스템 기본값)', '대체 재질', '실측 출현'].map(h => (
                   <th key={h} className="text-left text-slate-500 font-medium px-4 py-3">{h}</th>
                 ))}
@@ -593,16 +650,16 @@ function MaterialsTab() {
               {SEED_MATERIAL_DEFAULTS.map(m => {
                 const realCount = dist.find(d => d.material === m.primary_material)?.count ?? 0
                 return (
-                  <tr key={m.signage_type_id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-                    <td className="px-4 py-2.5 text-slate-200 font-medium">{m.signage_name}</td>
-                    <td className="px-4 py-2.5 text-slate-300">{m.primary_material}</td>
+                  <tr key={m.signage_type_id} className="border-b border-slate-200/50 hover:bg-slate-50/30">
+                    <td className="px-4 py-2.5 text-slate-800 font-medium">{m.signage_name}</td>
+                    <td className="px-4 py-2.5 text-slate-400">{m.primary_material}</td>
                     <td className="px-4 py-2.5 text-slate-500">
                       {m.alternative_materials.length > 0 ? m.alternative_materials.join(', ') : '— (분석 후 추가)'}
                     </td>
                     <td className="px-4 py-2.5 text-[10px]">
                       {realCount > 0
                         ? <span className="text-violet-300">{realCount}건 폴더 분석에서 발견</span>
-                        : <span className="text-slate-700 italic">미발견</span>}
+                        : <span className="text-slate-400 italic">미발견</span>}
                     </td>
                   </tr>
                 )
@@ -614,22 +671,22 @@ function MaterialsTab() {
 
       {/* 실측 분포 */}
       <div>
-        <h3 className="text-slate-200 text-sm font-semibold mb-3">실측 재질 분포 — 폴더 엑셀 281건 분석</h3>
-        <div className="bg-slate-800/40 border border-slate-800 rounded-lg p-4">
+        <h3 className="text-slate-800 text-sm font-semibold mb-3">실측 재질 분포 — 폴더 엑셀 281건 분석</h3>
+        <div className="bg-slate-50/40 border border-slate-200 rounded-lg p-4">
           <div className="space-y-2">
             {dist.map(m => (
               <div key={m.material}>
                 <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-slate-300 text-xs font-medium">{m.material}</span>
+                  <span className="text-slate-400 text-xs font-medium">{m.material}</span>
                   <span className="text-slate-500 text-[10px]">{m.count}건 ({m.pct}%)</span>
                 </div>
-                <div className="bg-slate-900 rounded h-1.5 overflow-hidden">
+                <div className="bg-white rounded h-1.5 overflow-hidden">
                   <div className="h-full bg-violet-500" style={{ width: `${(m.count / max) * 100}%` }} />
                 </div>
               </div>
             ))}
           </div>
-          <p className="text-slate-600 text-[10px] mt-3 leading-relaxed">
+          <p className="text-slate-400 text-[10px] mt-3 leading-relaxed">
             ※ "X-배너", "현수막"이 재질 컬럼에 들어간 케이스는 환경장식물 종류명 → 재질 정규화 룰 마련 필요.
           </p>
         </div>
@@ -652,7 +709,7 @@ function DesignersTab() {
       <div className="overflow-x-auto -mx-5 px-5">
         <table className="w-full text-xs">
           <thead>
-            <tr className="border-b border-slate-800 bg-slate-900/60">
+            <tr className="border-b border-slate-200 bg-white/60">
               {['업체명', '납기 준수율', '수정 발생률', '평균 수정 횟수', '컴펌 평균 (일)', '비고'].map(h => (
                 <th key={h} className="text-left text-slate-500 font-medium px-4 py-3 whitespace-nowrap">{h}</th>
               ))}
@@ -660,13 +717,13 @@ function DesignersTab() {
           </thead>
           <tbody>
             {SEED_DESIGNERS.map((d, i) => (
-              <tr key={i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-                <td className="px-4 py-2.5 text-slate-200 font-medium">{d.name}</td>
+              <tr key={i} className="border-b border-slate-200/50 hover:bg-slate-50/30">
+                <td className="px-4 py-2.5 text-slate-800 font-medium">{d.name}</td>
                 <td className="px-4 py-2.5 text-slate-500">{d.delivery_compliance_rate ?? '—'}</td>
                 <td className="px-4 py-2.5 text-slate-500">{d.revision_rate ?? '—'}</td>
                 <td className="px-4 py-2.5 text-slate-500">{d.avg_revision_count ?? '—'}</td>
                 <td className="px-4 py-2.5 text-slate-500">{d.avg_confirm_days ?? '—'}</td>
-                <td className="px-4 py-2.5 text-slate-600 text-[10px]">{d.note}</td>
+                <td className="px-4 py-2.5 text-slate-400 text-[10px]">{d.note}</td>
               </tr>
             ))}
           </tbody>
@@ -692,10 +749,10 @@ function LeadTimeTab() {
           </div>
         </div>
       </div>
-      <div className="bg-slate-800/40 border border-slate-700/50 rounded-lg p-5">
+      <div className="bg-slate-50/40 border border-slate-300/50 rounded-lg p-5">
         <div className="flex items-center gap-2 mb-2">
-          <Truck className="w-4 h-4 text-slate-400" />
-          <h3 className="text-slate-200 text-sm font-semibold">납기 패턴 — 분석 자동화 예정</h3>
+          <Truck className="w-4 h-4 text-slate-500" />
+          <h3 className="text-slate-800 text-sm font-semibold">납기 패턴 — 분석 자동화 예정</h3>
         </div>
         <p className="text-slate-500 text-xs leading-relaxed mb-4">
           명세 6.1.b.v + 6.2.3 — PM 부서·디자인 업체·행사장별로 평균 D-N 발주/검토/수정/확정 일수를 산출.
@@ -709,17 +766,17 @@ function LeadTimeTab() {
               { scope: '디자인 업체별', desc: '업체명 → 평균 시안 컴펌·수정 일수' },
               { scope: '행사장별',     desc: '행사장 → 표준 제작물 수량·납기 패턴' },
             ].map(p => (
-              <div key={p.scope} className="bg-slate-900/60 border border-slate-800 rounded p-3">
-                <p className="text-slate-300 text-xs font-medium">{p.scope}</p>
-                <p className="text-slate-600 text-[10px] mt-1 leading-relaxed">{p.desc}</p>
-                <p className="text-slate-700 text-[9px] mt-2 italic">분석 진입 후 자동 산출</p>
+              <div key={p.scope} className="bg-white/60 border border-slate-200 rounded p-3">
+                <p className="text-slate-400 text-xs font-medium">{p.scope}</p>
+                <p className="text-slate-400 text-[10px] mt-1 leading-relaxed">{p.desc}</p>
+                <p className="text-slate-400 text-[9px] mt-2 italic">분석 진입 후 자동 산출</p>
               </div>
             ))}
           </div>
         ) : (
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-slate-800">
+              <tr className="border-b border-slate-200">
                 {['범위', '대상', 'D-발주', 'D-검수', 'D-수정', 'D-확정', '샘플'].map(h => (
                   <th key={h} className="text-left text-slate-500 font-medium px-3 py-2">{h}</th>
                 ))}
@@ -727,14 +784,14 @@ function LeadTimeTab() {
             </thead>
             <tbody>
               {SEED_LEAD_TIME.map((l, i) => (
-                <tr key={i} className="border-b border-slate-800/50">
-                  <td className="px-3 py-2 text-slate-300">{l.scope_type}</td>
-                  <td className="px-3 py-2 text-slate-200">{l.scope_value}</td>
-                  <td className="px-3 py-2 text-slate-400">{l.avg_d_to_order ?? '—'}</td>
-                  <td className="px-3 py-2 text-slate-400">{l.avg_d_to_review ?? '—'}</td>
-                  <td className="px-3 py-2 text-slate-400">{l.avg_d_to_revision ?? '—'}</td>
-                  <td className="px-3 py-2 text-slate-400">{l.avg_d_to_confirm ?? '—'}</td>
-                  <td className="px-3 py-2 text-slate-600">{l.sample_count}건</td>
+                <tr key={i} className="border-b border-slate-200/50">
+                  <td className="px-3 py-2 text-slate-400">{l.scope_type}</td>
+                  <td className="px-3 py-2 text-slate-800">{l.scope_value}</td>
+                  <td className="px-3 py-2 text-slate-500">{l.avg_d_to_order ?? '—'}</td>
+                  <td className="px-3 py-2 text-slate-500">{l.avg_d_to_review ?? '—'}</td>
+                  <td className="px-3 py-2 text-slate-500">{l.avg_d_to_revision ?? '—'}</td>
+                  <td className="px-3 py-2 text-slate-500">{l.avg_d_to_confirm ?? '—'}</td>
+                  <td className="px-3 py-2 text-slate-400">{l.sample_count}건</td>
                 </tr>
               ))}
             </tbody>
@@ -790,8 +847,8 @@ function AnalysisTab() {
       {/* 두 패널 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* 재질 분포 */}
-        <div className="bg-slate-800/40 border border-slate-800 rounded-lg p-4">
-          <h3 className="text-slate-200 text-sm font-semibold mb-3 flex items-center gap-1.5">
+        <div className="bg-slate-50/40 border border-slate-200 rounded-lg p-4">
+          <h3 className="text-slate-800 text-sm font-semibold mb-3 flex items-center gap-1.5">
             <FolderOpen className="w-3.5 h-3.5 text-violet-400" />
             실측 재질 분포 (명세 6.1.b.iv)
           </h3>
@@ -799,53 +856,53 @@ function AnalysisTab() {
             {a.material_distribution.map(m => (
               <div key={m.material}>
                 <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-slate-300 text-xs font-medium">{m.material}</span>
+                  <span className="text-slate-400 text-xs font-medium">{m.material}</span>
                   <span className="text-slate-500 text-[10px]">{m.count}건 ({m.pct}%)</span>
                 </div>
-                <div className="bg-slate-900 rounded h-1.5 overflow-hidden">
+                <div className="bg-white rounded h-1.5 overflow-hidden">
                   <div className="h-full bg-violet-500" style={{ width: `${(m.count / matMax) * 100}%` }} />
                 </div>
               </div>
             ))}
           </div>
-          <p className="text-slate-600 text-[10px] mt-3 leading-relaxed">
+          <p className="text-slate-400 text-[10px] mt-3 leading-relaxed">
             ※ "X-배너", "현수막"이 재질 컬럼에 들어간 케이스는 환경장식물 종류로 표기된 것 — 추후 정규화 필요.
           </p>
         </div>
 
         {/* 비표준 규격 TOP 17 */}
-        <div className="bg-slate-800/40 border border-slate-800 rounded-lg p-4">
-          <h3 className="text-slate-200 text-sm font-semibold mb-3 flex items-center gap-1.5">
+        <div className="bg-slate-50/40 border border-slate-200 rounded-lg p-4">
+          <h3 className="text-slate-800 text-sm font-semibold mb-3 flex items-center gap-1.5">
             <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
             비표준 규격 TOP 17 (명세 6.1.b.iii.3)
           </h3>
           <div className="space-y-1">
             {a.non_standard_sizes.map(s => (
               <div key={s.size} className="flex items-center gap-2 text-[11px]">
-                <span className="text-slate-300 font-mono w-24 flex-shrink-0">{s.size}</span>
-                <div className="flex-1 bg-slate-900 rounded h-1.5 overflow-hidden">
+                <span className="text-slate-400 font-mono w-24 flex-shrink-0">{s.size}</span>
+                <div className="flex-1 bg-white rounded h-1.5 overflow-hidden">
                   <div className="h-full bg-amber-500" style={{ width: `${(s.count / sizeMax) * 100}%` }} />
                 </div>
                 <span className="text-slate-500 w-7 text-right text-[10px] flex-shrink-0">{s.count}</span>
               </div>
             ))}
           </div>
-          <p className="text-slate-600 text-[10px] mt-3 leading-relaxed">
-            데이터 출처: <code className="text-slate-400">scripts/parse_signage_lists.mjs</code> 일괄 파싱
+          <p className="text-slate-400 text-[10px] mt-3 leading-relaxed">
+            데이터 출처: <code className="text-slate-500">scripts/parse_signage_lists.mjs</code> 일괄 파싱
           </p>
         </div>
       </div>
 
       {/* 비표준 규격 → 표준 종류 매핑 룰 (신규) */}
-      <div className="bg-slate-800/40 border border-slate-800 rounded-lg p-4">
-        <h3 className="text-slate-200 text-sm font-semibold mb-3 flex items-center gap-1.5">
+      <div className="bg-slate-50/40 border border-slate-200 rounded-lg p-4">
+        <h3 className="text-slate-800 text-sm font-semibold mb-3 flex items-center gap-1.5">
           <ChevronRight className="w-3.5 h-3.5 text-emerald-400" />
           비표준 규격 → 표준 종류 매핑 룰 (적용됨)
         </h3>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-slate-800">
+              <tr className="border-b border-slate-200">
                 {['비표준 규격', '출현', '추정 종류', '카테고리', '근접 표준', '비고'].map(h => (
                   <th key={h} className="text-left text-slate-500 font-medium px-2 py-1.5 whitespace-nowrap text-[10px]">{h}</th>
                 ))}
@@ -855,10 +912,10 @@ function AnalysisTab() {
               {NON_STANDARD_MAPPINGS.map(m => {
                 const std = m.closest_standard ? SEED_SIGNAGE_TYPES.find(s => s.id === m.closest_standard)?.name : null
                 return (
-                  <tr key={m.size} className="border-b border-slate-800/40 hover:bg-slate-800/30">
-                    <td className="px-2 py-1.5 text-slate-300 font-mono text-[10px]">{m.size}</td>
+                  <tr key={m.size} className="border-b border-slate-200/40 hover:bg-slate-50/30">
+                    <td className="px-2 py-1.5 text-slate-400 font-mono text-[10px]">{m.size}</td>
                     <td className="px-2 py-1.5 text-slate-500 text-[10px]">{m.count}건</td>
-                    <td className="px-2 py-1.5 text-slate-300 text-[10px]">{m.inferred_type}</td>
+                    <td className="px-2 py-1.5 text-slate-400 text-[10px]">{m.inferred_type}</td>
                     <td className="px-2 py-1.5">
                       <span className={`text-[9px] px-1.5 py-0.5 rounded ${
                         m.inferred_category === '데이터 오류' ? 'bg-rose-900/40 text-rose-300' :
@@ -866,22 +923,22 @@ function AnalysisTab() {
                         'bg-emerald-900/40 text-emerald-300'
                       }`}>{m.inferred_category}</span>
                     </td>
-                    <td className="px-2 py-1.5 text-emerald-300 text-[10px]">{std ?? <span className="text-slate-700">—</span>}</td>
-                    <td className="px-2 py-1.5 text-slate-600 text-[10px] max-w-[200px] truncate" title={m.note}>{m.note}</td>
+                    <td className="px-2 py-1.5 text-emerald-300 text-[10px]">{std ?? <span className="text-slate-400">—</span>}</td>
+                    <td className="px-2 py-1.5 text-slate-400 text-[10px] max-w-[200px] truncate" title={m.note}>{m.note}</td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
         </div>
-        <p className="text-slate-600 text-[10px] mt-2 leading-relaxed">
-          ※ <code className="text-slate-400">suggestStandardType(w, h)</code> 함수로 임의 규격에도 룰 기반 fallback 매핑 가능 (lib/data/dashboardSeed.ts).
+        <p className="text-slate-400 text-[10px] mt-2 leading-relaxed">
+          ※ <code className="text-slate-500">suggestStandardType(w, h)</code> 함수로 임의 규격에도 룰 기반 fallback 매핑 가능 (lib/data/dashboardSeed.ts).
         </p>
       </div>
 
       {/* 다음 단계 */}
-      <div className="bg-slate-900/40 border border-slate-800 rounded-lg p-4">
-        <p className="text-slate-300 text-xs font-semibold mb-2">분석 자동화 다음 단계</p>
+      <div className="bg-white/40 border border-slate-200 rounded-lg p-4">
+        <p className="text-slate-400 text-xs font-semibold mb-2">분석 자동화 다음 단계</p>
         <ul className="text-[11px] text-slate-500 space-y-1 leading-relaxed">
           <li>• ✅ 비표준 규격 → 표준 종류 매핑 룰 (위 표 + suggestStandardType 함수)</li>
           <li>• 재질 분포 → 환경장식물 종류별 기본 재질 자동 산출 (현재는 단일 기본값)</li>
@@ -919,21 +976,21 @@ function PmTab({ search }: { search: string }) {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         {groups.map(g => (
-          <div key={g.division} className="bg-slate-800/40 border border-slate-800 rounded-lg p-4">
+          <div key={g.division} className="bg-slate-50/40 border border-slate-200 rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-slate-200 text-sm font-semibold">{g.division}</h3>
+              <h3 className="text-slate-800 text-sm font-semibold">{g.division}</h3>
               <span className="text-rose-400 text-xs font-bold">{g.project_count}건</span>
             </div>
             <div className="space-y-2">
               {g.teams.map(t => (
-                <div key={t.name} className="bg-slate-900/60 rounded p-2">
+                <div key={t.name} className="bg-white/60 rounded p-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-300 text-xs font-medium">{t.name}</span>
+                    <span className="text-slate-400 text-xs font-medium">{t.name}</span>
                     <span className="text-slate-500 text-[10px]">{t.project_count}건</span>
                   </div>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {t.pm_names.map(n => (
-                      <span key={n} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">{n}</span>
+                      <span key={n} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-50 text-slate-500">{n}</span>
                     ))}
                   </div>
                 </div>
@@ -968,7 +1025,7 @@ function ClientsTab({ search }: { search: string }) {
       <div className="overflow-x-auto -mx-5 px-5">
         <table className="w-full text-xs">
           <thead>
-            <tr className="border-b border-slate-800 bg-slate-900/60">
+            <tr className="border-b border-slate-200 bg-white/60">
               {['발주처', '의뢰 건수', '최근 연도', '주요 행사분류', '대표 프로젝트'].map(h => (
                 <th key={h} className="text-left text-slate-500 font-medium px-4 py-3 whitespace-nowrap">{h}</th>
               ))}
@@ -976,13 +1033,13 @@ function ClientsTab({ search }: { search: string }) {
           </thead>
           <tbody>
             {stats.map(c => (
-              <tr key={c.client} className="border-b border-slate-800/50 hover:bg-slate-800/30 align-top">
-                <td className="px-4 py-2.5 text-slate-200 font-medium max-w-[200px]">{highlight(c.client, search)}</td>
+              <tr key={c.client} className="border-b border-slate-200/50 hover:bg-slate-50/30 align-top">
+                <td className="px-4 py-2.5 text-slate-800 font-medium max-w-[200px]">{highlight(c.client, search)}</td>
                 <td className="px-4 py-2.5">
                   <span className="text-fuchsia-300 font-semibold">{c.project_count}</span>
-                  <span className="text-slate-600 text-[10px] ml-1">건</span>
+                  <span className="text-slate-400 text-[10px] ml-1">건</span>
                 </td>
-                <td className="px-4 py-2.5 text-slate-400">{c.recent_year}</td>
+                <td className="px-4 py-2.5 text-slate-500">{c.recent_year}</td>
                 <td className="px-4 py-2.5">
                   <div className="flex flex-wrap gap-1 max-w-[260px]">
                     {c.event_categories.slice(0, 4).map(cat => {
@@ -1002,7 +1059,7 @@ function ClientsTab({ search }: { search: string }) {
                 </td>
                 <td className="px-4 py-2.5 text-slate-500 text-[10px] max-w-[300px] truncate" title={c.projects.join(' · ')}>
                   {c.projects[0]}
-                  {c.projects.length > 1 && <span className="text-slate-700"> 외 {c.projects.length - 1}건</span>}
+                  {c.projects.length > 1 && <span className="text-slate-400"> 외 {c.projects.length - 1}건</span>}
                 </td>
               </tr>
             ))}
@@ -1034,16 +1091,16 @@ function EventCategoryStatsTab({ search }: { search: string }) {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {stats.map(s => (
-          <div key={s.category} className="bg-slate-800/40 border border-slate-800 rounded-lg p-3">
+          <div key={s.category} className="bg-slate-50/40 border border-slate-200 rounded-lg p-3">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-slate-200 text-sm font-medium">{s.category}</span>
+              <span className="text-slate-800 text-sm font-medium">{s.category}</span>
               <span className="text-teal-300 text-xs font-bold">{s.project_count}건</span>
             </div>
-            <div className="bg-slate-900 rounded h-1.5 overflow-hidden mb-2">
+            <div className="bg-white rounded h-1.5 overflow-hidden mb-2">
               <div className="h-full bg-teal-500" style={{ width: `${(s.project_count / max) * 100}%` }} />
             </div>
             <p className="text-slate-500 text-[10px]">
-              주요 발주처: <span className="text-slate-400">{s.clients.slice(0, 3).join(', ')}{s.clients.length > 3 && ` 외 ${s.clients.length - 3}곳`}</span>
+              주요 발주처: <span className="text-slate-500">{s.clients.slice(0, 3).join(', ')}{s.clients.length > 3 && ` 외 ${s.clients.length - 3}곳`}</span>
             </p>
           </div>
         ))}
@@ -1066,15 +1123,15 @@ function LayoutDnaTab() {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {SEED_LAYOUT_DNA.map(dna => (
-          <div key={dna.type_id} className="bg-slate-800/40 border border-slate-800 rounded-lg p-4">
+          <div key={dna.type_id} className="bg-slate-50/40 border border-slate-200 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-slate-200 text-sm font-semibold">{dna.type_id}</h3>
+              <h3 className="text-slate-800 text-sm font-semibold">{dna.type_id}</h3>
               <span className="text-violet-400 text-[10px]">{dna.slots.length} 슬롯 · {dna.dominant_color}</span>
             </div>
             <p className="text-slate-500 text-[11px] mb-3 leading-relaxed">{dna.summary}</p>
 
             {/* 미니 시각화: 0~1000 영역에 슬롯 박스 표시 */}
-            <div className="relative bg-slate-900 border border-slate-800 rounded mb-3 overflow-hidden" style={{ aspectRatio: '1 / 1' }}>
+            <div className="relative bg-white border border-slate-200 rounded mb-3 overflow-hidden" style={{ aspectRatio: '1 / 1' }}>
               {dna.slots.map((s, i) => {
                 const left = (s.box.xmin / 1000) * 100
                 const top = (s.box.ymin / 1000) * 100
@@ -1093,20 +1150,20 @@ function LayoutDnaTab() {
                 return (
                   <div
                     key={i}
-                    className={`absolute border ${colors[s.role] ?? 'bg-slate-700/30 border-slate-600'} flex items-center justify-center`}
+                    className={`absolute border ${colors[s.role] ?? 'bg-slate-200/30 border-slate-600'} flex items-center justify-center`}
                     style={{ left: `${left}%`, top: `${top}%`, width: `${w}%`, height: `${h}%` }}
                     title={`${s.label} (${s.role})`}
                   >
-                    <span className="text-[8px] text-slate-200 truncate px-0.5">{s.label}</span>
+                    <span className="text-[8px] text-slate-800 truncate px-0.5">{s.label}</span>
                   </div>
                 )
               })}
             </div>
 
-            <p className="text-slate-600 text-[10px] leading-relaxed">
-              <strong className="text-slate-400">패턴:</strong> {dna.layout_pattern}
+            <p className="text-slate-400 text-[10px] leading-relaxed">
+              <strong className="text-slate-500">패턴:</strong> {dna.layout_pattern}
             </p>
-            <p className="text-slate-700 text-[9px] mt-1 truncate" title={dna.source_file}>
+            <p className="text-slate-400 text-[9px] mt-1 truncate" title={dna.source_file}>
               출처: {dna.source_file}
             </p>
           </div>
@@ -1114,7 +1171,7 @@ function LayoutDnaTab() {
       </div>
 
       {/* 역할 색상 범례 */}
-      <div className="bg-slate-900/40 border border-slate-800 rounded-lg p-3 flex items-center gap-3 flex-wrap text-[10px]">
+      <div className="bg-white/40 border border-slate-200 rounded-lg p-3 flex items-center gap-3 flex-wrap text-[10px]">
         <span className="text-slate-500 font-semibold">역할 색상:</span>
         {[
           { role: 'logo', color: 'bg-amber-500/60', label: '로고' },
@@ -1128,7 +1185,7 @@ function LayoutDnaTab() {
         ].map(r => (
           <span key={r.role} className="flex items-center gap-1">
             <span className={`w-3 h-3 rounded ${r.color}`} />
-            <span className="text-slate-400">{r.label}</span>
+            <span className="text-slate-500">{r.label}</span>
           </span>
         ))}
       </div>
@@ -1153,8 +1210,8 @@ function highlight(text: string, query: string) {
 // ── 공통 UI ────────────────────────────────────────────────────
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-slate-800/40 border border-slate-800 rounded-lg p-4">
-      <p className="text-slate-300 text-xs font-semibold mb-3">{title}</p>
+    <div className="bg-slate-50/40 border border-slate-200 rounded-lg p-4">
+      <p className="text-slate-400 text-xs font-semibold mb-3">{title}</p>
       {children}
     </div>
   )
@@ -1164,11 +1221,143 @@ function BarRow({ label, count, max, color }: { label: string; count: number; ma
   const pct = max > 0 ? (count / max) * 100 : 0
   return (
     <div className="flex items-center gap-2 text-[10px]">
-      <span className="text-slate-400 w-20 truncate flex-shrink-0" title={label}>{label}</span>
-      <div className="flex-1 bg-slate-900 rounded h-2 overflow-hidden">
+      <span className="text-slate-500 w-20 truncate flex-shrink-0" title={label}>{label}</span>
+      <div className="flex-1 bg-white rounded h-2 overflow-hidden">
         <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
       </div>
       <span className="text-slate-500 w-7 text-right flex-shrink-0">{count}</span>
+    </div>
+  )
+}
+
+// ─── v8: IA 메인 4탭 — 유저 관리 ───
+function UsersTabPlaceholder() {
+  const [users, setUsers] = useState<Array<{ id: string; email: string; display_name: string | null; role: string; department?: string | null; position?: string | null; created_at: string }>>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    import('@/lib/supabase/client').then(({ createClient }) => {
+      const supabase = createClient()
+      supabase.from('profiles').select('*').order('created_at', { ascending: false }).then(({ data }) => {
+        setUsers((data ?? []) as typeof users)
+        setLoading(false)
+      })
+    })
+  }, [])
+
+  const total = users.length
+  const admins = users.filter(u => u.role === 'admin').length
+  const members = total - admins
+
+  return (
+    <div className="p-5 space-y-4">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3"><p className="text-[10px] text-slate-500">전체 유저</p><p className="text-xl font-bold text-slate-800">{total}</p></div>
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3"><p className="text-[10px] text-slate-500">일반 멤버</p><p className="text-xl font-bold text-slate-700">{members}</p></div>
+        <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3"><p className="text-[10px] text-slate-500">관리자</p><p className="text-xl font-bold text-indigo-700">{admins}</p></div>
+      </div>
+      <div className="overflow-x-auto border border-slate-200 rounded-lg">
+        <table className="w-full text-xs">
+          <thead className="bg-slate-50 border-b border-slate-200">
+            <tr className="text-slate-600 text-[11px]">
+              <th className="px-3 py-2 text-left font-semibold">이름</th>
+              <th className="px-3 py-2 text-left font-semibold">역할</th>
+              <th className="px-3 py-2 text-left font-semibold">부서</th>
+              <th className="px-3 py-2 text-left font-semibold">직위</th>
+              <th className="px-3 py-2 text-left font-semibold">이용자 ID</th>
+              <th className="px-3 py-2 text-left font-semibold">가입일</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {loading ? (
+              <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-400">불러오는 중...</td></tr>
+            ) : users.length === 0 ? (
+              <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-400">등록된 사용자 없음</td></tr>
+            ) : users.map(u => (
+              <tr key={u.id} className="hover:bg-slate-50">
+                <td className="px-3 py-2 text-slate-800">{u.display_name ?? u.email.split('@')[0]}</td>
+                <td className="px-3 py-2">{u.role === 'admin' ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-semibold">관리자</span> : <span className="text-[10px] text-slate-500">멤버</span>}</td>
+                <td className="px-3 py-2 text-slate-600">{u.department ?? '—'}</td>
+                <td className="px-3 py-2 text-slate-600">{u.position ?? '—'}</td>
+                <td className="px-3 py-2 text-slate-500 text-[11px] font-mono">{u.email}</td>
+                <td className="px-3 py-2 text-slate-500 text-[11px]">{new Date(u.created_at).toLocaleDateString('ko-KR')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function AIUsagePlaceholder() {
+  const [stats, setStats] = useState<{ totalCalls: number; totalCost: number; totalTokens: number; byDay: Array<{ day: string; count: number }>; byFeature: Array<{ feature: string; count: number }> }>({
+    totalCalls: 0, totalCost: 0, totalTokens: 0, byDay: [], byFeature: []
+  })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    import('@/lib/supabase/client').then(({ createClient }) => {
+      const supabase = createClient()
+      supabase.from('usage_logs').select('*').order('created_at', { ascending: false }).limit(1000).then(({ data }) => {
+        const rows = (data ?? []) as Array<{ feature?: string; tokens?: number; cost?: number; created_at: string }>
+        const totalCalls = rows.length
+        const totalCost = rows.reduce((sum, r) => sum + (r.cost ?? 0), 0)
+        const totalTokens = rows.reduce((sum, r) => sum + (r.tokens ?? 0), 0)
+        const byDayMap: Record<string, number> = {}
+        const byFeatureMap: Record<string, number> = {}
+        for (const r of rows) {
+          const day = r.created_at.slice(0, 10)
+          byDayMap[day] = (byDayMap[day] ?? 0) + 1
+          const f = r.feature ?? '기타'
+          byFeatureMap[f] = (byFeatureMap[f] ?? 0) + 1
+        }
+        const byDay = Object.entries(byDayMap).sort(([a], [b]) => b.localeCompare(a)).slice(0, 14).reverse().map(([day, count]) => ({ day, count }))
+        const byFeature = Object.entries(byFeatureMap).sort((a, b) => b[1] - a[1]).map(([feature, count]) => ({ feature, count }))
+        setStats({ totalCalls, totalCost, totalTokens, byDay, byFeature })
+        setLoading(false)
+      })
+    })
+  }, [])
+
+  const maxDay = Math.max(1, ...stats.byDay.map(d => d.count))
+
+  return (
+    <div className="p-5 space-y-4">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3"><p className="text-[10px] text-slate-500">총 API 호출 수</p><p className="text-xl font-bold text-slate-800">{stats.totalCalls.toLocaleString()}</p></div>
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3"><p className="text-[10px] text-slate-500">총 비용 (원)</p><p className="text-xl font-bold text-amber-700">{Math.round(stats.totalCost * 1300).toLocaleString()}</p><p className="text-[9px] text-slate-400">≈ ${stats.totalCost.toFixed(2)}</p></div>
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3"><p className="text-[10px] text-slate-500">총 토큰 수</p><p className="text-xl font-bold text-emerald-700">{stats.totalTokens.toLocaleString()}</p></div>
+      </div>
+      <div className="bg-white border border-slate-200 rounded-lg p-4">
+        <h4 className="text-xs font-semibold text-slate-700 mb-3">일별 사용량 (최근 14일)</h4>
+        {loading ? <p className="text-center text-slate-400 text-xs py-6">불러오는 중...</p>
+         : stats.byDay.length === 0 ? <p className="text-center text-slate-400 text-xs py-6">기록 없음</p>
+         : (
+          <div className="flex items-end gap-1 h-32">
+            {stats.byDay.map(d => (
+              <div key={d.day} className="flex-1 flex flex-col items-center gap-1" title={`${d.day}: ${d.count}회`}>
+                <div className="w-full bg-indigo-500 rounded-t" style={{ height: `${(d.count / maxDay) * 100}%` }} />
+                <span className="text-[9px] text-slate-400">{d.day.slice(5)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="bg-white border border-slate-200 rounded-lg p-4">
+        <h4 className="text-xs font-semibold text-slate-700 mb-3">기능별 사용량</h4>
+        {stats.byFeature.length === 0 ? <p className="text-center text-slate-400 text-xs py-3">기록 없음</p>
+         : (
+          <ul className="space-y-1.5 text-xs">
+            {stats.byFeature.map(f => (
+              <li key={f.feature} className="flex items-center justify-between">
+                <span className="text-slate-700">{f.feature}</span>
+                <span className="text-slate-500 font-semibold">{f.count.toLocaleString()}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   )
 }

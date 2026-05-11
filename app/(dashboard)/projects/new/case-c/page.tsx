@@ -63,9 +63,9 @@ export default function CaseCPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-white text-slate-900">
       <div className="max-w-3xl mx-auto px-6 py-10">
-        <Link href="/projects/new" className="text-sm text-slate-400 hover:text-slate-200">← 케이스 선택</Link>
+        <Link href="/projects/new" className="text-sm text-slate-500 hover:text-slate-800">← 케이스 선택</Link>
         <div className="flex items-center gap-3 mt-4">
           <ImageIcon className="w-6 h-6 text-amber-400" />
           <h1 className="text-2xl font-bold">Case C · 샘플 디자인 보유로 시작</h1>
@@ -73,24 +73,24 @@ export default function CaseCPage() {
 
         <div className="mt-8 space-y-5">
           <label className="block">
-            <div className="text-sm text-slate-300 mb-1.5">행사명 *</div>
+            <div className="text-sm text-slate-400 mb-1.5">행사명 *</div>
             <input value={eventName} onChange={e => setEventName(e.target.value)} className={inputCls} />
           </label>
           <label className="block">
-            <div className="text-sm text-slate-300 mb-1.5">행사 장소</div>
+            <div className="text-sm text-slate-400 mb-1.5">행사 장소</div>
             <input value={venue} onChange={e => setVenue(e.target.value)} className={inputCls} />
           </label>
-          <label className="block border-2 border-dashed border-slate-700 rounded-xl p-8 text-center cursor-pointer hover:border-slate-600 hover:bg-slate-900/40 transition">
+          <label className="block border-2 border-dashed border-slate-300 rounded-xl p-8 text-center cursor-pointer hover:border-slate-600 hover:bg-white/40 transition">
             <input type="file" accept="image/*" onChange={e => setFile(e.target.files?.[0] || null)} className="hidden" />
             <Upload className="w-8 h-8 mx-auto text-slate-500" />
-            <div className="mt-2 text-sm text-slate-300">{file ? file.name : '시안 이미지를 선택하세요'}</div>
+            <div className="mt-2 text-sm text-slate-400">{file ? file.name : '시안 이미지를 선택하세요'}</div>
             <div className="mt-1 text-xs text-slate-500">PNG / JPG / WebP — 최대 10MB</div>
           </label>
 
           {error && <div className="text-sm text-rose-400 bg-rose-950/30 border border-rose-900/40 rounded-lg p-3">{error}</div>}
 
-          <div className="text-sm text-slate-400 bg-slate-900/40 border border-slate-800 rounded-lg p-3">
-            프로젝트 생성 후 <span className="text-slate-200 font-medium">/info 페이지에서 &quot;AI 슬롯 분석&quot;</span> 버튼을 누르면 슬롯 위치가 자동 추출됩니다.
+          <div className="text-sm text-slate-500 bg-white/40 border border-slate-200 rounded-lg p-3">
+            프로젝트 생성 후 <span className="text-slate-800 font-medium">/info 페이지에서 &quot;AI 슬롯 분석&quot;</span> 버튼을 누르면 슬롯 위치가 자동 추출됩니다.
           </div>
 
           <button onClick={handleCreate} disabled={!file || !eventName.trim() || loading}
@@ -103,4 +103,4 @@ export default function CaseCPage() {
   )
 }
 
-const inputCls = 'w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2.5 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500'
+const inputCls = 'w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 text-slate-900 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500'

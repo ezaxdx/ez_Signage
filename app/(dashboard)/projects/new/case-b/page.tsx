@@ -133,9 +133,9 @@ export default function CaseBPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-white text-slate-900">
       <div className="max-w-3xl mx-auto px-6 py-10">
-        <Link href="/projects/new" className="text-sm text-slate-400 hover:text-slate-200">← 케이스 선택</Link>
+        <Link href="/projects/new" className="text-sm text-slate-500 hover:text-slate-800">← 케이스 선택</Link>
         <div className="flex items-center gap-3 mt-4">
           <FileSpreadsheet className="w-6 h-6 text-emerald-400" />
           <h1 className="text-2xl font-bold">Case B · 엑셀 보유로 시작</h1>
@@ -143,32 +143,32 @@ export default function CaseBPage() {
 
         <div className="mt-8 space-y-5">
           <label className="block">
-            <div className="text-sm text-slate-300 mb-1.5">행사명 *</div>
+            <div className="text-sm text-slate-400 mb-1.5">행사명 *</div>
             <input value={eventName} onChange={e => setEventName(e.target.value)} className={inputCls} />
           </label>
           <label className="block">
-            <div className="text-sm text-slate-300 mb-1.5">행사 장소</div>
+            <div className="text-sm text-slate-400 mb-1.5">행사 장소</div>
             <input value={venue} onChange={e => setVenue(e.target.value)} className={inputCls} />
           </label>
 
-          <label className="block border-2 border-dashed border-slate-700 rounded-xl p-8 text-center cursor-pointer hover:border-slate-600 hover:bg-slate-900/40 transition">
+          <label className="block border-2 border-dashed border-slate-300 rounded-xl p-8 text-center cursor-pointer hover:border-slate-600 hover:bg-white/40 transition">
             <input type="file" accept=".xlsx,.xls" onChange={handleFile} className="hidden" />
             <Upload className="w-8 h-8 mx-auto text-slate-500" />
-            <div className="mt-2 text-sm text-slate-300">{file ? file.name : '엑셀 파일을 선택하세요 (.xlsx)'}</div>
+            <div className="mt-2 text-sm text-slate-400">{file ? file.name : '엑셀 파일을 선택하세요 (.xlsx)'}</div>
             <div className="mt-1 text-xs text-slate-500">17컬럼 표준 양식 또는 NO/구분/장소/규격/수량/재질 포함</div>
           </label>
 
           {error && <div className="text-sm text-rose-400 bg-rose-950/30 border border-rose-900/40 rounded-lg p-3 flex items-start gap-2"><AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />{error}</div>}
 
           {parsed && parsed.length > 0 && (
-            <div className="rounded-xl border border-slate-800 bg-slate-900/40 overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-800 text-sm">매칭된 항목 <span className="font-semibold">{parsed.length}건</span></div>
+            <div className="rounded-xl border border-slate-200 bg-white/40 overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-200 text-sm">매칭된 항목 <span className="font-semibold">{parsed.length}건</span></div>
               <div className="max-h-72 overflow-auto divide-y divide-slate-800/60 text-sm">
                 {parsed.slice(0, 50).map((r, i) => (
                   <div key={i} className="px-4 py-2 grid grid-cols-12 gap-2">
                     <span className="col-span-1 text-slate-500">{r.no || i + 1}</span>
                     <span className="col-span-3 truncate">{r.category || '—'}</span>
-                    <span className="col-span-3 truncate text-slate-400">{r.location || '—'}</span>
+                    <span className="col-span-3 truncate text-slate-500">{r.location || '—'}</span>
                     <span className="col-span-2 text-slate-500">{r.size || '—'}</span>
                     <span className="col-span-1 text-right">{r.quantity || 1}</span>
                     <span className="col-span-2 truncate text-slate-500">{r.material || '—'}</span>
@@ -190,4 +190,4 @@ export default function CaseBPage() {
   )
 }
 
-const inputCls = 'w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2.5 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500'
+const inputCls = 'w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 text-slate-900 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500'

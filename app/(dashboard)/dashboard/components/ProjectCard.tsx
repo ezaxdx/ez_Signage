@@ -24,7 +24,7 @@ const STATUS: Record<ProjectStatus, { label: string; className: string }> = {
   },
   '완료': {
     label: '완료',
-    className: 'text-slate-400 bg-slate-400/10 border border-slate-400/25',
+    className: 'text-slate-500 bg-slate-400/10 border border-slate-400/25',
   },
 }
 
@@ -56,10 +56,10 @@ export function ProjectCard({ project, isOwner = true }: Props) {
     : null
 
   return (
-    <article className={`bg-slate-900 border rounded-xl p-5 flex flex-col gap-3 transition-all group ${
+    <article className={`bg-white border rounded-xl p-5 flex flex-col gap-3 transition-all group ${
       dday?.urgent
         ? 'border-red-700/60 hover:border-red-600/80'
-        : 'border-slate-800 hover:border-slate-700 hover:bg-slate-900/80'
+        : 'border-slate-200 hover:border-slate-300 hover:bg-white/80'
     }`}>
       {/* 상단 뱃지 + D-day + 항목 수 — stage가 있으면 stage 표시, 없으면 status (사용자 요청) */}
       <div className="flex items-center justify-between">
@@ -82,7 +82,7 @@ export function ProjectCard({ project, isOwner = true }: Props) {
             <span className={`flex items-center gap-0.5 text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border ${
               dday.urgent
                 ? 'text-red-300 bg-red-500/15 border-red-500/40'
-                : 'text-slate-400 bg-slate-700/40 border-slate-700'
+                : 'text-slate-500 bg-slate-200/40 border-slate-300'
             }`}>
               {dday.urgent && <AlertTriangle className="w-2.5 h-2.5 flex-shrink-0" />}
               {dday.label}
@@ -97,7 +97,7 @@ export function ProjectCard({ project, isOwner = true }: Props) {
 
       {/* 프로젝트명 */}
       <div>
-        <h3 className="text-slate-100 font-semibold text-sm leading-snug">{project.name}</h3>
+        <h3 className="text-slate-900 font-semibold text-sm leading-snug">{project.name}</h3>
         {project.client_name && (
           <p className="text-indigo-400/70 text-xs mt-0.5">{project.client_name}</p>
         )}
@@ -119,37 +119,13 @@ export function ProjectCard({ project, isOwner = true }: Props) {
         )}
       </div>
 
-      {/* 행사 단계 진행 표시줄 */}
-      {project.stage && (
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] text-slate-500">단계</span>
-            <span className="text-[10px] font-medium text-slate-400">{project.stage}</span>
-          </div>
-          <div className="flex gap-0.5">
-            {STAGES.map((s) => {
-              const stageIdx = STAGES.indexOf(s)
-              const currentIdx = STAGES.indexOf(project.stage as ProjectStage)
-              const active = stageIdx <= currentIdx
-              return (
-                <div
-                  key={s}
-                  title={s}
-                  className={`flex-1 h-1 rounded-full transition-colors ${
-                    active ? STAGE_COLORS[project.stage as ProjectStage] : 'bg-slate-700'
-                  } ${stageIdx === currentIdx ? 'opacity-100' : active ? 'opacity-60' : 'opacity-30'}`}
-                />
-              )
-            })}
-          </div>
-        </div>
-      )}
+      {/* 행사 단계 진행 표시줄 — 사용자 결정으로 제거 (2026-05-11) */}
 
       {/* CTA */}
       <div className="flex gap-2">
         <Link
           href={`/projects/${project.id}/info`}
-          className="flex items-center justify-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 text-xs font-medium py-2 px-3 rounded-lg transition-all"
+          className="flex items-center justify-center gap-1 bg-slate-50 hover:bg-slate-200 text-slate-500 hover:text-slate-800 text-xs font-medium py-2 px-3 rounded-lg transition-all"
           title="프로젝트 정보 및 멤버 관리"
         >
           <Settings className="w-3.5 h-3.5" />
@@ -160,7 +136,7 @@ export function ProjectCard({ project, isOwner = true }: Props) {
           className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-2 rounded-lg transition-all ${
             dday?.urgent
               ? 'bg-red-700/30 hover:bg-red-600 text-red-200 hover:text-white'
-              : 'bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white group-hover:bg-slate-700'
+              : 'bg-slate-50 hover:bg-indigo-600 text-slate-400 hover:text-white group-hover:bg-slate-200'
           }`}
         >
           프로젝트 열기

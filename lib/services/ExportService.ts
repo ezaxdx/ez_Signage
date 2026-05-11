@@ -4,38 +4,49 @@ import { PROGRAM_PART_BY_CODE } from '@/lib/programParts'
 const DEFAULT_SLOT_ORDER = ['header_brand', 'hero_title', 'sub_title', 'body', 'arrow', 'qr_code', 'footer_credits']
 
 // ── EditorGrid 컬럼 상태 (localStorage) — 엑셀/PDF 내보내기 시 동기화 ──
-const COLS_STORAGE_KEY = 'mice_editor_grid_cols_v1'
-type EditorColumnId = 'no' | 'part' | 'bigarea' | 'location' | 'purpose' | 'category' | 'language' | 'size' | 'material' | 'quantity' | 'ko_text' | 'en_text' | 'note' | 'editor' | string
+// v8 (2026-05-11): 1차안 17컬럼 복원 — purpose=′사용 목적′, content=′내용′(content_text), 신규 4컬럼 추가
+const COLS_STORAGE_KEY = 'mice_editor_grid_cols_v9'
+type EditorColumnId = 'no' | 'part' | 'bigarea' | 'location' | 'purpose' | 'content' | 'category' | 'language' | 'size' | 'material' | 'quantity' | 'ko_text' | 'en_text' | 'note' | 'editor' | 'design_vendor' | 'print_vendor' | 'install_time' | 'uninstall_time' | string
 interface EditorCustomCol { id: EditorColumnId; label: string; width: string; field: string | null; custom?: boolean }
 interface EditorColState {
   order: EditorColumnId[]
   hidden: EditorColumnId[]
+  excludedFromExcel: EditorColumnId[]   // v9: §14-3 사용자별 엑셀 제외
+  excludedFromPpt: EditorColumnId[]     // v9: §14-3 사용자별 PPT 제외
   customCols: EditorCustomCol[]
   customValues: Record<string, Record<string, string>>
 }
 
-// v4.1 단위 4 (2026-05-07): 'purpose' 라벨 "사용목적" → "내용" 으로 의미 변경.
-// 회의 결정 — 같은 종류 X배너 구분용 자유 텍스트. ko_text/en_text는 슬롯 합산 잔존물.
+// v8: 1차안 17컬럼 헤더 복원
+// - purpose는 '사용 목적'으로 환원 (v4.1 단위 4의 '내용' 의미 변경 되돌림)
+// - content는 별도 content_text 필드 매핑
 const DEFAULT_LABELS: Record<EditorColumnId, string> = {
-  no: 'NO.', part: '파트', bigarea: '구분', location: '장소', purpose: '내용',
-  category: '품목', language: '언어', size: '규격(mm)', material: '재질', quantity: '수량',
-  ko_text: '국문 시안', en_text: '영문 시안', note: '비고', editor: '담당자',
+  no: 'NO.', part: '파트', bigarea: '구분', location: '장소', purpose: '사용 목적',
+  content: '내용', category: '품목', language: '언어', size: '규격(mm)', material: '재질',
+  quantity: '수량', ko_text: '국문 시안', en_text: '영문 시안', note: '비고', editor: '담당자',
+  design_vendor: '디자인업체', print_vendor: '출력업체',
+  install_time: '설치시간', uninstall_time: '철거시간',
 }
 
+// 1차안 17컬럼 (no/part/bigarea/location/purpose/category/language/size/material/quantity/content/note/editor + design_vendor/print_vendor/install_time/uninstall_time)
 const DEFAULT_ORDER: EditorColumnId[] = [
   'no', 'part', 'bigarea', 'location', 'purpose', 'category', 'language',
-  'size', 'material', 'quantity', 'ko_text', 'en_text', 'note', 'editor',
+  'size', 'material', 'quantity', 'content', 'note', 'editor',
+  'design_vendor', 'print_vendor', 'install_time', 'uninstall_time',
 ]
 
 function loadEditorColState(): EditorColState | null {
   if (typeof window === 'undefined') return null
   try {
-    const raw = localStorage.getItem(COLS_STORAGE_KEY)
+    // v9 우선, 미존재 시 v8 1회성 폴백 (EditorGrid가 마이그레이션 저장 전에 호출될 수 있음)
+    const raw = localStorage.getItem(COLS_STORAGE_KEY) ?? localStorage.getItem('mice_editor_grid_cols_v8')
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<EditorColState>
     return {
       order: parsed.order ?? DEFAULT_ORDER,
       hidden: parsed.hidden ?? [],
+      excludedFromExcel: parsed.excludedFromExcel ?? [],
+      excludedFromPpt: parsed.excludedFromPpt ?? [],
       customCols: parsed.customCols ?? [],
       customValues: parsed.customValues ?? {},
     }
@@ -87,12 +98,18 @@ function getCellValue(
       return `${cat} #${idx}`
     }
     case 'location': return item.location ?? ''
-    case 'purpose': return item.purpose ?? ''
+    case 'purpose': return item.purpose ?? ''                      // v8: '사용 목적'으로 환원
+    case 'content': return item.content_text ?? gatherContentText(contents, 'ko') // v8: '내용' content_text 우선
     case 'category': return item.category ?? ''
     case 'language': return item.language ?? ''
     case 'size': return item.width_mm && item.height_mm ? `${item.width_mm}×${item.height_mm}` : ''
     case 'material': return item.material ?? ''
     case 'quantity': return item.quantity ?? 1
+    // v8: 신규 4컬럼
+    case 'design_vendor':  return item.design_vendor ?? ''
+    case 'print_vendor':   return item.print_vendor ?? ''
+    case 'install_time':   return item.install_time ?? ''
+    case 'uninstall_time': return item.uninstall_time ?? ''
     case 'ko_text': {
       let content = gatherContentText(contents, 'ko')
       if (content === '기본시안' && (item.location || item.purpose)) {
@@ -251,9 +268,10 @@ export async function exportToPPT(
       })
     }
 
-    // ── 메타 테이블 (14컬럼: 담당자/디자인업체/출력업체 제외) ──
-    const content = [gatherContentText(contents, 'ko'), gatherContentText(contents, 'en')]
+    // ── 메타 테이블 (PPT 14컬럼 — §14-3 담당자/디자인업체/출력업체 제외) ──
+    const slotContentKo = [gatherContentText(contents, 'ko'), gatherContentText(contents, 'en')]
       .filter(Boolean).join(' / ').slice(0, 120)
+    const contentValue = item.content_text ?? slotContentKo  // v8: content_text 우선
     const remarks = detectRemarks(contents)
 
     slide.addTable(
@@ -263,7 +281,7 @@ export async function exportToPPT(
           headerOpts('파트'),
           headerOpts('구분'),
           headerOpts('장소'),
-          headerOpts('사용목적'),
+          headerOpts('사용 목적'),
           headerOpts('품목'),
           headerOpts('언어'),
           headerOpts('규격(mm)'),
@@ -279,16 +297,16 @@ export async function exportToPPT(
           cellOpts(item.part ?? ''),
           cellOpts(item.category ?? ''),  // 구분 = 제작물 종류 (명세 10-2)
           cellOpts(item.location ?? ''),  // 장소 = 실제 설치 위치
-          cellOpts(item.purpose ?? ''),
+          cellOpts(item.purpose ?? ''),   // v8: '사용 목적' 환원
           cellOpts(item.category ?? ''),  // 품목 = 구분과 동일 (명세)
           cellOpts(item.language ?? ''),
           cellOpts(`${widthMm}×${heightMm}`),
           cellOpts(item.material ?? ''),
           cellOpts(String(item.quantity ?? 1)),
-          cellOpts(content, 'left'),
+          cellOpts(contentValue, 'left'),
           cellOpts(remarks),
-          cellOpts(''),
-          cellOpts(''),
+          cellOpts(item.install_time ?? ''),
+          cellOpts(item.uninstall_time ?? ''),
         ],
       ],
       {
@@ -492,6 +510,7 @@ export async function exportToExcel(
     '내용', '비고', '담당자', '디자인업체', '출력업체', '설치시간', '철거시간',
   ]
 
+
   // 행사 로고 텍스트 (header_brand)
   const logoText = (() => {
     for (const item of items) {
@@ -525,21 +544,28 @@ export async function exportToExcel(
     if (item.review_status && item.review_status !== '작업중') remarks.push(`[${item.review_status}]`)
     if (item.review_note) remarks.push(item.review_note)
 
+    // v8: '내용' 컬럼은 content_text 우선, 없으면 슬롯 합산 텍스트
+    const contentValue = item.content_text ?? content
+
     return [
       item.no ?? '',
       item.part ?? '',
       item.category ?? '',   // 구분 = 제작물 종류 (명세 10-2)
       item.location ?? '',   // 장소 = 실제 설치 위치
-      item.purpose ?? '',
+      item.purpose ?? '',    // v8: '사용 목적'으로 환원
       item.category ?? '',   // 품목 = 구분과 동일 (명세)
       item.language ?? '',
       dims,
       item.material ?? '',
       item.quantity ?? 1,
-      content,
+      contentValue,
       remarks.join(' · '),
       editor,
-      '', '', '', '',
+      // v8 신규 4컬럼 (편집 숨김이어도 최종 엑셀엔 출력 — §14-2)
+      item.design_vendor ?? '',
+      item.print_vendor ?? '',
+      item.install_time ?? '',
+      item.uninstall_time ?? '',
     ]
   })
 
@@ -567,7 +593,9 @@ export async function exportToExcel(
   void logUsage('export_excel', { project_id: project.id, item_count: items.length })
 }
 
-/** EditorGrid에서 편집된 컬럼 상태(표시·순서·커스텀 컬럼)를 그대로 반영해 엑셀 출력 */
+/** EditorGrid에서 편집된 컬럼 상태(표시·순서·커스텀 컬럼)를 그대로 반영해 엑셀 출력
+ *  v8 (2026-05-11): §14-2 정책 — 편집 숨김 ≠ 엑셀 제외.
+ *  최종 엑셀은 17컬럼 모두 출력. 사용자가 편집 화면에서 숨긴 컬럼도 엑셀에 포함됨. */
 async function exportToExcelDynamic(
   project: Project,
   items: DesignItem[],
@@ -575,8 +603,8 @@ async function exportToExcelDynamic(
   state: EditorColState,
   XLSX: typeof import('xlsx')
 ): Promise<void> {
-  // 표시 컬럼만 (숨김 제외, 순서 유지)
-  const visibleColIds = state.order.filter(id => !state.hidden.includes(id))
+  // v9: 숨김은 무시 (편집 화면용). 사용자가 ′엑셀에서 제외′ 우클릭한 컬럼만 빠짐.
+  const visibleColIds = state.order.filter(id => !state.excludedFromExcel.includes(id))
   const headers = visibleColIds.map(id => {
     if (id.startsWith('custom_')) {
       return state.customCols.find(c => c.id === id)?.label ?? id

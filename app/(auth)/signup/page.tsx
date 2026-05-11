@@ -42,7 +42,7 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-sm w-full text-center animate-fade-in">
           <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-4">
             <CheckCircle2 className="w-7 h-7 text-emerald-400" />
@@ -64,7 +64,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="bg-grid absolute inset-0" />
 
       <div className="relative w-full max-w-sm animate-fade-in">

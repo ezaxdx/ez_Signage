@@ -43,7 +43,7 @@ export function RecommenderWidget() {
           <Sparkles className="w-4 h-4 text-indigo-300" />
         </div>
         <div>
-          <p className="text-slate-200 text-sm font-semibold">상황 기반 제작물 추천</p>
+          <p className="text-slate-800 text-sm font-semibold">상황 기반 제작물 추천</p>
           <p className="text-slate-500 text-xs mt-0.5">
             어떤 행사를 준비하는지 입력하면 적합한 제작물을 추천해드립니다
           </p>
@@ -56,7 +56,7 @@ export function RecommenderWidget() {
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleRecommend()}
           placeholder="예: 회의 등록데스크 안내와 프로그램 QR이 필요해요"
-          className="flex-1 bg-slate-900/70 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 transition"
+          className="flex-1 bg-white/70 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 transition"
         />
         <button
           onClick={handleRecommend}
@@ -72,7 +72,7 @@ export function RecommenderWidget() {
         <div className="mt-4">
           {recommended.length === 0 ? (
             <p className="text-slate-500 text-xs">
-              ❓ 입력한 내용에서 특정 목적을 찾지 못했습니다. <strong className="text-slate-400">"등록", "프로그램", "안내" </strong> 같은 키워드를 포함해 다시 시도하세요.
+              ❓ 입력한 내용에서 특정 목적을 찾지 못했습니다. <strong className="text-slate-500">"등록", "프로그램", "안내" </strong> 같은 키워드를 포함해 다시 시도하세요.
             </p>
           ) : (
             <div>

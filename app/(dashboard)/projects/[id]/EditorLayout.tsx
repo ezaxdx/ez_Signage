@@ -6,6 +6,9 @@ import { EditorGrid } from './components/EditorGrid'
 import { CanvasBoard } from './components/CanvasBoard'
 import { EditorToolbar } from './components/EditorToolbar'
 import { PreflightModal } from './components/PreflightModal'
+import { FacilityGuidePanel } from '@/app/components/facility/FacilityGuidePanel'
+import { FacilityGuideAlert } from '@/app/components/facility/FacilityGuideAlert'
+import { validateAgainstFacility, buildIssueMap, countViolations, type ValidationIssue } from '@/lib/services/facilityValidator'
 import { DEFAULT_SLOTS } from '@/lib/types'
 import type { Project, DesignItem, SlotContent, ContentsMap, SlotStylesMap } from '@/lib/types'
 
@@ -41,6 +44,21 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
   const [slotPanelOpen, setSlotPanelOpen] = useState(false)
   const [selectedSlotKey, setSelectedSlotKey] = useState<string | null>(null)
   const [showPreflight, setShowPreflight] = useState(false)
+  // v8: 시설 가이드 (§11-6)
+  const [facilityGuideOpen, setFacilityGuideOpen] = useState(false)
+  const [facilityCheckMode, setFacilityCheckMode] = useState<'verbose'|'silent_icon'|'off'>('verbose')
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const saved = localStorage.getItem(`facility_check_mode_${project.id}`)
+    if (saved === 'verbose' || saved === 'silent_icon' || saved === 'off') setFacilityCheckMode(saved)
+  }, [project.id])
+  const handleFacilityCheckModeChange = useCallback((mode: 'verbose'|'silent_icon'|'off') => {
+    setFacilityCheckMode(mode)
+    if (typeof window !== 'undefined') localStorage.setItem(`facility_check_mode_${project.id}`, mode)
+  }, [project.id])
+  // v8: 첫 위반 알랏 (§11-6-1 — 한 행사에서 1회만)
+  const [activeAlert, setActiveAlert] = useState<ValidationIssue | null>(null)
+  const alertedItemsRef = useRef<Set<string>>(new Set())  // 알랏 표시 이력
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>()
   const loadedItemIds = useRef(new Set<string>())
 
@@ -245,12 +263,42 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
   )
 
   // ── 제작물 메타 업데이트 (Grid용) ────────────────────────
+  // v8: 시설 가이드 검증 + 첫 위반 알랏 (§11-6-1) + 입력 데이터 단계별 축적 (§11-2)
   const updateItem = useCallback(
     async (id: string, patch: Partial<DesignItem>) => {
-      setItems(prev => prev.map(item => item.id === id ? { ...item, ...patch } : item))
+      const prev = items.find(it => it.id === id)
+      const next = prev ? { ...prev, ...patch } : null
+      setItems(curr => curr.map(item => item.id === id ? { ...item, ...patch } : item))
       await supabase.from('design_items').update(patch).eq('id', id)
+
+      // v8: 시설 가이드 검증 — 첫 위반 시 알랏 (verbose 모드만)
+      if (next && facilityCheckMode === 'verbose' && !alertedItemsRef.current.has(id)) {
+        const issues = validateAgainstFacility(next as DesignItem, project.event_venue)
+        const warnIssue = issues.find(i => i.severity === 'warn')
+        if (warnIssue) {
+          alertedItemsRef.current.add(id)
+          setActiveAlert(warnIssue)
+        }
+      }
+
+      // v8 §11-2: 입력 데이터 단계별 축적 — 중간 수정 로그 (학습 가중치 30%)
+      // 변경된 필드만 item_edit_log에 기록 (best-effort, RLS 정책에 의해 자동 권한 체크)
+      if (prev) {
+        const editRows = Object.entries(patch)
+          .filter(([k]) => !['updated_at', 'last_edited_by', 'updating_by'].includes(k))
+          .map(([field, newVal]) => ({
+            item_id: id,
+            field,
+            old_value: String((prev as unknown as Record<string, unknown>)[field] ?? ''),
+            new_value: String(newVal ?? ''),
+          }))
+        if (editRows.length > 0) {
+          // best-effort — DB 마이그레이션 안 됐어도 silent fail
+          supabase.from('item_edit_log').insert(editRows).then(() => {}, () => {})
+        }
+      }
     },
-    [supabase]
+    [supabase, items, facilityCheckMode, project.event_venue]
   )
 
   // ── 제작물 추가 (Grid용) — 종류 선택 시 카테고리·규격·재질 자동 채움 ────
@@ -474,17 +522,50 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
   const selectedItem = items.find(i => i.id === selectedItemId) ?? null
   const contents = allContents[selectedItemId] ?? {}
 
+  // v8: 시설 가이드 위반 항목 카운트 (다운로드 직전 일괄 요약 — §11-6 안전망)
+  const facilityIssueMap = useMemo(() => buildIssueMap(items, project.event_venue), [items, project.event_venue])
+  const facilityViolationSummary = useMemo(() => countViolations(items, project.event_venue), [items, project.event_venue])
+
+  // 다운로드 직전 일괄 요약 확인 (어떤 모드든 안전망)
+  const confirmFacilityBeforeExport = useCallback((): boolean => {
+    const { warn, info, total } = facilityViolationSummary
+    if (total === 0) return true
+    const lines = [
+      `시설 가이드 외 항목이 ${total}건 있습니다.`,
+      warn > 0 ? `· 경고 ${warn}건 (설치 불가·행잉 불가 등)` : null,
+      info > 0 ? `· 조건부 ${info}건 (매뉴얼 추가 확인 권장)` : null,
+      '',
+      '그래도 다운로드하시겠습니까?',
+      '',
+      '※ 시스템 정보가 오래됐을 가능성 있음. 확신 없으면 행사장에 직접 확인 권장.',
+    ].filter(Boolean).join('\n')
+    return window.confirm(lines)
+  }, [facilityViolationSummary])
+
+  // v8 §11-2: 다운로드 완료 시 finalized_at 기록 (학습 가중치 100% — 정답 풀)
+  const markFinalized = useCallback(async () => {
+    const now = new Date().toISOString()
+    const ids = items.map(i => i.id)
+    if (ids.length === 0) return
+    // best-effort — DB 마이그레이션 안 됐어도 silent fail
+    supabase.from('design_items').update({ finalized_at: now }).in('id', ids).then(() => {}, () => {})
+  }, [items, supabase])
+
   // ── Excel 전체 내보내기 ────────────────────────────────────
   const handleExcelExport = useCallback(async () => {
+    if (!confirmFacilityBeforeExport()) return
     const { exportToExcel } = await import('@/lib/services/ExportService')
     await exportToExcel(project, items, allContents)
-  }, [items, project, allContents])
+    await markFinalized()
+  }, [items, project, allContents, confirmFacilityBeforeExport, markFinalized])
 
   // ── PPT 전체 내보내기 ──────────────────────────────────────
   const handlePPTExport = useCallback(async () => {
+    if (!confirmFacilityBeforeExport()) return
     const { exportToPPT } = await import('@/lib/services/ExportService')
     await exportToPPT(project, items, allContents)
-  }, [items, project, allContents])
+    await markFinalized()
+  }, [items, project, allContents, confirmFacilityBeforeExport, markFinalized])
 
   // ── 단일 제작물 PPT ─────────────────────────────────────
   const handleSinglePPTExport = useCallback(async () => {
@@ -538,7 +619,7 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
   void slotPanelOpen; void setSlotPanelOpen
 
   return (
-    <div className="h-screen flex flex-col bg-slate-950 overflow-hidden">
+    <div className="h-screen flex flex-col bg-white overflow-hidden">
       <EditorToolbar
         project={project}
         selectedItem={selectedItem}
@@ -552,6 +633,10 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
         onSetAsMaster={handleSetAsMaster}
         onToggleSlotPanel={() => { /* 1차 비활성 */ }}
         onPreflight={() => setShowPreflight(true)}
+        // v8: 시설 가이드 (§11-6)
+        onOpenFacilityGuide={() => setFacilityGuideOpen(true)}
+        facilityCheckMode={facilityCheckMode}
+        onFacilityCheckModeChange={handleFacilityCheckModeChange}
       />
 
       {showPreflight && (
@@ -570,13 +655,38 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
         />
       )}
 
+      {/* v8: 시설 가이드 슬라이드 패널 (§11-6-2) */}
+      <FacilityGuidePanel
+        venueName={project.event_venue}
+        open={facilityGuideOpen}
+        onClose={() => setFacilityGuideOpen(false)}
+      />
+
+      {/* v8: 시설 가이드 자동 알랏 (§11-6-1) — 첫 위반 1회 */}
+      <FacilityGuideAlert
+        open={activeAlert !== null}
+        message={activeAlert?.message ?? ''}
+        standardValue={activeAlert?.standardValue}
+        userValue={activeAlert?.userValue}
+        venueName={project.event_venue ?? undefined}
+        onCorrect={() => setActiveAlert(null)}
+        onProceed={() => {
+          // ′그래도 진행′ — 비고에 자동 표기는 별도 처리, 현재는 알랏만 닫기
+          setActiveAlert(null)
+        }}
+        onOpenGuide={() => {
+          setActiveAlert(null)
+          setFacilityGuideOpen(true)
+        }}
+      />
+
       <div className="flex flex-1 min-h-0">
         {/* 좌측 제작물 사이드바 — 1차 제거됨 (향후 추가 진행 예정) */}
         {/* 우측 구역 설정 패널 — 1차 제거됨 (향후 추가 진행 예정) */}
 
         <div className="flex-1 flex flex-col min-w-0">
           {/* 데이터 그리드 — 50% (사이드바 제거로 비중 ↑) */}
-          <div className="h-[50%] border-b border-slate-800 overflow-hidden">
+          <div className="h-[50%] border-b border-slate-200 overflow-hidden">
             <EditorGrid
               items={items}
               allContents={allContents}
@@ -587,6 +697,9 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
               onDeleteItem={handleDeleteItem}
               onReorderItems={handleReorderItems}
               isLoading={isLoading}
+              // v8: 시설 가이드 (§11-6)
+              facilityIssueMap={facilityIssueMap}
+              facilityCheckMode={facilityCheckMode}
             />
           </div>
 

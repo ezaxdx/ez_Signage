@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { isAdmin } from '@/lib/auth/role'
 import { LearningManagerClient } from './LearningManagerClient'
+import { SEED_SIGNAGE_TYPES, SEED_SYNONYMS } from '@/lib/data/dashboardSeed'
+import { VENUE_FACILITY_GUIDE_SEED } from '@/lib/data/venueFacilityGuide'
 
 export const metadata = { title: '데이터 학습 관리자 | 제작물 리스트 가이드' }
 
@@ -12,11 +14,72 @@ export default async function LearningManagerPage() {
   if (!(await isAdmin(supabase))) redirect('/dashboard')
 
   // 초기 데이터 (병렬). v6 마이그레이션 미적용이면 빈 배열로 폴백.
-  const [venuesRes, requestsRes, jobsRes] = await Promise.all([
+  const [venuesRes, requestsRes, jobsRes, projectsRes, itemsRes] = await Promise.all([
     supabase.from('venues').select('*').order('created_at', { ascending: false }).then(r => r, () => ({ data: [], error: null })),
     supabase.from('venue_requests').select('*').order('requested_at', { ascending: false }).then(r => r, () => ({ data: [], error: null })),
     supabase.from('learning_jobs').select('*').order('triggered_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [], error: null })),
+    supabase.from('projects').select('id, event_venue').limit(500).then(r => r, () => ({ data: [], error: null })),
+    supabase.from('design_items').select('project_id, category, confirmed, finalized_at, location, purpose').limit(5000).then(r => r, () => ({ data: [], error: null })),
   ])
+
+  // venue별 단계 집계 (점진적 정확도 가시화)
+  type Project = { id: string; event_venue: string | null }
+  type Item = { project_id: string; category: string | null; confirmed: boolean | null; finalized_at: string | null; location: string | null; purpose: string | null }
+  const projectsList = (projectsRes.data ?? []) as Project[]
+  const itemsList = (itemsRes.data ?? []) as Item[]
+  const venueByPid = new Map<string, string>()
+  for (const p of projectsList) if (p.event_venue) venueByPid.set(p.id, p.event_venue)
+
+  const venueStatusMap = new Map<string, { projects: Set<string>; input: number; mid: number; confirmed: number; finalized: number; missingCats: Set<string>; totalItems: number }>()
+  for (const it of itemsList) {
+    const v = venueByPid.get(it.project_id)
+    if (!v) continue
+    if (!venueStatusMap.has(v)) venueStatusMap.set(v, { projects: new Set(), input: 0, mid: 0, confirmed: 0, finalized: 0, missingCats: new Set(), totalItems: 0 })
+    const s = venueStatusMap.get(v)!
+    s.projects.add(it.project_id)
+    s.totalItems++
+    if (it.finalized_at) s.finalized++
+    else if (it.confirmed) s.confirmed++
+    else if (it.location || it.purpose) s.mid++
+    else s.input++
+    if (it.category) s.missingCats.add(it.category)
+  }
+
+  const venueLearningStatus = Array.from(venueStatusMap.entries())
+    .map(([venue, s]) => {
+      const total = s.totalItems
+      const accuracy = total === 0 ? 0
+        : Math.round(((s.finalized * 100 + s.confirmed * 70 + s.mid * 30 + s.input * 10) / total))
+      return {
+        venue,
+        project_count: s.projects.size,
+        item_count: total,
+        stage: { input: s.input, mid: s.mid, confirmed: s.confirmed, finalized: s.finalized },
+        accuracy_estimate: accuracy,
+        learned_categories: s.missingCats.size,
+      }
+    })
+    .sort((a, b) => b.item_count - a.item_count)
+
+  // 시설 가이드 학습 현황 (§13-3 신규)
+  const facilityGuideStatus = VENUE_FACILITY_GUIDE_SEED.map(g => {
+    const completeness = [
+      g.install_allowed && g.install_allowed.length > 0,
+      g.mount_methods != null,
+      g.rigging && g.rigging.available != null,
+      g.safety != null,
+      g.warnings && g.warnings.length > 0,
+      g.digital_signage != null,
+    ].filter(Boolean).length
+    return {
+      venue_key: g.venue_key,
+      venue_name: g.venue_name,
+      categories_count: g.install_allowed?.length ?? 0,
+      warnings_count: g.warnings?.length ?? 0,
+      completeness,            // 0~6 (정보 종류 채워진 개수)
+      last_updated: g.last_updated,
+    }
+  })
 
   return (
     <LearningManagerClient
@@ -24,6 +87,10 @@ export default async function LearningManagerPage() {
       initialVenues={(venuesRes.data ?? []) as never[]}
       initialRequests={(requestsRes.data ?? []) as never[]}
       initialJobs={(jobsRes.data ?? []) as never[]}
+      venueLearningStatus={venueLearningStatus}
+      signageTypeCount={SEED_SIGNAGE_TYPES.length}
+      synonyms={SEED_SYNONYMS}
+      facilityGuideStatus={facilityGuideStatus}
     />
   )
 }

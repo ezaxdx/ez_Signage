@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Plus, Settings2, X, GripVertical, Eye, EyeOff, Trash2 } from 'lucide-react'
+import { Plus, Settings2, X, GripVertical, Eye, EyeOff, Trash2, AlertTriangle } from 'lucide-react'
 import type { DesignItem, ContentsMap } from '@/lib/types'
+import type { ValidationIssue } from '@/lib/services/facilityValidator'
 
 const DEFAULT_SLOT_ORDER = ['header_brand', 'hero_title', 'sub_title', 'body', 'arrow', 'qr_code', 'footer_credits']
 
@@ -46,6 +47,9 @@ interface Props {
   onDeleteItem?: (id: string) => void
   onReorderItems?: (newOrder: DesignItem[]) => void
   isLoading: boolean
+  // v8: 시설 가이드 위반 항목 맵 (§11-6 ⚠️ 아이콘)
+  facilityIssueMap?: Record<string, ValidationIssue[]>
+  facilityCheckMode?: 'verbose' | 'silent_icon' | 'off'
 }
 
 // 행 추가 시 선택 가능한 환경장식물 종류 (NewProjectButton FORMAT_PRESETS와 동일)
@@ -76,46 +80,89 @@ interface ColumnDef {
   custom?: boolean
 }
 
-// "사용 목적" 컬럼 제거 (2026-05-07 사용자 결정 — 본 앱·데모 동시 적용)
-// 국문·영문 → "내용" 단일 컬럼으로 통합
+// v8 (2026-05-11): 1차안 17컬럼 복원
+// - '사용 목적'은 purpose 필드로 환원, '내용'은 content_text 필드로 분리
+// - 디자인업체·출력업체·설치시간·철거시간 4개 컬럼은 편집 초기 숨김 (4컬럼 기본 hidden)
 const DEFAULT_COLS: ColumnDef[] = [
-  { id: 'no',       label: 'NO',       width: '44px', field: 'no' },
-  { id: 'part',     label: '파트',     width: '72px', field: 'part' },
-  { id: 'bigarea',  label: '구분',     width: '74px', field: 'location' },
-  { id: 'location', label: '장소',     width: '90px', field: 'location' },
-  { id: 'category', label: '품목',     width: '84px', field: 'category' },
-  { id: 'language', label: '언어',     width: '68px', field: 'language' },
-  { id: 'size',     label: '규격(mm)', width: '86px', field: 'size' },
-  { id: 'material', label: '재질',     width: '70px', field: 'material' },
-  { id: 'quantity', label: '수량',     width: '44px', field: 'quantity' },
-  { id: 'content',  label: '내용',     width: '1.5fr', field: 'purpose' }, // v4.1 단위 4: purpose에 매핑하여 자유 텍스트 편집
-  { id: 'note',     label: '비고',     width: '76px', field: null },
-  { id: 'editor',   label: '담당자',   width: '88px', field: null },
+  { id: 'no',             label: 'NO',         width: '44px', field: 'no' },
+  { id: 'part',           label: '파트',       width: '72px', field: 'part' },
+  { id: 'bigarea',        label: '구분',       width: '74px', field: 'location' },
+  { id: 'location',       label: '장소',       width: '90px', field: 'location' },
+  { id: 'purpose',        label: '사용 목적',  width: '90px', field: 'purpose' },
+  { id: 'category',       label: '품목',       width: '84px', field: 'category' },
+  { id: 'language',       label: '언어',       width: '68px', field: 'language' },
+  { id: 'size',           label: '규격(mm)',   width: '86px', field: 'size' },
+  { id: 'material',       label: '재질',       width: '70px', field: 'material' },
+  { id: 'quantity',       label: '수량',       width: '44px', field: 'quantity' },
+  { id: 'content',        label: '내용',       width: '1.5fr', field: 'content_text' },
+  { id: 'note',           label: '비고',       width: '76px', field: null },
+  { id: 'editor',         label: '담당자',     width: '88px', field: null },
+  { id: 'design_vendor',  label: '디자인업체', width: '96px', field: 'design_vendor' },
+  { id: 'print_vendor',   label: '출력업체',   width: '96px', field: 'print_vendor' },
+  { id: 'install_time',   label: '설치시간',   width: '96px', field: 'install_time' },
+  { id: 'uninstall_time', label: '철거시간',   width: '96px', field: 'uninstall_time' },
 ]
 
-const COLS_STORAGE_KEY = 'mice_editor_grid_cols_v3'
+// v8: 4개 컬럼은 편집 초기 숨김 (1차안 17컬럼 복원의 어지러움 방지 — §14-2)
+const DEFAULT_HIDDEN_COLS: ColumnId[] = ['design_vendor', 'print_vendor', 'install_time', 'uninstall_time']
+// v9: PPT 기본 제외 3개 (§14-3 기본값 — 담당자·디자인업체·출력업체)
+const DEFAULT_PPT_EXCLUDED: ColumnId[] = ['editor', 'design_vendor', 'print_vendor']
+
+const COLS_STORAGE_KEY = 'mice_editor_grid_cols_v9'
 
 interface SavedColState {
   order: ColumnId[]
   hidden: ColumnId[]
+  excludedFromExcel: ColumnId[]   // §14-3 include_in_excel=false
+  excludedFromPpt: ColumnId[]     // §14-3 include_in_ppt=false
   customCols: ColumnDef[]
   customValues: Record<string, Record<string, string>>
 }
 
 function loadColState(): SavedColState {
-  if (typeof window === 'undefined') return { order: DEFAULT_COLS.map(c => c.id), hidden: [], customCols: [], customValues: {} }
+  // v9: 17컬럼 + 4개 기본 숨김 + PPT 기본 제외 3개
+  const defaultState: SavedColState = {
+    order: DEFAULT_COLS.map(c => c.id),
+    hidden: [...DEFAULT_HIDDEN_COLS],
+    excludedFromExcel: [],
+    excludedFromPpt: [...DEFAULT_PPT_EXCLUDED],
+    customCols: [],
+    customValues: {},
+  }
+  if (typeof window === 'undefined') return defaultState
   try {
-    const raw = localStorage.getItem(COLS_STORAGE_KEY)
-    if (!raw) return { order: DEFAULT_COLS.map(c => c.id), hidden: [], customCols: [], customValues: {} }
+    let raw = localStorage.getItem(COLS_STORAGE_KEY)
+    // v8 → v9 1회성 마이그레이션 (기존 order·hidden·customCols 그대로 가져옴)
+    if (!raw) {
+      const legacy = localStorage.getItem('mice_editor_grid_cols_v8')
+      if (legacy) {
+        try {
+          const parsedV8 = JSON.parse(legacy) as Partial<SavedColState>
+          const migrated: SavedColState = {
+            order: parsedV8.order ?? defaultState.order,
+            hidden: parsedV8.hidden ?? defaultState.hidden,
+            excludedFromExcel: [],
+            excludedFromPpt: [...DEFAULT_PPT_EXCLUDED],
+            customCols: parsedV8.customCols ?? [],
+            customValues: parsedV8.customValues ?? {},
+          }
+          localStorage.setItem(COLS_STORAGE_KEY, JSON.stringify(migrated))
+          raw = JSON.stringify(migrated)
+        } catch { /* parse 실패 시 기본값으로 */ }
+      }
+    }
+    if (!raw) return defaultState
     const parsed = JSON.parse(raw) as Partial<SavedColState>
     return {
-      order: parsed.order ?? DEFAULT_COLS.map(c => c.id),
-      hidden: parsed.hidden ?? [],
+      order: parsed.order ?? defaultState.order,
+      hidden: parsed.hidden ?? defaultState.hidden,
+      excludedFromExcel: parsed.excludedFromExcel ?? defaultState.excludedFromExcel,
+      excludedFromPpt: parsed.excludedFromPpt ?? defaultState.excludedFromPpt,
       customCols: parsed.customCols ?? [],
       customValues: parsed.customValues ?? {},
     }
   } catch {
-    return { order: DEFAULT_COLS.map(c => c.id), hidden: [], customCols: [], customValues: {} }
+    return defaultState
   }
 }
 
@@ -124,14 +171,16 @@ function persistColState(state: SavedColState) {
   localStorage.setItem(COLS_STORAGE_KEY, JSON.stringify(state))
 }
 
-const BASE_CELL = 'px-2 py-1.5 border-r border-slate-800/40 last:border-r-0 overflow-hidden whitespace-nowrap'
+const BASE_CELL = 'px-2 py-1.5 border-r border-slate-200/40 last:border-r-0 overflow-hidden whitespace-nowrap'
 
-export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, onUpdateItem, onAddItem, onDeleteItem, onReorderItems, isLoading }: Props) {
+export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, onUpdateItem, onAddItem, onDeleteItem, onReorderItems, isLoading, facilityIssueMap, facilityCheckMode = 'verbose' }: Props) {
+  const showFacilityIcon = facilityCheckMode !== 'off' && facilityIssueMap && Object.keys(facilityIssueMap).length > 0
   const [editCell, setEditCell] = useState<EditCell | null>(null)
   const [editValue, setEditValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const [colState, setColState] = useState<SavedColState>(() => ({ order: DEFAULT_COLS.map(c => c.id), hidden: [], customCols: [], customValues: {} }))
+  const [colState, setColState] = useState<SavedColState>(() => ({ order: DEFAULT_COLS.map(c => c.id), hidden: [], excludedFromExcel: [], excludedFromPpt: [], customCols: [], customValues: {} }))
+  const [contextMenu, setContextMenu] = useState<{ colId: ColumnId; x: number; y: number } | null>(null)
   const [showColMenu, setShowColMenu] = useState(false)
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [draggedColId, setDraggedColId] = useState<ColumnId | null>(null)
@@ -191,13 +240,36 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
     setColState(next); persistColState(next)
   }
 
+  const toggleExcelExclude = (colId: ColumnId) => {
+    const next = colState.excludedFromExcel.includes(colId)
+      ? { ...colState, excludedFromExcel: colState.excludedFromExcel.filter(id => id !== colId) }
+      : { ...colState, excludedFromExcel: [...colState.excludedFromExcel, colId] }
+    setColState(next); persistColState(next)
+  }
+
+  const togglePptExclude = (colId: ColumnId) => {
+    const next = colState.excludedFromPpt.includes(colId)
+      ? { ...colState, excludedFromPpt: colState.excludedFromPpt.filter(id => id !== colId) }
+      : { ...colState, excludedFromPpt: [...colState.excludedFromPpt, colId] }
+    setColState(next); persistColState(next)
+  }
+
+  useEffect(() => {
+    if (!contextMenu) return
+    const onClick = () => setContextMenu(null)
+    window.addEventListener('click', onClick)
+    return () => window.removeEventListener('click', onClick)
+  }, [contextMenu])
+
   const removeColumn = (colId: ColumnId) => {
-    // 표준 컬럼 / 커스텀 컬럼 모두 order에서 제거 (= 진짜 삭제)
+    // 표준 컬럼 / 커스텀 컬럼 모두 order에서 제거 (= 진짜 삭제). 4개 배열 모두 정리.
     const next: SavedColState = {
       ...colState,
       customCols: colState.customCols.filter(c => c.id !== colId),
       order: colState.order.filter(id => id !== colId),
       hidden: colState.hidden.filter(id => id !== colId),
+      excludedFromExcel: colState.excludedFromExcel.filter(id => id !== colId),
+      excludedFromPpt: colState.excludedFromPpt.filter(id => id !== colId),
     }
     setColState(next); persistColState(next)
   }
@@ -213,7 +285,14 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
   }
 
   const resetCols = () => {
-    const next: SavedColState = { order: DEFAULT_COLS.map(c => c.id), hidden: [], customCols: [], customValues: colState.customValues }
+    const next: SavedColState = {
+      order: DEFAULT_COLS.map(c => c.id),
+      hidden: [...DEFAULT_HIDDEN_COLS],
+      excludedFromExcel: [],
+      excludedFromPpt: [...DEFAULT_PPT_EXCLUDED],
+      customCols: [],
+      customValues: colState.customValues,
+    }
     setColState(next); persistColState(next)
   }
 
@@ -293,7 +372,7 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
       if (isEditing) {
         return <input ref={inputRef} type="text" value={editValue} onChange={(e) => setEditValue(e.target.value)} onBlur={commitEdit} onKeyDown={handleKeyDown} className="w-full bg-indigo-900/80 border border-indigo-400 rounded px-1 text-indigo-100 outline-none text-xs caret-indigo-300" />
       }
-      return <span className={val ? 'text-slate-300' : 'text-slate-700 italic text-[10px]'}>{val || '—'}</span>
+      return <span className={val ? 'text-slate-400' : 'text-slate-400 italic text-[10px]'}>{val || '—'}</span>
     }
 
     switch (col.id) {
@@ -301,13 +380,13 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
       case 'part':     return renderEditable(item.part ?? '', isEditing)
       case 'bigarea': {
         // v4.1 단위 4: 같은 카테고리 항목이 2개 이상이면 자동 #N prefix
-        if (!item.category) return <span className="text-slate-700 italic text-[10px]">—</span>
+        if (!item.category) return <span className="text-slate-400 italic text-[10px]">—</span>
         const sameCat = items.filter(it => it.category === item.category)
         const sameIdx = sameCat.findIndex(it => it.id === item.id) + 1
         const showHashtag = sameCat.length >= 2
         return (
           <span className="text-slate-500 text-[11px] truncate" title={`${item.category} — ${sameCat.length}개`}>
-            {item.category}{showHashtag && <span className="text-slate-600 ml-0.5">#{sameIdx}</span>}
+            {item.category}{showHashtag && <span className="text-slate-400 ml-0.5">#{sameIdx}</span>}
           </span>
         )
       }
@@ -328,7 +407,7 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
         }
         return (
           <>
-            <span className={langDisplay ? 'text-slate-200' : 'text-slate-700 italic text-[10px]'}>{langDisplay || '—'}</span>
+            <span className={langDisplay ? 'text-slate-800' : 'text-slate-400 italic text-[10px]'}>{langDisplay || '—'}</span>
             {detectedLang && !item.language && <span className="ml-1 text-indigo-500 text-[9px]">*자동</span>}
           </>
         )
@@ -338,7 +417,7 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
         if (isEditing) {
           return <input ref={inputRef} type="text" value={editValue} onChange={(e) => setEditValue(e.target.value)} onBlur={commitEdit} onKeyDown={handleKeyDown} placeholder="600×1800" className="w-full bg-indigo-900/80 border border-indigo-400 rounded px-1 text-indigo-100 outline-none text-xs caret-indigo-300" />
         }
-        return <span className={dims !== '—' ? 'text-slate-400' : 'text-slate-700 italic text-[10px]'}>{dims}</span>
+        return <span className={dims !== '—' ? 'text-slate-500' : 'text-slate-400 italic text-[10px]'}>{dims}</span>
       }
       case 'material': return renderEditable(item.material ?? '', isEditing)
       case 'quantity': return renderEditable(String(item.quantity ?? 1), isEditing, 'number')
@@ -367,14 +446,14 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
         }
         if (!purpose) {
           return (
-            <span className="text-slate-700 italic text-[10px] truncate">
+            <span className="text-slate-400 italic text-[10px] truncate">
               {showHashtag && <span className="text-slate-500 not-italic mr-1">#{sameIdx}</span>}
               예: 등록 안내 배너, 화살표
             </span>
           )
         }
         return (
-          <span className="text-slate-300 text-[11px] truncate" title={`${item.category} #${sameIdx} — ${purpose}`}>
+          <span className="text-slate-400 text-[11px] truncate" title={`${item.category} #${sameIdx} — ${purpose}`}>
             {showHashtag && <span className="text-slate-500 mr-1">#{sameIdx}</span>}
             {purpose}
           </span>
@@ -386,89 +465,70 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
         if (ar && (ar.ko || ar.en)) tags.push('화살표')
         const qr = contents['qr_code']
         if (qr && (qr.ko || qr.en || (qr.images && qr.images.length > 0))) tags.push('QR')
+        // v8: 시설 가이드 위반 ⚠️ 아이콘 (§11-6 - silent_icon·verbose 모드에서 표시)
+        const itemIssues = facilityCheckMode !== 'off' ? facilityIssueMap?.[item.id] : undefined
+        const hasWarn = itemIssues?.some(i => i.severity === 'warn')
         return (
           <span className="text-[10px] flex items-center gap-1 flex-wrap">
-            {tags.length > 0 ? tags.map(t => <span key={t} className="text-amber-400/80">{t}</span>) : null}
+            {itemIssues && itemIssues.length > 0 && (
+              <span
+                className={`inline-flex items-center gap-0.5 ${hasWarn ? 'text-red-600' : 'text-amber-600'} font-medium`}
+                title={itemIssues.map(i => `[${i.severity}] ${i.message}`).join('\n')}
+              >
+                <AlertTriangle className="w-3 h-3" />
+                시설{hasWarn ? '!' : '?'}
+              </span>
+            )}
+            {tags.length > 0 ? tags.map(t => <span key={t} className="text-amber-700">{t}</span>) : null}
             {(item.revision_count ?? 0) > 0 && (
-              <span className={`font-medium ${(item.revision_count ?? 0) >= 3 ? 'text-red-400' : 'text-slate-400'}`} title={`수정 ${item.revision_count}회`}>
+              <span className={`font-medium ${(item.revision_count ?? 0) >= 3 ? 'text-red-600' : 'text-slate-500'}`} title={`수정 ${item.revision_count}회`}>
                 수정{item.revision_count}{(item.revision_count ?? 0) >= 3 && ' ⚠'}
               </span>
             )}
-            {(item.revision_count ?? 0) === 0 && tags.length === 0 && '—'}
+            {(item.revision_count ?? 0) === 0 && tags.length === 0 && !itemIssues?.length && '—'}
           </span>
         )
       }
       case 'editor': {
         const editorShort = item.last_edited_by ? item.last_edited_by.split('@')[0] : ''
-        return <span className="text-slate-500 text-[10px] truncate" title={item.last_edited_by ?? ''}>{editorShort || <span className="text-slate-700 italic">미편집</span>}</span>
+        return <span className="text-slate-500 text-[10px] truncate" title={item.last_edited_by ?? ''}>{editorShort || <span className="text-slate-400 italic">미편집</span>}</span>
       }
+      // v8 (2026-05-11): 1차안 17컬럼 복원 신규 4컬럼
+      case 'design_vendor':  return renderEditable(item.design_vendor ?? '', isEditing)
+      case 'print_vendor':   return renderEditable(item.print_vendor ?? '', isEditing)
+      case 'install_time':   return renderEditable(item.install_time ?? '', isEditing)
+      case 'uninstall_time': return renderEditable(item.uninstall_time ?? '', isEditing)
       default: return null
     }
   }
 
   const renderEditable = (display: string, isEditing: boolean, type: 'text' | 'number' = 'text') => {
-    if (!isEditing) return <span className={display ? 'text-slate-200' : 'text-slate-700 italic text-[10px]'}>{display || '—'}</span>
+    if (!isEditing) return <span className={display ? 'text-slate-800' : 'text-slate-400 italic text-[10px]'}>{display || '—'}</span>
     return <input ref={inputRef} type={type} value={editValue} onChange={(e) => setEditValue(e.target.value)} onBlur={commitEdit} onKeyDown={handleKeyDown} className="w-full bg-indigo-900/80 border border-indigo-400 rounded px-1 text-indigo-100 outline-none text-xs caret-indigo-300" />
   }
 
   return (
     <div className="h-full flex flex-col font-mono text-xs select-none relative">
       {/* 상단 액션바 */}
-      <div className="bg-slate-900 border-b border-slate-800 px-2 py-1 flex items-center gap-2 flex-shrink-0">
+      <div className="bg-white border-b border-slate-200 px-2 py-1 flex items-center gap-2 flex-shrink-0">
         <button
           onClick={() => setShowColMenu(v => !v)}
-          className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded transition ${showColMenu ? 'bg-indigo-700/40 text-indigo-200' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}
+          className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded transition ${showColMenu ? 'bg-indigo-700/40 text-indigo-200' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}
         >
-          <Settings2 className="w-3 h-3" />컬럼 관리 <span className="text-slate-600 ml-1">({visibleCols.length}/{allCols.length})</span>
+          <Settings2 className="w-3 h-3" />컬럼 관리 <span className="text-slate-400 ml-1">({visibleCols.length}/{allCols.length})</span>
         </button>
 
-        {onAddItem && (
-          <div className="relative">
-            <button
-              onClick={() => setShowAddMenu(v => !v)}
-              className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded transition ${showAddMenu ? 'bg-emerald-700/40 text-emerald-200' : 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-900/20'}`}
-            >
-              <Plus className="w-3 h-3" />행 추가
-            </button>
-            {showAddMenu && (
-              <div className="absolute top-full left-0 mt-1 z-30 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl p-2 w-[280px]">
-                <p className="text-slate-400 text-[10px] px-2 py-1 font-semibold">환경장식물 종류 선택</p>
-                <div className="max-h-72 overflow-y-auto">
-                  {SIGNAGE_PRESETS.map(p => (
-                    <button
-                      key={p.id}
-                      onClick={() => { onAddItem({ category: p.name, width_mm: p.width, height_mm: p.height, material: p.material }); setShowAddMenu(false) }}
-                      className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-slate-800 rounded transition text-left"
-                    >
-                      <span className="text-slate-200 text-xs">{p.name}</span>
-                      <span className="text-slate-600 text-[10px] font-mono">{p.width}×{p.height}</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="border-t border-slate-800 mt-1 pt-1">
-                  <button
-                    onClick={() => { onAddItem(); setShowAddMenu(false) }}
-                    className="w-full text-[10px] text-slate-500 hover:text-slate-300 py-1.5 rounded transition"
-                  >
-                    빈 행 추가 (직접 입력)
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        <span className="text-slate-700 text-[9px] ml-auto">
+        <span className="text-slate-400 text-[9px] ml-auto">
           헤더 드래그: 열 이동 / 좌측 핸들 드래그: 행 이동 / 우측 X: 행 삭제 / 더블클릭: 셀 편집
         </span>
       </div>
 
       {/* 컬럼 관리 패널 */}
       {showColMenu && (
-        <div className="absolute top-9 left-2 z-30 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl p-3 w-[460px] space-y-2">
+        <div className="absolute top-9 left-2 z-30 bg-white border border-slate-300 rounded-lg shadow-2xl p-3 w-[460px] space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-slate-300 text-xs font-semibold">컬럼 관리</p>
-            <button onClick={() => setShowColMenu(false)} className="text-slate-600 hover:text-slate-400 p-0.5"><X className="w-3 h-3" /></button>
+            <p className="text-slate-400 text-xs font-semibold">컬럼 관리</p>
+            <button onClick={() => setShowColMenu(false)} className="text-slate-400 hover:text-slate-500 p-0.5"><X className="w-3 h-3" /></button>
           </div>
           <div className="space-y-1 max-h-72 overflow-y-auto">
             {colState.order.map(colId => {
@@ -476,56 +536,106 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
               if (!col) return null
               const isHidden = colState.hidden.includes(col.id)
               return (
-                <div key={col.id} className="flex items-center gap-2 bg-slate-800/40 rounded px-2 py-1.5 group">
-                  <GripVertical className="w-3 h-3 text-slate-600" />
-                  <span className={`text-xs flex-1 ${isHidden ? 'text-slate-600 line-through' : 'text-slate-200'}`}>
+                <div key={col.id} className="flex items-center gap-2 bg-slate-50/40 rounded px-2 py-1.5 group">
+                  <GripVertical className="w-3 h-3 text-slate-400" />
+                  <span className={`text-xs flex-1 ${isHidden ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
                     {col.label}
                     {col.custom && <span className="ml-1 text-emerald-500 text-[9px]">사용자</span>}
                   </span>
-                  <button onClick={() => toggleHidden(col.id)} className="text-slate-500 hover:text-slate-200 p-0.5 rounded transition" title={isHidden ? '표시' : '숨김'}>
+                  <button onClick={() => toggleHidden(col.id)} className="text-slate-500 hover:text-slate-800 p-0.5 rounded transition" title={isHidden ? '표시' : '숨김'}>
                     {isHidden ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                   </button>
                   <button onClick={() => { if (window.confirm(`'${col.label}' 컬럼을 삭제할까요?`)) removeColumn(col.id) }}
-                          className="text-slate-600 hover:text-red-400 p-0.5 rounded transition" title="컬럼 삭제">
+                          className="text-slate-400 hover:text-red-400 p-0.5 rounded transition" title="컬럼 삭제">
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
               )
             })}
           </div>
-          <div className="border-t border-slate-800 pt-2 space-y-1.5">
+          <div className="border-t border-slate-200 pt-2 space-y-1.5">
             <p className="text-[10px] text-slate-500">사용자 컬럼 추가 (1차: 로컬 저장만)</p>
             <div className="flex gap-1.5">
               <input value={newColLabel} onChange={e => setNewColLabel(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCustomCol()} placeholder="예: 디자인업체, 출력업체, 설치시간"
-                     className="flex-1 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                     className="flex-1 bg-slate-50 border border-slate-300 rounded px-2 py-1 text-[11px] text-slate-800 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
               <button onClick={addCustomCol} disabled={!newColLabel.trim()} className="flex items-center gap-1 px-2 py-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded text-[10px] transition">
                 <Plus className="w-3 h-3" />추가
               </button>
             </div>
-            <button onClick={resetCols} className="w-full text-[10px] text-slate-500 hover:text-slate-300 py-1 rounded transition">초기 상태로 리셋 (표준 13컬럼)</button>
+            <button onClick={resetCols} className="w-full text-[10px] text-slate-500 hover:text-slate-400 py-1 rounded transition">초기 상태로 리셋 (표준 13컬럼)</button>
           </div>
         </div>
       )}
 
-      {/* 헤더 */}
-      <div className="grid bg-slate-900 border-b border-slate-700 sticky top-0 z-10 flex-shrink-0" style={{ gridTemplateColumns: gridCols }}>
-        <div className="px-2 py-2 text-slate-600 text-[9px] border-r border-slate-800"></div>
-        {visibleCols.map(col => (
+      {/* 컬럼 우클릭 컨텍스트 메뉴 (§14-4) */}
+      {contextMenu && (() => {
+        const cm = contextMenu
+        const col = allCols.find(c => c.id === cm.colId)
+        if (!col) return null
+        const isHidden = colState.hidden.includes(cm.colId)
+        const isXExcl = colState.excludedFromExcel.includes(cm.colId)
+        const isPExcl = colState.excludedFromPpt.includes(cm.colId)
+        return (
           <div
-            key={col.id}
-            draggable
-            onDragStart={(e) => handleColDragStart(e, col.id)}
-            onDragOver={(e) => handleColDragOver(e, col.id)}
-            onDragLeave={handleColDragLeave}
-            onDrop={(e) => handleColDrop(e, col.id)}
-            className={`px-2 py-2 text-slate-400 font-semibold text-[10px] border-r border-slate-800 last:border-r-0 whitespace-nowrap overflow-hidden tracking-wide cursor-grab active:cursor-grabbing transition ${draggedColId === col.id ? 'opacity-30' : ''} ${dragOverColId === col.id && draggedColId !== col.id ? 'bg-indigo-700/40 text-indigo-200' : 'hover:bg-slate-800/50'}`}
-            title={`${col.label} — 드래그로 순서 변경`}
+            className="fixed z-50 bg-white border border-slate-300 rounded shadow-lg py-1 text-xs min-w-[180px]"
+            style={{ left: cm.x, top: cm.y }}
+            onClick={e => e.stopPropagation()}
           >
-            {col.label}
-            {col.custom && <span className="ml-1 text-emerald-500/80 text-[8px]">＋</span>}
+            <div className="px-3 py-1.5 text-slate-500 border-b border-slate-200 font-semibold">{col.label}</div>
+            <button
+              onClick={() => { toggleHidden(cm.colId); setContextMenu(null) }}
+              className="block w-full text-left px-3 py-1.5 hover:bg-slate-50 text-slate-700"
+            >
+              {isHidden ? '✓ 편집 화면 표시' : '편집 화면에서 숨김'}
+            </button>
+            <button
+              onClick={() => { toggleExcelExclude(cm.colId); setContextMenu(null) }}
+              className="block w-full text-left px-3 py-1.5 hover:bg-slate-50 text-slate-700"
+            >
+              {isXExcl ? '✓ 엑셀에 포함' : '엑셀에서 제외'}
+            </button>
+            <button
+              onClick={() => { togglePptExclude(cm.colId); setContextMenu(null) }}
+              className="block w-full text-left px-3 py-1.5 hover:bg-slate-50 text-slate-700"
+            >
+              {isPExcl ? '✓ PPT에 포함' : 'PPT에서 제외'}
+            </button>
+            <div className="px-3 py-1 text-[10px] text-slate-400 border-t border-slate-200 mt-0.5">
+              데이터는 보존됩니다 (소프트 토글)
+            </div>
           </div>
-        ))}
-        <div className="px-2 py-2 text-slate-600 text-[9px]"></div>
+        )
+      })()}
+
+      {/* 헤더 */}
+      <div className="grid bg-white border-b border-slate-300 sticky top-0 z-10 flex-shrink-0" style={{ gridTemplateColumns: gridCols }}>
+        <div className="px-2 py-2 text-slate-400 text-[9px] border-r border-slate-200"></div>
+        {visibleCols.map(col => {
+          const xExcl = colState.excludedFromExcel.includes(col.id)
+          const pExcl = colState.excludedFromPpt.includes(col.id)
+          return (
+            <div
+              key={col.id}
+              draggable
+              onDragStart={(e) => handleColDragStart(e, col.id)}
+              onDragOver={(e) => handleColDragOver(e, col.id)}
+              onDragLeave={handleColDragLeave}
+              onDrop={(e) => handleColDrop(e, col.id)}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                setContextMenu({ colId: col.id, x: e.clientX, y: e.clientY })
+              }}
+              className={`px-2 py-2 text-slate-500 font-semibold text-[10px] border-r border-slate-200 last:border-r-0 whitespace-nowrap overflow-hidden tracking-wide cursor-grab active:cursor-grabbing transition ${draggedColId === col.id ? 'opacity-30' : ''} ${dragOverColId === col.id && draggedColId !== col.id ? 'bg-indigo-700/40 text-indigo-200' : 'hover:bg-slate-50/50'}`}
+              title={`${col.label} — 드래그로 순서 변경 / 우클릭으로 출력 옵션`}
+            >
+              {col.label}
+              {col.custom && <span className="ml-1 text-emerald-500/80 text-[8px]">＋</span>}
+              {xExcl && <span className="ml-1 text-rose-500 text-[9px]" title="엑셀 제외">⛔X</span>}
+              {pExcl && <span className="ml-1 text-amber-500 text-[9px]" title="PPT 제외">⛔P</span>}
+            </div>
+          )
+        })}
+        <div className="px-2 py-2 text-slate-400 text-[9px]"></div>
       </div>
 
       {/* 바디 */}
@@ -540,7 +650,7 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
               onDragOver={(e) => handleRowDragOver(e, item.id)}
               onDragLeave={handleRowDragLeave}
               onDrop={(e) => handleRowDrop(e, item.id)}
-              className={`grid border-b border-slate-800/60 transition-colors cursor-pointer ${isSelected ? 'bg-indigo-950/40 ring-1 ring-inset ring-indigo-500/30' : rowIdx % 2 === 0 ? 'hover:bg-slate-900/40' : 'bg-slate-900/20 hover:bg-slate-900/40'} ${draggedRowId === item.id ? 'opacity-30' : ''} ${dragOverRowId === item.id && draggedRowId !== item.id ? 'border-t-2 border-t-indigo-500' : ''}`}
+              className={`grid border-b border-slate-200/60 transition-colors cursor-pointer ${isSelected ? 'bg-indigo-950/40 ring-1 ring-inset ring-indigo-500/30' : rowIdx % 2 === 0 ? 'hover:bg-white/40' : 'bg-white/20 hover:bg-white/40'} ${draggedRowId === item.id ? 'opacity-30' : ''} ${dragOverRowId === item.id && draggedRowId !== item.id ? 'border-t-2 border-t-indigo-500' : ''}`}
               style={{ gridTemplateColumns: gridCols }}
             >
               {/* 행 드래그 핸들 */}
@@ -548,7 +658,7 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
                 draggable
                 onDragStart={(e) => { e.stopPropagation(); handleRowDragStart(e, item.id) }}
                 onClick={(e) => e.stopPropagation()}
-                className="flex items-center justify-center cursor-grab active:cursor-grabbing text-slate-700 hover:text-slate-300 hover:bg-slate-800/40 transition"
+                className="flex items-center justify-center cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-400 hover:bg-slate-50/40 transition"
                 title="드래그로 행 순서 변경"
               >
                 <GripVertical className="w-3 h-3" />
@@ -563,13 +673,18 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
                     case 'no': return item.no ?? ''
                     case 'part': return item.part ?? ''
                     case 'location': return item.location ?? ''
-                    case 'purpose': return item.purpose ?? ''
-                    case 'content': return item.purpose ?? ''      // v4.1 단위 4: purpose 재활용
+                    case 'purpose': return item.purpose ?? ''      // v8: '사용 목적'으로 환원
+                    case 'content': return item.content_text ?? '' // v8: 별도 content_text 필드
                     case 'category': return item.category ?? ''
                     case 'language': return item.language ?? 'KOR'
                     case 'size': return item.width_mm && item.height_mm ? `${item.width_mm}×${item.height_mm}` : ''
                     case 'material': return item.material ?? ''
                     case 'quantity': return String(item.quantity ?? 1)
+                    // v8: 신규 4컬럼
+                    case 'design_vendor': return item.design_vendor ?? ''
+                    case 'print_vendor': return item.print_vendor ?? ''
+                    case 'install_time': return item.install_time ?? ''
+                    case 'uninstall_time': return item.uninstall_time ?? ''
                     default: return ''
                   }
                 })()
@@ -585,7 +700,7 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
                 {onDeleteItem && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onDeleteItem(item.id) }}
-                    className="p-1 rounded text-slate-700 hover:text-red-400 hover:bg-red-950/30 transition opacity-50 hover:opacity-100"
+                    className="p-1 rounded text-slate-400 hover:text-red-400 hover:bg-red-950/30 transition opacity-50 hover:opacity-100"
                     title="행 삭제"
                   >
                     <Trash2 className="w-3 h-3" />
@@ -597,7 +712,7 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
         })}
 
         {items.length === 0 && (
-          <div className="h-32 flex items-center justify-center text-slate-600 text-sm gap-2">
+          <div className="h-32 flex items-center justify-center text-slate-400 text-sm gap-2">
             제작물이 없습니다.
             {onAddItem && (
               <button onClick={() => onAddItem()} className="text-emerald-400 hover:text-emerald-300 underline text-xs">
@@ -608,7 +723,7 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
         )}
       </div>
 
-      <div className="px-3 py-1.5 border-t border-slate-800 bg-slate-900/50 text-slate-600 text-[10px] flex gap-4 flex-shrink-0">
+      <div className="px-3 py-1.5 border-t border-slate-200 bg-white/50 text-slate-400 text-[10px] flex gap-4 flex-shrink-0">
         <span>클릭: 선택</span>
         <span>더블클릭: 셀 편집</span>
         <span>헤더 드래그: 열 이동</span>

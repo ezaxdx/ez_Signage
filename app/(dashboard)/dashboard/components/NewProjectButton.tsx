@@ -55,9 +55,9 @@ interface ParsedExcelRow {
 }
 
 const inputCls =
-  'w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3.5 py-2.5 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition'
+  'w-full bg-slate-50/60 border border-slate-300 rounded-lg px-3.5 py-2.5 text-slate-900 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition'
 const smallInputCls =
-  'w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-slate-100 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition disabled:opacity-40 disabled:cursor-not-allowed'
+  'w-full bg-slate-50 border border-slate-300 rounded px-2 py-1 text-slate-900 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition disabled:opacity-40 disabled:cursor-not-allowed'
 
 // 환경장식물 종류별 인라인 설명 (회의록 2순위 목적 분류 + 명세 인라인 헬프)
 // "X배너는 행사 입구에 세우는 세로 배너로..." 패턴
@@ -719,24 +719,24 @@ export function NewProjectButton({ userId, userEmail }: Props) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
 
-          <div className={`relative bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl flex flex-col w-full max-h-[92vh] transition-all duration-200 ${step === 3 ? 'max-w-2xl' : 'max-w-lg'}`}>
+          <div className={`relative bg-white border border-slate-300 rounded-2xl shadow-2xl flex flex-col w-full max-h-[92vh] transition-all duration-200 ${step === 3 ? 'max-w-2xl' : 'max-w-lg'}`}>
             {/* 헤더 */}
             <div className="flex items-start justify-between p-6 pb-5 flex-shrink-0">
               <div>
-                <h2 className="text-slate-100 font-semibold">새 프로젝트 만들기</h2>
+                <h2 className="text-slate-900 font-semibold">새 프로젝트 만들기</h2>
                 <div className="flex items-center gap-1.5 mt-2.5">
                   {STEP_LABELS.map((label, i) => (
                     <div key={label} className="flex items-center gap-1.5">
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${step === i + 1 ? 'bg-indigo-600 text-white' : step > i + 1 ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-500'}`}>
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${step === i + 1 ? 'bg-indigo-600 text-white' : step > i + 1 ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
                         {step > i + 1 ? <Check className="w-2.5 h-2.5" /> : i + 1}
                       </div>
-                      <span className={`text-[11px] ${step === i + 1 ? 'text-slate-200' : 'text-slate-600'}`}>{label}</span>
-                      {i < STEP_LABELS.length - 1 && <div className="w-4 h-px bg-slate-700" />}
+                      <span className={`text-[11px] ${step === i + 1 ? 'text-slate-800' : 'text-slate-400'}`}>{label}</span>
+                      {i < STEP_LABELS.length - 1 && <div className="w-4 h-px bg-slate-200" />}
                     </div>
                   ))}
                 </div>
               </div>
-              <button onClick={handleClose} className="text-slate-500 hover:text-slate-300 p-1 rounded-md hover:bg-slate-800 transition mt-0.5"><X className="w-4 h-4" /></button>
+              <button onClick={handleClose} className="text-slate-500 hover:text-slate-400 p-1 rounded-md hover:bg-slate-50 transition mt-0.5"><X className="w-4 h-4" /></button>
             </div>
 
             {/* 바디 */}
@@ -746,14 +746,14 @@ export function NewProjectButton({ userId, userEmail }: Props) {
               {step === 1 && (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">프로젝트명 <span className="text-indigo-400">*</span></label>
+                    <label className="block text-slate-500 text-xs font-medium mb-1.5 uppercase tracking-wide">프로젝트명 <span className="text-indigo-400">*</span></label>
                     <input autoFocus required value={info.name} onChange={e => setInfo(p => ({ ...p, name: e.target.value }))} placeholder="예: 2025 APEC 정상회의" className={inputCls} />
                   </div>
 
                   {/* v4.1 갱신-A: 프로그램 파트 다중선택 (EZ 폴더링 40.04~40.20) */}
                   <div>
-                    <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">
-                      프로그램 파트 <span className="text-slate-600 font-normal normal-case">(다중선택 — 추천 정확도 핵심)</span>
+                    <label className="block text-slate-500 text-xs font-medium mb-1.5 uppercase tracking-wide">
+                      프로그램 파트 <span className="text-slate-400 font-normal normal-case">(다중선택 — 추천 정확도 핵심)</span>
                     </label>
                     <div className="space-y-2">
                       {PROGRAM_PART_GROUPS.map(g => {
@@ -770,7 +770,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                                     type="button"
                                     onClick={() => toggleProgramPart(p.code)}
                                     title={p.hint}
-                                    className={`px-2 py-1.5 rounded-lg border text-[11px] flex items-center gap-1.5 transition text-left ${on ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'}`}
+                                    className={`px-2 py-1.5 rounded-lg border text-[11px] flex items-center gap-1.5 transition text-left ${on ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-50/60 border-slate-300 text-slate-400 hover:bg-slate-50'}`}
                                   >
                                     {on && <Check className="w-3 h-3 flex-shrink-0" />}
                                     <span className="truncate">{p.name}</span>
@@ -790,7 +790,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                   </div>
 
                   <div>
-                    <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">주최 / 발주처</label>
+                    <label className="block text-slate-500 text-xs font-medium mb-1.5 uppercase tracking-wide">주최 / 발주처</label>
                     <input list="known-clients-npb" value={info.client_name} onChange={e => setInfo(p => ({ ...p, client_name: e.target.value }))} placeholder="예: 외교부 (입력 시 과거 발주처 추천)" className={inputCls} />
                     <datalist id="known-clients-npb">
                       {KNOWN_CLIENTS_NPB.map(c => <option key={c} value={c} />)}
@@ -799,7 +799,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">행사 장소</label>
+                      <label className="block text-slate-500 text-xs font-medium mb-1.5 uppercase tracking-wide">행사 장소</label>
                       {(() => {
                         const venueGroups = groupVenuesByRegion()
                         const allRegisteredNames = VENUE_LIST.map(v => v.displayName)
@@ -825,9 +825,9 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                             <button
                               type="button"
                               onClick={() => setVenueRequestOpen(true)}
-                              className="mt-1.5 w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-[11px] text-indigo-300 hover:text-indigo-200 bg-indigo-950/30 hover:bg-indigo-950/50 border border-indigo-900/40 rounded transition"
+                              className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 border border-indigo-700 rounded-md shadow-sm transition"
                             >
-                              <MapPinPlus className="w-3 h-3" />
+                              <MapPinPlus className="w-4 h-4" />
                               우리 행사장이 목록에 없어요 — 신규 등록 요청
                             </button>
                             {info.event_venue && !allRegisteredNames.includes(info.event_venue) && !pendingVenueNames.includes(info.event_venue) && (
@@ -838,155 +838,36 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                       })()}
                     </div>
                     <div>
-                      <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">행사일</label>
+                      <label className="block text-slate-500 text-xs font-medium mb-1.5 uppercase tracking-wide">행사일</label>
                       <input type="date" value={info.event_date} onChange={e => setInfo(p => ({ ...p, event_date: e.target.value }))} className={`${inputCls} [color-scheme:dark]`} />
                     </div>
                   </div>
 
-                  {/* 명세 6.2.4 — 입력된 장소의 과거 행사 매칭 알림 + 확률 기반 추천 (시드 + 라이브) */}
-                  {(() => {
-                    const probResult = recommendByProbability({
-                      venue: info.event_venue,
-                      client: info.client_name,
-                      eventCategory: null,
-                      liveData: liveStats ? {
-                        liveAsPerfList: liveStats.liveAsPerfList,
-                        itemCountByProject: liveStats.itemCountByProject,
-                        avgItemCountByVenue: liveStats.avgItemCountByVenue,
-                      } : null,
-                    })
-                    const hasMatch = probResult.matchedPastEvents.length > 0
-                    if (!hasMatch && probResult.confidenceLevel === 'none') return null
-
-                    const colorMap = {
-                      high: 'bg-emerald-950/30 border-emerald-800/40 text-emerald-300',
-                      medium: 'bg-amber-950/30 border-amber-800/40 text-amber-300',
-                      low: 'bg-orange-950/30 border-orange-800/40 text-orange-300',
-                      none: 'bg-slate-900/30 border-slate-800/40 text-slate-400',
-                    }
-                    const labelMap = { high: '✅ 높음', medium: '🟡 보통', low: '⚠️ 낮음', none: '❌ 부족' }
-
-                    const liveCount = probResult.matchedPastEvents.filter(e => e.isLive).length
-                    const seedCount = probResult.matchedPastEvents.length - liveCount
-                    return (
-                      <div className={`border rounded-lg p-2.5 space-y-1.5 ${colorMap[probResult.confidenceLevel]}`}>
-                        <div className="flex items-center justify-between">
-                          <p className="text-[11px] font-medium">
-                            📊 확률 기반 추천 (신뢰도: <strong>{labelMap[probResult.confidenceLevel]}</strong>)
-                          </p>
-                          <span className="text-[10px] opacity-70">
-                            {seedCount}건 시드 + {liveCount}건 누적
-                          </span>
-                        </div>
-                        <p className="text-[10px] opacity-80">{probResult.message}</p>
-                        {probResult.matchedPastEvents.length > 0 && (
-                          <p className="text-[10px] opacity-70 truncate">
-                            과거: {probResult.matchedPastEvents.slice(0, 3).map(e =>
-                              `${e.name}${e.itemCount > 0 ? `(${e.itemCount}건)` : ''}${e.isLive ? '⚡' : ''}`
-                            ).join(' · ')}
-                          </p>
-                        )}
-                        {liveCount > 0 && (
-                          <p className="text-[9px] opacity-60">⚡ = 본 앱에서 누적된 데이터 (자동 학습됨)</p>
-                        )}
-                      </div>
-                    )
-                  })()}
+                  {/* 확률 기반 추천 알림 — 사용자 결정으로 제거 (2026-05-11) */}
 
                   {/* v4.1 질문 5: 세팅일·철거일 입력 UI 제거 (DB 컬럼은 보존) */}
 
-                  {/* 참가자 수 + 언어 */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">예상 참가자 수</label>
-                      <input type="number" min={1} value={info.attendees_count} onChange={e => setInfo(p => ({ ...p, attendees_count: e.target.value }))} placeholder="예: 500" className={inputCls} />
-                    </div>
-                    <div>
-                      <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">행사 언어</label>
-                      <div className="grid grid-cols-4 gap-1">
-                        {(['KOR', 'EN', 'EN/KOR', 'multi'] as const).map(l => {
-                          const on = info.event_language === l
-                          return (
-                            <button
-                              key={l}
-                              type="button"
-                              onClick={() => setInfo(p => ({ ...p, event_language: on ? '' : l }))}
-                              className={`px-1 py-2 rounded-lg border text-[10px] transition ${on ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:bg-slate-800'}`}
-                            >
-                              {l === 'multi' ? '다국어' : l === 'KOR' ? '국문' : l === 'EN' ? '영문' : '국·영'}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
+                  {/* 참가자 수 (행사 언어는 사용자 결정으로 제거) */}
+                  <div>
+                    <label className="block text-slate-500 text-xs font-medium mb-1.5 uppercase tracking-wide">예상 참가자 수</label>
+                    <input type="number" min={1} value={info.attendees_count} onChange={e => setInfo(p => ({ ...p, attendees_count: e.target.value }))} placeholder="예: 500" className={inputCls} />
                   </div>
 
-                  {/* 엑셀 업로드 (선택) */}
-                  <div>
-                    <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">
-                      발주서 엑셀 <span className="text-slate-600 font-normal normal-case">(선택 — 제작물 목록 자동 입력)</span>
-                    </label>
-                    {excelRows.length > 0 ? (
-                      <div className="flex items-center gap-2 bg-emerald-950/30 border border-emerald-800/50 rounded-lg px-3 py-2.5">
-                        <FileSpreadsheet className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-emerald-300 text-xs font-medium truncate">{excelFile?.name}</p>
-                          <p className="text-emerald-500 text-[10px]">{excelRows.length}건 인식됨 → 4단계에서 확인</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => { setExcelFile(null); setExcelRows([]); setExcelError(null) }}
-                          className="text-slate-500 hover:text-slate-300 p-0.5 rounded transition"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <label className="block border border-dashed border-slate-700 hover:border-slate-600 rounded-lg p-4 text-center cursor-pointer hover:bg-slate-800/30 transition">
-                        <input
-                          type="file"
-                          accept=".xlsx,.xls"
-                          className="hidden"
-                          onChange={e => {
-                            const f = e.target.files?.[0]
-                            if (f) handleExcelFile(f)
-                            e.target.value = ''
-                          }}
-                        />
-                        {excelParsing ? (
-                          <div className="flex items-center justify-center gap-2 text-slate-400">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span className="text-xs">파일 읽는 중...</span>
-                          </div>
-                        ) : (
-                          <>
-                            <Upload className="w-5 h-5 mx-auto text-slate-600 mb-1" />
-                            <p className="text-slate-500 text-xs">엑셀 파일 선택 (.xlsx)</p>
-                          </>
-                        )}
-                      </label>
-                    )}
-                    {excelError && (
-                      <div className="flex items-center gap-1.5 text-rose-400 text-[10px] mt-1">
-                        <AlertCircle className="w-3 h-3 flex-shrink-0" />
-                        {excelError}
-                      </div>
-                    )}
-                  </div>
+                  {/* 발주서 엑셀 업로드 — 사용자 결정으로 제거 (2026-05-11) */}
 
                   {/* 디자인 시안 업로드 — 1차에서 제작물 선택 단계로 이동 (사용자 결정) */}
                   {false && (
                   <div>
-                    <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">
-                      디자인 시안 <span className="text-slate-600 font-normal normal-case">(선택 — 마스터 레이아웃 기준 이미지)</span>
+                    <label className="block text-slate-500 text-xs font-medium mb-1.5 uppercase tracking-wide">
+                      디자인 시안 <span className="text-slate-400 font-normal normal-case">(선택 — 마스터 레이아웃 기준 이미지)</span>
                     </label>
                     {mockupPreview ? (
                       <div className="relative">
-                        <img src={mockupPreview ?? undefined} alt="시안 미리보기" className="w-full max-h-36 object-contain rounded-lg border border-slate-700 bg-slate-800" />
+                        <img src={mockupPreview ?? undefined} alt="시안 미리보기" className="w-full max-h-36 object-contain rounded-lg border border-slate-300 bg-slate-50" />
                         <button
                           type="button"
                           onClick={() => { setMockupFile(null); setMockupPreview(null) }}
-                          className="absolute top-2 right-2 bg-slate-900/80 text-slate-400 hover:text-slate-200 p-1 rounded-md transition"
+                          className="absolute top-2 right-2 bg-white/80 text-slate-500 hover:text-slate-800 p-1 rounded-md transition"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -996,7 +877,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                         </div>
                       </div>
                     ) : (
-                      <label className="block border border-dashed border-slate-700 hover:border-slate-600 rounded-lg p-4 text-center cursor-pointer hover:bg-slate-800/30 transition">
+                      <label className="block border border-dashed border-slate-300 hover:border-slate-600 rounded-lg p-4 text-center cursor-pointer hover:bg-slate-50/30 transition">
                         <input
                           type="file"
                           accept="image/*"
@@ -1011,7 +892,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                             e.target.value = ''
                           }}
                         />
-                        <ImageIcon className="w-5 h-5 mx-auto text-slate-600 mb-1" />
+                        <ImageIcon className="w-5 h-5 mx-auto text-slate-400 mb-1" />
                         <p className="text-slate-500 text-xs">시안 이미지 선택 (jpg / png)</p>
                       </label>
                     )}
@@ -1020,16 +901,16 @@ export function NewProjectButton({ userId, userEmail }: Props) {
 
                   {/* 행사장 배치도 업로드 (선택) */}
                   <div>
-                    <label className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">
-                      행사장 배치도 <span className="text-slate-600 font-normal normal-case">(선택 — 향후 AI 설치위치 추천에 활용)</span>
+                    <label className="block text-slate-500 text-xs font-medium mb-1.5 uppercase tracking-wide">
+                      행사장 배치도 <span className="text-slate-400 font-normal normal-case">(선택 — 향후 AI 설치위치 추천에 활용)</span>
                     </label>
                     {floorPlanPreview ? (
                       <div className="relative">
-                        <img src={floorPlanPreview} alt="배치도 미리보기" className="w-full max-h-36 object-contain rounded-lg border border-slate-700 bg-slate-800" />
+                        <img src={floorPlanPreview} alt="배치도 미리보기" className="w-full max-h-36 object-contain rounded-lg border border-slate-300 bg-slate-50" />
                         <button
                           type="button"
                           onClick={() => { setFloorPlanFile(null); setFloorPlanPreview(null) }}
-                          className="absolute top-2 right-2 bg-slate-900/80 text-slate-400 hover:text-slate-200 p-1 rounded-md transition"
+                          className="absolute top-2 right-2 bg-white/80 text-slate-500 hover:text-slate-800 p-1 rounded-md transition"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -1039,7 +920,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                         </div>
                       </div>
                     ) : (
-                      <label className="block border border-dashed border-slate-700 hover:border-slate-600 rounded-lg p-4 text-center cursor-pointer hover:bg-slate-800/30 transition">
+                      <label className="block border border-dashed border-slate-300 hover:border-slate-600 rounded-lg p-4 text-center cursor-pointer hover:bg-slate-50/30 transition">
                         <input
                           type="file"
                           accept="image/*"
@@ -1054,7 +935,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                             e.target.value = ''
                           }}
                         />
-                        <Map className="w-5 h-5 mx-auto text-slate-600 mb-1" />
+                        <Map className="w-5 h-5 mx-auto text-slate-400 mb-1" />
                         <p className="text-slate-500 text-xs">배치도 이미지 선택 (jpg / png)</p>
                       </label>
                     )}
@@ -1070,7 +951,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                       <Target className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" />
                       <div>
                         <p className="text-indigo-300 text-sm font-medium mb-1">이 행사에서 어떤 제작물이 필요한가요?</p>
-                        <p className="text-slate-400 text-xs leading-relaxed">
+                        <p className="text-slate-500 text-xs leading-relaxed">
                           목적을 선택하면 <strong className="text-indigo-300">관련 제작물 양식이 자동으로 추천</strong>됩니다.<br />
                           (복수 선택 가능)
                         </p>
@@ -1089,13 +970,13 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                           className={`w-full text-left px-4 py-3 rounded-lg transition flex items-start gap-3 ${
                             isSelected
                               ? 'bg-indigo-950/50 border border-indigo-700/60 ring-1 ring-indigo-500/40'
-                              : 'bg-slate-800/40 hover:bg-slate-800/70 border border-slate-800'
+                              : 'bg-slate-50/40 hover:bg-slate-50/70 border border-slate-200'
                           }`}
                         >
                           <span className="text-2xl flex-shrink-0">{purpose.emoji}</span>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className={`font-medium text-sm ${isSelected ? 'text-slate-100' : 'text-slate-300'}`}>
+                              <span className={`font-medium text-sm ${isSelected ? 'text-slate-900' : 'text-slate-400'}`}>
                                 {purpose.label}
                               </span>
                               {isSelected && (
@@ -1128,27 +1009,27 @@ export function NewProjectButton({ userId, userEmail }: Props) {
               {/* Step 2: 팀원 초대 (사용 목적 제거로 단계 번호 변경) */}
               {step === 2 && (
                 <div className="space-y-4">
-                  <p className="text-slate-400 text-sm leading-relaxed">
-                    프로젝트에 참여할 <strong className="text-slate-200">팀원</strong>과 각자 담당하는 <strong className="text-slate-200">파트명</strong>을 입력하세요.<br />
+                  <p className="text-slate-500 text-sm leading-relaxed">
+                    프로젝트에 참여할 <strong className="text-slate-800">팀원</strong>과 각자 담당하는 <strong className="text-slate-800">파트명</strong>을 입력하세요.<br />
                     초대된 사람만 이 프로젝트에 접근할 수 있습니다.
                   </p>
 
                   {/* 현재 멤버 목록 */}
                   <div className="space-y-1.5">
                     {members.map(m => (
-                      <div key={m.email} className="flex items-center gap-2 bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 py-2">
+                      <div key={m.email} className="flex items-center gap-2 bg-slate-50/50 border border-slate-300/50 rounded-lg px-3 py-2">
                         <div className="flex-1 min-w-0">
-                          <p className="text-slate-200 text-xs truncate">{m.email}</p>
+                          <p className="text-slate-800 text-xs truncate">{m.email}</p>
                           {m.email === userEmail && <p className="text-indigo-400 text-[10px]">나 (프로젝트 소유자)</p>}
                         </div>
                         <input
                           value={m.part}
                           onChange={e => updateMemberPart(m.email, e.target.value)}
                           placeholder="담당 파트명 (예: 종합안내)"
-                          className="w-36 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          className="w-36 bg-slate-50 border border-slate-300 rounded px-2 py-1 text-slate-800 text-xs placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         />
                         {m.email !== userEmail && (
-                          <button onClick={() => removeMember(m.email)} className="text-slate-600 hover:text-red-400 transition p-0.5">
+                          <button onClick={() => removeMember(m.email)} className="text-slate-400 hover:text-red-400 transition p-0.5">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         )}
@@ -1157,7 +1038,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                   </div>
 
                   {/* 새 멤버 추가 (이름 검색) */}
-                  <div className="border border-dashed border-slate-700 rounded-lg p-3 space-y-2">
+                  <div className="border border-dashed border-slate-300 rounded-lg p-3 space-y-2">
                     <p className="text-slate-500 text-[11px] font-medium">팀원 추가 (이름으로 검색)</p>
 
                     <div className="relative">
@@ -1171,31 +1052,31 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                         }}
                         onFocus={() => setShowSearch(true)}
                         placeholder="사용자 이름 또는 이메일"
-                        className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-8 py-2 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="w-full bg-slate-50 border border-slate-300 rounded-lg pl-9 pr-8 py-2 text-slate-800 text-sm placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         disabled={!!selectedProfile}
                       />
                       {selectedProfile && (
-                        <button onClick={() => { setSelectedProfile(null); setSearchQuery('') }} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                        <button onClick={() => { setSelectedProfile(null); setSearchQuery('') }} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-400">
                           <X className="w-3.5 h-3.5" />
                         </button>
                       )}
                       {showSearch && !selectedProfile && searchResults.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl max-h-52 overflow-y-auto z-30">
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-slate-50 border border-slate-300 rounded-lg shadow-xl max-h-52 overflow-y-auto z-30">
                           {searchResults.map(p => (
                             <button
                               key={p.id}
                               onClick={() => { setSelectedProfile(p); setShowSearch(false); setSearchQuery('') }}
-                              className="w-full text-left px-3 py-2 hover:bg-slate-700/60 transition border-b border-slate-700/50 last:border-b-0"
+                              className="w-full text-left px-3 py-2 hover:bg-slate-200/60 transition border-b border-slate-300/50 last:border-b-0"
                             >
-                              <div className="text-xs text-slate-200">{p.display_name || '(이름 없음)'}</div>
+                              <div className="text-xs text-slate-800">{p.display_name || '(이름 없음)'}</div>
                               <div className="text-[10px] text-slate-500">{p.email}</div>
                             </button>
                           ))}
                         </div>
                       )}
                       {showSearch && !selectedProfile && searchQuery.trim() && searchResults.length === 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-[10px] z-30 space-y-1">
-                          <p className="text-slate-400">일치 사용자 없음</p>
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-slate-50 border border-slate-300 rounded-lg p-2 text-[10px] z-30 space-y-1">
+                          <p className="text-slate-500">일치 사용자 없음</p>
                           <p className="text-slate-500 leading-relaxed">
                             상대방이 <a href="/signup" target="_blank" className="text-indigo-400 underline">/signup</a>에서 먼저 가입 필요<br />
                             또는 migration_all.sql 실행 필요
@@ -1210,13 +1091,13 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                         onChange={e => setNewPart(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && addMember()}
                         placeholder="담당 파트 (예: 종합안내)"
-                        className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="flex-1 bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 text-sm placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       />
                       <button onClick={addMember} disabled={!selectedProfile} className="flex items-center gap-1 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-lg text-sm transition">
                         <UserPlus className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                    <p className="text-slate-600 text-[10px]">동명이인 방지를 위해 이름 옆에 이메일이 함께 표시됩니다</p>
+                    <p className="text-slate-400 text-[10px]">동명이인 방지를 위해 이름 옆에 이메일이 함께 표시됩니다</p>
                   </div>
                 </div>
               )}
@@ -1224,13 +1105,66 @@ export function NewProjectButton({ userId, userEmail }: Props) {
               {/* Step 3: 제작물 선택 (사용 목적 제거로 단계 번호 변경) */}
               {step === 3 && (
                 <div className="space-y-3">
-                  <p className="text-slate-400 text-sm">제작물 종류를 선택하세요. <strong className="text-slate-200">이름 변경/규격 수정/추가</strong> 모두 가능합니다.</p>
+                  <p className="text-slate-500 text-sm">제작물 종류를 선택하세요. <strong className="text-slate-800">이름 변경/규격 수정/추가</strong> 모두 가능합니다.</p>
+
+                  {/* 발주서 엑셀 업로드 (1단계에서 이동 — 사용자 결정 2026-05-11) */}
+                  <div>
+                    <label className="block text-slate-500 text-xs font-medium mb-1.5 uppercase tracking-wide">
+                      발주서 엑셀 <span className="text-slate-400 font-normal normal-case">(선택 — 제작물 목록 자동 입력)</span>
+                    </label>
+                    {excelRows.length > 0 ? (
+                      <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-300 rounded-lg px-3 py-2.5">
+                        <FileSpreadsheet className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-emerald-800 text-xs font-medium truncate">{excelFile?.name}</p>
+                          <p className="text-emerald-600 text-[10px]">{excelRows.length}건 인식됨 → 4단계에서 확인</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { setExcelFile(null); setExcelRows([]); setExcelError(null) }}
+                          className="text-slate-500 hover:text-slate-800 p-0.5 rounded transition"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="block border border-dashed border-slate-300 hover:border-indigo-400 rounded-lg p-4 text-center cursor-pointer hover:bg-slate-50 transition">
+                        <input
+                          type="file"
+                          accept=".xlsx,.xls"
+                          className="hidden"
+                          onChange={e => {
+                            const f = e.target.files?.[0]
+                            if (f) handleExcelFile(f)
+                            e.target.value = ''
+                          }}
+                        />
+                        {excelParsing ? (
+                          <div className="flex items-center justify-center gap-2 text-slate-500">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span className="text-xs">파일 읽는 중...</span>
+                          </div>
+                        ) : (
+                          <>
+                            <Upload className="w-5 h-5 mx-auto text-slate-400 mb-1" />
+                            <p className="text-slate-500 text-xs">엑셀 파일 선택 (.xlsx)</p>
+                          </>
+                        )}
+                      </label>
+                    )}
+                    {excelError && (
+                      <div className="flex items-center gap-1.5 text-rose-600 text-[10px] mt-1">
+                        <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                        {excelError}
+                      </div>
+                    )}
+                  </div>
 
                   {/* 시안 업로드 — 일괄 or 품목별 */}
-                  <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-3 space-y-2">
+                  <div className="bg-slate-50/40 border border-slate-300/50 rounded-xl p-3 space-y-2">
                     <div className="flex items-center justify-between">
-                      <p className="text-slate-300 text-xs font-medium">시안 이미지 업로드 <span className="text-slate-600 font-normal">— 선택 사항</span></p>
-                      <span className="text-slate-600 text-[10px]">업로드 시 캔버스 배경으로 자동 표시</span>
+                      <p className="text-slate-400 text-xs font-medium">시안 이미지 업로드 <span className="text-slate-400 font-normal">— 선택 사항</span></p>
+                      <span className="text-slate-400 text-[10px]">업로드 시 캔버스 배경으로 자동 표시</span>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       {/* 일괄 업로드 */}
@@ -1238,28 +1172,28 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                         <p className="text-slate-500 text-[10px] mb-1">일괄 — 모든 환경장식물에 동일 적용</p>
                         {batchMockup ? (
                           <div className="relative">
-                            <img src={batchMockup.preview} alt="" className="w-full h-16 object-cover rounded border border-slate-700" />
-                            <button type="button" onClick={() => setBatchMockup(null)} className="absolute top-1 right-1 bg-slate-900/80 text-slate-400 hover:text-white p-0.5 rounded transition"><X className="w-3 h-3" /></button>
+                            <img src={batchMockup.preview} alt="" className="w-full h-16 object-cover rounded border border-slate-300" />
+                            <button type="button" onClick={() => setBatchMockup(null)} className="absolute top-1 right-1 bg-white/80 text-slate-500 hover:text-white p-0.5 rounded transition"><X className="w-3 h-3" /></button>
                           </div>
                         ) : (
-                          <label className="flex items-center justify-center gap-1.5 border border-dashed border-slate-700 hover:border-slate-600 rounded-lg h-16 cursor-pointer hover:bg-slate-800/30 transition">
+                          <label className="flex items-center justify-center gap-1.5 border border-dashed border-slate-300 hover:border-slate-600 rounded-lg h-16 cursor-pointer hover:bg-slate-50/30 transition">
                             <input type="file" accept="image/*" className="hidden" onChange={e => {
                               const f = e.target.files?.[0]; if (!f) return
                               const reader = new FileReader()
                               reader.onload = ev => setBatchMockup({ file: f, preview: ev.target?.result as string })
                               reader.readAsDataURL(f); e.target.value = ''
                             }} />
-                            <ImageIcon className="w-4 h-4 text-slate-600" />
-                            <span className="text-slate-600 text-[10px]">공통 시안 클릭 업로드</span>
+                            <ImageIcon className="w-4 h-4 text-slate-400" />
+                            <span className="text-slate-400 text-[10px]">공통 시안 클릭 업로드</span>
                           </label>
                         )}
                       </div>
                       {/* 품목별 안내 */}
                       <div>
                         <p className="text-slate-500 text-[10px] mb-1">품목별 — 환경장식물마다 다른 시안</p>
-                        <div className="border border-dashed border-slate-800 rounded-lg h-16 flex flex-col items-center justify-center px-2">
-                          <ImageIcon className="w-3 h-3 text-slate-700 mb-0.5" />
-                          <span className="text-slate-700 text-[9px] text-center leading-tight">
+                        <div className="border border-dashed border-slate-200 rounded-lg h-16 flex flex-col items-center justify-center px-2">
+                          <ImageIcon className="w-3 h-3 text-slate-400 mb-0.5" />
+                          <span className="text-slate-400 text-[9px] text-center leading-tight">
                             아래 표에서 각 행 우측 끝<br/>
                             <ImageIcon className="w-2.5 h-2.5 inline mx-0.5 text-slate-500" />
                             아이콘 클릭
@@ -1271,7 +1205,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                       <p className="text-violet-400 text-[10px]">✓ {Object.keys(formatMockups).length}개 품목에 개별 시안 설정됨 (일괄 시안보다 우선)</p>
                     )}
                     {/* 우선순위 안내 */}
-                    <p className="text-slate-600 text-[9px] mt-1">
+                    <p className="text-slate-400 text-[9px] mt-1">
                       💡 일괄 + 품목별 모두 업로드 시: 품목별 시안이 그 종류에만 적용되고, 나머지는 일괄 시안 적용
                     </p>
                   </div>
@@ -1298,17 +1232,17 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                           return (
                             <div key={i} className="px-3 py-1.5 grid grid-cols-[24px_1fr_90px_60px_30px] gap-2 items-center">
                               <span className="text-emerald-600">{r.no || String(i + 1).padStart(2, '0')}</span>
-                              <span className="text-slate-200 truncate">{r.category || '—'}</span>
+                              <span className="text-slate-800 truncate">{r.category || '—'}</span>
                               <span className="text-slate-500 text-[10px]">
                                 {sizeMatch ? `${sizeMatch[1]}×${sizeMatch[2]}mm` : (r.size || '—')}
                               </span>
                               <span className="text-slate-500 text-[10px] truncate">{r.material || '—'}</span>
-                              <span className="text-slate-400 text-center">{r.quantity || 1}</span>
+                              <span className="text-slate-500 text-center">{r.quantity || 1}</span>
                             </div>
                           )
                         })}
                         {excelRows.length > 30 && (
-                          <div className="px-3 py-1.5 text-slate-600 text-[10px]">… +{excelRows.length - 30}건 더</div>
+                          <div className="px-3 py-1.5 text-slate-400 text-[10px]">… +{excelRows.length - 30}건 더</div>
                         )}
                       </div>
                     </div>
@@ -1370,27 +1304,19 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                       })
                       const rate = rates.find(r => r.category === s.name || s.name.includes(r.category) || r.category.includes(s.name))
                       return (
-                        <div key={f.id} className={`grid grid-cols-[20px_1fr_60px_110px_70px_40px_44px_24px] gap-2 items-center px-3 py-1.5 rounded-lg transition ${s.selected ? 'bg-indigo-950/50 border border-indigo-700/40' : 'bg-slate-800/40 hover:bg-slate-800/70 border border-transparent'}`}>
+                        <div key={f.id} className={`grid grid-cols-[20px_1fr_60px_110px_70px_40px_44px_24px] gap-2 items-center px-3 py-1.5 rounded-lg transition ${s.selected ? 'bg-indigo-950/50 border border-indigo-700/40' : 'bg-slate-50/40 hover:bg-slate-50/70 border border-transparent'}`}>
                           <button onClick={() => toggleFormat(f.id)} className={`w-4 h-4 rounded flex-shrink-0 flex items-center justify-center border transition ${s.selected ? 'bg-indigo-600 border-indigo-600' : 'border-slate-600'}`}>
                             {s.selected && <Check className="w-2.5 h-2.5 text-white" />}
                           </button>
                           <div className="flex items-center gap-1.5 min-w-0">
-                            <span className={`text-[8px] px-1 py-0.5 rounded flex-shrink-0 ${layoutTag === '세로' ? 'bg-violet-900/50 text-violet-400' : layoutTag === '가로' ? 'bg-blue-900/50 text-blue-400' : 'bg-slate-700 text-slate-400'}`}>{layoutTag}</span>
+                            <span className={`text-[8px] px-1 py-0.5 rounded flex-shrink-0 ${layoutTag === '세로' ? 'bg-violet-900/50 text-violet-400' : layoutTag === '가로' ? 'bg-blue-900/50 text-blue-400' : 'bg-slate-200 text-slate-500'}`}>{layoutTag}</span>
                             <input
                               type="text"
                               value={s.name}
                               onChange={e => renameFormat(f.id, e.target.value)}
-                              className={`bg-transparent text-sm font-medium px-1 py-0.5 rounded focus:bg-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 min-w-0 flex-1 ${s.selected ? 'text-slate-100' : 'text-slate-400'}`}
+                              className={`bg-transparent text-sm font-medium px-1 py-0.5 rounded focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 min-w-0 flex-1 ${s.selected ? 'text-slate-900' : 'text-slate-500'}`}
                             />
-                            {/* 인라인 설명 — 마우스 hover/tap 시 표시 (명세 명시: "X배너는...") */}
-                            {FORMAT_DESCRIPTIONS[f.id] && (
-                              <span
-                                className="flex-shrink-0 w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 hover:bg-indigo-700 hover:text-indigo-200 text-[9px] flex items-center justify-center cursor-help transition"
-                                title={`📍 ${FORMAT_DESCRIPTIONS[f.id].purpose}\n\n${FORMAT_DESCRIPTIONS[f.id].usage}`}
-                              >
-                                ?
-                              </span>
-                            )}
+                            {/* ′?′ 도움말 툴팁 — 사용자 결정으로 제거 (2026-05-11) */}
                           </div>
                           {/* 선택률 % 배지 */}
                           <div className="text-center">
@@ -1399,20 +1325,20 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                                 className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono ${
                                   rate.ratePercent >= 70 ? 'bg-emerald-900/50 text-emerald-300' :
                                   rate.ratePercent >= 40 ? 'bg-amber-900/50 text-amber-300' :
-                                  rate.ratePercent >= 10 ? 'bg-slate-800 text-slate-400' :
-                                  'bg-slate-900 text-slate-600'
+                                  rate.ratePercent >= 10 ? 'bg-slate-50 text-slate-500' :
+                                  'bg-white text-slate-400'
                                 }`}
                                 title={`${rate.totalEvents}건 중 ${rate.selectedCount}건 선택 (신뢰도: ${rate.confidence})`}
                               >
                                 {rate.ratePercent}%
                               </span>
                             ) : (
-                              <span className="text-slate-700 text-[9px]">—</span>
+                              <span className="text-slate-400 text-[9px]">—</span>
                             )}
                           </div>
                           <div className="flex items-center gap-1">
                             <input type="number" value={s.width} disabled={!s.selected} onChange={e => updateFormat(f.id, 'width', e.target.value)} className={`${smallInputCls} w-[44px] text-center`} />
-                            <span className="text-slate-600 text-[10px]">×</span>
+                            <span className="text-slate-400 text-[10px]">×</span>
                             <input type="number" value={s.height} disabled={!s.selected} onChange={e => updateFormat(f.id, 'height', e.target.value)} className={`${smallInputCls} w-[44px] text-center`} />
                           </div>
                           <input type="text" value={s.material} disabled={!s.selected} onChange={e => updateFormat(f.id, 'material', e.target.value)} className={smallInputCls} />
@@ -1428,8 +1354,8 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                             {fm ? (
                               <img src={fm.preview} alt="" className="w-10 h-10 object-cover rounded border border-violet-600/50" title={fm.file.name} />
                             ) : (
-                              <div className="w-10 h-10 border border-dashed border-slate-700 rounded flex items-center justify-center hover:border-slate-500 transition">
-                                <ImageIcon className="w-3.5 h-3.5 text-slate-600" />
+                              <div className="w-10 h-10 border border-dashed border-slate-300 rounded flex items-center justify-center hover:border-slate-500 transition">
+                                <ImageIcon className="w-3.5 h-3.5 text-slate-400" />
                               </div>
                             )}
                           </label>
@@ -1440,7 +1366,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
 
                     {/* 사용자 커스텀 양식 */}
                     {customFormats.map(cf => (
-                      <div key={cf.id} className={`grid grid-cols-[20px_1fr_60px_110px_70px_40px_44px_24px] gap-2 items-center px-3 py-1.5 rounded-lg transition ${cf.selected ? 'bg-emerald-950/40 border border-emerald-700/40' : 'bg-slate-800/40 border border-transparent'}`}>
+                      <div key={cf.id} className={`grid grid-cols-[20px_1fr_60px_110px_70px_40px_44px_24px] gap-2 items-center px-3 py-1.5 rounded-lg transition ${cf.selected ? 'bg-emerald-950/40 border border-emerald-700/40' : 'bg-slate-50/40 border border-transparent'}`}>
                         <button onClick={() => updateCustomFormat(cf.id, { selected: !cf.selected })} className={`w-4 h-4 rounded flex items-center justify-center border transition ${cf.selected ? 'bg-emerald-600 border-emerald-600' : 'border-slate-600'}`}>
                           {cf.selected && <Check className="w-2.5 h-2.5 text-white" />}
                         </button>
@@ -1449,20 +1375,20 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                           value={cf.name}
                           onChange={e => updateCustomFormat(cf.id, { name: e.target.value })}
                           placeholder="제작물 종류명"
-                          className={`bg-transparent text-sm font-medium px-1 py-0.5 rounded focus:bg-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 ${cf.selected ? 'text-slate-100' : 'text-slate-400'}`}
+                          className={`bg-transparent text-sm font-medium px-1 py-0.5 rounded focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 ${cf.selected ? 'text-slate-900' : 'text-slate-500'}`}
                         />
                         {/* 선택률 placeholder (커스텀은 데이터 없음) */}
-                        <span className="text-center text-slate-700 text-[9px]">—</span>
+                        <span className="text-center text-slate-400 text-[9px]">—</span>
                         <div className="flex items-center gap-1">
                           <input type="number" value={cf.width} onChange={e => updateCustomFormat(cf.id, { width: parseInt(e.target.value) || 0 })} className={`${smallInputCls} w-[44px] text-center`} />
-                          <span className="text-slate-600 text-[10px]">×</span>
+                          <span className="text-slate-400 text-[10px]">×</span>
                           <input type="number" value={cf.height} onChange={e => updateCustomFormat(cf.id, { height: parseInt(e.target.value) || 0 })} className={`${smallInputCls} w-[44px] text-center`} />
                         </div>
                         <input type="text" value={cf.material} onChange={e => updateCustomFormat(cf.id, { material: e.target.value })} placeholder="재질" className={smallInputCls} />
                         <input type="number" min={1} max={20} value={cf.count} onChange={e => updateCustomFormat(cf.id, { count: parseInt(e.target.value) || 1 })} className={`${smallInputCls} text-center`} />
                         {/* 시안 placeholder (커스텀은 일괄 시안만 적용) */}
-                        <span className="text-center text-slate-700 text-[9px]">—</span>
-                        <button onClick={() => removeCustomFormat(cf.id)} className="text-slate-600 hover:text-red-400 transition">
+                        <span className="text-center text-slate-400 text-[9px]">—</span>
+                        <button onClick={() => removeCustomFormat(cf.id)} className="text-slate-400 hover:text-red-400 transition">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -1544,15 +1470,15 @@ export function NewProjectButton({ userId, userEmail }: Props) {
             </div>
 
             {/* 푸터 */}
-            <div className="px-6 py-4 flex-shrink-0 border-t border-slate-800 space-y-3">
+            <div className="px-6 py-4 flex-shrink-0 border-t border-slate-200 space-y-3">
               {error && <p className="text-red-400 text-sm bg-red-950/40 border border-red-900/60 rounded-lg px-3 py-2">{error}</p>}
               <div className="flex gap-3">
                 {step > 1 ? (
-                  <button type="button" onClick={() => setStep(step - 1)} className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm px-4 py-2.5 rounded-lg transition">
+                  <button type="button" onClick={() => setStep(step - 1)} className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-200 text-slate-400 text-sm px-4 py-2.5 rounded-lg transition">
                     <ChevronLeft className="w-4 h-4" /> 이전
                   </button>
                 ) : (
-                  <button type="button" onClick={handleClose} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm py-2.5 rounded-lg transition">취소</button>
+                  <button type="button" onClick={handleClose} className="flex-1 bg-slate-50 hover:bg-slate-200 text-slate-400 text-sm py-2.5 rounded-lg transition">취소</button>
                 )}
 
                 {step < 3 ? (

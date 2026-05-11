@@ -52,13 +52,13 @@ const CASES = [
 
 export default function NewProjectPage() {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-white text-slate-900">
       <StepIndicator current={0} />
       <div className="max-w-5xl mx-auto px-6 py-12">
         <div className="mb-10">
-          <Link href="/dashboard" className="text-sm text-slate-400 hover:text-slate-200">← 대시보드</Link>
+          <Link href="/dashboard" className="text-sm text-slate-500 hover:text-slate-800">← 대시보드</Link>
           <h1 className="mt-4 text-3xl font-bold">새 프로젝트 시작하기</h1>
-          <p className="mt-2 text-slate-400">시작 상태에 맞는 케이스를 선택하세요. 각 케이스는 다른 흐름으로 안내합니다.</p>
+          <p className="mt-2 text-slate-500">시작 상태에 맞는 케이스를 선택하세요. 각 케이스는 다른 흐름으로 안내합니다.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -68,19 +68,19 @@ export default function NewProjectPage() {
               <Link
                 key={c.id}
                 href={c.href}
-                className="group relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60 p-6 hover:border-slate-700 hover:bg-slate-900 transition"
+                className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white/60 p-6 hover:border-slate-300 hover:bg-white transition"
               >
                 <div className={`absolute -right-12 -top-12 h-32 w-32 rounded-full bg-gradient-to-br ${c.accent} opacity-20 blur-2xl group-hover:opacity-40 transition`} />
                 <div className="flex items-start justify-between mb-4">
                   <div className={`inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br ${c.accent}`}>
                     <Icon className="w-5 h-5 text-white" />
                   </div>
-                  <span className="text-xs px-2 py-0.5 rounded-full border border-slate-700 text-slate-400">{c.badge}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full border border-slate-300 text-slate-500">{c.badge}</span>
                 </div>
                 <h3 className="text-lg font-semibold text-slate-50">{c.title}</h3>
                 <p className="mt-1 text-sm text-indigo-300">{c.sub}</p>
-                <p className="mt-3 text-sm text-slate-400 leading-relaxed">{c.desc}</p>
-                <div className="mt-5 text-sm text-slate-300 group-hover:text-indigo-300 transition">시작하기 →</div>
+                <p className="mt-3 text-sm text-slate-500 leading-relaxed">{c.desc}</p>
+                <div className="mt-5 text-sm text-slate-400 group-hover:text-indigo-300 transition">시작하기 →</div>
               </Link>
             )
           })}

@@ -91,7 +91,7 @@ export function DeleteProjectButton({ projectId, projectName, isOwner }: Props) 
     <button
       onClick={handleDelete}
       disabled={isDeleting}
-      className="flex items-center justify-center bg-slate-800 hover:bg-red-900/40 text-slate-500 hover:text-red-400 text-xs font-medium py-2 px-3 rounded-lg transition-all disabled:opacity-40"
+      className="flex items-center justify-center bg-slate-50 hover:bg-red-900/40 text-slate-500 hover:text-red-400 text-xs font-medium py-2 px-3 rounded-lg transition-all disabled:opacity-40"
       title="프로젝트 삭제 (Owner만)"
     >
       {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}

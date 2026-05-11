@@ -533,13 +533,13 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
   return (
     <div
       ref={outerRef}
-      className="w-full h-full flex items-center justify-center bg-slate-950 overflow-hidden"
+      className="w-full h-full flex items-center justify-center bg-slate-50 overflow-hidden"
       style={{
-        backgroundImage: 'radial-gradient(circle, rgba(51,65,85,0.4) 1px, transparent 1px)',
+        backgroundImage: 'radial-gradient(circle, rgba(148,163,184,0.25) 1px, transparent 1px)',
         backgroundSize: '24px 24px',
       }}
     >
-      <div ref={wrapRef} className="relative shadow-2xl ring-1 ring-slate-700/50">
+      <div ref={wrapRef} className="relative shadow-lg ring-1 ring-slate-200">
         <canvas ref={canvasElRef} />
         {/* 캔버스 하단 규격 표시 — 1차에서 일시 제거 (사용자 요청) */}
         {/* {item?.width_mm && item?.height_mm && (
@@ -551,13 +551,13 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
 
       {!item && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none">
-          <div className="w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center">
-            <svg className="w-6 h-6 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center">
+            <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth="1.5" />
               <path strokeLinecap="round" strokeWidth="1.5" d="M3 9h18M9 21V9" />
             </svg>
           </div>
-          <p className="text-slate-600 text-sm">왼쪽에서 제작물을 선택하세요</p>
+          <p className="text-slate-500 text-sm">위 그리드에서 제작물을 선택하세요</p>
         </div>
       )}
     </div>

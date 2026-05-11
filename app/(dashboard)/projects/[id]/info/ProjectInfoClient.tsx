@@ -569,7 +569,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-white">
       {/* 헤더 */}
       <header className="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
@@ -639,41 +639,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
             </div>
           </div>
 
-          {/* 행사 단계 선택기 */}
-          <div className="mt-5">
-            <label className={LABEL_CLS}>행사 진행 단계</label>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-              {STAGE_OPTIONS.map((opt, idx) => {
-                const isActive = stage === opt.value
-                const isPast = STAGE_OPTIONS.findIndex(o => o.value === stage) > idx
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    disabled={!isOwner}
-                    onClick={() => setStage(opt.value)}
-                    className={`relative flex flex-col items-center gap-1 p-2.5 rounded-lg border text-center transition-all disabled:cursor-not-allowed ${
-                      isActive
-                        ? `${opt.color} bg-slate-800/80 ring-1 ring-current`
-                        : isPast
-                        ? 'border-slate-700 text-slate-500 bg-slate-800/40'
-                        : 'border-slate-800 text-slate-700 hover:border-slate-600 hover:text-slate-500 bg-slate-900/40'
-                    }`}
-                  >
-                    <span className={`text-xs font-mono w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      isActive ? 'bg-current/20 text-current' : isPast ? 'bg-slate-700 text-slate-500' : 'bg-slate-800 text-slate-700'
-                    }`}>
-                      {isPast ? '✓' : idx + 1}
-                    </span>
-                    <span className="text-[10px] font-medium leading-tight">{opt.label}</span>
-                    {isActive && (
-                      <span className="text-[9px] leading-tight opacity-70">{opt.desc}</span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+          {/* 행사 진행 단계 — 사용자 결정으로 숨김 (2026-05-11) */}
 
           {isOwner && (
             <div className="mt-5 flex justify-end">
@@ -867,8 +833,8 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
           </div>
         </section>
 
-        {/* 스타일 프리셋 6종 */}
-        <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+        {/* 스타일 프리셋 6종 — 사용자 결정으로 숨김 (2026-05-11) */}
+        {false && <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
           <div className="flex items-center gap-2 mb-5">
             <Sparkles className="w-4 h-4 text-indigo-400" />
             <h2 className="text-slate-200 font-semibold text-sm">스타일 프리셋</h2>
@@ -911,10 +877,10 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
               )
             })}
           </div>
-        </section>
+        </section>}
 
-        {/* 로고 자산 카탈로그 */}
-        <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+        {/* 로고 자산 카탈로그 — 사용자 결정으로 숨김 (2026-05-11) */}
+        {false && <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
           <input ref={logoFileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
           <div className="flex items-center gap-2 mb-5">
             <Building2 className="w-4 h-4 text-indigo-400" />
@@ -986,10 +952,10 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
               </button>
             </div>
           )}
-        </section>
+        </section>}
 
-        {/* 행사별 기본 양식 (slot_styles) */}
-        <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+        {/* 행사별 기본 양식 — 사용자 결정으로 숨김 (2026-05-11) */}
+        {false && <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
           <div className="flex items-center gap-2 mb-5">
             <Palette className="w-4 h-4 text-indigo-400" />
             <h2 className="text-slate-200 font-semibold text-sm">행사 기본 양식</h2>
@@ -1171,7 +1137,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
               )
             })}
           </div>
-        </section>
+        </section>}
       </main>
     </div>
   )
