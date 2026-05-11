@@ -37,6 +37,14 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
 
   const [items, setItems] = useState<DesignItem[]>(initialItems)
   const [selectedItemId, setSelectedItemId] = useState<string>(initialItems[0]?.id ?? '')
+  // v9.11: 회의록 ′가로/세로 분할 한번 생각해 봅시다′ — 사용자 선택 가능
+  const [splitMode, setSplitMode] = useState<'horizontal' | 'vertical'>('horizontal')
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem('mice_editor_split')
+      if (s === 'vertical' || s === 'horizontal') setSplitMode(s)
+    } catch {}
+  }, [])
   const [allContents, setAllContents] = useState<Record<string, ContentsMap>>({})
   const [slotStyles, setSlotStyles] = useState<SlotStylesMap>({})
   const [isLoading, setIsLoading] = useState(true)
@@ -706,13 +714,26 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
         }}
       />
 
-      <div className="flex flex-1 min-h-0">
-        {/* 좌측 제작물 사이드바 — 1차 제거됨 (향후 추가 진행 예정) */}
-        {/* 우측 구역 설정 패널 — 1차 제거됨 (향후 추가 진행 예정) */}
+      {/* v9.11: 회의록 ′가로/세로 분할 한번 생각해 봅시다′ — 사용자 선택 토글 */}
+      <div className="px-3 py-1 bg-slate-50 border-b border-slate-200 flex items-center gap-2 text-[10px]">
+        <span className="text-slate-500">레이아웃:</span>
+        <button
+          onClick={() => { setSplitMode('horizontal'); try { localStorage.setItem('mice_editor_split', 'horizontal') } catch {} }}
+          className={`px-2 py-0.5 rounded ${splitMode === 'horizontal' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}
+        >
+          ⊟ 위·아래
+        </button>
+        <button
+          onClick={() => { setSplitMode('vertical'); try { localStorage.setItem('mice_editor_split', 'vertical') } catch {} }}
+          className={`px-2 py-0.5 rounded ${splitMode === 'vertical' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}
+        >
+          ⊟ 좌·우
+        </button>
+      </div>
 
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* 데이터 그리드 — 50% (사이드바 제거로 비중 ↑) */}
-          <div className="h-[50%] border-b border-slate-200 overflow-hidden">
+      <div className="flex flex-1 min-h-0">
+        <div className={`flex-1 ${splitMode === 'vertical' ? 'flex flex-row' : 'flex flex-col'} min-w-0`}>
+          <div className={`${splitMode === 'vertical' ? 'w-1/2 border-r' : 'h-[50%] border-b'} border-slate-200 overflow-hidden`}>
             <EditorGrid
               items={items}
               allContents={allContents}
@@ -723,14 +744,13 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
               onDeleteItem={handleDeleteItem}
               onReorderItems={handleReorderItems}
               isLoading={isLoading}
-              // v8: 시설 가이드 (§11-6)
               facilityIssueMap={facilityIssueMap}
               facilityCheckMode={facilityCheckMode}
             />
           </div>
 
-          {/* 디자인 캔버스 — 50% */}
-          <div className="h-[50%]">
+          {/* 디자인 캔버스 */}
+          <div className={splitMode === 'vertical' ? 'w-1/2' : 'h-[50%]'}>
             <CanvasBoard
               item={selectedItem}
               contents={contents}
