@@ -124,11 +124,15 @@ export interface DesignItem {
   install_time: string | null    // 설치시간 (편집 초기 숨김)
   uninstall_time: string | null  // 철거시간 (편집 초기 숨김)
 
-  // v9.3 (2026-05-11): 회의록 — 새 발주 양식 컬럼 9개 (모두 기본 숨김)
+  // v9.3 (2026-05-11): 회의록 — 새 발주 양식 21컬럼 매핑 (모두 기본 숨김)
+  space_type: string | null      // 공간 유형 (회의장/부대시설/전시장/안내시설)
+  place_detail: string | null    // 세부 장소 (103+104, 208 등)
+  place_contact: string | null   // 장소 담당자 (현장 담당)
+  unit: string | null            // 단위 (개/세트/식 등)
   type_kind: string | null       // 유형 (임대/구매/출력+설치/디자인)
   supplier: string | null        // 수급업체
-  install_date: string | null    // 설치일자 (YYYY-MM-DD 또는 ′12/11′ 자유)
-  usage_period: string | null    // 사용기간 (′12/12~12/18′ 자유)
+  install_date: string | null    // 설치일자
+  usage_period: string | null    // 사용기간
   uninstall_date: string | null  // 철거일자
   order_contact: string | null   // 발주 담당자
   order_date: string | null      // 발주일

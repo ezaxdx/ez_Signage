@@ -17,22 +17,45 @@ interface EditorColState {
   customValues: Record<string, Record<string, string>>
 }
 
-// v8: 1차안 17컬럼 헤더 복원
-// - purpose는 '사용 목적'으로 환원 (v4.1 단위 4의 '내용' 의미 변경 되돌림)
-// - content는 별도 content_text 필드 매핑
+// v9.3 (2026-05-11): 회의록 ′인쇄제작물′ 시트 양식 매핑 — 21컬럼
 const DEFAULT_LABELS: Record<EditorColumnId, string> = {
-  no: 'NO.', part: '파트', bigarea: '구분', location: '장소', purpose: '사용 목적',
-  content: '내용', category: '품목', language: '언어', size: '규격(mm)', material: '재질',
-  quantity: '수량', ko_text: '국문 시안', en_text: '영문 시안', note: '비고', editor: '담당자',
+  no: 'NO.',
+  // 새 양식: 공간 유형 / 사용 목적 / 장소 명칭 / 세부 장소 / 장소 담당자
+  space_type: '공간 유형',
+  purpose: '사용 목적',
+  location: '장소 명칭',
+  place_detail: '세부 장소',
+  place_contact: '장소 담당자',
+  // 종류 / 내용 / 사이즈 / 수량 / 단위
+  category: '종류',
+  content: '내용',
+  size: '사이즈(mm)',
+  quantity: '수량',
+  unit: '단위',
+  // 유형 / 수급업체 / 설치일자 / 설치시간 / 사용기간 / 철거일자 / 철거시간 / 발주 담당자 / 발주일 / 비고
+  type_kind: '유형',
+  supplier: '수급업체',
+  install_date: '설치일자',
+  install_time: '설치시간',
+  usage_period: '사용기간',
+  uninstall_date: '철거일자',
+  uninstall_time: '철거시간',
+  order_contact: '발주 담당자',
+  order_date: '발주일',
+  note: '비고',
+  // legacy (DB 유지, UI/Export 미노출 — 기존 데이터 호환용 라벨만)
+  part: '파트', bigarea: '구분', language: '언어', material: '재질', editor: '담당자',
+  ko_text: '국문 시안', en_text: '영문 시안',
   design_vendor: '디자인업체', print_vendor: '출력업체',
-  install_time: '설치시간', uninstall_time: '철거시간',
 }
 
-// 1차안 17컬럼 (no/part/bigarea/location/purpose/category/language/size/material/quantity/content/note/editor + design_vendor/print_vendor/install_time/uninstall_time)
+// 새 양식 순서대로 — 21컬럼 (회의록 ′인쇄제작물 시트′ 기준)
 const DEFAULT_ORDER: EditorColumnId[] = [
-  'no', 'part', 'bigarea', 'location', 'purpose', 'category', 'language',
-  'size', 'material', 'quantity', 'content', 'note', 'editor',
-  'design_vendor', 'print_vendor', 'install_time', 'uninstall_time',
+  'no', 'space_type', 'purpose', 'location', 'place_detail', 'place_contact',
+  'category', 'content', 'size', 'quantity', 'unit',
+  'type_kind', 'supplier',
+  'install_date', 'install_time', 'usage_period', 'uninstall_date', 'uninstall_time',
+  'order_contact', 'order_date', 'note',
 ]
 
 function loadEditorColState(): EditorColState | null {
@@ -105,11 +128,23 @@ function getCellValue(
     case 'size': return item.width_mm && item.height_mm ? `${item.width_mm}×${item.height_mm}` : ''
     case 'material': return item.material ?? ''
     case 'quantity': return item.quantity ?? 1
-    // v8: 신규 4컬럼
+    // v9.3 신규 13컬럼 (회의록 인쇄제작물 시트 양식)
+    case 'space_type':     return item.space_type ?? ''
+    case 'place_detail':   return item.place_detail ?? ''
+    case 'place_contact':  return item.place_contact ?? ''
+    case 'unit':           return item.unit ?? '개'
+    case 'type_kind':      return item.type_kind ?? ''
+    case 'supplier':       return item.supplier ?? ''
+    case 'install_date':   return item.install_date ?? ''
+    case 'install_time':   return item.install_time ?? ''
+    case 'usage_period':   return item.usage_period ?? ''
+    case 'uninstall_date': return item.uninstall_date ?? ''
+    case 'uninstall_time': return item.uninstall_time ?? ''
+    case 'order_contact':  return item.order_contact ?? ''
+    case 'order_date':     return item.order_date ?? ''
+    // legacy (UI 제거, fallback만 유지)
     case 'design_vendor':  return item.design_vendor ?? ''
     case 'print_vendor':   return item.print_vendor ?? ''
-    case 'install_time':   return item.install_time ?? ''
-    case 'uninstall_time': return item.uninstall_time ?? ''
     case 'ko_text': {
       let content = gatherContentText(contents, 'ko')
       if (content === '기본시안' && (item.location || item.purpose)) {
@@ -664,12 +699,18 @@ async function exportToExcelDynamic(
   }
 
   // 컬럼 너비 — 본문 길이 컬럼은 넓게
+  // v9.3 회의록: ′내용 너무 길다′ — 내용/사용기간 넓게, 짧은 컬럼 좁게
   ws['!cols'] = visibleColIds.map(id => {
-    if (id === 'ko_text' || id === 'en_text') return { wch: 36 }
-    if (id === 'note' || id === 'location' || id === 'purpose') return { wch: 16 }
-    if (id === 'editor' || id === 'category' || id === 'material') return { wch: 12 }
-    if (id === 'no' || id === 'quantity') return { wch: 6 }
-    if (id.startsWith('custom_')) return { wch: 14 }
+    if (id === 'content') return { wch: 32 }                                          // 내용
+    if (id === 'ko_text' || id === 'en_text') return { wch: 28 }
+    if (id === 'usage_period') return { wch: 18 }                                     // 사용기간 (12/12~12/18 형식)
+    if (id === 'location' || id === 'purpose' || id === 'supplier') return { wch: 14 }
+    if (id === 'note' || id === 'order_contact') return { wch: 14 }
+    if (id === 'editor' || id === 'category' || id === 'material') return { wch: 11 }
+    if (id === 'type_kind' || id === 'install_date' || id === 'uninstall_date' || id === 'order_date') return { wch: 10 }
+    if (id === 'install_time' || id === 'uninstall_time') return { wch: 8 }
+    if (id === 'no' || id === 'quantity') return { wch: 5 }
+    if (id.startsWith('custom_')) return { wch: 12 }
     return { wch: 10 }
   })
   ws['!rows'] = [{ hpt: 28 }, { hpt: 20 }]
