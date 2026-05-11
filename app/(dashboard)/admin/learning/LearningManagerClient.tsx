@@ -78,6 +78,16 @@ interface DbAlias {
   note: string | null
 }
 
+interface SignageTypeRow {
+  id: string
+  name: string
+  width_mm: number
+  height_mm: number
+  default_material: string
+  category: string
+  layout: string
+}
+
 interface Props {
   userId: string
   initialVenues: Venue[]
@@ -88,6 +98,7 @@ interface Props {
   synonyms?: SynonymRow[]
   dbAliases?: DbAlias[]
   facilityGuideStatus?: FacilityGuideRow[]
+  signageTypes?: SignageTypeRow[]
 }
 
 const VENUE_TYPES = ['컨벤션센터', '호텔', '전시장', '야외', '공공시설', '기타'] as const
@@ -100,6 +111,7 @@ export function LearningManagerClient({
   synonyms = [],
   dbAliases = [],
   facilityGuideStatus = [],
+  signageTypes = [],
 }: Props) {
   const [synonymFilter, setSynonymFilter] = useState('')
   const [aliasList, setAliasList] = useState<DbAlias[]>(dbAliases)
@@ -638,13 +650,39 @@ export function LearningManagerClient({
         </>}
         {activeSection === 'signage-types' && (
           <section className="bg-white border border-slate-200 rounded-xl p-5">
-            <h2 className="text-slate-900 font-semibold text-sm mb-2 flex items-center gap-2">
+            <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
               <Inbox className="w-4 h-4 text-indigo-500" />
-              환경장식물 종류 ({signageTypeCount})
+              환경장식물 종류 ({signageTypes.length})
             </h2>
-            <p className="text-[11px] text-slate-500 leading-relaxed">
-              표준 환경장식물 {signageTypeCount}종 (X배너·I배너·가로등배너·통천·가로/세로 현수막·포디움·A4/A3 등). 현재는 시드 데이터에 정의되어 있으며, 편집·추가는 추후 사이클에서 인라인 지원 예정.
-            </p>
+            <div className="overflow-x-auto border border-slate-200 rounded">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr className="text-slate-600 text-[11px]">
+                    <th className="px-2 py-1.5 text-left font-semibold">종류명</th>
+                    <th className="px-2 py-1.5 text-left font-semibold">레이아웃</th>
+                    <th className="px-2 py-1.5 text-right font-semibold">너비 (mm)</th>
+                    <th className="px-2 py-1.5 text-right font-semibold">높이 (mm)</th>
+                    <th className="px-2 py-1.5 text-left font-semibold">기본 재질</th>
+                    <th className="px-2 py-1.5 text-left font-semibold">분류</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {signageTypes.map(t => (
+                    <tr key={t.id} className="hover:bg-slate-50">
+                      <td className="px-2 py-1 text-slate-800 font-medium">{t.name}</td>
+                      <td className="px-2 py-1">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${t.layout === '세로' ? 'bg-violet-100 text-violet-700' : t.layout === '가로' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>{t.layout}</span>
+                      </td>
+                      <td className="px-2 py-1 text-right text-slate-700 font-mono text-[11px]">{t.width_mm.toLocaleString()}</td>
+                      <td className="px-2 py-1 text-right text-slate-700 font-mono text-[11px]">{t.height_mm.toLocaleString()}</td>
+                      <td className="px-2 py-1 text-slate-600 text-[11px]">{t.default_material}</td>
+                      <td className="px-2 py-1 text-slate-500 text-[11px]">{t.category}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[10px] text-slate-400 mt-2">표준 시드 데이터 — 편집·추가는 추후 사이클에서 인라인 지원</p>
           </section>
         )}
 

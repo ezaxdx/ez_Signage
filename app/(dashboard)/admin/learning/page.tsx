@@ -93,6 +93,7 @@ export default async function LearningManagerPage() {
       synonyms={SEED_SYNONYMS}
       dbAliases={((aliasesRes.data ?? []) as Array<{ id: string; alias_name: string; canonical_name: string; note: string | null }>)}
       facilityGuideStatus={facilityGuideStatus}
+      signageTypes={SEED_SIGNAGE_TYPES.map(t => ({ id: t.id, name: t.name, width_mm: t.width_mm, height_mm: t.height_mm, default_material: t.default_material, category: t.category, layout: t.layout }))}
     />
   )
 }
