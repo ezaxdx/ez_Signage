@@ -1,5 +1,62 @@
 # 작업 이력
 
+## 2026-05-11 (v9.8) — 동의어 인라인 추가/삭제
+
+회의록 학습 관리자 IA ′환경장식물별 동의어 추가/삭제 가능′ 충족.
+
+- `app/api/admin/aliases/route.ts` 신설 (POST/DELETE, isAdmin 필수)
+- `LearningManagerClient` 동의어 섹션 상단에 ′별칭 → 표준명′ 입력 폼 + 추가 버튼
+- DB 동의어(signage_aliases) 표 행에 ✕ 삭제 버튼 (emerald 배경 강조)
+- 시드 동의어는 기존대로 read-only
+
+## 2026-05-11 (v9.7) — 학습 관리자 안내문 추가 단축
+
+3개 안내문(동의어/시설가이드/푸터) 줄여 사용자에게 핵심만 표시.
+
+## 2026-05-11 (v9.6) — AI 학습 백엔드 연결
+
+회의록 학습 3종 + 추천 흐름 백엔드 구현.
+
+- `lib/ai/visionFloorPlan.ts` — Gemini 2.5 Vision으로 도면 → 텍스트 분석
+- `app/api/learning-jobs/run/route.ts` — POST { jobId } → Vision 호출 → venues.specs_text 저장
+- `lib/ai/venueProfile.ts` — venues + 시설 가이드 시드 + facility_exception_log를 텍스트 압축
+- `recommendSignage`에 venueProfileBlock 자동 통합 (seed + venueSignage + accumulated + venueProfile 4종)
+- migration_v9: venues.specs_text + specs_updated_at 컬럼 추가
+- admin/learning UI에 ′Vision 분석′ 버튼 (queued/failed 상태에서 실행)
+
+## 2026-05-11 (v9.5) — 위자드 직행 흐름 보장 + 행 추가 복구
+
+- handleCreate에서 selectedList 비면 ′미정′ 행 1건 자동 생성 (편집기 빈 화면 방지)
+- EditorGrid 상단에 ′+ 행 추가′ 작은 버튼 복구 (emerald 색조로 컬럼 관리와 구분)
+- step 2 ′팀원 초대′ 안내문 단축 + 개발자 내부 문구 제거
+
+## 2026-05-11 (v9.4) — 새 발주 양식(인쇄제작물 시트) 21컬럼 적용
+
+회의록 ′이게 기본 양식′ 반영.
+
+- 신규 13컬럼 추가 (space_type / place_detail / place_contact / unit + type_kind / supplier / install_date / install_time / usage_period / uninstall_date / uninstall_time / order_contact / order_date)
+- DEFAULT_ORDER 재배열 — 새 양식 순서 그대로 (NO/공간유형/사용목적/장소명칭/세부장소/.../비고)
+- 기존 part·language·material·editor·design_vendor·print_vendor 노출 제거 (DB 데이터는 보존)
+- 엑셀 컬럼 너비 조정 — 내용/사용기간 넓게, 단위/시간/수량 좁게
+
+## 2026-05-11 (v9.3) — 회의록 1차·2차 일괄 반영
+
+- 1단계 발주서 엑셀 드랍 / 3단계 ′제작물 선택′ 홀딩 → 2단계에서 바로 편집기 직행
+- 관리자 페이지 KPI에서 ′실적 매칭·PM 사업부·발주처·행사 폴더′ 4개 제거
+- ′프로그램 파트 (다중선택 — 추천 정확도 핵심)′ → ′(다중선택 가능)′ 단순화
+- 행사장 등록 요청 모달 안내문 단순화 (사용자에게 ′학습/AI′ 노출 X)
+- `docs/AI_LEARNING_FLOW_260511.md` 신설 (회의록 AI 적용 흐름 정리)
+
+## 2026-05-11 (v9.2) — 데이터 연결 ① finalized_at + ② 시설가이드 예외 로그
+
+- ExportService.logUsage가 export_excel 시점에 design_items.finalized_at = now() + confirmed = true 일괄 UPDATE
+- EditorLayout.onProceed: facility_exception_log INSERT + review_note에 ′[시설 가이드 외] 사용자 확인 진행′ 자동 표기
+
+## 2026-05-11 (v9.1) — 2차 수정 회의록 위자드 흐름 변경
+
+- STEP_LABELS = [기본 정보, 팀원 초대] 2단계로 축소
+- step 2 ′팀원 초대′ 완료 시 바로 ′프로젝트 만들기′ 버튼
+
 ## 2026-05-11 (v9 ++) — 재검증 + 자동 채우기 + localStorage 마이그레이션
 
 ### 자동 채우기 (시도 후 ★ 전면 롤백)
