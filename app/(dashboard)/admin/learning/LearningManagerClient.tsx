@@ -71,6 +71,13 @@ interface FacilityGuideRow {
   last_updated?: string
 }
 
+interface DbAlias {
+  id: string
+  alias_name: string
+  canonical_name: string
+  note: string | null
+}
+
 interface Props {
   userId: string
   initialVenues: Venue[]
@@ -79,6 +86,7 @@ interface Props {
   venueLearningStatus?: VenueLearningStatus[]
   signageTypeCount?: number
   synonyms?: SynonymRow[]
+  dbAliases?: DbAlias[]
   facilityGuideStatus?: FacilityGuideRow[]
 }
 
@@ -90,9 +98,14 @@ export function LearningManagerClient({
   venueLearningStatus = [],
   signageTypeCount = 0,
   synonyms = [],
+  dbAliases = [],
   facilityGuideStatus = [],
 }: Props) {
   const [synonymFilter, setSynonymFilter] = useState('')
+  const [aliasList, setAliasList] = useState<DbAlias[]>(dbAliases)
+  const [newAlias, setNewAlias] = useState('')
+  const [newCanon, setNewCanon] = useState('')
+  const [aliasSaving, setAliasSaving] = useState(false)
   const [venues, setVenues] = useState<Venue[]>(initialVenues)
   const [requests, setRequests] = useState<VenueRequest[]>(initialRequests)
   const [jobs, setJobs] = useState<LearningJob[]>(initialJobs)
@@ -641,7 +654,7 @@ export function LearningManagerClient({
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-slate-900 font-semibold text-sm flex items-center gap-2">
               <FileText className="w-4 h-4 text-amber-500" />
-              동의어 매핑 ({synonyms.length})
+              동의어 매핑 ({synonyms.length + aliasList.length})
             </h2>
             <input
               type="text"
@@ -652,6 +665,39 @@ export function LearningManagerClient({
             />
           </div>
           <p className="text-[11px] text-slate-500 mb-3">비표준 입력을 표준명으로 자동 변환합니다.</p>
+
+          {/* 동의어 추가 폼 */}
+          <div className="flex gap-2 mb-3">
+            <input type="text" value={newAlias} onChange={e => setNewAlias(e.target.value)} placeholder="별칭 (예: 스프링배너)"
+              className="flex-1 bg-slate-50 border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+            <span className="text-slate-400 text-xs self-center">→</span>
+            <input type="text" value={newCanon} onChange={e => setNewCanon(e.target.value)} placeholder="표준명 (예: X-배너)"
+              className="flex-1 bg-slate-50 border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+            <button
+              onClick={async () => {
+                if (!newAlias.trim() || !newCanon.trim()) return
+                setAliasSaving(true)
+                try {
+                  const res = await fetch('/api/admin/aliases', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ alias_name: newAlias.trim(), canonical_name: newCanon.trim() }),
+                  })
+                  const data = await res.json()
+                  if (res.ok && data.data) {
+                    setAliasList(prev => [...prev, data.data])
+                    setNewAlias(''); setNewCanon('')
+                  } else {
+                    alert('추가 실패: ' + (data.error ?? 'unknown'))
+                  }
+                } finally { setAliasSaving(false) }
+              }}
+              disabled={aliasSaving || !newAlias.trim() || !newCanon.trim()}
+              className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-300 text-white text-xs rounded"
+            >
+              {aliasSaving ? '저장...' : '추가'}
+            </button>
+          </div>
           <div className="overflow-y-auto max-h-72 border border-slate-200 rounded">
             <table className="w-full text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
@@ -662,13 +708,36 @@ export function LearningManagerClient({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
+                {/* DB 동의어 (사용자 추가) — 삭제 가능 */}
+                {aliasList
+                  .filter(a => !synonymFilter || a.alias_name.includes(synonymFilter) || a.canonical_name.includes(synonymFilter))
+                  .map(a => (
+                    <tr key={a.id} className="hover:bg-slate-50 bg-emerald-50/30">
+                      <td className="px-2 py-1 text-slate-700 font-mono text-[11px]">{a.alias_name}</td>
+                      <td className="px-2 py-1 text-indigo-700 font-medium">{a.canonical_name}</td>
+                      <td className="px-2 py-1 text-slate-500 text-[11px] flex items-center justify-between gap-2">
+                        <span className="truncate">{a.note ?? '사용자 추가'}</span>
+                        <button
+                          onClick={async () => {
+                            if (!confirm(`′${a.alias_name}′ 삭제할까요?`)) return
+                            const res = await fetch(`/api/admin/aliases?id=${a.id}`, { method: 'DELETE' })
+                            if (res.ok) setAliasList(prev => prev.filter(x => x.id !== a.id))
+                            else alert('삭제 실패')
+                          }}
+                          className="text-rose-500 hover:text-rose-700 text-[10px]"
+                          title="삭제"
+                        >✕</button>
+                      </td>
+                    </tr>
+                  ))}
+                {/* 시드 동의어 (read-only) */}
                 {synonyms
                   .filter(s => !synonymFilter || s.alias.includes(synonymFilter) || s.canonical_name.includes(synonymFilter))
                   .map(s => (
                     <tr key={s.alias} className="hover:bg-slate-50">
                       <td className="px-2 py-1 text-slate-700 font-mono text-[11px]">{s.alias}</td>
                       <td className="px-2 py-1 text-indigo-700 font-medium">{s.canonical_name}</td>
-                      <td className="px-2 py-1 text-slate-500 text-[11px]">{s.note ?? '—'}</td>
+                      <td className="px-2 py-1 text-slate-500 text-[11px]">{s.note ?? '시드'}</td>
                     </tr>
                   ))}
               </tbody>

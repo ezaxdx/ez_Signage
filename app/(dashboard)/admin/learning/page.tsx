@@ -14,12 +14,13 @@ export default async function LearningManagerPage() {
   if (!(await isAdmin(supabase))) redirect('/dashboard')
 
   // 초기 데이터 (병렬). v6 마이그레이션 미적용이면 빈 배열로 폴백.
-  const [venuesRes, requestsRes, jobsRes, projectsRes, itemsRes] = await Promise.all([
+  const [venuesRes, requestsRes, jobsRes, projectsRes, itemsRes, aliasesRes] = await Promise.all([
     supabase.from('venues').select('*').order('created_at', { ascending: false }).then(r => r, () => ({ data: [], error: null })),
     supabase.from('venue_requests').select('*').order('requested_at', { ascending: false }).then(r => r, () => ({ data: [], error: null })),
     supabase.from('learning_jobs').select('*').order('triggered_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [], error: null })),
     supabase.from('projects').select('id, event_venue').limit(500).then(r => r, () => ({ data: [], error: null })),
     supabase.from('design_items').select('project_id, category, confirmed, finalized_at, location, purpose').limit(5000).then(r => r, () => ({ data: [], error: null })),
+    supabase.from('signage_aliases').select('id, alias_name, canonical_name, note').order('alias_name').then(r => r, () => ({ data: [], error: null })),
   ])
 
   // venue별 단계 집계 (점진적 정확도 가시화)
@@ -90,6 +91,7 @@ export default async function LearningManagerPage() {
       venueLearningStatus={venueLearningStatus}
       signageTypeCount={SEED_SIGNAGE_TYPES.length}
       synonyms={SEED_SYNONYMS}
+      dbAliases={((aliasesRes.data ?? []) as Array<{ id: string; alias_name: string; canonical_name: string; note: string | null }>)}
       facilityGuideStatus={facilityGuideStatus}
     />
   )
