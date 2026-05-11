@@ -12,6 +12,8 @@ interface Props {
   onUpdate: (slotKey: string, updated: SlotContent) => void
   onSlotSelect?: (key: string) => void
   onSlotPanelOpen?: () => void
+  // v9.9: 회의록 ′마스터시안 = 모든 환경장식물에 배경 일괄 제공′
+  masterImageUrl?: string | null
 }
 
 interface FabricInstance {
@@ -36,7 +38,7 @@ function isSlotEmpty(slot: SlotContent): boolean {
   return !(slot.ko || slot.en)
 }
 
-export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, onUpdate, onSlotSelect, onSlotPanelOpen }: Props) {
+export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, onUpdate, onSlotSelect, onSlotPanelOpen, masterImageUrl }: Props) {
   const outerRef = useRef<HTMLDivElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasElRef = useRef<HTMLCanvasElement>(null)
@@ -489,16 +491,19 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
     if (!instance) return
     const { canvas, fabric } = instance
 
-    if (!item?.image_url) {
+    // v9.9: 회의록 ′마스터 시안 = 모든 환경장식물 배경 일괄 제공′
+    // 개별 item.image_url 우선 → 없으면 project.master_image_url 사용
+    const bgUrl = item?.image_url || masterImageUrl || null
+    if (!bgUrl) {
       bgCacheRef.current = null
       canvas.setBackgroundImage(null as any, canvas.renderAll.bind(canvas))
-      canvas.backgroundColor = '#0f172a'
+      canvas.backgroundColor = '#ffffff'
       canvas.renderAll()
       return
     }
 
     fabric.Image.fromURL(
-      item.image_url,
+      bgUrl,
       (img: any) => {
         if (!img || !instanceRef.current) return
         const c = instanceRef.current.canvas
@@ -510,7 +515,7 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
       },
       { crossOrigin: 'anonymous' }
     )
-  }, [item?.image_url])
+  }, [item?.image_url, masterImageUrl])
 
   // ── contents 또는 slotStyles 변경 → 텍스트 + 이미지 동기화 ──
   useEffect(() => {

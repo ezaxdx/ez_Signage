@@ -739,6 +739,7 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
               onUpdate={updateSlot}
               onSlotSelect={setSelectedSlotKey}
               onSlotPanelOpen={() => { /* 1차 비활성 */ }}
+              masterImageUrl={project.master_image_url ?? null}
             />
           </div>
         </div>
