@@ -113,7 +113,9 @@ const makeInitialFormats = (): Record<string, FormatState> =>
 interface Props { userId: string; userEmail: string }
 
 // 사용 목적 단계 제거 (행사 유형과 기능 중복)
-const STEP_LABELS = ['기본 정보', '팀원 초대', '제작물 선택']
+// 회의록 2차 수정: 3단계 ′제작물 선택′은 목적성 없어 홀딩 (2단계 완료 시 바로 편집기로 랜딩)
+const STEP_LABELS = ['기본 정보', '팀원 초대']
+const HOLD_STEP_3 = true   // true: step 2의 ′다음′을 ′만들기′로 바꾸고 step 3 건너뜀
 
 export function NewProjectButton({ userId, userEmail }: Props) {
   const router = useRouter()
@@ -753,7 +755,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                   {/* v4.1 갱신-A: 프로그램 파트 다중선택 (EZ 폴더링 40.04~40.20) */}
                   <div>
                     <label className="block text-slate-500 text-xs font-medium mb-1.5 uppercase tracking-wide">
-                      프로그램 파트 <span className="text-slate-400 font-normal normal-case">(다중선택 — 추천 정확도 핵심)</span>
+                      프로그램 파트 <span className="text-slate-400 font-normal normal-case">(다중선택 가능)</span>
                     </label>
                     <div className="space-y-2">
                       {PROGRAM_PART_GROUPS.map(g => {
@@ -1481,14 +1483,15 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                   <button type="button" onClick={handleClose} className="flex-1 bg-slate-50 hover:bg-slate-200 text-slate-400 text-sm py-2.5 rounded-lg transition">취소</button>
                 )}
 
-                {step < 3 ? (
-                  <button type="button" disabled={step === 1 && !info.name.trim()} onClick={() => setStep(step + 1)} className="flex-1 flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm py-2.5 rounded-lg transition">
+                {/* 회의록 2차: 3단계 홀딩 — step 1만 ′다음′, step 2에서 바로 ′프로젝트 만들기′ */}
+                {step === 1 ? (
+                  <button type="button" disabled={!info.name.trim()} onClick={() => setStep(2)} className="flex-1 flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm py-2.5 rounded-lg transition">
                     다음 <ChevronRight className="w-4 h-4" />
                   </button>
                 ) : (
                   <button type="button" disabled={isLoading} onClick={handleCreate} className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm py-2.5 rounded-lg transition">
                     {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {isLoading ? '생성 중...' : (excelRows.length + selectedCount) > 0 ? `프로젝트 만들기 (${excelRows.length + totalItemCount}개 제작물)` : '프로젝트 만들기'}
+                    {isLoading ? '생성 중...' : '프로젝트 만들기'}
                   </button>
                 )}
               </div>

@@ -170,13 +170,10 @@ export function DataDashboard(_props: Props) {
         {activeTab === 'kpi' && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
+            // 회의록 2차 수정: 실적 매칭·PM 사업부·행사 폴더 제거 (사용 안 함)
             { label: '환경장식물 종류',  value: SEED_SIGNAGE_TYPES.length,    sub: '표준 11종',                  color: 'text-indigo-400' },
             { label: '동의어 매핑',      value: SEED_SYNONYMS.length,         sub: '비표준→표준 변환',           color: 'text-emerald-400' },
-            { label: '행사 폴더',        value: eventStats.total,              sub: '폴더 직접 매핑',             color: 'text-amber-400' },
             { label: '행사장',           value: VENUE_LIST.length,             sub: '권역·유형 분류',             color: 'text-violet-400' },
-            { label: '실적 매칭',        value: SEED_PERFLIST.length,          sub: '수행실적 엑셀 ↔ 폴더',       color: 'text-sky-400' },
-            { label: 'PM 사업부',        value: new Set(SEED_PERFLIST.map(p => p.pm_division)).size, sub: '실적 매칭 기준', color: 'text-rose-400' },
-            { label: '발주처',           value: new Set(SEED_PERFLIST.map(p => p.client)).size, sub: '실적 매칭 기준', color: 'text-fuchsia-400' },
             { label: '행사 분류',        value: SEED_EVENT_CATEGORIES.length,  sub: '권장 환경장식물 매핑',       color: 'text-teal-400' },
           ].map(s => (
             <div key={s.label} className="bg-white border border-slate-200 rounded-xl p-4">
