@@ -504,10 +504,9 @@ export function LearningManagerClient({
           <h2 className="text-slate-900 font-semibold text-sm mb-4 flex items-center gap-2">
             <Clock className="w-4 h-4 text-violet-400" />
             도면 학습 큐 ({jobs.length})
-            <span className="text-[10px] text-slate-500 font-normal ml-2">실제 Vision 호출은 다음 사이클 — 현재는 INSERT 기록만</span>
           </h2>
           {jobs.length === 0 ? (
-            <p className="text-slate-400 text-xs italic">학습 큐가 비어있습니다. 위에서 도면 첨부와 함께 행사장을 추가하세요.</p>
+            <p className="text-slate-400 text-xs italic">큐가 비어있습니다.</p>
           ) : (
             <div className="space-y-1.5">
               {jobs.map(job => {
@@ -519,13 +518,40 @@ export function LearningManagerClient({
                   failed: 'text-red-700 bg-red-100',
                   skipped: 'text-slate-500 bg-slate-50',
                 }[job.status]
+                const canRun = job.status === 'queued' || job.status === 'failed'
                 return (
                   <div key={job.id} className="flex items-center gap-2 bg-slate-50/30 rounded px-3 py-1.5 text-xs">
                     <span className={`text-[10px] font-medium rounded px-1.5 py-0.5 ${statusColor}`}>{job.status}</span>
-                    <span className="text-slate-400 truncate flex-1">{venue?.name ?? '(unknown venue)'}</span>
+                    <span className="text-slate-700 truncate flex-1">{venue?.name ?? '(unknown venue)'}</span>
                     <span className="text-slate-400 text-[10px]">{new Date(job.triggered_at).toLocaleString('ko-KR')}</span>
                     {job.source_url && (
-                      <a href={job.source_url} target="_blank" rel="noopener" className="text-indigo-400 hover:underline">도면</a>
+                      <a href={job.source_url} target="_blank" rel="noopener" className="text-indigo-500 hover:underline">도면</a>
+                    )}
+                    {canRun && job.source_url && (
+                      <button
+                        onClick={async () => {
+                          setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'processing' as const } : j))
+                          try {
+                            const res = await fetch('/api/learning-jobs/run', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ jobId: job.id }),
+                            })
+                            const data = await res.json()
+                            if (!res.ok) {
+                              alert('학습 실패: ' + (data.error ?? 'unknown'))
+                              setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'failed' as const, error_message: data.error } : j))
+                            } else {
+                              setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'done' as const, completed_at: new Date().toISOString() } : j))
+                            }
+                          } catch (e) {
+                            alert('학습 호출 실패: ' + (e instanceof Error ? e.message : 'unknown'))
+                          }
+                        }}
+                        className="text-[10px] px-2 py-0.5 rounded bg-violet-600 hover:bg-violet-500 text-white"
+                      >
+                        Vision 분석
+                      </button>
                     )}
                   </div>
                 )

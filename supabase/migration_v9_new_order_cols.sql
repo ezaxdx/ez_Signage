@@ -48,3 +48,9 @@ DROP POLICY IF EXISTS facility_exception_log_insert ON facility_exception_log;
 CREATE POLICY facility_exception_log_insert ON facility_exception_log
   FOR INSERT TO authenticated
   WITH CHECK (created_by = auth.uid());
+
+-- v9.6 회의록: 도면 분석 → ′텍스트 파일 형태′ 결과 저장
+-- venues.specs_text — Gemini Vision 분석 결과. recommendSignage가 venueProfile로 통합해 AI에 주입.
+ALTER TABLE venues
+  ADD COLUMN IF NOT EXISTS specs_text       text,
+  ADD COLUMN IF NOT EXISTS specs_updated_at timestamptz;

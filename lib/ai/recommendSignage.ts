@@ -5,6 +5,7 @@
 import { findSimilarPastEvents } from '@/lib/data/dashboardSeed'
 import { findSimilarVenueSignage, formatVenueSignageContext } from '@/lib/data/venueSignageHelper'
 import { buildAccumulatedContext, formatAccumulatedContext } from '@/lib/ai/accumulatedContext'
+import { buildVenueProfile } from '@/lib/ai/venueProfile'
 
 export type EventType =
   | 'conference' | 'exhibition' | 'awards' | 'forum' | 'workshop'
@@ -180,8 +181,6 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
     : ''
 
   // v9: 점진적 정확도 향상 — 앱 누적 데이터 (단계별 가중치 부여)
-  // 사용자가 ′특정 장소 + 특정 행사 유형′을 선택하면, 그 조합으로 누적된 앱 사용 데이터를
-  // Gemini에 컨텍스트로 주입한다. 컨펌(70%)·완료(100%) 항목은 ′정답에 가까움′으로 표기됨.
   let accumulatedBlock = ''
   try {
     const accCtx = await buildAccumulatedContext({
@@ -190,9 +189,17 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
       limit: 5,
     })
     accumulatedBlock = formatAccumulatedContext(accCtx)
-  } catch {
-    // Supabase 조회 실패 시 seed 데이터만으로 진행
-  }
+  } catch { /* silent */ }
+
+  // v9.6: 회의록 ′학습해 가지고 텍스트 파일 형태로 이거는 어떤 행사장이다가 나올 거예요′
+  // 행사장 메타(venues) + 시설 가이드 시드(venueFacilityGuide) + 예외 누적(facility_exception_log) 통합
+  let venueProfileBlock = ''
+  try {
+    const profile = await buildVenueProfile(input.venue)
+    if (profile.has_data) {
+      venueProfileBlock = '\n\n' + profile.text + '\n→ 위 행사장 시설 기준을 추천 항목에 우선 반영. 설치 불가 카테고리는 제외하고, 조건부는 비고에 표기.'
+    }
+  } catch { /* silent */ }
 
   const userText = [
     `행사명: ${input.eventName}`,
@@ -214,7 +221,7 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
     input.budgetConstrained ? `예산 제약: 있음 (비용 절감 우선)` : '',
     `사용 목적: ${input.purposes.join(', ') || '미지정 — 행사 유형 기준 자동 판단'}`,
     input.notes ? `추가 메모: ${input.notes}` : '',
-  ].filter(Boolean).join('\n') + similarEventsBlock + venueSignageBlock + accumulatedBlock
+  ].filter(Boolean).join('\n') + similarEventsBlock + venueSignageBlock + accumulatedBlock + venueProfileBlock
 
   const body = {
     systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
