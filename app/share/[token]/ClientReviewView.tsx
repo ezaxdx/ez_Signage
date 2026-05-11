@@ -101,7 +101,7 @@ export function ClientReviewView({ project, items, allContents }: Props) {
 
               {/* 미리보기 박스 */}
               <div
-                className="relative bg-slate-900 rounded-lg mx-auto overflow-hidden shadow-lg"
+                className="relative bg-white rounded-lg mx-auto overflow-hidden shadow-lg"
                 style={{
                   width: '100%',
                   maxWidth: `${Math.min(500, (selected.width_mm ?? 600) / 4)}px`,

@@ -190,9 +190,9 @@ export function ItemSidebar({ items, selectedItemId, onSelect, projectId, onItem
   }
 
   return (
-    <aside className="w-[188px] flex-shrink-0 border-r border-slate-800 flex flex-col bg-slate-900/40">
+    <aside className="w-[188px] flex-shrink-0 border-r border-slate-200 flex flex-col bg-slate-50">
       {/* 헤더 + 필터/정렬 */}
-      <div className="px-3 py-2 border-b border-slate-800 space-y-1.5">
+      <div className="px-3 py-2 border-b border-slate-200 space-y-1.5">
         <div className="flex items-center justify-between">
           <p className="text-slate-500 text-[10px] font-semibold uppercase tracking-widest">
             제작물 ({filteredItems.length}/{items.length})
@@ -203,7 +203,7 @@ export function ItemSidebar({ items, selectedItemId, onSelect, projectId, onItem
           <select
             value={filterMode}
             onChange={e => setFilterMode(e.target.value as 'all' | 'incomplete' | 'completed')}
-            className="flex-1 bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 text-[9px] text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="flex-1 bg-slate-50 border border-slate-300 rounded px-1.5 py-0.5 text-[9px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           >
             <option value="all">전체</option>
             <option value="incomplete">미완료</option>
@@ -212,7 +212,7 @@ export function ItemSidebar({ items, selectedItemId, onSelect, projectId, onItem
           <select
             value={groupBy}
             onChange={e => setGroupBy(e.target.value as 'none' | 'part' | 'category')}
-            className="flex-1 bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 text-[9px] text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="flex-1 bg-slate-50 border border-slate-300 rounded px-1.5 py-0.5 text-[9px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           >
             <option value="none">정렬 없음</option>
             <option value="part">파트별</option>
@@ -232,7 +232,7 @@ export function ItemSidebar({ items, selectedItemId, onSelect, projectId, onItem
         ) : (
           grouped.flatMap(group => [
             ...(group.label ? [
-              <div key={`group-${group.label}`} className="px-3 py-1 mt-1 text-[9px] font-semibold text-slate-600 uppercase tracking-wider bg-slate-900/40">
+              <div key={`group-${group.label}`} className="px-3 py-1 mt-1 text-[9px] font-semibold text-slate-600 uppercase tracking-wider bg-slate-50">
                 {group.label}
               </div>
             ] : []),
@@ -246,15 +246,15 @@ export function ItemSidebar({ items, selectedItemId, onSelect, projectId, onItem
               <div key={item.id} className="relative group">
                 {/* 삭제 확인 오버레이 */}
                 {isConfirming && (
-                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/95 rounded-sm px-2 py-2 gap-1.5">
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/95 rounded-sm px-2 py-2 gap-1.5">
                     <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                    <p className="text-[10px] text-slate-300 text-center leading-tight">
+                    <p className="text-[10px] text-slate-700 text-center leading-tight">
                       {item.no} 제작물을<br />삭제하시겠어요?
                     </p>
                     <div className="flex gap-1.5 w-full">
                       <button
                         onClick={() => setConfirmDeleteId(null)}
-                        className="flex-1 text-[10px] text-slate-400 bg-slate-800 hover:bg-slate-700 py-1 rounded transition"
+                        className="flex-1 text-[10px] text-slate-400 bg-slate-50 hover:bg-slate-700 py-1 rounded transition"
                       >
                         취소
                       </button>
@@ -274,7 +274,7 @@ export function ItemSidebar({ items, selectedItemId, onSelect, projectId, onItem
                   className={`w-full text-left px-3 py-2.5 rounded-none transition-colors relative ${
                     isSelected
                       ? 'bg-indigo-600/15 text-indigo-200'
-                      : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+                      : 'text-slate-400 hover:bg-slate-50/50 hover:text-slate-800'
                   }`}
                 >
                   {isSelected && (
@@ -388,11 +388,11 @@ export function ItemSidebar({ items, selectedItemId, onSelect, projectId, onItem
       )}
 
       {/* 항목 추가 버튼 */}
-      <div className="p-2 border-t border-slate-800">
+      <div className="p-2 border-t border-slate-200">
         <button
           onClick={handleAddItem}
           disabled={isAdding}
-          className="w-full flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-300 text-xs py-2 rounded-md hover:bg-slate-800 transition disabled:opacity-40"
+          className="w-full flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-700 text-xs py-2 rounded-md hover:bg-slate-50 transition disabled:opacity-40"
         >
           <Plus className="w-3.5 h-3.5" />
           {isAdding ? '추가 중...' : '항목 추가'}

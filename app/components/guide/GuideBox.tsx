@@ -15,7 +15,7 @@ export interface GuideBoxProps {
 export function GuideBox({ why, how, tip, variant = 'inline' }: GuideBoxProps) {
   if (!why && !how && !tip) return null
   const wrapperCls = variant === 'card'
-    ? 'rounded-lg border border-slate-800 bg-slate-900/40 p-4 space-y-3'
+    ? 'rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3'
     : 'space-y-2 text-sm'
 
   return (
@@ -23,19 +23,19 @@ export function GuideBox({ why, how, tip, variant = 'inline' }: GuideBoxProps) {
       {why && (
         <div className="flex items-start gap-2">
           <HelpCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-indigo-400" />
-          <div className="text-slate-300"><span className="font-medium text-indigo-300 mr-1">WHY</span>{why}</div>
+          <div className="text-slate-700"><span className="font-medium text-indigo-300 mr-1">WHY</span>{why}</div>
         </div>
       )}
       {how && (
         <div className="flex items-start gap-2">
           <Sparkles className="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-400" />
-          <div className="text-slate-300"><span className="font-medium text-emerald-300 mr-1">HOW</span>{how}</div>
+          <div className="text-slate-700"><span className="font-medium text-emerald-300 mr-1">HOW</span>{how}</div>
         </div>
       )}
       {tip && (
         <div className="flex items-start gap-2">
           <Lightbulb className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-400" />
-          <div className="text-slate-300"><span className="font-medium text-amber-300 mr-1">TIP</span>{tip}</div>
+          <div className="text-slate-700"><span className="font-medium text-amber-300 mr-1">TIP</span>{tip}</div>
         </div>
       )}
     </div>

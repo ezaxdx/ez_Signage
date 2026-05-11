@@ -151,7 +151,7 @@ export default async function DashboardPage() {
         {/* 참고 행사장 — 향후 샘플 데이터 기반 추천 예정 */}
         <details className="group">
           <summary className="flex items-center gap-2 cursor-pointer list-none select-none">
-            <div className="flex items-center gap-1.5 text-slate-500 hover:text-slate-300 transition text-xs">
+            <div className="flex items-center gap-1.5 text-slate-500 hover:text-slate-700 transition text-xs">
               <MapPin className="w-3.5 h-3.5" />
               <span>참고 행사장 — 샘플 데이터 보유 ({Object.values(venueGroups).flat().length}개소)</span>
               <span className="text-slate-700 text-[10px]">▼ 클릭해서 보기</span>
@@ -159,7 +159,7 @@ export default async function DashboardPage() {
             <span className="ml-auto text-[9px] text-indigo-500/60 hidden sm:block">향후: 행사장별 표준 품목 추천 예정</span>
           </summary>
 
-          <div className="mt-4 bg-slate-900/50 border border-slate-800 rounded-xl p-4">
+          <div className="mt-4 bg-white/50 border border-slate-200 rounded-xl p-4">
             <p className="text-[10px] text-slate-600 mb-4">
               아래 행사장은 과거 제작물 샘플 폴더에 데이터가 있는 장소입니다.
               향후 분석 완료 시 프로젝트 생성 시 자동으로 권장 품목과 수량을 제안할 예정입니다.
@@ -185,7 +185,7 @@ export default async function DashboardPage() {
                 </div>
               ))}
             </div>
-            <div className="flex items-center gap-3 mt-4 pt-3 border-t border-slate-800 text-[9px] text-slate-700 flex-wrap gap-y-1">
+            <div className="flex items-center gap-3 mt-4 pt-3 border-t border-slate-200 text-[9px] text-slate-700 flex-wrap gap-y-1">
               {[
                 { color: 'bg-indigo-500', label: '컨벤션' },
                 { color: 'bg-violet-500', label: '전시장' },
@@ -210,10 +210,10 @@ export default async function DashboardPage() {
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
-      <div className="w-14 h-14 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mb-4">
+      <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center mb-4">
         <LayoutGrid className="w-7 h-7 text-slate-600" />
       </div>
-      <h3 className="text-slate-300 font-semibold mb-1.5">첫 프로젝트를 만들어보세요</h3>
+      <h3 className="text-slate-700 font-semibold mb-1.5">첫 프로젝트를 만들어보세요</h3>
       <p className="text-slate-500 text-sm max-w-xs">
         새 프로젝트 버튼으로 시작하세요
       </p>
