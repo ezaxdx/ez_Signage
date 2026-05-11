@@ -539,6 +539,11 @@ export function NewProjectButton({ userId, userEmail }: Props) {
       })),
     ]
 
+    // 회의록 v9.1: 3단계 ′제작물 선택′ 홀딩 — selectedList 비면 기본 빈 행 1건 자동 생성
+    if (selectedList.length === 0 && excelRows.length === 0) {
+      selectedList.push({ name: '미정', width: 600, height: 1800, material: '', count: 1 })
+    }
+
     // 카테고리별 item_id 추적 (formatMockups 일괄 적용용)
     const idsByFormat: Record<string, string[]> = {}
     for (const f of selectedList) {
@@ -1011,10 +1016,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
               {/* Step 2: 팀원 초대 (사용 목적 제거로 단계 번호 변경) */}
               {step === 2 && (
                 <div className="space-y-4">
-                  <p className="text-slate-500 text-sm leading-relaxed">
-                    프로젝트에 참여할 <strong className="text-slate-800">팀원</strong>과 각자 담당하는 <strong className="text-slate-800">파트명</strong>을 입력하세요.<br />
-                    초대된 사람만 이 프로젝트에 접근할 수 있습니다.
-                  </p>
+                  <p className="text-slate-500 text-sm">팀원과 담당 파트를 입력하세요.</p>
 
                   {/* 현재 멤버 목록 */}
                   <div className="space-y-1.5">
@@ -1077,12 +1079,8 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                         </div>
                       )}
                       {showSearch && !selectedProfile && searchQuery.trim() && searchResults.length === 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-slate-50 border border-slate-300 rounded-lg p-2 text-[10px] z-30 space-y-1">
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-slate-50 border border-slate-300 rounded-lg p-2 text-[10px] z-30">
                           <p className="text-slate-500">일치 사용자 없음</p>
-                          <p className="text-slate-500 leading-relaxed">
-                            상대방이 <a href="/signup" target="_blank" className="text-indigo-400 underline">/signup</a>에서 먼저 가입 필요<br />
-                            또는 migration_all.sql 실행 필요
-                          </p>
                         </div>
                       )}
                     </div>

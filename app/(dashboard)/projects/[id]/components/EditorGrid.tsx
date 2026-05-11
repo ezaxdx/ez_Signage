@@ -546,9 +546,18 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
         >
           <Settings2 className="w-3 h-3" />컬럼 관리 <span className="text-slate-400 ml-1">({visibleCols.length}/{allCols.length})</span>
         </button>
+        {onAddItem && (
+          <button
+            onClick={() => onAddItem()}
+            className="flex items-center gap-1 text-[10px] px-2 py-1 rounded text-emerald-700 hover:bg-emerald-50 transition"
+            title="빈 행 1개 추가"
+          >
+            <Plus className="w-3 h-3" />행 추가
+          </button>
+        )}
 
         <span className="text-slate-400 text-[9px] ml-auto">
-          헤더 드래그: 열 이동 / 좌측 핸들 드래그: 행 이동 / 우측 X: 행 삭제 / 더블클릭: 셀 편집
+          더블클릭: 셀 편집 / 헤더 우클릭: 출력 옵션 / 좌측 핸들: 행 이동 / 우측 X: 행 삭제
         </span>
       </div>
 
