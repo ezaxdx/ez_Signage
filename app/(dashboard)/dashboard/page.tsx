@@ -99,14 +99,7 @@ export default async function DashboardPage() {
                   <GraduationCap className="w-3.5 h-3.5" />
                   데이터 학습 관리자
                 </Link>
-                <Link
-                  href="/archive"
-                  className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 text-xs transition"
-                  title="저장된 제작물 검수"
-                >
-                  <Archive className="w-3.5 h-3.5" />
-                  저장된 제작물
-                </Link>
+                {/* 저장된 제작물 (검수·저장) — 사용자 결정으로 메뉴 제거 (2026-05-11) */}
               </>
             )}
             <div className="w-px h-4 bg-slate-200 hidden sm:block" />
