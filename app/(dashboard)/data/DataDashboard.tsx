@@ -93,13 +93,10 @@ export function DataDashboard(_props: Props) {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         <div>
           <h1 className="text-xl font-bold text-slate-900">관리자 페이지</h1>
-          <p className="text-slate-500 text-sm mt-0.5">
-            프로젝트 관리(KPI) · 사전 학습 자료(시드 + 누적) · 마스터 데이터
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Link href="/admin/learning" className="inline-flex items-center gap-1.5 text-[11px] text-emerald-300 hover:text-emerald-200 bg-emerald-950/30 hover:bg-emerald-950/50 border border-emerald-900/40 rounded px-2.5 py-1 transition">
+          <div className="mt-2">
+            <Link href="/admin/learning" className="inline-flex items-center gap-1.5 text-[11px] text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded px-2.5 py-1 transition">
               <ChevronRight className="w-3 h-3" />
-              데이터 학습 관리자 (행사장·도면 추가)
+              데이터 학습 관리자
             </Link>
           </div>
         </div>

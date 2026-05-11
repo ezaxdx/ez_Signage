@@ -651,10 +651,7 @@ export function LearningManagerClient({
               className="bg-slate-50 border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-44"
             />
           </div>
-          <p className="text-[11px] text-slate-500 mb-3 leading-relaxed">
-            ′스프링배너→X배너′처럼 비표준 입력을 표준명으로 자동 변환합니다. 프로젝트 종료 시 비표준 입력 빈도가 70%↑인 경우 자동 추천 큐에 올라옵니다 (다음 사이클).
-            ※ 현재 시드 데이터 기준 read-only. 편집·삭제는 추후 사이클에서 인라인 지원.
-          </p>
+          <p className="text-[11px] text-slate-500 mb-3">비표준 입력을 표준명으로 자동 변환합니다.</p>
           <div className="overflow-y-auto max-h-72 border border-slate-200 rounded">
             <table className="w-full text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
@@ -687,10 +684,7 @@ export function LearningManagerClient({
             <AlertCircle className="w-4 h-4 text-rose-500" />
             시설 가이드 학습 현황
           </h2>
-          <p className="text-[11px] text-slate-500 mb-3 leading-relaxed">
-            행사장별 ′설치 가능 카테고리 / 설치·고정 방법 / 리깅·하중 / 안전 / 주의사항 / 디지털 사이니지′ 6종 정보 등록 상태.
-            등록 항목이 6/6에 가까울수록 자동 시설 검증·알랏 정확도가 높아집니다.
-          </p>
+          <p className="text-[11px] text-slate-500 mb-3">행사장별 시설 가이드 6종 정보 등록 상태.</p>
           {facilityGuideStatus.length === 0 ? (
             <p className="text-slate-400 text-xs italic py-3 text-center">시설 가이드 시드 데이터가 비어있습니다.</p>
           ) : (
@@ -723,9 +717,6 @@ export function LearningManagerClient({
               </table>
             </div>
           )}
-          <p className="text-[10px] text-slate-400 leading-relaxed mt-2">
-            ⓘ ′확신 없으면 행사장에 직접 확인 권장′ 정책 (§11-6) — 학습 시점이 1년+ 경과한 행사장은 사용자에게 신선도 경고를 더 강하게 표시합니다.
-          </p>
         </section>
 
         </>}
