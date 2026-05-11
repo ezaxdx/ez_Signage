@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { isAdmin } from '@/lib/auth/role'
 import { LearningManagerClient } from './LearningManagerClient'
-import { SEED_SIGNAGE_TYPES, SEED_SYNONYMS } from '@/lib/data/dashboardSeed'
+import { SEED_SIGNAGE_TYPES, SEED_SYNONYMS, SEED_EVENT_CATEGORIES } from '@/lib/data/dashboardSeed'
 import { VENUE_FACILITY_GUIDE_SEED } from '@/lib/data/venueFacilityGuide'
 
 export const metadata = { title: '데이터 학습 관리자 | 제작물 리스트 가이드' }
@@ -94,6 +94,14 @@ export default async function LearningManagerPage() {
       dbAliases={((aliasesRes.data ?? []) as Array<{ id: string; alias_name: string; canonical_name: string; note: string | null }>)}
       facilityGuideStatus={facilityGuideStatus}
       signageTypes={SEED_SIGNAGE_TYPES.map(t => ({ id: t.id, name: t.name, width_mm: t.width_mm, height_mm: t.height_mm, default_material: t.default_material, category: t.category, layout: t.layout }))}
+      eventCategories={SEED_EVENT_CATEGORIES.map(c => ({
+        id: c.id,
+        label: c.label,
+        recommended_signage_keys: c.recommended_signage_keys,
+        recommended_names: c.recommended_signage_keys
+          .map(k => SEED_SIGNAGE_TYPES.find(s => s.id === k)?.name ?? k),
+        note: c.note,
+      }))}
     />
   )
 }
