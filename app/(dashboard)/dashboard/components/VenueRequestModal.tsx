@@ -130,8 +130,7 @@ export function VenueRequestModal({ open, onClose, userId, initialName = '', onS
         ) : (
           <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
             <p className="text-slate-500 text-[11px] leading-relaxed">
-              아직 학습되지 않은 행사장을 등록해 달라고 요청합니다. 관리자가 도면을 추가·학습하면
-              다음 프로젝트 생성 시 드롭다운에 자동으로 나타납니다.
+              목록에 없는 행사장을 등록 요청합니다. 관리자가 승인하면 다음 프로젝트 생성 시 드롭다운에 자동으로 나타납니다.
             </p>
 
             <div>
