@@ -35,6 +35,7 @@ type TabKey = 'kpi' | 'users' | 'projects' | 'ai_usage'
 const TABS: { key: TabKey; label: string; icon: React.ElementType; badge?: string }[] = [
   { key: 'kpi',      label: '운영 KPI',         icon: BarChart3 },
   { key: 'users',    label: '유저 관리',         icon: Users },
+  { key: 'projects', label: '전체 프로젝트 현황', icon: Briefcase },
   { key: 'ai_usage', label: 'AI 사용량',        icon: Layers3 },
 ]
 
