@@ -35,7 +35,6 @@ type TabKey = 'kpi' | 'users' | 'projects' | 'ai_usage'
 const TABS: { key: TabKey; label: string; icon: React.ElementType; badge?: string }[] = [
   { key: 'kpi',      label: '운영 KPI',         icon: BarChart3 },
   { key: 'users',    label: '유저 관리',         icon: Users },
-  { key: 'projects', label: '전체 프로젝트 현황', icon: Briefcase },
   { key: 'ai_usage', label: 'AI 사용량',        icon: Layers3 },
 ]
 
@@ -92,12 +91,6 @@ export function DataDashboard(_props: Props) {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         <div>
           <h1 className="text-xl font-bold text-slate-900">관리자 페이지</h1>
-          <div className="mt-2">
-            <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-[11px] text-indigo-700 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded px-2.5 py-1 transition">
-              <ArrowLeft className="w-3 h-3" />
-              프로젝트
-            </Link>
-          </div>
         </div>
 
         <div className="flex gap-6">
