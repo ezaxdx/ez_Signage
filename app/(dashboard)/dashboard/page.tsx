@@ -156,13 +156,11 @@ export default async function DashboardPage() {
               <span>참고 행사장 — 샘플 데이터 보유 ({Object.values(venueGroups).flat().length}개소)</span>
               <span className="text-slate-700 text-[10px]">▼ 클릭해서 보기</span>
             </div>
-            <span className="ml-auto text-[9px] text-indigo-500/60 hidden sm:block">향후: 행사장별 표준 품목 추천 예정</span>
           </summary>
 
           <div className="mt-4 bg-white/50 border border-slate-200 rounded-xl p-4">
             <p className="text-[10px] text-slate-600 mb-4">
               아래 행사장은 과거 제작물 샘플 폴더에 데이터가 있는 장소입니다.
-              향후 분석 완료 시 프로젝트 생성 시 자동으로 권장 품목과 수량을 제안할 예정입니다.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {Object.entries(venueGroups).map(([region, venues]) => (

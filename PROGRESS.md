@@ -1,5 +1,49 @@
 # 작업 이력
 
+## 2026-05-11 (v9.14) — 행사 유형별 추천 관리 페이지 신설
+
+피그마 IA 5번째 학습 관리자 섹션.
+
+- `LearningManagerClient` SECTIONS에 `event-types` 6번째 항목 추가 (MapPin 아이콘)
+- 행사 유형 × 권장 환경장식물 × 비고 3컬럼 표 (8종: 컨퍼런스/전시회/시상식/포럼/박람회/체험/기념식/발표·런칭)
+- SEED_SIGNAGE_TYPES join으로 한글명 표시
+- 사용률 ≥70% 자동 추천 편입 안내 (다음 사이클 구현 예정)
+
+## 2026-05-11 (v9.13) — 환경장식물 종류 섹션 시드 데이터 표
+
+회의록 '환경장식물 종류/규격/기본 재질' 노출 요구 반영.
+
+- `LearningManagerClient` 환경장식물 종류 섹션 — 종류명/레이아웃/너비/높이/기본 재질/분류 6컬럼 표
+- 레이아웃 뱃지 색상 코딩 (세로=violet, 가로=blue, 정사각=slate)
+
+## 2026-05-11 (v9.12) — 다크 톤 잔재 일괄 라이트 변환
+
+2차 피드백 '흰색/밝은 배경' 요구 — 로그인·가입·사이드바·가이드·share 페이지 일괄 변환.
+
+- `(auth)/login·signup` bg-slate-900 → bg-white
+- `ItemSidebar`, `StepIndicator`, `GuideBox`, `ClientReviewView`, `dashboard` 라이트 톤 일괄 적용
+- bg-slate-9xx/8xx → bg-white/slate-50/100 / text-slate-100~300 → text-slate-700~900
+
+## 2026-05-11 (v9.11) — 편집기 가로/세로 분할 토글
+
+회의록 '한번 생각해 봅시다' 시도 — 위아래/좌우 레이아웃 선택 가능.
+
+- `EditorLayout` 상단에 '레이아웃: 위·아래 / 좌·우' 토글 추가
+- 좌·우 모드: 그리드 50% + 캔버스 50% 수평 배치
+- 사용자 선호 `localStorage` 저장 (`mice_editor_split`), 기본값 horizontal
+
+## 2026-05-11 (v9.10) — ProjectInfo 다크 → 라이트 톤
+
+- `ProjectInfoClient` 전체 bg/text/border 클래스 라이트 톤으로 전환
+
+## 2026-05-11 (v9.9) — 마스터 시안 전체 배경 일괄 적용
+
+회의록 '마스터 시안 = 모든 환경장식물에 배경 일괄 제공' 구현.
+
+- `CanvasBoard` masterImageUrl prop 추가
+- `item.image_url` 우선 → 없으면 `project.master_image_url` 사용
+- 캔버스 빈 배경색: 다크 → 흰색 (라이트 톤 일관성)
+
 ## 2026-05-11 (v9.8) — 동의어 인라인 추가/삭제
 
 회의록 학습 관리자 IA ′환경장식물별 동의어 추가/삭제 가능′ 충족.

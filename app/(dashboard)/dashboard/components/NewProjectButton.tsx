@@ -791,7 +791,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                     </div>
                     {programParts.size > 0 && (
                       <p className="text-[10px] text-emerald-400 mt-1.5">
-                        선택 {programParts.size}개 · 권장 환경장식물이 다음 단계에서 자동 체크됩니다
+                        선택 {programParts.size}개
                       </p>
                     )}
                   </div>
@@ -837,9 +837,6 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                               <MapPinPlus className="w-4 h-4" />
                               우리 행사장이 목록에 없어요 — 신규 등록 요청
                             </button>
-                            {info.event_venue && !allRegisteredNames.includes(info.event_venue) && !pendingVenueNames.includes(info.event_venue) && (
-                              <p className="text-[10px] text-amber-400 mt-1">학습되지 않은 행사장입니다. 추천 정확도가 낮을 수 있어요.</p>
-                            )}
                           </>
                         )
                       })()}
@@ -909,7 +906,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                   {/* 행사장 배치도 업로드 (선택) */}
                   <div>
                     <label className="block text-slate-500 text-xs font-medium mb-1.5 uppercase tracking-wide">
-                      행사장 배치도 <span className="text-slate-400 font-normal normal-case">(선택 — 향후 AI 설치위치 추천에 활용)</span>
+                      행사장 배치도 <span className="text-slate-400 font-normal normal-case">(선택)</span>
                     </label>
                     {floorPlanPreview ? (
                       <div className="relative">
