@@ -254,12 +254,6 @@ function OverviewTab({ eventStats }: { eventStats: ReturnType<typeof computeEven
         </Block>
       </div>
 
-      <div className="bg-slate-50/40 rounded-lg p-4 text-xs text-slate-500 leading-relaxed border border-slate-200">
-        <strong className="text-slate-800">현재 데이터 출처:</strong> {' '}
-        <code className="text-slate-400">참고자료/환경장식물 행사별/</code> 폴더 직접 매핑 (54건) +
-        <code className="text-slate-400"> Ezpmp_수행실적리스트_20260506.xlsx</code> 메타.
-        분석(엑셀 파싱 + 이미지 카테고리화)은 명세 8장 2단계에서 자동화 예정.
-      </div>
     </div>
   )
 }
