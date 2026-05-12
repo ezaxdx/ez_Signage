@@ -79,7 +79,7 @@ export function DataDashboard(_props: Props) {
           </div>
           <div className="flex items-center gap-3">
             <Link href="/admin/learning" className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-300 text-xs transition">
-              관리자 페이지
+              데이터 학습 관리자
             </Link>
             <Link href="/dashboard" className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-300 text-xs transition">
               <ArrowLeft className="w-3.5 h-3.5" />
