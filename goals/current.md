@@ -51,8 +51,8 @@
 
 ### 즉시 작업 (1~2주)
 - [ ] Tesseract 한국어 OCR 자동화 — 매뉴얼 PDF 폰트 깨짐 보강
-- [ ] 천정배너 카테고리 시드 데이터 확보 (5홀 + 다른 행사 1~2건)
-- [ ] 행사장별 `venue_specs` + `ceiling_banner_patterns` 시드 신설 (`dashboardSeed.ts` 확장)
+- [x] 천정배너 카테고리 시드 데이터 확보 (킨텍스 5홀 2022엑스포 실측 10개 추가)
+- [x] `SEED_CEILING_BANNER_PATTERNS` 신설 + `findCeilingBannerContext()` + recommendSignage.ts 자동 주입 (v9.17)
 
 ### 1단계 (1개월)
 - [ ] HWP 본문 파싱 (한컴 변환 또는 한컴 API)

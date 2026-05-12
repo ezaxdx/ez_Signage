@@ -897,3 +897,94 @@ export function recommendByProbability(args: {
     message,
   }
 }
+
+// ── 천정배너 설치 패턴 (행사장별 실측 데이터) ─────────────────────────
+// 출처: docs/VENUE_LEARNING_INSIGHTS_260511.md §4 (2022 스마트국토엑스포 발주엑셀 분석)
+// AI 추천 프롬프트에 "[천정배너 설치 패턴]" 블록으로 자동 주입됨.
+
+export interface CeilingBannerItem {
+  location: string        // 설치 위치 (전시장 메인, 라운지, 컨퍼런스장 등)
+  quantity: number
+  width_mm: number
+  height_mm: number
+  note?: string
+}
+
+export interface CeilingBannerPattern {
+  venue: string           // 행사장 대표명 (검색 키)
+  venue_hall?: string     // 세부 홀명
+  event_name: string
+  event_year: number
+  event_type?: string     // 행사 유형 참고
+  attendees_approx?: number
+  items: CeilingBannerItem[]
+}
+
+export const SEED_CEILING_BANNER_PATTERNS: CeilingBannerPattern[] = [
+  {
+    venue: '킨텍스',
+    venue_hall: '킨텍스 제1전시장 5홀',
+    event_name: '2022 스마트국토엑스포',
+    event_year: 2022,
+    event_type: '전시회',
+    attendees_approx: 3000,
+    items: [
+      {
+        location: '전시장 메인 천장 (5홀 내부)',
+        quantity: 7,
+        width_mm: 5500,
+        height_mm: 4000,
+        note: '5홀 전시장 메인 천장 전면 배치. 행사명·주최 기관 표기. 리깅 포인트 활용.',
+      },
+      {
+        location: '비즈니스 라운지 천장',
+        quantity: 1,
+        width_mm: 3500,
+        height_mm: 3000,
+        note: '5홀 부속 비즈니스 라운지 천장.',
+      },
+      {
+        location: '컨퍼런스장 천장',
+        quantity: 2,
+        width_mm: 3500,
+        height_mm: 3000,
+        note: '5홀 부속 컨퍼런스장 (2곳). 세션명 또는 행사명 표기.',
+      },
+    ],
+  },
+  // TODO: 추가 행사 데이터 (코엑스·송도·ICC 제주 등) — 발주엑셀 분석 후 보강 예정
+]
+
+/**
+ * 같은 행사장의 천정배너 실측 패턴을 찾아 Gemini 프롬프트 블록으로 반환.
+ * 매칭 없으면 빈 문자열 반환 → 프롬프트 주입 skip.
+ */
+export function findCeilingBannerContext(venue: string): string {
+  if (!venue) return ''
+
+  const venueNorm = venue.replace(/\s/g, '').toLowerCase()
+  const matches = SEED_CEILING_BANNER_PATTERNS.filter(p => {
+    const pVenue = (p.venue_hall ?? p.venue).replace(/\s/g, '').toLowerCase()
+    return venueNorm.includes(p.venue.replace(/\s/g, '').toLowerCase())
+      || pVenue.includes(venueNorm)
+      || venueNorm.includes(pVenue)
+  })
+
+  if (matches.length === 0) return ''
+
+  const lines = matches.map(p => {
+    const hall = p.venue_hall ? `${p.venue_hall}` : p.venue
+    const itemLines = p.items.map(i =>
+      `  - ${i.location}: ${i.quantity}개 × ${i.width_mm}×${i.height_mm}mm${i.note ? ` (${i.note})` : ''}`
+    ).join('\n')
+    return `${p.event_name} (${p.event_year}) — ${hall}\n${itemLines}`
+  })
+
+  return (
+    '\n\n[천정배너 설치 패턴 — 같은 행사장 실측 데이터]\n' +
+    lines.join('\n\n') +
+    '\n→ 위 데이터는 같은 행사장 실제 발주 기록입니다. ' +
+    '천정배너(통천 배너) 수량·규격 추천 시 반드시 이 패턴을 우선 참고하세요. ' +
+    '학습 데이터 없는 공간(라운지·별관 등)은 가장 가까운 유사 공간 규격을 준용하세요.'
+  )
+}
