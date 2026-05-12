@@ -120,14 +120,33 @@ export function FacilityGuidePanel({ venueName, open, onClose, focusSection }: P
         </div>
 
         {!guide ? (
-          <div className="px-5 py-8 text-center">
-            <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-3" />
-            <p className="text-slate-700 text-sm font-medium">학습된 가이드가 없습니다</p>
-            <p className="text-slate-500 text-xs mt-2">
-              ′{venueName}′ 행사장의 시설 가이드는 아직 등록되지 않았습니다.
-              <br />
-              관리자에게 매뉴얼 등록 요청해 주세요.
-            </p>
+          <div className="px-5 py-4 space-y-4 text-xs">
+            {/* 데이터 수집 현황 — 가이드 없어도 표시 */}
+            <section className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 space-y-2">
+              <div className="flex items-center gap-1.5 text-slate-700 mb-1">
+                <Database className="w-3.5 h-3.5" />
+                <h3 className="font-semibold text-[12px]">데이터 수집 현황</h3>
+              </div>
+              <CollectionRow label="시설 가이드" status="missing" note="미학습 — 관리자에게 매뉴얼 등록 요청" />
+              <CollectionRow
+                label="도면 이미지"
+                status={dbLoading ? 'loading' : dbData?.floor_plan_url ? 'ok' : 'missing'}
+                note={dbData?.floor_plan_url ? '업로드됨' : dbLoading ? undefined : '미업로드'}
+              />
+              <CollectionRow
+                label="규격 분석"
+                status={dbLoading ? 'loading' : dbData?.specs_text ? 'ok' : 'missing'}
+                note={dbData?.specs_text ? '분석 완료' : dbLoading ? undefined : '미완료'}
+              />
+            </section>
+            <div className="text-center py-6">
+              <AlertCircle className="w-7 h-7 text-amber-400 mx-auto mb-2" />
+              <p className="text-slate-600 text-sm font-medium">시설 가이드 없음</p>
+              <p className="text-slate-400 text-[11px] mt-1 leading-relaxed">
+                이 행사장의 설치 규정·리깅·안전 기준이 아직 등록되지 않았습니다.<br />
+                /admin/learning 에서 매뉴얼을 등록하면 자동으로 학습됩니다.
+              </p>
+            </div>
           </div>
         ) : (
           <div className="px-5 py-4 space-y-5 text-xs">

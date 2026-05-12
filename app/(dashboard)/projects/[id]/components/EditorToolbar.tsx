@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Download, FileSpreadsheet, ImagePlus, Check, Loader2, LayoutGrid, Layers, Settings, Crown, ClipboardCheck, BookOpen } from 'lucide-react'
+import { Download, FileSpreadsheet, ImagePlus, Check, Loader2, Layers, Settings, Crown, ClipboardCheck, BookOpen } from 'lucide-react'
 // import { FormatSelector } from './FormatSelector'  // 1차 출시에서 일시 제거 (향후 복귀)
 import { createClient } from '@/lib/supabase/client'
 import type { Project, DesignItem } from '@/lib/types'
@@ -130,31 +130,11 @@ export function EditorToolbar({
         onChange={handleImageUpload}
       />
 
-      {/* 왼쪽: 브레드크럼 */}
+      {/* 왼쪽: 프로젝트명 */}
       <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
-        <Link
-          href="/dashboard"
-          className="w-6 h-6 rounded-md bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center flex-shrink-0 transition"
-          title="메인 대시보드로 이동"
-        >
-          <LayoutGrid className="w-3.5 h-3.5 text-white" />
-        </Link>
-        <Link
-          href="/dashboard"
-          className="flex items-center gap-1 text-slate-500 hover:text-slate-400 transition flex-shrink-0"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span className="text-xs">대시보드</span>
-        </Link>
-        <span className="text-slate-400 text-xs">/</span>
-        <Link
-          href="/dashboard"
-          className="text-slate-400 hover:text-indigo-300 text-xs font-medium truncate max-w-[140px] transition"
-          title="메인 대시보드로 돌아가기"
-        >
+        <span className="text-slate-700 text-xs font-medium truncate max-w-[180px]" title={project.name}>
           {project.name}
-        </Link>
-        {/* 선택된 제작물 NO 표시 — 1차에서 제거 (사용자 요청) */}
+        </span>
       </div>
 
       {/* 중앙: 양식 선택기 — 1차 출시에서 일시 제거 (향후 복귀 예정) */}

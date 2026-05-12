@@ -39,10 +39,15 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
   const [selectedItemId, setSelectedItemId] = useState<string>(initialItems[0]?.id ?? '')
   // v9.11: 회의록 ′가로/세로 분할 한번 생각해 봅시다′ — 사용자 선택 가능
   const [splitMode, setSplitMode] = useState<'horizontal' | 'vertical'>('horizontal')
+  const [splitPos, setSplitPos] = useState(50)   // 퍼센트 (20~80)
+  const isDragging = useRef(false)
+  const containerRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     try {
       const s = localStorage.getItem('mice_editor_split')
       if (s === 'vertical' || s === 'horizontal') setSplitMode(s)
+      const p = localStorage.getItem('mice_editor_split_pos')
+      if (p) setSplitPos(Math.max(20, Math.min(80, Number(p))))
     } catch {}
   }, [])
   const [allContents, setAllContents] = useState<Record<string, ContentsMap>>({})
@@ -64,6 +69,28 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
     setFacilityCheckMode(mode)
     if (typeof window !== 'undefined') localStorage.setItem(`facility_check_mode_${project.id}`, mode)
   }, [project.id])
+
+  // 드래그 크기 조절
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    isDragging.current = true
+    e.preventDefault()
+  }, [])
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!isDragging.current || !containerRef.current) return
+      const rect = containerRef.current.getBoundingClientRect()
+      const pos = splitMode === 'horizontal'
+        ? ((e.clientY - rect.top) / rect.height) * 100
+        : ((e.clientX - rect.left) / rect.width) * 100
+      const clamped = Math.max(20, Math.min(80, pos))
+      setSplitPos(clamped)
+      try { localStorage.setItem('mice_editor_split_pos', String(clamped)) } catch {}
+    }
+    const onUp = () => { isDragging.current = false }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+    return () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp) }
+  }, [splitMode])
   // v8: 첫 위반 알랏 (§11-6-1 — 한 행사에서 1회만)
   const [activeAlert, setActiveAlert] = useState<ValidationIssue | null>(null)
   const alertedItemsRef = useRef<Set<string>>(new Set())  // 알랏 표시 이력
@@ -732,8 +759,11 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
       </div>
 
       <div className="flex flex-1 min-h-0">
-        <div className={`flex-1 ${splitMode === 'vertical' ? 'flex flex-row' : 'flex flex-col'} min-w-0`}>
-          <div className={`${splitMode === 'vertical' ? 'w-1/2 border-r' : 'h-[50%] border-b'} border-slate-200 overflow-hidden`}>
+        <div ref={containerRef} className={`flex-1 ${splitMode === 'vertical' ? 'flex flex-row' : 'flex flex-col'} min-w-0`}>
+          <div
+            className={`${splitMode === 'vertical' ? 'border-r' : 'border-b'} border-slate-200 overflow-hidden`}
+            style={splitMode === 'vertical' ? { width: `${splitPos}%` } : { height: `${splitPos}%` }}
+          >
             <EditorGrid
               items={items}
               allContents={allContents}
@@ -749,8 +779,19 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
             />
           </div>
 
+          {/* 드래그 크기 조절 핸들 */}
+          <div
+            onMouseDown={handleDragStart}
+            className={`flex-shrink-0 flex items-center justify-center bg-slate-100 hover:bg-indigo-200 active:bg-indigo-300 transition-colors group ${splitMode === 'horizontal' ? 'h-1.5 cursor-row-resize w-full' : 'w-1.5 cursor-col-resize h-full'}`}
+          >
+            <div className={`bg-slate-300 group-hover:bg-indigo-400 transition-colors rounded-full ${splitMode === 'horizontal' ? 'w-10 h-0.5' : 'w-0.5 h-10'}`} />
+          </div>
+
           {/* 디자인 캔버스 */}
-          <div className={splitMode === 'vertical' ? 'w-1/2' : 'h-[50%]'}>
+          <div
+            className="overflow-hidden"
+            style={splitMode === 'vertical' ? { width: `${100 - splitPos}%` } : { height: `${100 - splitPos}%` }}
+          >
             <CanvasBoard
               item={selectedItem}
               contents={contents}

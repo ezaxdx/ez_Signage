@@ -489,11 +489,11 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
           <span className="text-[10px] flex items-center gap-1 flex-wrap">
             {itemIssues && itemIssues.length > 0 && (
               <span
-                className={`inline-flex items-center gap-0.5 ${hasWarn ? 'text-red-600' : 'text-amber-600'} font-medium`}
+                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-semibold text-[11px] ${hasWarn ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-amber-100 text-amber-700 border border-amber-300'}`}
                 title={itemIssues.map(i => `[${i.severity}] ${i.message}`).join('\n')}
               >
-                <AlertTriangle className="w-3 h-3" />
-                시설{hasWarn ? '!' : '?'}
+                <AlertTriangle className="w-3.5 h-3.5" />
+                시설{hasWarn ? ' 위반' : ' 확인'}
               </span>
             )}
             {tags.length > 0 ? tags.map(t => <span key={t} className="text-amber-700">{t}</span>) : null}
