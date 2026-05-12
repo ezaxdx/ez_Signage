@@ -614,6 +614,8 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
               if (!col) return null
               const isHidden = colState.hidden.includes(col.id)
               const isXExcl = colState.excludedFromExcel.includes(col.id)
+              const isPExcl = colState.excludedFromPpt.includes(col.id)
+              const isDExcl = colState.excludedFromPdf.includes(col.id)
               return (
                 <div key={col.id} className="flex items-center gap-2 bg-slate-50/40 rounded px-2 py-1.5 group">
                   <GripVertical className="w-3 h-3 text-slate-400 flex-shrink-0" />
@@ -623,10 +625,24 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
                   </span>
                   <button
                     onClick={() => toggleExcelExclude(col.id)}
-                    title={isXExcl ? '엑셀 제외됨 — 클릭하면 포함' : '엑셀 포함 — 클릭하면 제외'}
+                    title={isXExcl ? '엑셀 제외됨' : '엑셀 포함'}
                     className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold transition flex-shrink-0 ${isXExcl ? 'bg-rose-100 text-rose-400 line-through' : 'bg-emerald-100 text-emerald-700'}`}
                   >
                     X
+                  </button>
+                  <button
+                    onClick={() => togglePptExclude(col.id)}
+                    title={isPExcl ? 'PPT 제외됨' : 'PPT 포함'}
+                    className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold transition flex-shrink-0 ${isPExcl ? 'bg-rose-100 text-rose-400 line-through' : 'bg-sky-100 text-sky-700'}`}
+                  >
+                    P
+                  </button>
+                  <button
+                    onClick={() => togglePdfExclude(col.id)}
+                    title={isDExcl ? 'PDF 제외됨' : 'PDF 포함'}
+                    className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold transition flex-shrink-0 ${isDExcl ? 'bg-rose-100 text-rose-400 line-through' : 'bg-violet-100 text-violet-700'}`}
+                  >
+                    D
                   </button>
                   <button onClick={() => toggleHidden(col.id)} className="text-slate-500 hover:text-slate-800 p-0.5 rounded transition flex-shrink-0" title={isHidden ? '편집 화면에 표시' : '편집 화면에서 숨김'}>
                     {isHidden ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
