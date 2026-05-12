@@ -1,5 +1,37 @@
 # 작업 이력
 
+## 2026-05-12 (v9.19) — 엑셀/PPT/PDF 헤더 개편 + 동적 컬럼 + 날짜 연결
+
+### 핵심 변경 (사용자 요청: 헤더 21컬럼 개편 + 숨김/표시 토글)
+
+#### 1. 컬럼 구조 개편 (EditorGrid.tsx)
+- 새 DEFAULT_COLS 21컬럼 (사용자 요청 순서): NO·파트·구분·장소·사용목적·품목·언어·규격·재질·수량·내용·디자인업체·출력업체·설치일자·설치시간·사용기간·철거일자·철거시간·발주담당자·발주일·비고
+- **기본 숨김 8개**: 디자인업체·출력업체·설치일자·설치시간·사용기간·철거일자·철거시간·발주일
+- **PPT 기본 제외 8개**: 디자인업체·출력업체·설치시간·사용기간·철거시간·발주담당자·발주일·담당자
+- PPT 기본 14컬럼: NO·파트·구분·장소·사용목적·품목·언어·규격·재질·수량·내용·설치일자·철거일자·비고
+- localStorage 키 v9 → v10 (이전 설정 커스텀 값만 이전, 컬럼 순서·숨김은 새 기본값)
+- '규격' 라벨에서 (mm) 단위 표기 제거
+
+#### 2. ExportService.ts 전면 개편
+- DEFAULT_LABELS·DEFAULT_ORDER·DEFAULT_PPT_EXCLUDED 새 21컬럼 기준으로 업데이트
+- `DateContext` 인터페이스 + `getMilestoneDates()` 신설 — OrderingSchedule localStorage에서 마일스톤 날짜 자동 계산
+  - install_date → install 마일스톤 날짜 (기본 D-1)
+  - uninstall_date → 행사 D+1
+  - order_date → order 마일스톤 날짜 (기본 D-14)
+- `getCellValue()`에 `dateCtx?` 파라미터 추가 — item 개별 날짜 없을 때 자동 채움
+- **exportToPPT 동적화**: 하드코딩 14컬럼 → localStorage excludedFromPpt 기반 동적 컬럼 선택
+  - 컬럼 너비 비율 자동 분배 (내용 2.2배, 날짜·비고 1.2배 등)
+- exportToExcelDynamic에도 dateCtx 주입
+- 정적 fallback 21컬럼으로 업데이트
+
+#### 3. v9.18 — 행사장 규모 스펙 AI 주입 (recommendSignage.ts)
+- `getVenueSpecs`, `formatVenueSpecsContext` import 추가
+- `venueSpecsBlock` 계산 후 userText 마지막에 연결
+- 7개 행사장 규모 데이터(면적·천장고·부스수·출입구·리깅여부) 가 Gemini 수량 스케일링 기준으로 활용됨
+
+### 검증
+- TSC 0 에러 / Next 빌드 21/21 라우트 통과
+
 ## 2026-05-12 (v9.17) — 천정배너 시드 데이터 + AI 프롬프트 주입
 
 ### 핵심 변경 (goals/current.md 즉시 작업 ① — 천정배너 카테고리 시드 데이터 확보)

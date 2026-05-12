@@ -485,6 +485,165 @@ export const SEED_SIGNAGE_ANALYSIS: SignageAnalysis = {
   non_standard_pct: 37.4,
 }
 
+// ── 9. 행사장 규모·스펙 시드 (AI 수량 추정 기준) ──────────────────────
+// 출처: 킨텍스 매뉴얼·코엑스 안내자료·현장 실측 + 과거 발주 사례 참조
+// AI 추천 시 행사장 크기 → 수량 스케일링 기준으로 활용
+
+export interface VenueSpecSeed {
+  venue_key: string              // venueFacilityGuide.ts의 venue_key와 일치
+  venue_name: string
+  aliases: string[]              // 검색용 별칭
+  floor_area_m2?: number         // 전시 가용 면적(m²)
+  ceiling_height_m?: number      // 대략적 천장 높이(m)
+  max_booths_standard?: number   // 3×3m 표준 부스 최대 배치 수
+  typical_attendees: {
+    large: number                // 대형 행사 참가자 기준
+    mega: number                 // 초대형 행사 참가자 기준
+  }
+  entrance_count?: number        // 주요 출입구 수 (가로등배너 수량 계산용)
+  has_ceiling_rigging: boolean   // 천정배너 리깅 가능 여부
+  ceiling_banner_typical?: {     // 천정배너 전형적 수량 (동일 행사장 학습 기반)
+    main_count: number           // 전시장 메인 수
+    sub_count?: number           // 부속 공간 수
+    note?: string
+  }
+  note?: string
+}
+
+export const SEED_VENUE_SPECS: VenueSpecSeed[] = [
+  {
+    venue_key: 'kintex_1_hall_5',
+    venue_name: '킨텍스 제1전시장 5홀',
+    aliases: ['킨텍스 5홀', '킨텍스 1전시장 5홀', 'KINTEX 5홀'],
+    floor_area_m2: 10773,  // 171m × 63m (5A+5B 합산)
+    ceiling_height_m: 12,
+    max_booths_standard: 400,
+    typical_attendees: { large: 2000, mega: 5000 },
+    entrance_count: 4,  // 서문·남문·북문·캐노피 방향
+    has_ceiling_rigging: true,
+    ceiling_banner_typical: {
+      main_count: 7,
+      sub_count: 3,
+      note: '전시장 메인 7개(5500×4000)+라운지1개+컨퍼런스장2개 — 2022스마트국토엑스포 실측',
+    },
+  },
+  {
+    venue_key: 'kintex_1_hall_1234',
+    venue_name: '킨텍스 제1전시장 1~4홀',
+    aliases: ['킨텍스 1홀', '킨텍스 2홀', '킨텍스 3홀', '킨텍스 4홀', '킨텍스 1~4홀'],
+    floor_area_m2: 9000,   // 1홀 기준 약 9,000m² (홀별 상이)
+    ceiling_height_m: 12,
+    max_booths_standard: 350,
+    typical_attendees: { large: 1500, mega: 4000 },
+    entrance_count: 3,
+    has_ceiling_rigging: true,
+    ceiling_banner_typical: {
+      main_count: 5,
+      sub_count: 2,
+      note: '5홀 사례 기준 추정 — 실측 데이터 미확보',
+    },
+  },
+  {
+    venue_key: 'kintex_2',
+    venue_name: '킨텍스 제2전시장',
+    aliases: ['킨텍스 2전시장', '킨텍스 9홀', '킨텍스 10홀', '킨텍스 2전시장 9B홀'],
+    floor_area_m2: 54000,  // 7~10홀 합산 (각 홀 8,000×5,000)
+    ceiling_height_m: 15,
+    max_booths_standard: 1500,
+    typical_attendees: { large: 5000, mega: 20000 },
+    entrance_count: 6,
+    has_ceiling_rigging: true,
+    note: '외벽 표준 8,000×5,000mm (1전시장 대비 2.5배 높이). 천정배너 실측 데이터 미확보.',
+  },
+  {
+    venue_key: 'coex',
+    venue_name: '코엑스',
+    aliases: ['코엑스 그랜드볼룸', '코엑스 아셈볼룸', '코엑스 컨퍼런스홀', '코엑스 D홀', 'COEX'],
+    floor_area_m2: 36000,  // D·B·C홀 합산 기준
+    ceiling_height_m: 9,   // 컨퍼런스홀 기준 (그랜드볼룸 6m)
+    max_booths_standard: 800,
+    typical_attendees: { large: 2000, mega: 10000 },
+    entrance_count: 5,
+    has_ceiling_rigging: true,
+    ceiling_banner_typical: {
+      main_count: 4,
+      sub_count: 2,
+      note: '학습 데이터 미확보 — 일반 패턴 추정치',
+    },
+  },
+  {
+    venue_key: 'songdo',
+    venue_name: '송도컨벤시아',
+    aliases: ['송도', 'G-Tower 컨벤시아', '인천 송도컨벤시아'],
+    floor_area_m2: 8000,
+    ceiling_height_m: 8,
+    max_booths_standard: 200,
+    typical_attendees: { large: 1000, mega: 3000 },
+    entrance_count: 3,
+    has_ceiling_rigging: true,
+    ceiling_banner_typical: {
+      main_count: 3,
+      note: '학습 데이터 미확보 — 일반 패턴 추정치',
+    },
+  },
+  {
+    venue_key: 'icc_jeju',
+    venue_name: '제주국제컨벤션센터(ICC 제주)',
+    aliases: ['ICC 제주', 'ICC JEJU', '제주 컨벤션센터'],
+    floor_area_m2: 4000,
+    ceiling_height_m: 8,
+    max_booths_standard: 100,
+    typical_attendees: { large: 500, mega: 2000 },
+    entrance_count: 2,
+    has_ceiling_rigging: true,
+    ceiling_banner_typical: {
+      main_count: 2,
+      note: '학습 데이터 미확보 — 일반 패턴 추정치',
+    },
+  },
+  {
+    venue_key: 'ddp',
+    venue_name: '동대문디자인플라자(DDP)',
+    aliases: ['DDP', '동대문 DDP', 'Dongdaemun Design Plaza'],
+    floor_area_m2: 3000,
+    ceiling_height_m: 5,  // 곡면 건물 특성상 낮음
+    max_booths_standard: 80,
+    typical_attendees: { large: 300, mega: 1000 },
+    entrance_count: 2,
+    has_ceiling_rigging: false,  // DDP 건축 특성상 행잉 거의 불가
+    note: '건축 특성상 천정배너 불가 — 바닥 스탠드(물통배너·롤업)로 대체 계획 필수.',
+  },
+]
+
+/** 행사장명으로 규모 스펙 조회 */
+export function getVenueSpecs(venue: string): VenueSpecSeed | null {
+  if (!venue) return null
+  const q = venue.replace(/\s/g, '').toLowerCase()
+  return SEED_VENUE_SPECS.find(v => {
+    const vName = v.venue_name.replace(/\s/g, '').toLowerCase()
+    const aliasMatch = v.aliases.some(a => a.replace(/\s/g, '').toLowerCase().includes(q) || q.includes(a.replace(/\s/g, '').toLowerCase()))
+    return q.includes(v.venue_key.replace(/_/g, '')) || vName.includes(q) || q.includes(vName) || aliasMatch
+  }) ?? null
+}
+
+/** 행사장 스펙을 Gemini 프롬프트 블록으로 변환 */
+export function formatVenueSpecsContext(spec: VenueSpecSeed): string {
+  const lines: string[] = [
+    `[행사장 스펙: ${spec.venue_name}]`,
+    spec.floor_area_m2 ? `- 전시 가용 면적: 약 ${spec.floor_area_m2.toLocaleString()}m²` : '',
+    spec.ceiling_height_m ? `- 천장 높이: 약 ${spec.ceiling_height_m}m` : '',
+    spec.max_booths_standard ? `- 표준 부스(3×3m) 최대: 약 ${spec.max_booths_standard}개` : '',
+    `- 대형 행사 기준 참가자: ${spec.typical_attendees.large.toLocaleString()}명 / 초대형: ${spec.typical_attendees.mega.toLocaleString()}명`,
+    spec.entrance_count ? `- 주요 출입구 수: ${spec.entrance_count}개 (가로등배너 수량 기준)` : '',
+    `- 천정배너 리깅: ${spec.has_ceiling_rigging ? '가능' : '불가 — 바닥 스탠드로 대체'}`,
+    spec.ceiling_banner_typical
+      ? `- 천정배너 전형 수량: 메인 ${spec.ceiling_banner_typical.main_count}개${spec.ceiling_banner_typical.sub_count ? ` + 부속 ${spec.ceiling_banner_typical.sub_count}개` : ''}${spec.ceiling_banner_typical.note ? ` (${spec.ceiling_banner_typical.note})` : ''}`
+      : '',
+    spec.note ? `- 주의: ${spec.note}` : '',
+  ]
+  return lines.filter(Boolean).join('\n')
+}
+
 // ── 헬퍼: 행사 폴더 통계 ─────────────────────────────────────
 export function computeEventStats() {
   const total = SEED_EVENT_HISTORY.length

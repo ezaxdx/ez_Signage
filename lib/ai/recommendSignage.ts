@@ -2,7 +2,7 @@
 // 서버 사이드 전용 (GEMINI_API_KEY 노출 금지).
 // .env.local 에 GEMINI_API_KEY=AIzaSy... 추가 필요.
 
-import { findSimilarPastEvents, findCeilingBannerContext } from '@/lib/data/dashboardSeed'
+import { findSimilarPastEvents, findCeilingBannerContext, getVenueSpecs, formatVenueSpecsContext } from '@/lib/data/dashboardSeed'
 import { findSimilarVenueSignage, formatVenueSignageContext } from '@/lib/data/venueSignageHelper'
 import { buildAccumulatedContext, formatAccumulatedContext } from '@/lib/ai/accumulatedContext'
 import { buildVenueProfile } from '@/lib/ai/venueProfile'
@@ -208,8 +208,13 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
   } catch { /* silent */ }
 
   // v9.17: 천정배너 실측 패턴 주입 (docs/VENUE_LEARNING_INSIGHTS_260511.md §4)
-  // 같은 행사장의 천정배너 수량·규격을 Gemini에 직접 제공 → 천정배너 누락(10건) 방지
   const ceilingBannerBlock = findCeilingBannerContext(input.venue)
+
+  // v9.18: 행사장 규모 스펙 주입 (수량 스케일링 기준 — 면적/천장고/부스수/출입구)
+  const venueSpecs = getVenueSpecs(input.venue)
+  const venueSpecsBlock = venueSpecs
+    ? '\n\n' + formatVenueSpecsContext(venueSpecs) + '\n→ 위 행사장 규모 기준으로 수량 스케일링 적용.'
+    : ''
 
   const userText = [
     `행사명: ${input.eventName}`,
@@ -231,7 +236,7 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
     input.budgetConstrained ? `예산 제약: 있음 (비용 절감 우선)` : '',
     `사용 목적: ${input.purposes.join(', ') || '미지정 — 행사 유형 기준 자동 판단'}`,
     input.notes ? `추가 메모: ${input.notes}` : '',
-  ].filter(Boolean).join('\n') + similarEventsBlock + venueSignageBlock + accumulatedBlock + venueProfileBlock + ceilingBannerBlock
+  ].filter(Boolean).join('\n') + similarEventsBlock + venueSignageBlock + accumulatedBlock + venueProfileBlock + ceilingBannerBlock + venueSpecsBlock
 
   const body = {
     systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },

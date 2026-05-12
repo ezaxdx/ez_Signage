@@ -3,38 +3,36 @@ import { PROGRAM_PART_BY_CODE } from '@/lib/programParts'
 
 const DEFAULT_SLOT_ORDER = ['header_brand', 'hero_title', 'sub_title', 'body', 'arrow', 'qr_code', 'footer_credits']
 
-// ── EditorGrid 컬럼 상태 (localStorage) — 엑셀/PDF 내보내기 시 동기화 ──
-// v8 (2026-05-11): 1차안 17컬럼 복원 — purpose=′사용 목적′, content=′내용′(content_text), 신규 4컬럼 추가
-const COLS_STORAGE_KEY = 'mice_editor_grid_cols_v9'
-type EditorColumnId = 'no' | 'part' | 'bigarea' | 'location' | 'purpose' | 'content' | 'category' | 'language' | 'size' | 'material' | 'quantity' | 'ko_text' | 'en_text' | 'note' | 'editor' | 'design_vendor' | 'print_vendor' | 'install_time' | 'uninstall_time' | string
+// ── EditorGrid 컬럼 상태 (localStorage) — 엑셀/PPT/PDF 내보내기 시 동기화 ──
+// v9.19 (2026-05-12): 사용자 요청 헤더 개편 21컬럼
+const COLS_STORAGE_KEY = 'mice_editor_grid_cols_v10'
+type EditorColumnId = 'no' | 'part' | 'bigarea' | 'location' | 'purpose' | 'content' | 'category' | 'language' | 'size' | 'material' | 'quantity' | 'ko_text' | 'en_text' | 'note' | 'editor' | 'design_vendor' | 'print_vendor' | 'install_date' | 'install_time' | 'usage_period' | 'uninstall_date' | 'uninstall_time' | 'order_contact' | 'order_date' | string
 interface EditorCustomCol { id: EditorColumnId; label: string; width: string; field: string | null; custom?: boolean }
 interface EditorColState {
   order: EditorColumnId[]
   hidden: EditorColumnId[]
-  excludedFromExcel: EditorColumnId[]   // v9: §14-3 사용자별 엑셀 제외
-  excludedFromPpt: EditorColumnId[]     // v9: §14-3 사용자별 PPT 제외
+  excludedFromExcel: EditorColumnId[]
+  excludedFromPpt: EditorColumnId[]
+  excludedFromPdf: EditorColumnId[]
   customCols: EditorCustomCol[]
   customValues: Record<string, Record<string, string>>
 }
 
-// v9.3 (2026-05-11): 회의록 ′인쇄제작물′ 시트 양식 매핑 — 21컬럼
-const DEFAULT_LABELS: Record<EditorColumnId, string> = {
+// v9.19: 사용자 요청 헤더 21컬럼
+const DEFAULT_LABELS: Record<string, string> = {
   no: 'NO.',
-  // 새 양식: 공간 유형 / 사용 목적 / 장소 명칭 / 세부 장소 / 장소 담당자
-  space_type: '공간 유형',
+  part: '파트',
+  bigarea: '구분',
+  location: '장소',
   purpose: '사용 목적',
-  location: '장소 명칭',
-  place_detail: '세부 장소',
-  place_contact: '장소 담당자',
-  // 종류 / 내용 / 사이즈 / 수량 / 단위
-  category: '종류',
-  content: '내용',
-  size: '사이즈(mm)',
+  category: '품목',
+  language: '언어',
+  size: '규격',
+  material: '재질',
   quantity: '수량',
-  unit: '단위',
-  // 유형 / 수급업체 / 설치일자 / 설치시간 / 사용기간 / 철거일자 / 철거시간 / 발주 담당자 / 발주일 / 비고
-  type_kind: '유형',
-  supplier: '수급업체',
+  content: '내용',
+  design_vendor: '디자인업체',
+  print_vendor: '출력업체',
   install_date: '설치일자',
   install_time: '설치시간',
   usage_period: '사용기간',
@@ -43,33 +41,72 @@ const DEFAULT_LABELS: Record<EditorColumnId, string> = {
   order_contact: '발주 담당자',
   order_date: '발주일',
   note: '비고',
-  // legacy (DB 유지, UI/Export 미노출 — 기존 데이터 호환용 라벨만)
-  part: '파트', bigarea: '구분', language: '언어', material: '재질', editor: '담당자',
-  ko_text: '국문 시안', en_text: '영문 시안',
-  design_vendor: '디자인업체', print_vendor: '출력업체',
+  // legacy
+  editor: '담당자',
+  ko_text: '국문 시안',
+  en_text: '영문 시안',
+  // v9.3 extra (사용 가능, 기본 미노출)
+  space_type: '공간 유형',
+  place_detail: '세부 장소',
+  place_contact: '장소 담당자',
+  unit: '단위',
+  type_kind: '유형',
+  supplier: '수급업체',
 }
 
-// 새 양식 순서대로 — 21컬럼 (회의록 ′인쇄제작물 시트′ 기준)
+// v9.19: 사용자 요청 순서 21컬럼
 const DEFAULT_ORDER: EditorColumnId[] = [
-  'no', 'space_type', 'purpose', 'location', 'place_detail', 'place_contact',
-  'category', 'content', 'size', 'quantity', 'unit',
-  'type_kind', 'supplier',
-  'install_date', 'install_time', 'usage_period', 'uninstall_date', 'uninstall_time',
+  'no', 'part', 'bigarea', 'location', 'purpose', 'category', 'language',
+  'size', 'material', 'quantity', 'content',
+  'design_vendor', 'print_vendor',
+  'install_date', 'install_time', 'usage_period',
+  'uninstall_date', 'uninstall_time',
   'order_contact', 'order_date', 'note',
 ]
+
+// PPT 기본 제외 (Excel의 21컬럼 중 PPT 14컬럼만 남김)
+const DEFAULT_PPT_EXCLUDED: EditorColumnId[] = [
+  'design_vendor', 'print_vendor',
+  'install_time', 'usage_period', 'uninstall_time',
+  'order_contact', 'order_date', 'editor',
+]
+
+// v9.19: 설치일자·철거일자·발주일을 OrderingSchedule 마일스톤에서 자동 계산 (item 개별값 없을 때)
+interface DateContext { installDate: string; uninstallDate: string; orderDate: string }
+
+function getMilestoneDates(projectId: string, eventDate: string | null): DateContext {
+  const empty: DateContext = { installDate: '', uninstallDate: '', orderDate: '' }
+  if (!eventDate || typeof window === 'undefined') return empty
+  try {
+    const storageKey = `ordering_schedule_v2_${projectId}`
+    const raw = localStorage.getItem(storageKey)
+    const milestones: Array<{ key: string; offset: number }> = raw
+      ? JSON.parse(raw)
+      : [{ key: 'order', offset: -14 }, { key: 'install', offset: -1 }, { key: 'event', offset: 0 }]
+    const eventMs = new Date(eventDate).getTime()
+    const fmt = (ms: number) => new Date(ms).toISOString().slice(0, 10)
+    const installM = milestones.find(m => m.key === 'install')
+    const orderM = milestones.find(m => m.key === 'order')
+    return {
+      installDate: installM ? fmt(eventMs + installM.offset * 86400000) : fmt(eventMs - 86400000),
+      uninstallDate: fmt(eventMs + 86400000),
+      orderDate: orderM ? fmt(eventMs + orderM.offset * 86400000) : fmt(eventMs - 14 * 86400000),
+    }
+  } catch { return empty }
+}
 
 function loadEditorColState(): EditorColState | null {
   if (typeof window === 'undefined') return null
   try {
-    // v9 우선, 미존재 시 v8 1회성 폴백 (EditorGrid가 마이그레이션 저장 전에 호출될 수 있음)
-    const raw = localStorage.getItem(COLS_STORAGE_KEY) ?? localStorage.getItem('mice_editor_grid_cols_v8')
+    const raw = localStorage.getItem(COLS_STORAGE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<EditorColState>
     return {
       order: parsed.order ?? DEFAULT_ORDER,
       hidden: parsed.hidden ?? [],
       excludedFromExcel: parsed.excludedFromExcel ?? [],
-      excludedFromPpt: parsed.excludedFromPpt ?? [],
+      excludedFromPpt: parsed.excludedFromPpt ?? [...DEFAULT_PPT_EXCLUDED],
+      excludedFromPdf: parsed.excludedFromPdf ?? [...DEFAULT_PPT_EXCLUDED],
       customCols: parsed.customCols ?? [],
       customValues: parsed.customValues ?? {},
     }
@@ -77,10 +114,7 @@ function loadEditorColState(): EditorColState | null {
 }
 
 /** 컬럼 ID + 행 데이터 → 셀 값 변환
- *
- * v4.1 단위 4 (2026-05-07):
- *   - 'bigarea' (구분): 같은 카테고리 항목이 2개 이상일 때 자동 #N suffix ("X-배너 #1")
- *   - 'purpose' (사용목적): 회의 결정으로 "내용" 의미 — 사용자 자유 텍스트 그대로 출력
+ * dateCtx: 설치일자·철거일자·발주일을 item 미설정 시 프로젝트 일정에서 자동 채움
  */
 function getCellValue(
   colId: EditorColumnId,
@@ -88,6 +122,7 @@ function getCellValue(
   contents: ContentsMap,
   customValues: Record<string, Record<string, string>>,
   items?: DesignItem[],
+  dateCtx?: DateContext,
 ): string | number {
   // 커스텀 컬럼
   if (colId.startsWith('custom_')) {
@@ -135,14 +170,14 @@ function getCellValue(
     case 'unit':           return item.unit ?? '개'
     case 'type_kind':      return item.type_kind ?? ''
     case 'supplier':       return item.supplier ?? ''
-    case 'install_date':   return item.install_date ?? ''
+    // v9.19: 설치일자·철거일자·발주일 → item 값 없으면 OrderingSchedule 마일스톤 날짜로 자동 채움
+    case 'install_date':   return item.install_date || (dateCtx?.installDate ?? '')
     case 'install_time':   return item.install_time ?? ''
     case 'usage_period':   return item.usage_period ?? ''
-    case 'uninstall_date': return item.uninstall_date ?? ''
+    case 'uninstall_date': return item.uninstall_date || (dateCtx?.uninstallDate ?? '')
     case 'uninstall_time': return item.uninstall_time ?? ''
     case 'order_contact':  return item.order_contact ?? ''
-    case 'order_date':     return item.order_date ?? ''
-    // legacy (UI 제거, fallback만 유지)
+    case 'order_date':     return item.order_date || (dateCtx?.orderDate ?? '')
     case 'design_vendor':  return item.design_vendor ?? ''
     case 'print_vendor':   return item.print_vendor ?? ''
     case 'ko_text': {
@@ -272,6 +307,17 @@ export async function exportToPPT(
     return project.client_name ?? ''
   })()
 
+  // ── PPT 컬럼 결정: localStorage 상태 → excludedFromPpt 필터 ──
+  const pptColState = loadEditorColState()
+  const pptExcluded = pptColState?.excludedFromPpt ?? DEFAULT_PPT_EXCLUDED
+  const pptHidden = pptColState?.hidden ?? []
+  // PPT는 hidden 무시 (편집 숨김과 PPT 출력은 독립) — 단, excludedFromPpt는 적용
+  const pptOrder = pptColState?.order ?? DEFAULT_ORDER
+  const pptColIds = pptOrder.filter(id => !pptExcluded.includes(id))
+
+  // 날짜 자동 채움 (project.event_date 기반)
+  const dateCtx = getMilestoneDates(project.id, project.event_date)
+
   for (const item of items) {
     const contents = allContents[item.id] ?? {}
     const widthMm  = item.width_mm  ?? 600
@@ -303,51 +349,30 @@ export async function exportToPPT(
       })
     }
 
-    // ── 메타 테이블 (PPT 14컬럼 — §14-3 담당자/디자인업체/출력업체 제외) ──
-    const slotContentKo = [gatherContentText(contents, 'ko'), gatherContentText(contents, 'en')]
-      .filter(Boolean).join(' / ').slice(0, 120)
-    const contentValue = item.content_text ?? slotContentKo  // v8: content_text 우선
-    const remarks = detectRemarks(contents)
+    // ── 메타 테이블 (동적 컬럼 — excludedFromPpt 기준) ──
+    const customValues = pptColState?.customValues ?? {}
+    const headerRow = pptColIds.map(id => headerOpts(DEFAULT_LABELS[id] ?? id))
+    const dataRow = pptColIds.map(id => {
+      const val = getCellValue(id, item, contents, customValues, items, dateCtx)
+      const isLeft = id === 'content' || id === 'note' || id === 'purpose' || id === 'location'
+      return cellOpts(String(val), isLeft ? 'left' : 'center')
+    })
+
+    // 컬럼 너비 비율 분배 (내용 컬럼은 2배)
+    const colWeights: Record<string, number> = {
+      content: 2.2, note: 1.2, purpose: 1.1, location: 1.1, part: 0.8,
+      bigarea: 0.8, install_date: 0.85, uninstall_date: 0.85, no: 0.45, quantity: 0.45,
+    }
+    const totalW = pptColIds.reduce((s, id) => s + (colWeights[id] ?? 0.8), 0)
+    const colWidths = pptColIds.map(id => TABLE_W * (colWeights[id] ?? 0.8) / totalW)
 
     slide.addTable(
-      [
-        [
-          headerOpts('NO'),
-          headerOpts('파트'),
-          headerOpts('구분'),
-          headerOpts('장소'),
-          headerOpts('사용 목적'),
-          headerOpts('품목'),
-          headerOpts('언어'),
-          headerOpts('규격(mm)'),
-          headerOpts('재질'),
-          headerOpts('수량'),
-          headerOpts('내용'),
-          headerOpts('비고'),
-          headerOpts('설치시간'),
-          headerOpts('철거시간'),
-        ],
-        [
-          cellOpts(item.no ?? ''),
-          cellOpts(item.part ?? ''),
-          cellOpts(item.category ?? ''),  // 구분 = 제작물 종류 (명세 10-2)
-          cellOpts(item.location ?? ''),  // 장소 = 실제 설치 위치
-          cellOpts(item.purpose ?? ''),   // v8: '사용 목적' 환원
-          cellOpts(item.category ?? ''),  // 품목 = 구분과 동일 (명세)
-          cellOpts(item.language ?? ''),
-          cellOpts(`${widthMm}×${heightMm}`),
-          cellOpts(item.material ?? ''),
-          cellOpts(String(item.quantity ?? 1)),
-          cellOpts(contentValue, 'left'),
-          cellOpts(remarks),
-          cellOpts(item.install_time ?? ''),
-          cellOpts(item.uninstall_time ?? ''),
-        ],
-      ],
+      [headerRow, dataRow],
       {
         x: MARGIN,
         y: TABLE_Y,
         w: TABLE_W,
+        colW: colWidths,
         rowH: [0.35, 0.55],
         border: { pt: 0.5, color: '94A3B8' },
         fontFace: 'Malgun Gothic',
@@ -550,10 +575,10 @@ export async function exportToExcel(
     return exportToExcelDynamic(project, items, allContents, editorState, XLSX)
   }
 
-  // 폴백: 기존 17컬럼 정적 형식
+  // 폴백: v9.19 21컬럼 정적 형식
   const HEADERS = [
-    'NO.', '파트', '구분', '장소', '사용목적', '품목', '언어', '규격(mm)', '재질', '수량',
-    '내용', '비고', '담당자', '디자인업체', '출력업체', '설치시간', '철거시간',
+    'NO.', '파트', '구분', '장소', '사용 목적', '품목', '언어', '규격', '재질', '수량',
+    '내용', '디자인업체', '출력업체', '설치일자', '설치시간', '사용기간', '철거일자', '철거시간', '발주 담당자', '발주일', '비고',
   ]
 
 
@@ -566,68 +591,66 @@ export async function exportToExcel(
     return project.client_name ?? ''
   })()
 
-  // 좌상단: "환경 제작물 (행사명)" (1~15열 병합) / 우상단: 행사 로고 (16~17열 병합)
-  const logoStartCol = HEADERS.length - 2  // 15 → '디자인업체' 시작부터
+  // 좌상단: "환경 제작물 (행사명)" 병합 / 우상단: 행사 로고
   const titleRow: (string | number)[] = new Array(HEADERS.length).fill('')
   titleRow[0] = `환경 제작물  (${project.name})`
-  titleRow[logoStartCol] = logoText
+  titleRow[HEADERS.length - 1] = logoText
+
+  // 날짜 자동 채움 (OrderingSchedule 연결)
+  const dateCtxFallback = getMilestoneDates(project.id, project.event_date)
 
   const dataRows = items.map(item => {
     const contents = allContents[item.id] ?? {}
     const dims = item.width_mm && item.height_mm ? `${item.width_mm}×${item.height_mm}` : ''
-    // 내용: "기본시안 + body내용 + 장소·용도" — 본문 비어있을 때는 location/purpose로 힌트
     let content = gatherContentText(contents, 'ko')
     if (content === '기본시안' && (item.location || item.purpose)) {
-      const extras = [item.purpose, item.location].filter(Boolean).join(' ')
-      content = `기본시안 + ${extras}`
+      content = `기본시안 + ${[item.purpose, item.location].filter(Boolean).join(' ')}`
     }
-    const editor = item.last_edited_by ? item.last_edited_by.split('@')[0] : ''
-
-    // 비고: 화살표/QR/시안수정 + 검수상태
     const remarks: string[] = []
     const auto = detectRemarks(contents)
     if (auto) remarks.push(auto)
     if (item.review_status && item.review_status !== '작업중') remarks.push(`[${item.review_status}]`)
     if (item.review_note) remarks.push(item.review_note)
-
-    // v8: '내용' 컬럼은 content_text 우선, 없으면 슬롯 합산 텍스트
     const contentValue = item.content_text ?? content
 
     return [
       item.no ?? '',
       item.part ?? '',
-      item.category ?? '',   // 구분 = 제작물 종류 (명세 10-2)
-      item.location ?? '',   // 장소 = 실제 설치 위치
-      item.purpose ?? '',    // v8: '사용 목적'으로 환원
-      item.category ?? '',   // 품목 = 구분과 동일 (명세)
+      item.category ?? '',
+      item.location ?? '',
+      item.purpose ?? '',
+      item.category ?? '',
       item.language ?? '',
       dims,
       item.material ?? '',
       item.quantity ?? 1,
       contentValue,
-      remarks.join(' · '),
-      editor,
-      // v8 신규 4컬럼 (편집 숨김이어도 최종 엑셀엔 출력 — §14-2)
       item.design_vendor ?? '',
       item.print_vendor ?? '',
+      item.install_date || dateCtxFallback.installDate,
       item.install_time ?? '',
+      item.usage_period ?? '',
+      item.uninstall_date || dateCtxFallback.uninstallDate,
       item.uninstall_time ?? '',
+      item.order_contact ?? '',
+      item.order_date || dateCtxFallback.orderDate,
+      remarks.join(' · '),
     ]
   })
 
   const ws = XLSX.utils.aoa_to_sheet([titleRow, HEADERS, ...dataRows])
 
-  // 좌상단 병합 (환경 제작물 + 행사명)
   ws['!merges'] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: HEADERS.length - 3 } },
-    { s: { r: 0, c: HEADERS.length - 2 }, e: { r: 0, c: HEADERS.length - 1 } },
+    { s: { r: 0, c: 0 }, e: { r: 0, c: HEADERS.length - 2 } },
+    { s: { r: 0, c: HEADERS.length - 1 }, e: { r: 0, c: HEADERS.length - 1 } },
   ]
 
   ws['!cols'] = [
     { wch: 5 },  { wch: 10 }, { wch: 14 }, { wch: 16 }, { wch: 16 },
     { wch: 14 }, { wch: 8 },  { wch: 12 }, { wch: 10 }, { wch: 6 },
-    { wch: 36 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
-    { wch: 10 }, { wch: 10 },
+    { wch: 32 }, { wch: 12 }, { wch: 12 },
+    { wch: 10 }, { wch: 8 },  { wch: 18 }, { wch: 10 }, { wch: 8 },
+    { wch: 14 }, { wch: 10 }, { wch: 14 },
   ]
   ws['!rows'] = [{ hpt: 28 }, { hpt: 20 }]
 
@@ -683,10 +706,13 @@ async function exportToExcelDynamic(
     return (a.category ?? '').localeCompare(b.category ?? '', 'ko')
   })
 
+  // 날짜 자동 채움 (OrderingSchedule 연결)
+  const dateCtx = getMilestoneDates(project.id, project.event_date)
+
   // 데이터 행
   const dataRows = sortedItems.map(item => {
     const contents = allContents[item.id] ?? {}
-    return visibleColIds.map(colId => getCellValue(colId, item, contents, state.customValues, sortedItems))
+    return visibleColIds.map(colId => getCellValue(colId, item, contents, state.customValues, sortedItems, dateCtx))
   })
 
   const ws = XLSX.utils.aoa_to_sheet([titleRow, headers, ...dataRows])

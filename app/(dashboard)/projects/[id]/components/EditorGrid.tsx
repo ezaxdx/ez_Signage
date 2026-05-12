@@ -80,52 +80,50 @@ interface ColumnDef {
   custom?: boolean
 }
 
-// v8 (2026-05-11): 1차안 17컬럼 복원
-// - '사용 목적'은 purpose 필드로 환원, '내용'은 content_text 필드로 분리
-// - 디자인업체·출력업체·설치시간·철거시간 4개 컬럼은 편집 초기 숨김 (4컬럼 기본 hidden)
+// v9.19 (2026-05-12): 사용자 요청 헤더 개편
+// 기본 표시 21컬럼 + 담당자 hidden extra
+// 기본 숨김: 디자인업체·출력업체·설치일자·설치시간·사용기간·철거일자·철거시간·발주일
 const DEFAULT_COLS: ColumnDef[] = [
-  { id: 'no',             label: 'NO',         width: '44px', field: 'no' },
-  { id: 'part',           label: '파트',       width: '72px', field: 'part' },
-  { id: 'bigarea',        label: '구분',       width: '74px', field: 'location' },
-  { id: 'location',       label: '장소',       width: '90px', field: 'location' },
-  { id: 'purpose',        label: '사용 목적',  width: '90px', field: 'purpose' },
-  { id: 'category',       label: '품목',       width: '84px', field: 'category' },
-  { id: 'language',       label: '언어',       width: '68px', field: 'language' },
-  { id: 'size',           label: '규격(mm)',   width: '86px', field: 'size' },
-  { id: 'material',       label: '재질',       width: '70px', field: 'material' },
-  { id: 'quantity',       label: '수량',       width: '44px', field: 'quantity' },
-  { id: 'content',        label: '내용',       width: '1.5fr', field: 'content_text' },
-  { id: 'note',           label: '비고',       width: '76px', field: null },
-  { id: 'editor',         label: '담당자',     width: '88px', field: null },
-  // v9.3 회의록: 새 발주 양식 13컬럼 — 모두 기본 숨김 (회의록: ″사용자에게 부담 없게″)
-  { id: 'space_type',     label: '공간 유형',   width: '90px',  field: 'space_type' },
-  { id: 'place_detail',   label: '세부 장소',   width: '96px',  field: 'place_detail' },
-  { id: 'place_contact',  label: '장소 담당자', width: '96px',  field: 'place_contact' },
-  { id: 'unit',           label: '단위',        width: '60px',  field: 'unit' },
-  { id: 'type_kind',      label: '유형',        width: '80px',  field: 'type_kind' },
-  { id: 'supplier',       label: '수급업체',    width: '96px',  field: 'supplier' },
-  { id: 'install_date',   label: '설치일자',    width: '90px',  field: 'install_date' },
-  { id: 'install_time',   label: '설치시간',    width: '76px',  field: 'install_time' },
-  { id: 'usage_period',   label: '사용기간',    width: '120px', field: 'usage_period' },
-  { id: 'uninstall_date', label: '철거일자',    width: '90px',  field: 'uninstall_date' },
-  { id: 'uninstall_time', label: '철거시간',    width: '76px',  field: 'uninstall_time' },
-  { id: 'order_contact',  label: '발주 담당자', width: '96px',  field: 'order_contact' },
-  { id: 'order_date',     label: '발주일',      width: '80px',  field: 'order_date' },
+  { id: 'no',             label: 'NO.',         width: '44px',  field: 'no' },
+  { id: 'part',           label: '파트',         width: '72px',  field: 'part' },
+  { id: 'bigarea',        label: '구분',         width: '74px',  field: 'location' },
+  { id: 'location',       label: '장소',         width: '90px',  field: 'location' },
+  { id: 'purpose',        label: '사용 목적',    width: '90px',  field: 'purpose' },
+  { id: 'category',       label: '품목',         width: '84px',  field: 'category' },
+  { id: 'language',       label: '언어',         width: '68px',  field: 'language' },
+  { id: 'size',           label: '규격',         width: '86px',  field: 'size' },
+  { id: 'material',       label: '재질',         width: '70px',  field: 'material' },
+  { id: 'quantity',       label: '수량',         width: '44px',  field: 'quantity' },
+  { id: 'content',        label: '내용',         width: '1.5fr', field: 'content_text' },
+  { id: 'design_vendor',  label: '디자인업체',   width: '88px',  field: 'design_vendor' },
+  { id: 'print_vendor',   label: '출력업체',     width: '88px',  field: 'print_vendor' },
+  { id: 'install_date',   label: '설치일자',     width: '90px',  field: 'install_date' },
+  { id: 'install_time',   label: '설치시간',     width: '76px',  field: 'install_time' },
+  { id: 'usage_period',   label: '사용기간',     width: '120px', field: 'usage_period' },
+  { id: 'uninstall_date', label: '철거일자',     width: '90px',  field: 'uninstall_date' },
+  { id: 'uninstall_time', label: '철거시간',     width: '76px',  field: 'uninstall_time' },
+  { id: 'order_contact',  label: '발주 담당자',  width: '96px',  field: 'order_contact' },
+  { id: 'order_date',     label: '발주일',       width: '80px',  field: 'order_date' },
+  { id: 'note',           label: '비고',         width: '90px',  field: null },
+  // 추가 전용 (기본 숨김 — 컬럼 관리에서 노출 가능)
+  { id: 'editor',         label: '담당자',       width: '88px',  field: null },
 ]
 
+// 기본 숨김 8개 — 다운로드 시에도 숨김 상태이면 포함 안 됨
 const DEFAULT_HIDDEN_COLS: ColumnId[] = [
-  'space_type', 'place_detail', 'place_contact', 'unit',
-  'type_kind', 'supplier', 'install_date', 'install_time',
-  'usage_period', 'uninstall_date', 'uninstall_time', 'order_contact', 'order_date',
+  'design_vendor', 'print_vendor',
+  'install_date', 'install_time', 'usage_period',
+  'uninstall_date', 'uninstall_time', 'order_date',
 ]
+// PPT 기본 제외: 디자인업체·출력업체·설치시간·사용기간·철거시간·발주담당자·발주일·담당자
+// PPT 기본 14컬럼: NO·파트·구분·장소·사용목적·품목·언어·규격·재질·수량·내용·설치일자·철거일자·비고
 const DEFAULT_PPT_EXCLUDED: ColumnId[] = [
-  'editor',
-  'space_type', 'place_detail', 'place_contact', 'unit',
-  'type_kind', 'supplier', 'install_date', 'install_time',
-  'usage_period', 'uninstall_date', 'uninstall_time', 'order_contact', 'order_date',
+  'design_vendor', 'print_vendor',
+  'install_time', 'usage_period', 'uninstall_time',
+  'order_contact', 'order_date', 'editor',
 ]
 
-const COLS_STORAGE_KEY = 'mice_editor_grid_cols_v9'
+const COLS_STORAGE_KEY = 'mice_editor_grid_cols_v10'
 
 interface SavedColState {
   order: ColumnId[]
@@ -138,40 +136,31 @@ interface SavedColState {
 }
 
 function loadColState(): SavedColState {
-  // v9: 17컬럼 + 4개 기본 숨김 + PPT 기본 제외 3개
+  // v10: 헤더 개편 — 기본 21컬럼 + 8개 숨김 + PPT 기본 제외 8개
   const defaultState: SavedColState = {
     order: DEFAULT_COLS.map(c => c.id),
     hidden: [...DEFAULT_HIDDEN_COLS],
     excludedFromExcel: [],
     excludedFromPpt: [...DEFAULT_PPT_EXCLUDED],
-    excludedFromPdf: [],
+    excludedFromPdf: [...DEFAULT_PPT_EXCLUDED],
     customCols: [],
     customValues: {},
   }
   if (typeof window === 'undefined') return defaultState
   try {
-    let raw = localStorage.getItem(COLS_STORAGE_KEY)
-    // v8 → v9 1회성 마이그레이션 (기존 order·hidden·customCols 그대로 가져옴)
+    const raw = localStorage.getItem(COLS_STORAGE_KEY)
+    // v10 미존재 시 → 기본값으로 새 시작 (v9.19 헤더 개편으로 이전 상태 호환 불가)
     if (!raw) {
-      const legacy = localStorage.getItem('mice_editor_grid_cols_v8')
-      if (legacy) {
-        try {
-          const parsedV8 = JSON.parse(legacy) as Partial<SavedColState>
-          const migrated: SavedColState = {
-            order: parsedV8.order ?? defaultState.order,
-            hidden: parsedV8.hidden ?? defaultState.hidden,
-            excludedFromExcel: [],
-            excludedFromPpt: [...DEFAULT_PPT_EXCLUDED],
-            excludedFromPdf: [],
-            customCols: parsedV8.customCols ?? [],
-            customValues: parsedV8.customValues ?? {},
-          }
-          localStorage.setItem(COLS_STORAGE_KEY, JSON.stringify(migrated))
-          raw = JSON.stringify(migrated)
-        } catch { /* parse 실패 시 기본값으로 */ }
+      // 커스텀 값(입력 데이터)만 이전 버전에서 가져옴
+      const legacyRaw = localStorage.getItem('mice_editor_grid_cols_v9') ?? localStorage.getItem('mice_editor_grid_cols_v8')
+      let customValues: Record<string, Record<string, string>> = {}
+      if (legacyRaw) {
+        try { customValues = (JSON.parse(legacyRaw) as Partial<SavedColState>).customValues ?? {} } catch {}
       }
+      const fresh: SavedColState = { ...defaultState, customValues }
+      localStorage.setItem(COLS_STORAGE_KEY, JSON.stringify(fresh))
+      return fresh
     }
-    if (!raw) return defaultState
     const parsed = JSON.parse(raw) as Partial<SavedColState>
     return {
       order: parsed.order ?? defaultState.order,
