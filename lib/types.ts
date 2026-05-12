@@ -50,6 +50,8 @@ export interface Project {
   share_token: string | null       // 클라이언트 공유용 토큰 (로그인 없이 미리보기)
   share_enabled: boolean           // 공유 활성화 여부
   stage?: ProjectStage             // 행사 진행 단계 (의뢰서작성→납품완료) — migration_v4 이후 필수
+  program_parts?: string[] | null  // 프로그램 파트 코드 배열 (EZ 폴더링 40.04~40.20) — migration_v6 이후
+  attendees_count?: number | null  // 예상 참가자 수
   created_at: string
   updated_at: string
 }

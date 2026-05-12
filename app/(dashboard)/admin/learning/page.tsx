@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { isAdmin } from '@/lib/auth/role'
 import { LearningManagerClient } from './LearningManagerClient'
-import { SEED_SIGNAGE_TYPES, SEED_SYNONYMS, SEED_EVENT_CATEGORIES } from '@/lib/data/dashboardSeed'
+import { SEED_SIGNAGE_TYPES, SEED_SYNONYMS, SEED_EVENT_HISTORY } from '@/lib/data/dashboardSeed'
 import { VENUE_FACILITY_GUIDE_SEED } from '@/lib/data/venueFacilityGuide'
 import { PROGRAM_PART_BY_CODE } from '@/lib/programParts'
 
@@ -52,6 +52,24 @@ export default async function LearningManagerPage() {
     // 프로그램 파트 집계
     const parts = programPartsByPid.get(it.project_id)
     if (parts) for (const pt of parts) s.programParts.add(pt)
+  }
+
+  // 시드 이벤트 히스토리 합산 — has_excel 이벤트를 venue별 학습 데이터로 반영
+  for (const ev of SEED_EVENT_HISTORY) {
+    if (!ev.has_excel) continue
+    const vk = ev.venue
+    if (!venueStatusMap.has(vk)) venueStatusMap.set(vk, { projects: new Set(), input: 0, mid: 0, confirmed: 0, finalized: 0, missingCats: new Set(), totalItems: 0, programParts: new Set() })
+    const s = venueStatusMap.get(vk)!
+    s.projects.add(ev.project_code ?? ev.project_name)
+    const cnt = ev.analyzed_item_count
+    if (cnt && cnt > 0) {
+      s.finalized += cnt
+      s.totalItems += cnt
+    } else {
+      // 엑셀은 있지만 미분석 — 1건 confirmed 계상
+      s.confirmed += 1
+      s.totalItems += 1
+    }
   }
 
   const venueLearningStatus = Array.from(venueStatusMap.entries())
@@ -105,14 +123,6 @@ export default async function LearningManagerPage() {
       dbAliases={((aliasesRes.data ?? []) as Array<{ id: string; alias_name: string; canonical_name: string; note: string | null }>)}
       facilityGuideStatus={facilityGuideStatus}
       signageTypes={SEED_SIGNAGE_TYPES.map(t => ({ id: t.id, name: t.name, width_mm: t.width_mm, height_mm: t.height_mm, default_material: t.default_material, category: t.category, layout: t.layout }))}
-      eventCategories={SEED_EVENT_CATEGORIES.map(c => ({
-        id: c.id,
-        label: c.label,
-        recommended_signage_keys: c.recommended_signage_keys,
-        recommended_names: c.recommended_signage_keys
-          .map(k => SEED_SIGNAGE_TYPES.find(s => s.id === k)?.name ?? k),
-        note: c.note,
-      }))}
     />
   )
 }

@@ -104,9 +104,9 @@ const DEFAULT_COLS: ColumnDef[] = [
   { id: 'uninstall_time', label: '철거시간',     width: '76px',  field: 'uninstall_time' },
   { id: 'order_contact',  label: '발주 담당자',  width: '96px',  field: 'order_contact' },
   { id: 'order_date',     label: '발주일',       width: '80px',  field: 'order_date' },
-  { id: 'note',           label: '비고',         width: '90px',  field: null },
   // 추가 전용 (기본 숨김 — 컬럼 관리에서 노출 가능)
   { id: 'editor',         label: '담당자',       width: '88px',  field: null },
+  { id: 'note',           label: '비고',         width: '90px',  field: null },
 ]
 
 // 기본 숨김 8개 — 다운로드 시에도 숨김 상태이면 포함 안 됨
@@ -608,22 +608,12 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
             <p className="text-slate-400 text-xs font-semibold">컬럼 관리</p>
             <button onClick={() => setShowColMenu(false)} className="text-slate-400 hover:text-slate-500 p-0.5"><X className="w-3 h-3" /></button>
           </div>
-          {/* 범례 */}
-          <div className="flex items-center gap-3 text-[9px] text-slate-400 pb-1 border-b border-slate-100">
-            <span>내보내기 포함 여부:</span>
-            <span className="flex items-center gap-1"><span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-mono">X</span>엑셀</span>
-            <span className="flex items-center gap-1"><span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-mono">P</span>PPT</span>
-            <span className="flex items-center gap-1"><span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-mono">D</span>PDF</span>
-            <span className="ml-1 text-slate-300">초록=포함 / 빨강=제외</span>
-          </div>
           <div className="space-y-1 max-h-72 overflow-y-auto">
             {colState.order.map(colId => {
               const col = allCols.find(c => c.id === colId)
               if (!col) return null
               const isHidden = colState.hidden.includes(col.id)
               const isXExcl = colState.excludedFromExcel.includes(col.id)
-              const isPExcl = colState.excludedFromPpt.includes(col.id)
-              const isDExcl = colState.excludedFromPdf.includes(col.id)
               return (
                 <div key={col.id} className="flex items-center gap-2 bg-slate-50/40 rounded px-2 py-1.5 group">
                   <GripVertical className="w-3 h-3 text-slate-400 flex-shrink-0" />
@@ -631,27 +621,12 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
                     {col.label}
                     {col.custom && <span className="ml-1 text-emerald-500 text-[9px]">사용자</span>}
                   </span>
-                  {/* 내보내기 토글 3종 */}
                   <button
                     onClick={() => toggleExcelExclude(col.id)}
                     title={isXExcl ? '엑셀 제외됨 — 클릭하면 포함' : '엑셀 포함 — 클릭하면 제외'}
                     className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold transition flex-shrink-0 ${isXExcl ? 'bg-rose-100 text-rose-400 line-through' : 'bg-emerald-100 text-emerald-700'}`}
                   >
                     X
-                  </button>
-                  <button
-                    onClick={() => togglePptExclude(col.id)}
-                    title={isPExcl ? 'PPT 제외됨 — 클릭하면 포함' : 'PPT 포함 — 클릭하면 제외'}
-                    className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold transition flex-shrink-0 ${isPExcl ? 'bg-rose-100 text-rose-400 line-through' : 'bg-emerald-100 text-emerald-700'}`}
-                  >
-                    P
-                  </button>
-                  <button
-                    onClick={() => togglePdfExclude(col.id)}
-                    title={isDExcl ? 'PDF 제외됨 — 클릭하면 포함' : 'PDF 포함 — 클릭하면 제외'}
-                    className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold transition flex-shrink-0 ${isDExcl ? 'bg-rose-100 text-rose-400 line-through' : 'bg-emerald-100 text-emerald-700'}`}
-                  >
-                    D
                   </button>
                   <button onClick={() => toggleHidden(col.id)} className="text-slate-500 hover:text-slate-800 p-0.5 rounded transition flex-shrink-0" title={isHidden ? '편집 화면에 표시' : '편집 화면에서 숨김'}>
                     {isHidden ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
@@ -685,8 +660,6 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
         if (!col) return null
         const isHidden = colState.hidden.includes(cm.colId)
         const isXExcl = colState.excludedFromExcel.includes(cm.colId)
-        const isPExcl = colState.excludedFromPpt.includes(cm.colId)
-        const isDExcl = colState.excludedFromPdf.includes(cm.colId)
         return (
           <div
             className="fixed z-50 bg-white border border-slate-300 rounded shadow-lg py-1 text-xs min-w-[180px]"
@@ -706,21 +679,6 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
             >
               {isXExcl ? '✓ 엑셀에 포함' : '엑셀에서 제외'}
             </button>
-            <button
-              onClick={() => { togglePptExclude(cm.colId); setContextMenu(null) }}
-              className="block w-full text-left px-3 py-1.5 hover:bg-slate-50 text-slate-700"
-            >
-              {isPExcl ? '✓ PPT에 포함' : 'PPT에서 제외'}
-            </button>
-            <button
-              onClick={() => { togglePdfExclude(cm.colId); setContextMenu(null) }}
-              className="block w-full text-left px-3 py-1.5 hover:bg-slate-50 text-slate-700"
-            >
-              {isDExcl ? '✓ PDF에 포함' : 'PDF에서 제외'}
-            </button>
-            <div className="px-3 py-1 text-[10px] text-slate-400 border-t border-slate-200 mt-0.5">
-              데이터는 보존됩니다 (소프트 토글)
-            </div>
           </div>
         )
       })()}
@@ -749,9 +707,6 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
             >
               {col.label}
               {col.custom && <span className="ml-1 text-emerald-500/80 text-[8px]">＋</span>}
-              {xExcl && <span className="ml-1 text-rose-500 text-[9px]" title="엑셀 제외">⛔X</span>}
-              {pExcl && <span className="ml-1 text-amber-500 text-[9px]" title="PPT 제외">⛔P</span>}
-              {dExcl && <span className="ml-1 text-sky-500 text-[9px]" title="PDF 제외">⛔D</span>}
             </div>
           )
         })}

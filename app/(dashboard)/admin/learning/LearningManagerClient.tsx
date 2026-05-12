@@ -103,14 +103,6 @@ interface SignageTypeRow {
   layout: string
 }
 
-interface EventCategoryRow {
-  id: string
-  label: string
-  recommended_signage_keys: string[]
-  recommended_names?: string[]
-  note: string
-}
-
 interface Props {
   userId: string
   initialVenues: Venue[]
@@ -122,7 +114,6 @@ interface Props {
   dbAliases?: DbAlias[]
   facilityGuideStatus?: FacilityGuideRow[]
   signageTypes?: SignageTypeRow[]
-  eventCategories?: EventCategoryRow[]
 }
 
 const VENUE_TYPES = ['컨벤션센터', '호텔', '전시장', '야외', '공공시설', '기타'] as const
@@ -136,7 +127,6 @@ export function LearningManagerClient({
   dbAliases = [],
   facilityGuideStatus = [],
   signageTypes = [],
-  eventCategories = [],
 }: Props) {
   // ── 시설 가이드 AI 추출 상태 ────────────────────────────────
   const [extractingVenueId, setExtractingVenueId] = useState<string | null>(null)
@@ -165,7 +155,7 @@ export function LearningManagerClient({
   const [jobs, setJobs] = useState<LearningJob[]>(initialJobs)
   const [migrationMissing, setMigrationMissing] = useState(initialVenues.length === 0 && initialJobs.length === 0)
   // 좌측 사이드바 페이지 전환 (피그마: 각 박스 = 한 페이지)
-  type SectionKey = 'venue-status' | 'venues' | 'signage-types' | 'synonyms' | 'facility-guides' | 'event-types' | 'correction-requests'
+  type SectionKey = 'venue-status' | 'venues' | 'signage-types' | 'synonyms' | 'facility-guides' | 'correction-requests'
   const [activeSection, setActiveSection] = useState<SectionKey>('venue-status')
 
   // 시설 가이드 섹션 진입 시 예외 빈도 조회
@@ -196,7 +186,6 @@ export function LearningManagerClient({
     { key: 'signage-types',        label: '환경장식물 종류', icon: Inbox },
     { key: 'synonyms',             label: '동의어 매핑',     icon: FileText },
     { key: 'facility-guides',      label: '시설 가이드',     icon: AlertCircle },
-    { key: 'event-types',          label: '행사 유형별 추천', icon: MapPin },
     { key: 'correction-requests',  label: '수정 요청',       icon: Flag },
   ]
 
@@ -761,43 +750,6 @@ export function LearningManagerClient({
               </table>
             </div>
             <p className="text-[10px] text-slate-400 mt-2">표준 시드 데이터 — 편집·추가는 추후 사이클에서 인라인 지원</p>
-          </section>
-        )}
-
-        {activeSection === 'event-types' && (
-          <section className="bg-white border border-slate-200 rounded-xl p-5">
-            <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-emerald-500" />
-              행사 유형별 추천 ({eventCategories.length})
-            </h2>
-            <p className="text-[11px] text-slate-500 mb-3">행사 유형별 권장 환경장식물. 프로젝트 종료 시 사용률 ≥70%면 자동 추천에 편입 (다음 사이클).</p>
-            <div className="overflow-x-auto border border-slate-200 rounded">
-              <table className="w-full text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr className="text-slate-600 text-[11px]">
-                    <th className="px-2 py-1.5 text-left font-semibold">행사 유형</th>
-                    <th className="px-2 py-1.5 text-left font-semibold">권장 환경장식물</th>
-                    <th className="px-2 py-1.5 text-left font-semibold">비고</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {eventCategories.map(c => (
-                    <tr key={c.id} className="hover:bg-slate-50">
-                      <td className="px-2 py-1.5 text-slate-800 font-medium">{c.label}</td>
-                      <td className="px-2 py-1.5">
-                        <div className="flex flex-wrap gap-1">
-                          {(c.recommended_names ?? c.recommended_signage_keys).map(n => (
-                            <span key={n} className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">{n}</span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-2 py-1.5 text-slate-500 text-[11px]">{c.note}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-2">시드 데이터 — 편집은 추후 사이클</p>
           </section>
         )}
 

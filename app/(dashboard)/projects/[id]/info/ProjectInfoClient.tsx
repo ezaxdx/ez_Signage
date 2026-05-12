@@ -8,6 +8,8 @@ import { createClient } from '@/lib/supabase/client'
 import { DEFAULT_SLOTS } from '@/lib/types'
 import { STYLE_PRESETS } from '@/lib/constants'
 import type { Project, ProjectMember, ProjectStatus, ProjectStage, SlotStyle, Profile, OrgLogoAsset } from '@/lib/types'
+import { PROGRAM_PARTS, PROGRAM_PART_GROUPS } from '@/lib/programParts'
+import { VENUE_LIST, groupVenuesByRegion } from '@/lib/venueIntel'
 
 interface Props {
   project: Project
@@ -115,19 +117,48 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
   const [eventVenue, setEventVenue] = useState(project.event_venue ?? '')
   const [status, setStatus] = useState<ProjectStatus>(project.status)
   const [stage, setStage] = useState<ProjectStage>(project.stage ?? '의뢰서작성')
+  const [programParts, setProgramParts] = useState<Set<string>>(
+    new Set(project.program_parts ?? [])
+  )
+  const [attendeesCount, setAttendeesCount] = useState(
+    project.attendees_count ? String(project.attendees_count) : ''
+  )
   const [isSavingInfo, setIsSavingInfo] = useState(false)
   const [infoSaved, setInfoSaved] = useState(false)
 
+  const toggleProgramPart = (code: string) => {
+    setProgramParts(prev => {
+      const next = new Set(prev)
+      if (next.has(code)) next.delete(code)
+      else next.add(code)
+      return next
+    })
+  }
+
   const handleSaveInfo = async () => {
     setIsSavingInfo(true)
-    await supabase.from('projects').update({
+    const updatePayload: Record<string, unknown> = {
       name: name.trim() || project.name,
       client_name: clientName.trim() || null,
       event_date: eventDate || null,
       event_venue: eventVenue.trim() || null,
       status,
       stage,
-    }).eq('id', project.id)
+      program_parts: Array.from(programParts),
+      attendees_count: attendeesCount ? parseInt(attendeesCount) : null,
+    }
+    const { error } = await supabase.from('projects').update(updatePayload).eq('id', project.id)
+    // program_parts 컬럼 미적용(마이그레이션 v6 미실행) 시 기본 필드만 재시도
+    if (error && /program_parts|attendees_count/i.test(error.message)) {
+      await supabase.from('projects').update({
+        name: updatePayload.name,
+        client_name: updatePayload.client_name,
+        event_date: updatePayload.event_date,
+        event_venue: updatePayload.event_venue,
+        status: updatePayload.status,
+        stage: updatePayload.stage,
+      }).eq('id', project.id)
+    }
     setIsSavingInfo(false)
     setInfoSaved(true)
     setTimeout(() => setInfoSaved(false), 2000)
@@ -614,28 +645,90 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
             <h2 className="text-slate-800 font-semibold text-sm">프로젝트 정보</h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={LABEL_CLS}>프로젝트명 *</label>
-              <input value={name} onChange={e => setName(e.target.value)} className={INPUT_CLS} />
+          <div className="space-y-4">
+            {/* 기본 2열 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={LABEL_CLS}>프로젝트명 *</label>
+                <input value={name} onChange={e => setName(e.target.value)} className={INPUT_CLS} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>발주처 / 주최기관</label>
+                <input value={clientName} onChange={e => setClientName(e.target.value)} className={INPUT_CLS} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>행사 장소</label>
+                {(() => {
+                  const venueGroups = groupVenuesByRegion()
+                  return (
+                    <select value={eventVenue} onChange={e => setEventVenue(e.target.value)} className={INPUT_CLS}>
+                      <option value="">행사장 선택…</option>
+                      {eventVenue && !VENUE_LIST.find(v => v.displayName === eventVenue) && (
+                        <option value={eventVenue}>{eventVenue}</option>
+                      )}
+                      {Object.entries(venueGroups).map(([region, items]) => (
+                        <optgroup key={region} label={region}>
+                          {items.map((v: { displayName: string }) => (
+                            <option key={v.displayName} value={v.displayName}>{v.displayName}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  )
+                })()}
+              </div>
+              <div>
+                <label className={LABEL_CLS}>행사일</label>
+                <input type="date" value={eventDate} onChange={e => setEventDate(e.target.value)} className={INPUT_CLS} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>예상 참가자 수</label>
+                <input type="number" min={1} value={attendeesCount} onChange={e => setAttendeesCount(e.target.value)} placeholder="예: 500" className={INPUT_CLS} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>진행 상태</label>
+                <select value={status} onChange={e => setStatus(e.target.value as ProjectStatus)} className={INPUT_CLS}>
+                  {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
             </div>
+
+            {/* 프로그램 파트 (다중선택) */}
             <div>
-              <label className={LABEL_CLS}>발주처 / 주최기관</label>
-              <input value={clientName} onChange={e => setClientName(e.target.value)} className={INPUT_CLS} />
-            </div>
-            <div>
-              <label className={LABEL_CLS}>행사 날짜</label>
-              <input type="date" value={eventDate} onChange={e => setEventDate(e.target.value)} className={INPUT_CLS} />
-            </div>
-            <div>
-              <label className={LABEL_CLS}>행사 장소</label>
-              <input value={eventVenue} onChange={e => setEventVenue(e.target.value)} className={INPUT_CLS} />
-            </div>
-            <div>
-              <label className={LABEL_CLS}>진행 상태</label>
-              <select value={status} onChange={e => setStatus(e.target.value as ProjectStatus)} className={INPUT_CLS}>
-                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+              <label className={LABEL_CLS}>
+                프로그램 파트 <span className="text-slate-300 font-normal normal-case">(다중선택 가능)</span>
+              </label>
+              <div className="space-y-2">
+                {PROGRAM_PART_GROUPS.map(g => {
+                  const items = PROGRAM_PARTS.filter(p => p.group === g.group)
+                  return (
+                    <div key={g.group}>
+                      <p className="text-[10px] text-slate-400 mb-1">{g.label}</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
+                        {items.map(p => {
+                          const on = programParts.has(p.code)
+                          return (
+                            <button
+                              key={p.code}
+                              type="button"
+                              onClick={() => isOwner && toggleProgramPart(p.code)}
+                              disabled={!isOwner}
+                              title={p.hint}
+                              className={`px-2 py-1.5 rounded-lg border text-[11px] flex items-center gap-1.5 transition text-left disabled:cursor-not-allowed ${on ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-50 border-slate-300 text-slate-500 hover:bg-slate-100'}`}
+                            >
+                              {on && <span className="text-[9px]">✓</span>}
+                              <span className="truncate">{p.name}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              {programParts.size > 0 && (
+                <p className="text-[10px] text-indigo-500 mt-1.5">{programParts.size}개 선택됨</p>
+              )}
             </div>
           </div>
 

@@ -5,13 +5,13 @@ import Link from 'next/link'
 import {
   LayoutGrid, ArrowLeft, Tag, Shuffle, MapPin, Users, Calendar,
   ChevronRight, Search, FolderOpen, Layers3, Truck, AlertCircle, BarChart3,
-  Briefcase, Building2, GraduationCap,
+  Briefcase, Building2,
 } from 'lucide-react'
 import {
   SEED_SIGNAGE_TYPES, SEED_SYNONYMS, SEED_EVENT_HISTORY, SEED_DESIGNERS,
-  SEED_EVENT_CATEGORIES, SEED_MATERIAL_DEFAULTS, SEED_LEAD_TIME, SEED_PERFLIST,
-  SEED_SIGNAGE_ANALYSIS, NON_STANDARD_MAPPINGS, SEED_LAYOUT_DNA, mapEventCategory,
-  computeEventStats, computePmGrouping, computeClientStats, computeEventCategoryStats,
+  SEED_MATERIAL_DEFAULTS, SEED_LEAD_TIME, SEED_PERFLIST,
+  SEED_SIGNAGE_ANALYSIS, NON_STANDARD_MAPPINGS, SEED_LAYOUT_DNA,
+  computeEventStats, computePmGrouping, computeClientStats,
 } from '@/lib/data/dashboardSeed'
 import { VENUE_LIST } from '@/lib/venueIntel'
 
@@ -29,7 +29,7 @@ interface Props {
 // 학습 데이터(시드·동의어·행사장·환경장식물 등)는 /admin/learning 으로 이동
 type TabKey = 'kpi' | 'users' | 'projects' | 'ai_usage'
   // 레거시 탭 (학습 관리자로 이동 예정 — 일시 보존)
-  | 'overview' | 'signage' | 'synonyms' | 'venues' | 'clients' | 'eventcat' | 'designers' | 'materials' | 'categories' | 'analysis'
+  | 'overview' | 'signage' | 'synonyms' | 'venues' | 'clients' | 'designers' | 'materials' | 'analysis'
 
 // IA 기준 메인 4탭
 const TABS: { key: TabKey; label: string; icon: React.ElementType; badge?: string }[] = [
@@ -43,13 +43,11 @@ const TABS: { key: TabKey; label: string; icon: React.ElementType; badge?: strin
 const LEGACY_TABS: { key: TabKey; label: string; icon: React.ElementType; badge?: string }[] = [
   { key: 'overview',   label: '개요',           icon: BarChart3 },
   { key: 'clients',    label: '발주처',         icon: Building2 },
-  { key: 'eventcat',   label: '행사분류 통계',  icon: Layers3 },
   { key: 'designers',  label: '디자인 업체',    icon: Users },
   { key: 'materials',  label: '재질',           icon: FolderOpen },
   { key: 'signage',    label: '환경장식물',     icon: Tag },
   { key: 'synonyms',   label: '동의어',         icon: Shuffle },
   { key: 'venues',     label: '행사장',         icon: MapPin },
-  { key: 'categories', label: '분류·권장',     icon: Layers3 },
   { key: 'analysis',   label: '실측 분석',      icon: AlertCircle, badge: '시드' },
 ]
 
@@ -79,10 +77,6 @@ export function DataDashboard(_props: Props) {
               제작물 리스트 가이드
             </Link>
           </div>
-          <Link href="/admin/learning" className="flex items-center gap-1.5 text-emerald-300 hover:text-emerald-200 text-xs transition">
-            <GraduationCap className="w-3.5 h-3.5" />
-            데이터 학습 관리자
-          </Link>
           <Link href="/dashboard" className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-300 text-xs transition">
             <ArrowLeft className="w-3.5 h-3.5" />
             프로젝트로
@@ -94,9 +88,9 @@ export function DataDashboard(_props: Props) {
         <div>
           <h1 className="text-xl font-bold text-slate-900">관리자 페이지</h1>
           <div className="mt-2">
-            <Link href="/admin/learning" className="inline-flex items-center gap-1.5 text-[11px] text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded px-2.5 py-1 transition">
-              <ChevronRight className="w-3 h-3" />
-              데이터 학습 관리자
+            <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-[11px] text-indigo-700 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded px-2.5 py-1 transition">
+              <ArrowLeft className="w-3 h-3" />
+              프로젝트
             </Link>
           </div>
         </div>
@@ -171,7 +165,6 @@ export function DataDashboard(_props: Props) {
             { label: '환경장식물 종류',  value: SEED_SIGNAGE_TYPES.length,    sub: '표준 11종',                  color: 'text-indigo-400' },
             { label: '동의어 매핑',      value: SEED_SYNONYMS.length,         sub: '비표준→표준 변환',           color: 'text-emerald-400' },
             { label: '행사장',           value: VENUE_LIST.length,             sub: '권역·유형 분류',             color: 'text-violet-400' },
-            { label: '행사 분류',        value: SEED_EVENT_CATEGORIES.length,  sub: '권장 환경장식물 매핑',       color: 'text-teal-400' },
           ].map(s => (
             <div key={s.label} className="bg-white border border-slate-200 rounded-xl p-4">
               <p className="text-slate-500 text-xs">{s.label}</p>
@@ -183,7 +176,7 @@ export function DataDashboard(_props: Props) {
         )}
 
         {/* 검색 (대부분의 탭에서 사용) */}
-        {(activeTab === 'synonyms' || activeTab === 'venues' || activeTab === 'clients' || activeTab === 'eventcat') && (
+        {(activeTab === 'synonyms' || activeTab === 'venues' || activeTab === 'clients') && (
           <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
             <input
@@ -210,8 +203,6 @@ export function DataDashboard(_props: Props) {
           {activeTab === 'synonyms' && <SynonymsTab search={search} />}
           {activeTab === 'venues' && <VenuesTab search={search} />}
           {activeTab === 'clients' && <ClientsTab search={search} />}
-          {activeTab === 'eventcat' && <EventCategoryStatsTab search={search} />}
-          {activeTab === 'categories' && <CategoriesTab />}
           {activeTab === 'materials' && <MaterialsTab />}
           {activeTab === 'designers' && <DesignersTab />}
         </div>
@@ -578,42 +569,6 @@ function EventsTab({ search }: { search: string }) {
                     {perf && <span className="text-[9px] px-1 py-0.5 rounded bg-sky-900/40 text-sky-300" title="수행실적 매핑됨">매칭</span>}
                   </div>
                 </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function CategoriesTab() {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="border-b border-slate-200 bg-white/60">
-            {['행사 분류', '권장 환경장식물', '메모'].map(h => (
-              <th key={h} className="text-left text-slate-500 font-medium px-4 py-3">{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {SEED_EVENT_CATEGORIES.map(c => {
-            const recommended = c.recommended_signage_keys
-              .map(k => SEED_SIGNAGE_TYPES.find(s => s.id === k)?.name)
-              .filter(Boolean)
-            return (
-              <tr key={c.id} className="border-b border-slate-200/50 hover:bg-slate-50/30">
-                <td className="px-4 py-2.5 text-slate-800 font-medium">{c.label}</td>
-                <td className="px-4 py-2.5">
-                  <div className="flex flex-wrap gap-1">
-                    {recommended.map(name => (
-                      <span key={name} className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-900/40 text-indigo-300">{name}</span>
-                    ))}
-                  </div>
-                </td>
-                <td className="px-4 py-2.5 text-slate-500">{c.note}</td>
               </tr>
             )
           })}
@@ -1036,19 +991,11 @@ function ClientsTab({ search }: { search: string }) {
                 <td className="px-4 py-2.5 text-slate-500">{c.recent_year}</td>
                 <td className="px-4 py-2.5">
                   <div className="flex flex-wrap gap-1 max-w-[260px]">
-                    {c.event_categories.slice(0, 4).map(cat => {
-                      const mapped = mapEventCategory(cat)
-                      return (
-                        <span
-                          key={cat}
-                          className="text-[10px] px-1.5 py-0.5 rounded bg-fuchsia-900/40 text-fuchsia-300"
-                          title={mapped ? `→ ${mapped.recommendedId} (매칭: ${mapped.matchedTerm})` : '추천 카테고리 매핑 없음'}
-                        >
-                          {highlight(cat, search)}
-                          {mapped && <span className="text-fuchsia-500/70 ml-0.5">→{mapped.recommendedId}</span>}
-                        </span>
-                      )
-                    })}
+                    {c.event_categories.slice(0, 4).map(cat => (
+                      <span key={cat} className="text-[10px] px-1.5 py-0.5 rounded bg-fuchsia-900/40 text-fuchsia-300">
+                        {highlight(cat, search)}
+                      </span>
+                    ))}
                   </div>
                 </td>
                 <td className="px-4 py-2.5 text-slate-500 text-[10px] max-w-[300px] truncate" title={c.projects.join(' · ')}>
@@ -1059,45 +1006,6 @@ function ClientsTab({ search }: { search: string }) {
             ))}
           </tbody>
         </table>
-      </div>
-    </div>
-  )
-}
-
-// ── 행사분류 통계 탭 (명세 6.2.6) ───────────────────────────────
-function EventCategoryStatsTab({ search }: { search: string }) {
-  const all = computeEventCategoryStats()
-  const stats = !search.trim()
-    ? all
-    : all.filter(s =>
-        s.category.includes(search) ||
-        s.clients.some(c => c.includes(search))
-      )
-  const max = Math.max(...stats.map(s => s.project_count), 1)
-  return (
-    <div className="p-5 space-y-4">
-      <div className="bg-teal-950/20 border border-teal-900/30 rounded-lg p-3 flex items-start gap-2 text-xs text-teal-200/80">
-        <Layers3 className="w-3.5 h-3.5 text-teal-400 flex-shrink-0 mt-0.5" />
-        <div>
-          <strong className="text-teal-300">명세 6.2.6</strong> — 행사분류별 데이터.
-          행사 분류 선택 시 해당 환경장식물을 자동 선택 상태로 제공할 예정.
-        </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {stats.map(s => (
-          <div key={s.category} className="bg-slate-50/40 border border-slate-200 rounded-lg p-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-slate-800 text-sm font-medium">{s.category}</span>
-              <span className="text-teal-300 text-xs font-bold">{s.project_count}건</span>
-            </div>
-            <div className="bg-white rounded h-1.5 overflow-hidden mb-2">
-              <div className="h-full bg-teal-500" style={{ width: `${(s.project_count / max) * 100}%` }} />
-            </div>
-            <p className="text-slate-500 text-[10px]">
-              주요 발주처: <span className="text-slate-500">{s.clients.slice(0, 3).join(', ')}{s.clients.length > 3 && ` 외 ${s.clients.length - 3}곳`}</span>
-            </p>
-          </div>
-        ))}
       </div>
     </div>
   )
