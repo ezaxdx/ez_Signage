@@ -4,8 +4,7 @@
 // 사용자가 [행사장 가이드 보기] 버튼 클릭 시 슬라이드로 표시.
 // 6종 정보 표시 + 학습 시점만 표기 (출처 URL 등 부가 정보는 제거 — §11-6-2 v8)
 
-import { useState } from 'react'
-import { X, AlertCircle, Wrench, Anchor, Shield, Ban, Monitor, Calendar } from 'lucide-react'
+import { X, AlertCircle, Wrench, Anchor, Shield, Ban, Monitor, Calendar, Star } from 'lucide-react'
 import { getFacilityGuide } from '@/lib/data/venueFacilityGuide'
 import type { VenueFacilityGuide } from '@/lib/types'
 
@@ -64,6 +63,24 @@ export function FacilityGuidePanel({ venueName, open, onClose, focusSection }: P
           </div>
         ) : (
           <div className="px-5 py-4 space-y-5 text-xs">
+            {/* 0. 행사장 특이사항 — 데이터 있을 때만 표시 */}
+            {guide.special_notes && guide.special_notes.length > 0 && (
+              <section className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                <div className="flex items-center gap-1.5 mb-2 text-amber-700">
+                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+                  <h3 className="font-semibold text-[12px]">행사장 특이사항</h3>
+                </div>
+                <ul className="space-y-1.5">
+                  {guide.special_notes.map((note, i) => (
+                    <li key={i} className="flex gap-2 text-amber-800">
+                      <span className="mt-0.5 text-amber-500 flex-shrink-0">▸</span>
+                      <span className="leading-relaxed">{note}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
             {/* 1. 설치 가능 품목 */}
             <Section icon={<Wrench className="w-3.5 h-3.5" />} title="1. 설치 가능 품목" highlight={focusSection === 'install'}>
               <div className="space-y-1.5">

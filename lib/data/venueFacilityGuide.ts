@@ -54,6 +54,11 @@ export const VENUE_FACILITY_GUIDE_SEED: VenueFacilityGuide[] = [
     },
     last_updated: '2024-10-15',
     notes: '매뉴얼 PDF에서 외부 광고(7600×2000mm) 표준은 추출 성공. 천정·행잉 섹션은 OCR 필요.',
+    special_notes: [
+      '1전시장 주차장 미운영 (공사 중) — 셔틀버스 의존도가 높아 설치·철거 차량 동선 사전 협의 필수',
+      '매뉴얼 천정·행잉 섹션은 한국어 폰트 깨짐으로 미파싱 — 행잉 시 반드시 킨텍스 운영팀에 직접 확인',
+      '외벽 통천 최대 규격: 24m×17m (무대 내부 10m×5m). 이 이상은 별도 협의 필요',
+    ],
   },
 
   // ─── 킨텍스 1전시장 1~4홀 (매뉴얼 표준만 확인) ───
@@ -118,6 +123,10 @@ export const VENUE_FACILITY_GUIDE_SEED: VenueFacilityGuide[] = [
     digital_signage: { allowed_locations: ['D2 LED'], content_review: true },
     last_updated: '2024-10-15',
     notes: '매뉴얼 미파싱 — 직접 확인 권장',
+    special_notes: [
+      '구역(D2·그랜드볼룸·아셈볼룸)별로 설치 가능 품목·규격 제한이 다름 — 사용 구역 확정 후 코엑스 담당자에게 별도 확인 필수',
+      '건물 내 타카·자석·접착제 모두 불가 — 비접착 행거·로프만 허용',
+    ],
   },
 
   // ─── 송도컨벤시아 ───
@@ -140,6 +149,9 @@ export const VENUE_FACILITY_GUIDE_SEED: VenueFacilityGuide[] = [
     ],
     digital_signage: { content_review: true },
     last_updated: '2024-10-15',
+    special_notes: [
+      '안내 룸사인과 행사 룸사인을 분리 운영 — 룸사인 제작 전 센터 측 안내 룸사인 위치 사전 확인 필요',
+    ],
   },
 
   // ─── ICC 제주 ───
@@ -176,6 +188,11 @@ export const VENUE_FACILITY_GUIDE_SEED: VenueFacilityGuide[] = [
     ],
     digital_signage: { allowed_locations: ['DDP 미디어 파사드 (별도 협의)'], content_review: true },
     last_updated: '2024-10-15',
+    special_notes: [
+      '건축 곡면 외벽 특성상 일반 현수막 부착 불가 — 별도 사인 구조물(프레임) 제작 필요',
+      '천장 행잉 거의 불가 — 천정배너 계획 시 바닥 스탠드 방식으로 대체 검토',
+      '타카·자석·접착제·로프 모두 불가 — DDP 행사 진행 전 운영팀 허용 고정 방법 사전 확인 필수',
+    ],
   },
 ]
 

@@ -191,6 +191,8 @@ export interface VenueFacilityGuide {
   }
   last_updated?: string
   notes?: string
+  /** 행사장별 특이사항 — 사원이 현장에서 반드시 알아야 할 장소 고유 주의사항 */
+  special_notes?: string[]
 }
 
 // v8: 시설 가이드 예외 케이스 로그 (§11-6-1 '그래도 진행' 누적)
