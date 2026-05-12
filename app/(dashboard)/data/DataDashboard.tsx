@@ -220,7 +220,6 @@ export function DataDashboard(_props: Props) {
               { num: '6.1.b.iv', title: '재질 기본값',           desc: '환경장식물별 주재질 매핑, 통계 산출 예정',                status: '🟡 기본값'  },
               { num: '6.1.b.v',  title: '납기일 패턴',           desc: 'PM부서·디자인업체·행사장별 평균 — 분석 단계 진입 후',     status: '⏳ 예정'    },
               { num: '6.2.1',   title: 'PM 사업부·부서명',       desc: '수행실적 엑셀에서 추출 — 향후 매핑',                     status: '⏳ 예정'    },
-              { num: '6.2.6',   title: '행사분류',              desc: '8종 분류 정의됨, 분류별 권장 환경장식물 매핑',           status: '✅ 시드'    },
             ].map(item => (
               <div key={item.num} className="flex items-start gap-3 p-3 bg-slate-50/40 rounded-lg">
                 <span className="text-[10px] font-mono text-indigo-400/70 flex-shrink-0 mt-0.5">{item.num}</span>
