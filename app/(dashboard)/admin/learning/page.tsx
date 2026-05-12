@@ -4,6 +4,7 @@ import { isAdmin } from '@/lib/auth/role'
 import { LearningManagerClient } from './LearningManagerClient'
 import { SEED_SIGNAGE_TYPES, SEED_SYNONYMS, SEED_EVENT_CATEGORIES } from '@/lib/data/dashboardSeed'
 import { VENUE_FACILITY_GUIDE_SEED } from '@/lib/data/venueFacilityGuide'
+import { PROGRAM_PART_BY_CODE } from '@/lib/programParts'
 
 export const metadata = { title: '데이터 학습 관리자 | 제작물 리스트 가이드' }
 
@@ -18,24 +19,28 @@ export default async function LearningManagerPage() {
     supabase.from('venues').select('*').order('created_at', { ascending: false }).then(r => r, () => ({ data: [], error: null })),
     supabase.from('venue_requests').select('*').order('requested_at', { ascending: false }).then(r => r, () => ({ data: [], error: null })),
     supabase.from('learning_jobs').select('*').order('triggered_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [], error: null })),
-    supabase.from('projects').select('id, event_venue').limit(500).then(r => r, () => ({ data: [], error: null })),
+    supabase.from('projects').select('id, event_venue, program_parts').limit(500).then(r => r, () => ({ data: [], error: null })),
     supabase.from('design_items').select('project_id, category, confirmed, finalized_at, location, purpose').limit(5000).then(r => r, () => ({ data: [], error: null })),
     supabase.from('signage_aliases').select('id, alias_name, canonical_name, note').order('alias_name').then(r => r, () => ({ data: [], error: null })),
   ])
 
   // venue별 단계 집계 (점진적 정확도 가시화)
-  type Project = { id: string; event_venue: string | null }
+  type Project = { id: string; event_venue: string | null; program_parts: string[] | null }
   type Item = { project_id: string; category: string | null; confirmed: boolean | null; finalized_at: string | null; location: string | null; purpose: string | null }
   const projectsList = (projectsRes.data ?? []) as Project[]
   const itemsList = (itemsRes.data ?? []) as Item[]
   const venueByPid = new Map<string, string>()
-  for (const p of projectsList) if (p.event_venue) venueByPid.set(p.id, p.event_venue)
+  const programPartsByPid = new Map<string, string[]>()
+  for (const p of projectsList) {
+    if (p.event_venue) venueByPid.set(p.id, p.event_venue)
+    if (p.program_parts?.length) programPartsByPid.set(p.id, p.program_parts)
+  }
 
-  const venueStatusMap = new Map<string, { projects: Set<string>; input: number; mid: number; confirmed: number; finalized: number; missingCats: Set<string>; totalItems: number }>()
+  const venueStatusMap = new Map<string, { projects: Set<string>; input: number; mid: number; confirmed: number; finalized: number; missingCats: Set<string>; totalItems: number; programParts: Set<string> }>()
   for (const it of itemsList) {
     const v = venueByPid.get(it.project_id)
     if (!v) continue
-    if (!venueStatusMap.has(v)) venueStatusMap.set(v, { projects: new Set(), input: 0, mid: 0, confirmed: 0, finalized: 0, missingCats: new Set(), totalItems: 0 })
+    if (!venueStatusMap.has(v)) venueStatusMap.set(v, { projects: new Set(), input: 0, mid: 0, confirmed: 0, finalized: 0, missingCats: new Set(), totalItems: 0, programParts: new Set() })
     const s = venueStatusMap.get(v)!
     s.projects.add(it.project_id)
     s.totalItems++
@@ -44,6 +49,9 @@ export default async function LearningManagerPage() {
     else if (it.location || it.purpose) s.mid++
     else s.input++
     if (it.category) s.missingCats.add(it.category)
+    // 프로그램 파트 집계
+    const parts = programPartsByPid.get(it.project_id)
+    if (parts) for (const pt of parts) s.programParts.add(pt)
   }
 
   const venueLearningStatus = Array.from(venueStatusMap.entries())
@@ -51,6 +59,8 @@ export default async function LearningManagerPage() {
       const total = s.totalItems
       const accuracy = total === 0 ? 0
         : Math.round(((s.finalized * 100 + s.confirmed * 70 + s.mid * 30 + s.input * 10) / total))
+      const partNames = Array.from(s.programParts)
+        .map(code => PROGRAM_PART_BY_CODE.get(code)?.name ?? code)
       return {
         venue,
         project_count: s.projects.size,
@@ -58,6 +68,7 @@ export default async function LearningManagerPage() {
         stage: { input: s.input, mid: s.mid, confirmed: s.confirmed, finalized: s.finalized },
         accuracy_estimate: accuracy,
         learned_categories: s.missingCats.size,
+        program_parts: partNames,
       }
     })
     .sort((a, b) => b.item_count - a.item_count)

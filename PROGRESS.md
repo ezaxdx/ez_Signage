@@ -1,5 +1,83 @@
 # 작업 이력
 
+## 2026-05-12 (v9.16) — 제작 완료 시 정보 취합 + 예외 패턴 학습
+
+### 핵심 변경 (사용자 요청: "완료 데이터가 더 중요한 정보")
+
+#### 1. PPT 다운로드도 finalized_at 설정 (ExportService.ts)
+- 기존: `export_excel` 시에만 `finalized_at = now()` 설정
+- 변경: `export_pptx` 시에도 동일하게 적용 — "PPT·엑셀 모두 제작 완료"
+
+#### 2. 알랏 무시+완료 케이스를 누적 학습에 포함 (accumulatedContext.ts)
+- `ExceptionPattern` 타입 신설 (rule/field/standard_value/user_value/count/finalized_count)
+- `AccumulatedContext.exception_patterns[]` 필드 추가
+- `buildAccumulatedContext()`: venue 매칭 프로젝트의 `facility_exception_log` 조회 + rule 기준 집계
+- `formatAccumulatedContext()`: Gemini 프롬프트에 "[시설 가이드 예외 패턴]" 블록 추가
+  → "완료 데이터 > 시설 가이드 규칙"을 AI가 인지하도록 명시 주입
+
+#### 3. 예외 빈도 모니터 API (app/api/admin/exception-monitor/route.ts)
+- venue+rule 기준 exception_log 집계
+- `finalized_count` (실제 완료된 건수) 추가 산출
+- `needs_review: true` if count >= 3 (가이드 데이터 검토 필요 플래그)
+- Admin만 접근 가능
+
+#### 4. 학습 관리자 UI — 예외 패턴 테이블 (LearningManagerClient.tsx)
+- "시설 가이드" 섹션에 "가이드 예외 패턴" 테이블 추가
+- 3회 이상: 황색 하이라이트 + "가이드 검토 필요" 배지
+- 완료 건수(finalized_count) 별도 컬럼 표시
+
+#### 5. Migration (migration_v9_16_exception_learning.sql)
+- Admin SELECT policy 보강 (전체 exception_log 집계 가능하도록)
+- 인덱스 추가: `design_items(project_id, finalized_at)` + `facility_exception_log(venue, rule)`
+
+#### 신뢰도 계층 확정 (decisions.md 추가)
+- 제작 완료(100%) > 컨펌(70%) > 중간(30%) > 시설 가이드 매뉴얼
+
+### 검증
+- TSC 0 에러 / Next 빌드 21/21 라우트 통과
+
+### PM 후속 액션
+1. Supabase Studio에서 `migration_v9_16_exception_learning.sql` 실행
+2. `/admin/learning` → "시설 가이드" 섹션에서 예외 패턴 확인
+
+## 2026-05-12 (v9.15) — 시설 가이드 규격 알림 강화 + UI 수정 요청 기능
+
+### 팝업 투명도 버그 수정
+- `OrderingSchedule.tsx`: 버튼 indigo 테마 / 팝업 `border-2 border-indigo-200 shadow-2xl z-[300]`
+- `FacilityCheckModeToggle.tsx`: 버튼 amber 테마 / 팝업 동일 z-index 보강
+- 툴바 배지: 행사 날짜가 아닌 "가장 임박한 미래 일정" 자동 표시
+
+### venueFacilityGuide.ts 전면 보강 (v9.15 — 자체 완결 가이드)
+- 킨텍스 5홀·1~4홀·2전시장 / 코엑스 / 송도컨벤시아 / ICC 제주 / DDP 6개 행사장 완성
+- "조건부 + 매뉴얼 확인" → 구체적 규격·연락처·D-N 타임라인·주의 특이사항으로 전면 교체
+- 이 파일만 보고 발주서 작성 가능한 수준 목표 달성
+
+### 시설 가이드 기반 알림 로직 강화 (facilityValidator.ts)
+- 기존: 카테고리 허용 여부 + 리깅 불가만 검증
+- 추가 ①: `max_width_mm` / `max_height_mm` 초과 시 `warn` 알림 (예: 코엑스 그랜드볼룸 최대 4,000×1,200mm)
+- 추가 ②: `standard_width_mm` / `standard_height_mm` 대비 ±100mm 초과 시 `info` 알림 (비표준 승인 안내)
+
+### 타입 확장 (types.ts)
+- `VenueFacilityGuide.install_allowed` 항목에 `max_width_mm?`, `max_height_mm?`, `standard_width_mm?`, `standard_height_mm?` 필드 추가
+
+### venueFacilityGuide.ts 구조화 규격 데이터 추가
+- 킨텍스 5홀: 외벽 7600×2000 표준 / 내부 기둥 max 1200×600 / 가로등배너·물통배너 600×1800 표준 / 포디움 600×200
+- 킨텍스 1~4홀: 외벽 max 8000×2000 / 가로등배너 600×1800 / 포디움 600×200
+- 킨텍스 2전시장: 외벽 8000×5000 표준 (1전시장과 높이 2.5배 차이 — 착오 방지)
+- 코엑스: 그랜드볼룸 max 4000×1200 / 아셈볼룸 max 3000×1000 / 포디움 600×200
+- 송도컨벤시아: 로비 max 3000×1200 / 폴대배너 600×1800 / 포디움 600×200
+- ICC 제주: 세로현수막 600×1800 / 포디움 600×200
+- DDP: 포디움 600×200
+
+### FacilityGuidePanel — 데이터 수정 요청 기능
+- 하단 우측 "정보 수정 요청" 버튼 (Flag 아이콘)
+- 클릭 → 인라인 폼 (텍스트 입력 + 제출)
+- localStorage `venue_correction_requests[]`에 저장 (venue/text/submitted_at)
+- 제출 완료 시 3초 확인 메시지
+
+### 검증
+- TSC 0 에러 / Next 빌드 16/16 라우트 통과
+
 ## 2026-05-11 (v9.14) — 행사 유형별 추천 관리 페이지 신설
 
 피그마 IA 5번째 학습 관리자 섹션.

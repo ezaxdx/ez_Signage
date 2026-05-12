@@ -438,9 +438,10 @@ async function logUsage(action: 'export_excel' | 'export_pptx' | 'recommend' | '
       action,
       metadata,
     })
-    // 엑셀 내보내기 시: 해당 프로젝트의 모든 design_items.finalized_at = now()
+    // 엑셀·PPT 내보내기 시: 해당 프로젝트의 모든 design_items.finalized_at = now()
     // (학습 가중치 100% 정답 풀로 자동 편입 — 회의록 ′학습 3종 ②′)
-    if (action === 'export_excel' && typeof metadata.project_id === 'string') {
+    // PPT도 동일: 제작 완료 다운로드 = 발주 완료로 간주 (사용자 요청 2026-05-12)
+    if ((action === 'export_excel' || action === 'export_pptx') && typeof metadata.project_id === 'string') {
       await supabase
         .from('design_items')
         .update({ finalized_at: new Date().toISOString(), confirmed: true })

@@ -30,12 +30,23 @@ export interface AccumulatedItem {
   weight: number      // 누적 가중치 (10·30·70·100)
 }
 
+// 시설 가이드 예외 패턴 — 알람 무시하고 완료한 케이스 (가이드 데이터가 틀렸을 신호)
+export interface ExceptionPattern {
+  rule: string
+  field: string
+  standard_value: string | null
+  user_value: string | null
+  count: number           // 같은 venue+rule 반복 횟수
+  finalized_count: number // 이 중 실제 완료(finalized)된 건수
+}
+
 export interface AccumulatedContext {
   matched_projects: number
   total_items: number
   by_stage: { input: number; mid: number; confirmed: number; finalized: number }
   category_distribution: Array<{ category: string; weighted_count: number }>
   top_items: AccumulatedItem[]   // 상위 8건 — 프롬프트 직접 주입
+  exception_patterns: ExceptionPattern[]  // 시설 가이드 예외 누적 패턴
   note: string
 }
 
@@ -67,6 +78,7 @@ export async function buildAccumulatedContext(
     by_stage: { input: 0, mid: 0, confirmed: 0, finalized: 0 },
     category_distribution: [],
     top_items: [],
+    exception_patterns: [],
     note: '누적 앱 사용 데이터 없음 — seed 데이터만 사용',
   }
 
@@ -89,7 +101,7 @@ export async function buildAccumulatedContext(
       .sort((a, b) => b.score - a.score)
       .slice(0, opts.limit ?? 5)
 
-    if (matched.length === 0) return { ...empty, note: '같은 행사장 누적 데이터 없음 — seed 데이터만 사용' }
+    if (matched.length === 0) return { ...empty, exception_patterns: [], note: '같은 행사장 누적 데이터 없음 — seed 데이터만 사용' }
 
     // 2) 해당 프로젝트들의 design_items 모두 끌어오기
     const pids = matched.map(p => p.id)
@@ -149,12 +161,56 @@ export async function buildAccumulatedContext(
     // 5) 상위 8건 (가중치 높은 순)
     const topItems = weighted.sort((a, b) => b.weight - a.weight).slice(0, 8)
 
+    // 6) 시설 가이드 예외 패턴 수집 (같은 행사장 venue 기준 — 알람 무시 후 완료한 케이스)
+    // 완료된 프로젝트의 exception이 "실제로 그렇게 해도 됐다"는 학습 신호 (결정 2026-05-12)
+    let exceptionPatterns: ExceptionPattern[] = []
+    try {
+      const { data: exLogs } = await supabase
+        .from('facility_exception_log')
+        .select('rule, field, standard_value, user_value, item_id')
+        .in('project_id', pids)
+
+      if (exLogs && exLogs.length > 0) {
+        // item_id → finalized 여부 매핑
+        const finalizedSet = new Set(
+          (items as RawItem[]).filter(it => !!it.finalized_at).map(it => it.project_id)
+        )
+        // rule + field 기준 집계
+        const patternMap = new Map<string, ExceptionPattern>()
+        for (const log of exLogs) {
+          const key = `${log.rule}::${log.field}`
+          const existing = patternMap.get(key)
+          // item이 속한 project가 finalized인지 확인 (finalized_at 설정된 project)
+          const isFinalizedProject = pids.some(pid =>
+            finalizedSet.has(pid)
+          )
+          if (!existing) {
+            patternMap.set(key, {
+              rule: log.rule ?? '',
+              field: log.field ?? '',
+              standard_value: log.standard_value ?? null,
+              user_value: log.user_value ?? null,
+              count: 1,
+              finalized_count: isFinalizedProject ? 1 : 0,
+            })
+          } else {
+            existing.count++
+            if (isFinalizedProject) existing.finalized_count++
+          }
+        }
+        exceptionPatterns = Array.from(patternMap.values()).sort((a, b) => b.count - a.count)
+      }
+    } catch {
+      // facility_exception_log 조회 실패 — 무시
+    }
+
     return {
       matched_projects: matched.length,
       total_items: weighted.length,
       by_stage: stageCount,
       category_distribution: distribution,
       top_items: topItems,
+      exception_patterns: exceptionPatterns,
       note: `누적 ${matched.length}개 프로젝트 · ${weighted.length}건 항목 (입력 ${stageCount.input}/중간 ${stageCount.mid}/컨펌 ${stageCount.confirmed}/완료 ${stageCount.finalized})`,
     }
   } catch {
@@ -174,7 +230,7 @@ export function formatAccumulatedContext(ctx: AccumulatedContext): string {
     return `${i + 1}. [${it.weight}%] ${it.category}${size}${mat}${loc}`
   }).join('\n')
 
-  return [
+  const lines = [
     '',
     '[앱 누적 데이터 — 같은 행사장 사용 기록 (가중치 적용)]',
     `※ ${ctx.note}`,
@@ -183,5 +239,19 @@ export function formatAccumulatedContext(ctx: AccumulatedContext): string {
     tops,
     '→ 가중치 70% 이상(컨펌·완료) 항목은 ′이 행사장에서 실제로 채택된′ 정답에 가까움. 우선 반영.',
     '→ 가중치 10~30%는 패턴 참고용. 동일 항목이 반복되면 채택률이 상승 중이라는 신호.',
-  ].join('\n')
+  ]
+
+  // 시설 가이드 예외 패턴 — 완료된 예외는 "실제로 허용된 것"으로 추천 시 반영
+  // 제작 완료 > 시설 가이드 규칙 (decisions.md 2026-05-12)
+  if (ctx.exception_patterns.length > 0) {
+    lines.push('')
+    lines.push('[시설 가이드 예외 패턴 — 이 행사장에서 가이드 외로 완료된 케이스]')
+    lines.push('※ 아래 항목은 시설 가이드 경고가 있었으나 실제 발주·제작이 완료됨. 추천 시 이 패턴을 가이드보다 우선 반영할 것.')
+    for (const p of ctx.exception_patterns.slice(0, 5)) {
+      const finalNote = p.finalized_count > 0 ? ` (완료 ${p.finalized_count}회)` : ''
+      lines.push(`  - rule:${p.rule} / field:${p.field} | 표준:${p.standard_value ?? '?'} → 실제사용:${p.user_value ?? '?'} | 총 ${p.count}회${finalNote}`)
+    }
+  }
+
+  return lines.join('\n')
 }

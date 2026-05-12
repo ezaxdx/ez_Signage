@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Plus, Settings2, X, GripVertical, Eye, EyeOff, Trash2, AlertTriangle } from 'lucide-react'
+import { Plus, Settings2, X, GripVertical, Eye, EyeOff, Trash2, AlertTriangle, ChevronDown } from 'lucide-react'
 import type { DesignItem, ContentsMap } from '@/lib/types'
 import type { ValidationIssue } from '@/lib/services/facilityValidator'
 
@@ -132,6 +132,7 @@ interface SavedColState {
   hidden: ColumnId[]
   excludedFromExcel: ColumnId[]   // §14-3 include_in_excel=false
   excludedFromPpt: ColumnId[]     // §14-3 include_in_ppt=false
+  excludedFromPdf: ColumnId[]     // §14-3 include_in_pdf=false
   customCols: ColumnDef[]
   customValues: Record<string, Record<string, string>>
 }
@@ -143,6 +144,7 @@ function loadColState(): SavedColState {
     hidden: [...DEFAULT_HIDDEN_COLS],
     excludedFromExcel: [],
     excludedFromPpt: [...DEFAULT_PPT_EXCLUDED],
+    excludedFromPdf: [],
     customCols: [],
     customValues: {},
   }
@@ -160,6 +162,7 @@ function loadColState(): SavedColState {
             hidden: parsedV8.hidden ?? defaultState.hidden,
             excludedFromExcel: [],
             excludedFromPpt: [...DEFAULT_PPT_EXCLUDED],
+            excludedFromPdf: [],
             customCols: parsedV8.customCols ?? [],
             customValues: parsedV8.customValues ?? {},
           }
@@ -175,6 +178,7 @@ function loadColState(): SavedColState {
       hidden: parsed.hidden ?? defaultState.hidden,
       excludedFromExcel: parsed.excludedFromExcel ?? defaultState.excludedFromExcel,
       excludedFromPpt: parsed.excludedFromPpt ?? defaultState.excludedFromPpt,
+      excludedFromPdf: parsed.excludedFromPdf ?? defaultState.excludedFromPdf,
       customCols: parsed.customCols ?? [],
       customValues: parsed.customValues ?? {},
     }
@@ -196,7 +200,7 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
   const [editValue, setEditValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const [colState, setColState] = useState<SavedColState>(() => ({ order: DEFAULT_COLS.map(c => c.id), hidden: [], excludedFromExcel: [], excludedFromPpt: [], customCols: [], customValues: {} }))
+  const [colState, setColState] = useState<SavedColState>(() => ({ order: DEFAULT_COLS.map(c => c.id), hidden: [], excludedFromExcel: [], excludedFromPpt: [], excludedFromPdf: [], customCols: [], customValues: {} }))
   const [contextMenu, setContextMenu] = useState<{ colId: ColumnId; x: number; y: number } | null>(null)
   const [showColMenu, setShowColMenu] = useState(false)
   const [showAddMenu, setShowAddMenu] = useState(false)
@@ -271,6 +275,13 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
     setColState(next); persistColState(next)
   }
 
+  const togglePdfExclude = (colId: ColumnId) => {
+    const next = colState.excludedFromPdf.includes(colId)
+      ? { ...colState, excludedFromPdf: colState.excludedFromPdf.filter(id => id !== colId) }
+      : { ...colState, excludedFromPdf: [...colState.excludedFromPdf, colId] }
+    setColState(next); persistColState(next)
+  }
+
   useEffect(() => {
     if (!contextMenu) return
     const onClick = () => setContextMenu(null)
@@ -278,8 +289,15 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
     return () => window.removeEventListener('click', onClick)
   }, [contextMenu])
 
+  useEffect(() => {
+    if (!showAddMenu) return
+    const onClick = () => setShowAddMenu(false)
+    window.addEventListener('click', onClick)
+    return () => window.removeEventListener('click', onClick)
+  }, [showAddMenu])
+
   const removeColumn = (colId: ColumnId) => {
-    // 표준 컬럼 / 커스텀 컬럼 모두 order에서 제거 (= 진짜 삭제). 4개 배열 모두 정리.
+    // 표준 컬럼 / 커스텀 컬럼 모두 order에서 제거 (= 진짜 삭제). 5개 배열 모두 정리.
     const next: SavedColState = {
       ...colState,
       customCols: colState.customCols.filter(c => c.id !== colId),
@@ -287,6 +305,7 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
       hidden: colState.hidden.filter(id => id !== colId),
       excludedFromExcel: colState.excludedFromExcel.filter(id => id !== colId),
       excludedFromPpt: colState.excludedFromPpt.filter(id => id !== colId),
+      excludedFromPdf: colState.excludedFromPdf.filter(id => id !== colId),
     }
     setColState(next); persistColState(next)
   }
@@ -307,6 +326,7 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
       hidden: [...DEFAULT_HIDDEN_COLS],
       excludedFromExcel: [],
       excludedFromPpt: [...DEFAULT_PPT_EXCLUDED],
+      excludedFromPdf: [],
       customCols: [],
       customValues: colState.customValues,
     }
@@ -547,13 +567,44 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
           <Settings2 className="w-3 h-3" />컬럼 관리 <span className="text-slate-400 ml-1">({visibleCols.length}/{allCols.length})</span>
         </button>
         {onAddItem && (
-          <button
-            onClick={() => onAddItem()}
-            className="flex items-center gap-1 text-[10px] px-2 py-1 rounded text-emerald-700 hover:bg-emerald-50 transition"
-            title="빈 행 1개 추가"
-          >
-            <Plus className="w-3 h-3" />행 추가
-          </button>
+          <div className="relative">
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowAddMenu(v => !v) }}
+              className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded transition ${showAddMenu ? 'bg-emerald-100 text-emerald-800' : 'text-emerald-700 hover:bg-emerald-50'}`}
+              title="환경장식물 선택 후 행 추가"
+            >
+              <Plus className="w-3 h-3" />행 추가<ChevronDown className="w-3 h-3" />
+            </button>
+            {showAddMenu && (
+              <div
+                className="absolute top-full left-0 mt-0.5 z-40 bg-white border border-slate-200 rounded-lg shadow-xl w-52 py-1 overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <p className="px-3 pt-1.5 pb-1 text-[10px] text-slate-400 font-semibold tracking-wide">환경장식물 선택</p>
+                {SIGNAGE_PRESETS.map(preset => (
+                  <button
+                    key={preset.id}
+                    onClick={() => {
+                      onAddItem({ category: preset.name, width_mm: preset.width, height_mm: preset.height, material: preset.material })
+                      setShowAddMenu(false)
+                    }}
+                    className="w-full text-left px-3 py-1.5 hover:bg-emerald-50 flex items-center justify-between gap-2 group"
+                  >
+                    <span className="text-[11px] font-medium text-slate-700 group-hover:text-emerald-700">{preset.name}</span>
+                    <span className="text-[9px] text-slate-400 font-mono shrink-0">{preset.width}×{preset.height}</span>
+                  </button>
+                ))}
+                <div className="border-t border-slate-100 mt-1 pt-1">
+                  <button
+                    onClick={() => { onAddItem(); setShowAddMenu(false) }}
+                    className="w-full text-left px-3 py-1.5 hover:bg-slate-50 text-[11px] text-slate-400 hover:text-slate-600"
+                  >
+                    직접 입력 (빈 행)
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         <span className="text-slate-400 text-[9px] ml-auto">
@@ -563,28 +614,61 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
 
       {/* 컬럼 관리 패널 */}
       {showColMenu && (
-        <div className="absolute top-9 left-2 z-30 bg-white border border-slate-300 rounded-lg shadow-2xl p-3 w-[460px] space-y-2">
+        <div className="absolute top-9 left-2 z-30 bg-white border border-slate-300 rounded-lg shadow-2xl p-3 w-[520px] space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-slate-400 text-xs font-semibold">컬럼 관리</p>
             <button onClick={() => setShowColMenu(false)} className="text-slate-400 hover:text-slate-500 p-0.5"><X className="w-3 h-3" /></button>
+          </div>
+          {/* 범례 */}
+          <div className="flex items-center gap-3 text-[9px] text-slate-400 pb-1 border-b border-slate-100">
+            <span>내보내기 포함 여부:</span>
+            <span className="flex items-center gap-1"><span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-mono">X</span>엑셀</span>
+            <span className="flex items-center gap-1"><span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-mono">P</span>PPT</span>
+            <span className="flex items-center gap-1"><span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-mono">D</span>PDF</span>
+            <span className="ml-1 text-slate-300">초록=포함 / 빨강=제외</span>
           </div>
           <div className="space-y-1 max-h-72 overflow-y-auto">
             {colState.order.map(colId => {
               const col = allCols.find(c => c.id === colId)
               if (!col) return null
               const isHidden = colState.hidden.includes(col.id)
+              const isXExcl = colState.excludedFromExcel.includes(col.id)
+              const isPExcl = colState.excludedFromPpt.includes(col.id)
+              const isDExcl = colState.excludedFromPdf.includes(col.id)
               return (
                 <div key={col.id} className="flex items-center gap-2 bg-slate-50/40 rounded px-2 py-1.5 group">
-                  <GripVertical className="w-3 h-3 text-slate-400" />
-                  <span className={`text-xs flex-1 ${isHidden ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+                  <GripVertical className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                  <span className={`text-xs flex-1 min-w-0 truncate ${isHidden ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
                     {col.label}
                     {col.custom && <span className="ml-1 text-emerald-500 text-[9px]">사용자</span>}
                   </span>
-                  <button onClick={() => toggleHidden(col.id)} className="text-slate-500 hover:text-slate-800 p-0.5 rounded transition" title={isHidden ? '표시' : '숨김'}>
+                  {/* 내보내기 토글 3종 */}
+                  <button
+                    onClick={() => toggleExcelExclude(col.id)}
+                    title={isXExcl ? '엑셀 제외됨 — 클릭하면 포함' : '엑셀 포함 — 클릭하면 제외'}
+                    className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold transition flex-shrink-0 ${isXExcl ? 'bg-rose-100 text-rose-400 line-through' : 'bg-emerald-100 text-emerald-700'}`}
+                  >
+                    X
+                  </button>
+                  <button
+                    onClick={() => togglePptExclude(col.id)}
+                    title={isPExcl ? 'PPT 제외됨 — 클릭하면 포함' : 'PPT 포함 — 클릭하면 제외'}
+                    className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold transition flex-shrink-0 ${isPExcl ? 'bg-rose-100 text-rose-400 line-through' : 'bg-emerald-100 text-emerald-700'}`}
+                  >
+                    P
+                  </button>
+                  <button
+                    onClick={() => togglePdfExclude(col.id)}
+                    title={isDExcl ? 'PDF 제외됨 — 클릭하면 포함' : 'PDF 포함 — 클릭하면 제외'}
+                    className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold transition flex-shrink-0 ${isDExcl ? 'bg-rose-100 text-rose-400 line-through' : 'bg-emerald-100 text-emerald-700'}`}
+                  >
+                    D
+                  </button>
+                  <button onClick={() => toggleHidden(col.id)} className="text-slate-500 hover:text-slate-800 p-0.5 rounded transition flex-shrink-0" title={isHidden ? '편집 화면에 표시' : '편집 화면에서 숨김'}>
                     {isHidden ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                   </button>
                   <button onClick={() => { if (window.confirm(`'${col.label}' 컬럼을 삭제할까요?`)) removeColumn(col.id) }}
-                          className="text-slate-400 hover:text-red-400 p-0.5 rounded transition" title="컬럼 삭제">
+                          className="text-slate-400 hover:text-red-400 p-0.5 rounded transition flex-shrink-0" title="컬럼 삭제">
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
@@ -613,6 +697,7 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
         const isHidden = colState.hidden.includes(cm.colId)
         const isXExcl = colState.excludedFromExcel.includes(cm.colId)
         const isPExcl = colState.excludedFromPpt.includes(cm.colId)
+        const isDExcl = colState.excludedFromPdf.includes(cm.colId)
         return (
           <div
             className="fixed z-50 bg-white border border-slate-300 rounded shadow-lg py-1 text-xs min-w-[180px]"
@@ -638,6 +723,12 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
             >
               {isPExcl ? '✓ PPT에 포함' : 'PPT에서 제외'}
             </button>
+            <button
+              onClick={() => { togglePdfExclude(cm.colId); setContextMenu(null) }}
+              className="block w-full text-left px-3 py-1.5 hover:bg-slate-50 text-slate-700"
+            >
+              {isDExcl ? '✓ PDF에 포함' : 'PDF에서 제외'}
+            </button>
             <div className="px-3 py-1 text-[10px] text-slate-400 border-t border-slate-200 mt-0.5">
               데이터는 보존됩니다 (소프트 토글)
             </div>
@@ -651,6 +742,7 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
         {visibleCols.map(col => {
           const xExcl = colState.excludedFromExcel.includes(col.id)
           const pExcl = colState.excludedFromPpt.includes(col.id)
+          const dExcl = colState.excludedFromPdf.includes(col.id)
           return (
             <div
               key={col.id}
@@ -670,6 +762,7 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
               {col.custom && <span className="ml-1 text-emerald-500/80 text-[8px]">＋</span>}
               {xExcl && <span className="ml-1 text-rose-500 text-[9px]" title="엑셀 제외">⛔X</span>}
               {pExcl && <span className="ml-1 text-amber-500 text-[9px]" title="PPT 제외">⛔P</span>}
+              {dExcl && <span className="ml-1 text-sky-500 text-[9px]" title="PDF 제외">⛔D</span>}
             </div>
           )
         })}
@@ -753,8 +846,8 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
           <div className="h-32 flex items-center justify-center text-slate-400 text-sm gap-2">
             제작물이 없습니다.
             {onAddItem && (
-              <button onClick={() => onAddItem()} className="text-emerald-400 hover:text-emerald-300 underline text-xs">
-                첫 행 추가
+              <button onClick={(e) => { e.stopPropagation(); setShowAddMenu(true) }} className="text-emerald-600 hover:text-emerald-700 underline text-xs">
+                행 추가
               </button>
             )}
           </div>

@@ -100,6 +100,10 @@ export function OrderingSchedule({ eventDate, projectId, className = '' }: Props
 
   const eventItem = schedule.find(s => s.key === 'event') ?? schedule[schedule.length - 1]
 
+  // 툴바 배지: 오늘 기준으로 가장 임박한 미래 일정 (없으면 행사 당일)
+  const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0)
+  const nextItem = schedule.find(s => { const d = new Date(s.date); d.setHours(0,0,0,0); return d >= todayMidnight }) ?? eventItem
+
   const update = (next: Milestone[]) => {
     setMilestones(next)
     saveMilestones(next, projectId)
@@ -147,20 +151,23 @@ export function OrderingSchedule({ eventDate, projectId, className = '' }: Props
     <div className={`relative ${className}`}>
       <button
         onClick={() => setExpanded(v => !v)}
-        className="flex items-center gap-1.5 text-xs bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-1 rounded-md transition hover:bg-slate-100"
+        className="flex items-center gap-1.5 text-xs bg-indigo-50 text-indigo-700 border border-indigo-300 px-2.5 py-1 rounded-md transition hover:bg-indigo-100"
       >
         <Calendar className="w-3.5 h-3.5" />
-        <span className="font-medium">발주·설치 일정</span>
-        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-600 text-white">
-          {fmtDate(eventItem.date)}
+        <span className="font-medium">일정 편집</span>
+        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-600 text-white" title={nextItem.label}>
+          {nextItem.label} {fmtDate(nextItem.date)}
         </span>
         {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
       </button>
 
       {expanded && (
-        <div className="absolute top-full right-0 mt-1 w-96 bg-white border border-slate-200 rounded-lg shadow-lg z-50 overflow-hidden">
-          <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-            <p className="text-xs font-semibold text-slate-700">발주·설치 일정</p>
+        <div className="absolute top-full right-0 mt-1 w-96 bg-white border-2 border-indigo-200 rounded-lg shadow-2xl z-[300] overflow-hidden">
+          <div className="px-3 py-2 border-b border-indigo-200 bg-indigo-50 flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+              <p className="text-xs font-semibold text-indigo-800">일정 편집</p>
+            </div>
             <div className="flex items-center gap-2">
               {isCustomized && (
                 <button onClick={reset} className="text-[10px] text-slate-500 hover:text-slate-700">기본값으로</button>
@@ -186,7 +193,7 @@ export function OrderingSchedule({ eventDate, projectId, className = '' }: Props
 
               return (
                 <div key={s.key} className={`px-3 py-2 flex items-center gap-2 ${isDDay ? 'bg-indigo-50' : 'bg-white'} group`}>
-                  <Calendar className={`w-3.5 h-3.5 flex-shrink-0 ${isDDay ? 'text-indigo-700' : 'text-slate-400'}`} />
+                  <Calendar className={`w-3.5 h-3.5 flex-shrink-0 ${isDDay ? 'text-indigo-700' : 'text-slate-500'}`} />
 
                   {/* 라벨 (편집 가능) */}
                   {isEditingLabel && editable ? (

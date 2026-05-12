@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   LayoutGrid, ArrowLeft, GraduationCap, MapPin, Plus, Loader2,
   CheckCircle2, XCircle, AlertCircle, Clock, FileText, Inbox, Building2,
+  Sparkles, Flag,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { explainStorageError } from '@/lib/services/storagePaths'
@@ -54,6 +55,7 @@ interface VenueLearningStatus {
   stage: { input: number; mid: number; confirmed: number; finalized: number }
   accuracy_estimate: number   // 0~100
   learned_categories: number
+  program_parts?: string[]
 }
 
 interface SynonymRow {
@@ -69,6 +71,19 @@ interface FacilityGuideRow {
   warnings_count: number
   completeness: number   // 0~6
   last_updated?: string
+  /** DB에서 매칭된 venue id (AI 추출 버튼에서 사용) */
+  venue_id?: string
+  /** specs_text 존재 여부 (AI 추출 버튼 활성화 조건) */
+  has_specs_text?: boolean
+}
+
+interface CorrectionRequest {
+  id: string
+  venue_key: string
+  venue_name: string | null
+  correction_text: string
+  status: string
+  created_at: string
 }
 
 interface DbAlias {
@@ -123,6 +138,23 @@ export function LearningManagerClient({
   signageTypes = [],
   eventCategories = [],
 }: Props) {
+  // ── 시설 가이드 AI 추출 상태 ────────────────────────────────
+  const [extractingVenueId, setExtractingVenueId] = useState<string | null>(null)
+  const [extractSuccessId, setExtractSuccessId] = useState<string | null>(null)
+
+  // ── 예외 빈도 모니터 ────────────────────────────────────────
+  interface ExceptionAlert {
+    venue: string; rule: string; field: string
+    standard_value: string | null; user_value: string | null
+    count: number; finalized_count: number; needs_review: boolean
+  }
+  const [exceptionAlerts, setExceptionAlerts] = useState<ExceptionAlert[]>([])
+  const [exceptionLoading, setExceptionLoading] = useState(false)
+
+  // ── 수정 요청 목록 ────────────────────────────────────────────
+  const [correctionRequests, setCorrectionRequests] = useState<CorrectionRequest[]>([])
+  const [correctionLoading, setCorrectionLoading] = useState(false)
+
   const [synonymFilter, setSynonymFilter] = useState('')
   const [aliasList, setAliasList] = useState<DbAlias[]>(dbAliases)
   const [newAlias, setNewAlias] = useState('')
@@ -133,15 +165,39 @@ export function LearningManagerClient({
   const [jobs, setJobs] = useState<LearningJob[]>(initialJobs)
   const [migrationMissing, setMigrationMissing] = useState(initialVenues.length === 0 && initialJobs.length === 0)
   // 좌측 사이드바 페이지 전환 (피그마: 각 박스 = 한 페이지)
-  type SectionKey = 'venue-status' | 'venues' | 'signage-types' | 'synonyms' | 'facility-guides' | 'event-types'
+  type SectionKey = 'venue-status' | 'venues' | 'signage-types' | 'synonyms' | 'facility-guides' | 'event-types' | 'correction-requests'
   const [activeSection, setActiveSection] = useState<SectionKey>('venue-status')
+
+  // 시설 가이드 섹션 진입 시 예외 빈도 조회
+  useEffect(() => {
+    if (activeSection !== 'facility-guides') return
+    setExceptionLoading(true)
+    fetch('/api/admin/exception-monitor')
+      .then(r => r.json())
+      .then(d => setExceptionAlerts(d.alerts ?? []))
+      .catch(() => setExceptionAlerts([]))
+      .finally(() => setExceptionLoading(false))
+  }, [activeSection])
+
+  // 수정 요청 섹션 진입 시 API 조회
+  useEffect(() => {
+    if (activeSection !== 'correction-requests') return
+    setCorrectionLoading(true)
+    fetch('/api/correction-requests')
+      .then(r => r.json())
+      .then((data: CorrectionRequest[]) => { setCorrectionRequests(Array.isArray(data) ? data : []) })
+      .catch(() => setCorrectionRequests([]))
+      .finally(() => setCorrectionLoading(false))
+  }, [activeSection])
+
   const SECTIONS: { key: SectionKey; label: string; icon: typeof GraduationCap }[] = [
-    { key: 'venue-status',    label: '행사장 학습 현황', icon: GraduationCap },
-    { key: 'venues',          label: '행사장 관리',     icon: Building2 },
-    { key: 'signage-types',   label: '환경장식물 종류', icon: Inbox },
-    { key: 'synonyms',        label: '동의어 매핑',     icon: FileText },
-    { key: 'facility-guides', label: '시설 가이드',     icon: AlertCircle },
-    { key: 'event-types',     label: '행사 유형별 추천', icon: MapPin },
+    { key: 'venue-status',         label: '행사장 학습 현황', icon: GraduationCap },
+    { key: 'venues',               label: '행사장 관리',     icon: Building2 },
+    { key: 'signage-types',        label: '환경장식물 종류', icon: Inbox },
+    { key: 'synonyms',             label: '동의어 매핑',     icon: FileText },
+    { key: 'facility-guides',      label: '시설 가이드',     icon: AlertCircle },
+    { key: 'event-types',          label: '행사 유형별 추천', icon: MapPin },
+    { key: 'correction-requests',  label: '수정 요청',       icon: Flag },
   ]
 
   // ── 행사장 추가 폼 ───────────────────────────────────────
@@ -404,13 +460,14 @@ export function LearningManagerClient({
                     <th className="px-2 py-2 text-right font-semibold" title="사용자 컨펌 (가중치 70%)">컨펌</th>
                     <th className="px-2 py-2 text-right font-semibold" title="발주·다운로드 완료 (가중치 100% — 정답풀)">완료</th>
                     <th className="px-2 py-2 text-right font-semibold">정확도 추정</th>
-                    <th className="px-2 py-2 text-right font-semibold" title="이 행사장에서 한 번이라도 등장한 카테고리 수">학습 카테고리</th>
+                    <th className="px-2 py-2 text-left font-semibold" title="이 행사장 프로젝트에 사용된 프로그램 파트">프로그램 파트</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {venueLearningStatus.map(v => {
                     const acc = v.accuracy_estimate
                     const color = acc >= 70 ? 'text-emerald-600' : acc >= 40 ? 'text-amber-600' : 'text-rose-600'
+                    const parts = v.program_parts ?? []
                     return (
                       <tr key={v.venue} className="hover:bg-slate-50">
                         <td className="px-2 py-1.5 text-slate-800 font-medium truncate max-w-[160px]" title={v.venue}>{v.venue}</td>
@@ -421,7 +478,17 @@ export function LearningManagerClient({
                         <td className="px-2 py-1.5 text-right text-indigo-600 font-mono">{v.stage.confirmed}</td>
                         <td className="px-2 py-1.5 text-right text-emerald-600 font-mono font-semibold">{v.stage.finalized}</td>
                         <td className={`px-2 py-1.5 text-right font-mono font-semibold ${color}`}>{acc}%</td>
-                        <td className="px-2 py-1.5 text-right text-slate-500 font-mono">{v.learned_categories}</td>
+                        <td className="px-2 py-1.5 text-left">
+                          {parts.length === 0 ? (
+                            <span className="text-slate-300 text-[10px]">미입력</span>
+                          ) : (
+                            <div className="flex flex-wrap gap-0.5">
+                              {parts.map(pt => (
+                                <span key={pt} className="inline-block px-1 py-0.5 bg-indigo-50 text-indigo-700 text-[9px] rounded">{pt}</span>
+                              ))}
+                            </div>
+                          )}
+                        </td>
                       </tr>
                     )
                   })}
@@ -839,7 +906,7 @@ export function LearningManagerClient({
             <AlertCircle className="w-4 h-4 text-rose-500" />
             시설 가이드 학습 현황
           </h2>
-          <p className="text-[11px] text-slate-500 mb-3">행사장별 시설 가이드 6종 정보 등록 상태.</p>
+          <p className="text-[11px] text-slate-500 mb-3">행사장별 시설 가이드 6종 정보 등록 상태. AI 자동 추출 버튼은 specs_text(Vision 분석 완료)가 있는 경우만 활성화됩니다.</p>
           {facilityGuideStatus.length === 0 ? (
             <p className="text-slate-400 text-xs italic py-3 text-center">시설 가이드 시드 데이터가 비어있습니다.</p>
           ) : (
@@ -848,16 +915,19 @@ export function LearningManagerClient({
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr className="text-slate-600 text-[11px]">
                     <th className="px-2 py-1.5 text-left font-semibold">행사장</th>
-                    <th className="px-2 py-1.5 text-right font-semibold">설치 가능 카테고리</th>
+                    <th className="px-2 py-1.5 text-right font-semibold">카테고리</th>
                     <th className="px-2 py-1.5 text-right font-semibold">주의사항</th>
-                    <th className="px-2 py-1.5 text-right font-semibold">정보 완성도</th>
+                    <th className="px-2 py-1.5 text-right font-semibold">완성도</th>
                     <th className="px-2 py-1.5 text-left font-semibold">학습 시점</th>
+                    <th className="px-2 py-1.5 text-right font-semibold">AI 추출</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {facilityGuideStatus.map(f => {
                     const ratio = (f.completeness / 6)
                     const color = ratio >= 0.83 ? 'text-emerald-600' : ratio >= 0.5 ? 'text-amber-600' : 'text-rose-600'
+                    const isExtracting = extractingVenueId === f.venue_id
+                    const isSuccess = extractSuccessId === f.venue_id
                     return (
                       <tr key={f.venue_key} className="hover:bg-slate-50">
                         <td className="px-2 py-1.5 text-slate-800 font-medium">{f.venue_name}</td>
@@ -865,6 +935,48 @@ export function LearningManagerClient({
                         <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{f.warnings_count}</td>
                         <td className={`px-2 py-1.5 text-right font-mono font-semibold ${color}`}>{f.completeness}/6</td>
                         <td className="px-2 py-1.5 text-slate-500 text-[11px]">{f.last_updated ?? '미상'}</td>
+                        <td className="px-2 py-1.5 text-right">
+                          {f.venue_id && f.has_specs_text ? (
+                            isSuccess ? (
+                              <span className="flex items-center gap-1 text-emerald-600 text-[10px] justify-end">
+                                <CheckCircle2 className="w-3 h-3" /> 완료
+                              </span>
+                            ) : (
+                              <button
+                                disabled={isExtracting}
+                                onClick={async () => {
+                                  setExtractingVenueId(f.venue_id!)
+                                  try {
+                                    const res = await fetch('/api/admin/facility-guide', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ venueId: f.venue_id, action: 'extract' }),
+                                    })
+                                    const data = await res.json()
+                                    if (res.ok) {
+                                      setExtractSuccessId(f.venue_id!)
+                                      setTimeout(() => setExtractSuccessId(null), 5000)
+                                    } else {
+                                      alert('추출 실패: ' + (data.error ?? 'unknown'))
+                                    }
+                                  } catch (e) {
+                                    alert('오류: ' + (e instanceof Error ? e.message : 'unknown'))
+                                  } finally {
+                                    setExtractingVenueId(null)
+                                  }
+                                }}
+                                className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-200 disabled:text-slate-400 text-white transition"
+                              >
+                                {isExtracting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                AI 추출
+                              </button>
+                            )
+                          ) : (
+                            <span className="text-slate-300 text-[10px]">
+                              {f.venue_id ? '분석 필요' : '—'}
+                            </span>
+                          )}
+                        </td>
                       </tr>
                     )
                   })}
@@ -874,7 +986,150 @@ export function LearningManagerClient({
           )}
         </section>
 
+        {/* ── 예외 빈도 모니터 — 제작 완료 데이터 > 가이드 규칙 (v9.16) ── */}
+        <section className="bg-white border border-slate-200 rounded-xl p-5">
+          <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-500" />
+            가이드 예외 패턴 — 제작 완료 기반 검토 신호
+          </h2>
+          <p className="text-[11px] text-slate-500 mb-3">
+            시설 가이드 경고를 무시하고 실제 발주·완료된 케이스 집계입니다.
+            <strong className="text-amber-700"> 3회 이상</strong>이면 가이드 데이터 자체가 오래됐거나 틀렸을 가능성이 높습니다.
+            완료 데이터가 가이드보다 신뢰도가 높습니다.
+          </p>
+          {exceptionLoading ? (
+            <div className="flex items-center gap-2 text-slate-400 text-xs py-4 justify-center">
+              <Loader2 className="w-4 h-4 animate-spin" /> 집계 중…
+            </div>
+          ) : exceptionAlerts.length === 0 ? (
+            <p className="text-slate-400 text-xs italic py-3 text-center">예외 패턴이 없습니다. (가이드 데이터가 정상 수준)</p>
+          ) : (
+            <div className="overflow-x-auto border border-slate-200 rounded">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr className="text-slate-600 text-[11px]">
+                    <th className="px-2 py-1.5 text-left font-semibold">행사장</th>
+                    <th className="px-2 py-1.5 text-left font-semibold">규칙</th>
+                    <th className="px-2 py-1.5 text-left font-semibold">필드</th>
+                    <th className="px-2 py-1.5 text-left font-semibold">가이드 표준</th>
+                    <th className="px-2 py-1.5 text-left font-semibold">실제 사용값</th>
+                    <th className="px-2 py-1.5 text-right font-semibold">예외 횟수</th>
+                    <th className="px-2 py-1.5 text-right font-semibold">완료 건</th>
+                    <th className="px-2 py-1.5 text-center font-semibold">상태</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {exceptionAlerts.map((a, i) => (
+                    <tr key={i} className={a.needs_review ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-slate-50'}>
+                      <td className="px-2 py-1.5 text-slate-800 font-medium">{a.venue}</td>
+                      <td className="px-2 py-1.5 text-slate-600 font-mono text-[10px]">{a.rule}</td>
+                      <td className="px-2 py-1.5 text-slate-500 text-[10px]">{a.field}</td>
+                      <td className="px-2 py-1.5 text-slate-500 text-[10px]">{a.standard_value ?? '—'}</td>
+                      <td className="px-2 py-1.5 text-indigo-700 font-medium text-[10px]">{a.user_value ?? '—'}</td>
+                      <td className="px-2 py-1.5 text-right font-mono font-semibold text-slate-700">{a.count}</td>
+                      <td className="px-2 py-1.5 text-right font-mono text-emerald-600">{a.finalized_count}</td>
+                      <td className="px-2 py-1.5 text-center">
+                        {a.needs_review ? (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-amber-200 text-amber-800 font-semibold border border-amber-300">
+                            <AlertCircle className="w-2.5 h-2.5" /> 가이드 검토 필요
+                          </span>
+                        ) : (
+                          <span className="text-slate-300 text-[10px]">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
         </>}
+
+        {activeSection === 'correction-requests' && (
+        <section className="bg-white border border-slate-200 rounded-xl p-5">
+          <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
+            <Flag className="w-4 h-4 text-rose-500" />
+            수정 요청 대기
+          </h2>
+          <p className="text-[11px] text-slate-500 mb-3">FacilityGuidePanel에서 사용자가 제출한 시설 정보 수정 요청입니다.</p>
+          {correctionLoading ? (
+            <div className="flex items-center gap-2 text-slate-400 text-xs py-4 justify-center">
+              <Loader2 className="w-4 h-4 animate-spin" /> 불러오는 중…
+            </div>
+          ) : correctionRequests.length === 0 ? (
+            <p className="text-slate-400 text-xs italic py-4 text-center">대기 중인 수정 요청이 없습니다.</p>
+          ) : (
+            <div className="space-y-2">
+              {correctionRequests.map(req => (
+                <div key={req.id} className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-800 font-medium text-xs">{req.venue_name ?? req.venue_key}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">{req.status}</span>
+                      <span className="text-slate-400 text-[10px]">{new Date(req.created_at).toLocaleString('ko-KR')}</span>
+                    </div>
+                  </div>
+                  <p className="text-slate-600 text-[11px] leading-relaxed">{req.correction_text}</p>
+                  <div className="flex gap-2 pt-1">
+                    {/* venue_id 있는 경우 AI 재추출 */}
+                    <button
+                      onClick={async () => {
+                        // venue_key로 venue 조회 후 extract
+                        const supabase = createClient()
+                        const { data: venueRow } = await supabase
+                          .from('venues')
+                          .select('id, specs_text')
+                          .ilike('name', `%${req.venue_name ?? req.venue_key}%`)
+                          .limit(1)
+                          .maybeSingle()
+                        if (!venueRow?.id || !venueRow.specs_text) {
+                          alert('specs_text가 없습니다. 도면 Vision 분석을 먼저 실행하세요.')
+                          return
+                        }
+                        const res = await fetch('/api/admin/facility-guide', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ venueId: venueRow.id, action: 'extract' }),
+                        })
+                        if (res.ok) {
+                          // 상태 업데이트
+                          await supabase
+                            .from('venue_correction_requests')
+                            .update({ status: 'reviewed', review_note: 'AI 재추출 완료', reviewed_at: new Date().toISOString() })
+                            .eq('id', req.id)
+                          setCorrectionRequests(prev => prev.filter(r => r.id !== req.id))
+                          alert('AI 재추출 완료')
+                        } else {
+                          const data = await res.json()
+                          alert('실패: ' + (data.error ?? 'unknown'))
+                        }
+                      }}
+                      className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white transition"
+                    >
+                      <Sparkles className="w-2.5 h-2.5" /> AI 재추출
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const supabase = createClient()
+                        await supabase
+                          .from('venue_correction_requests')
+                          .update({ status: 'ignored', reviewed_at: new Date().toISOString() })
+                          .eq('id', req.id)
+                        setCorrectionRequests(prev => prev.filter(r => r.id !== req.id))
+                      }}
+                      className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-slate-200 hover:bg-slate-300 text-slate-600 transition"
+                    >
+                      무시
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+        )}
 
           </div>
         </div>

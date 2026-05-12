@@ -160,7 +160,19 @@ export interface VenueFacilityGuide {
   id?: string
   venue_key: string
   venue_name: string
-  install_allowed: Array<{ category: string; status: 'allowed' | 'conditional' | 'denied'; note?: string }>
+  install_allowed: Array<{
+    category: string
+    status: 'allowed' | 'conditional' | 'denied'
+    note?: string
+    /** 행사장이 명시한 최대 허용 폭(mm). 초과 시 warn */
+    max_width_mm?: number
+    /** 행사장이 명시한 최대 허용 높이(mm). 초과 시 warn */
+    max_height_mm?: number
+    /** 행사장 공식 표준 규격 폭(mm). 벗어나면 info */
+    standard_width_mm?: number
+    /** 행사장 공식 표준 규격 높이(mm). 벗어나면 info */
+    standard_height_mm?: number
+  }>
   mount_methods: {
     taka?: 'allowed' | 'conditional' | 'denied'
     magnet?: 'allowed' | 'conditional' | 'denied'

@@ -120,7 +120,7 @@ export function EditorToolbar({
   }
 
   return (
-    <header className="h-12 flex items-center justify-between px-3 border-b border-slate-200 bg-white/80 backdrop-blur-sm flex-shrink-0 gap-3">
+    <header className="h-12 flex items-center justify-between px-3 border-b border-slate-200 bg-white/80 backdrop-blur-sm flex-shrink-0 gap-3 relative z-20">
       {/* 숨김 파일 입력 */}
       <input
         ref={fileInputRef}

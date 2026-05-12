@@ -2,6 +2,8 @@
 // 회의록 ′학습해 가지고 텍스트 파일 형태로 이거는 어떤 행사장이다가 나올 거예요′ 구현.
 // 결과는 venues.specs_text 컬럼에 저장 → 다음 추천 시 venueProfile에 자동 통합.
 
+import type { VenueFacilityGuide } from '@/lib/types'
+
 const GEMINI_ENDPOINT =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
 
@@ -92,5 +94,88 @@ export async function analyzeFloorPlan(imageUrl: string): Promise<VisionAnalysis
     return { text, raw: text }
   } catch (e) {
     return { text: '', error: e instanceof Error ? e.message : '알 수 없는 오류' }
+  }
+}
+
+// ── 구조화 시설 가이드 추출 ───────────────────────────────────────
+// specs_text(자유 텍스트) → VenueFacilityGuide JSON 구조로 변환
+// 관리자 페이지 "AI 자동 추출" 버튼 및 학습 완료 후 자동 트리거 시 사용.
+
+const EXTRACT_PROMPT = `당신은 MICE 행사장 시설 규정을 구조화 JSON으로 추출하는 전문가입니다.
+
+아래 행사장 분석 텍스트를 보고 시설 가이드 JSON을 출력하세요.
+
+출력 형식 (TypeScript 타입 준수):
+{
+  "install_allowed": [
+    {
+      "category": "품목명",
+      "status": "allowed",
+      "note": "설명",
+      "max_width_mm": null,
+      "max_height_mm": null,
+      "standard_width_mm": null,
+      "standard_height_mm": null
+    }
+  ],
+  "mount_methods": { "taka": "denied", "magnet": "denied", "adhesive": "denied", "hanger": "conditional", "rope": "allowed", "note": "..." },
+  "rigging": { "available": true, "max_load_kg": null, "note": "..." },
+  "safety": { "fire": "...", "fall": "...", "electric": "...", "weather": "..." },
+  "warnings": [{ "type": "...", "description": "..." }],
+  "special_notes": ["..."]
+}
+
+규칙:
+- 텍스트에 명시된 수치만 추출 (추측 금지 — 모르면 null)
+- mm 단위로 통일 (m → mm 변환)
+- status: 텍스트에 "불가"/"금지" → "denied", "조건부"/"사전 승인" → "conditional", 나머지 → "allowed"
+- JSON만 출력 (다른 텍스트 없이)`
+
+export async function extractStructuredGuide(
+  specsText: string,
+  venueName: string
+): Promise<{ json: Partial<VenueFacilityGuide> | null; error?: string }> {
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) return { json: null, error: 'GEMINI_API_KEY 미설정' }
+  if (!specsText.trim()) return { json: null, error: 'specs_text 비어있음' }
+
+  try {
+    const body = {
+      contents: [{
+        role: 'user',
+        parts: [{ text: `행사장명: ${venueName}\n\n분석 텍스트:\n${specsText}` }],
+      }],
+      systemInstruction: { parts: [{ text: EXTRACT_PROMPT }] },
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 3000,
+        responseMimeType: 'application/json',
+      },
+    }
+
+    const res = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+
+    if (!res.ok) {
+      const errText = await res.text()
+      return { json: null, error: `Gemini 실패 (${res.status}): ${errText.slice(0, 150)}` }
+    }
+
+    const data = await res.json() as {
+      candidates?: { content?: { parts?: { text?: string }[] } }[]
+      error?: { message?: string }
+    }
+    if (data.error) return { json: null, error: `Gemini: ${data.error.message}` }
+
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? ''
+    if (!raw) return { json: null, error: '응답 비어있음' }
+
+    const parsed = JSON.parse(raw.replace(/```json|```/gi, '').trim()) as Partial<VenueFacilityGuide>
+    return { json: parsed }
+  } catch (e) {
+    return { json: null, error: e instanceof Error ? e.message : '파싱 오류' }
   }
 }

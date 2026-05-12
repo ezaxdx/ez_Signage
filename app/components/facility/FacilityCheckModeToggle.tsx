@@ -38,7 +38,7 @@ export function FacilityCheckModeToggle({ mode, onChange }: Props) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-md px-2 py-1 transition"
+        className="flex items-center gap-1.5 text-xs text-amber-700 hover:text-amber-900 bg-amber-50 border border-amber-300 rounded-md px-2 py-1 transition hover:bg-amber-100"
         title="시설 가이드 알림 강도"
       >
         {current.icon}
@@ -47,9 +47,9 @@ export function FacilityCheckModeToggle({ mode, onChange }: Props) {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 overflow-hidden">
-          <div className="px-3 py-2 border-b border-slate-200 bg-slate-50">
-            <p className="text-[11px] text-slate-500">시설 가이드 알림 강도</p>
+        <div className="absolute right-0 mt-1 w-64 bg-white border-2 border-amber-200 rounded-lg shadow-2xl z-[300] overflow-hidden">
+          <div className="px-3 py-2 border-b border-amber-200 bg-amber-50">
+            <p className="text-[11px] font-semibold text-amber-800">시설 가이드 알림 강도</p>
           </div>
           {MODES.map(m => (
             <button

@@ -58,6 +58,28 @@ export async function POST(req: Request) {
       specs_text: result.text,
       specs_updated_at: new Date().toISOString(),
     }).eq('id', job.venue_id)
+
+    // 4-B) 구조화 추출 (best-effort, 실패해도 계속)
+    // specs_text → VenueFacilityGuide JSON 자동 변환 후 facility_guide_json 저장
+    const { data: venueRow } = await supabase
+      .from('venues')
+      .select('name')
+      .eq('id', job.venue_id)
+      .single()
+
+    if (venueRow?.name) {
+      const { extractStructuredGuide } = await import('@/lib/ai/visionFloorPlan')
+      const extractResult = await extractStructuredGuide(result.text, venueRow.name)
+      if (!extractResult.error && extractResult.json) {
+        await supabase
+          .from('venues')
+          .update({
+            facility_guide_json: extractResult.json,
+            facility_guide_updated_at: new Date().toISOString(),
+          })
+          .eq('id', job.venue_id)
+      }
+    }
   }
 
   // 5) job done

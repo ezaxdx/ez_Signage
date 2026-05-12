@@ -4,10 +4,11 @@
 // 사용자가 [행사장 가이드 보기] 버튼 클릭 시 슬라이드로 표시.
 // 6종 정보 표시 + 학습 시점만 표기 (출처 URL 등 부가 정보는 제거 — §11-6-2 v8)
 // v9+: 데이터 수집 현황 + 미확인 항목 섹션 추가
+// v9.15+: 하단 "데이터 수정 요청" — 값이 바뀌었을 때 localStorage 신고 루트
 
 import { useState, useEffect } from 'react'
-import { X, AlertCircle, Wrench, Anchor, Shield, Ban, Monitor, Calendar, Star, Database, CheckCircle2, XCircle, Loader2, ClipboardList } from 'lucide-react'
-import { getFacilityGuide } from '@/lib/data/venueFacilityGuide'
+import { X, AlertCircle, Wrench, Anchor, Shield, Ban, Monitor, Calendar, Star, Database, CheckCircle2, XCircle, Loader2, ClipboardList, Flag, Send } from 'lucide-react'
+import { getFacilityGuide, findVenueKey } from '@/lib/data/venueFacilityGuide'
 import { createClient } from '@/lib/supabase/client'
 import type { VenueFacilityGuide } from '@/lib/types'
 
@@ -76,6 +77,9 @@ export function FacilityGuidePanel({ venueName, open, onClose, focusSection }: P
   const guide: VenueFacilityGuide | null = getFacilityGuide(venueName)
   const [dbData, setDbData] = useState<{ floor_plan_url: string | null; specs_text: string | null } | null>(null)
   const [dbLoading, setDbLoading] = useState(false)
+  const [correctionOpen, setCorrectionOpen] = useState(false)
+  const [correctionText, setCorrectionText] = useState('')
+  const [correctionDone, setCorrectionDone] = useState(false)
 
   useEffect(() => {
     if (!open || !venueName?.trim()) return
@@ -96,6 +100,36 @@ export function FacilityGuidePanel({ venueName, open, onClose, focusSection }: P
         setDbLoading(false)
       })
   }, [open, venueName])
+
+  const submitCorrection = () => {
+    if (!correctionText.trim()) return
+    const venueKey = guide ? (findVenueKey(guide.venue_name) ?? guide.venue_key) : (findVenueKey(venueName) ?? 'unknown')
+    const vName = guide?.venue_name ?? venueName ?? undefined
+
+    fetch('/api/correction-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        venue_key: venueKey,
+        venue_name: vName,
+        correction_text: correctionText.trim(),
+      }),
+    }).catch(() => {
+      // API 실패 시 localStorage 폴백
+      const key = 'venue_correction_requests'
+      const prev: unknown[] = JSON.parse(localStorage.getItem(key) ?? '[]')
+      prev.push({
+        venue: guide?.venue_name ?? venueName ?? '알 수 없음',
+        text: correctionText.trim(),
+        submitted_at: new Date().toISOString(),
+      })
+      localStorage.setItem(key, JSON.stringify(prev))
+    })
+    setCorrectionText('')
+    setCorrectionOpen(false)
+    setCorrectionDone(true)
+    setTimeout(() => setCorrectionDone(false), 3000)
+  }
 
   if (!open) return null
 
@@ -291,13 +325,58 @@ export function FacilityGuidePanel({ venueName, open, onClose, focusSection }: P
               {guide.digital_signage?.note && <p className="text-slate-500 text-[11px] mt-2 leading-relaxed">※ {guide.digital_signage.note}</p>}
             </Section>
 
-            {/* 푸터 — 학습 시점만 (§11-6-2 v8 단순화) */}
-            <div className="pt-3 border-t border-slate-200">
-              <p className="text-slate-500 text-[11px] flex items-center gap-1.5">
-                <Calendar className="w-3 h-3" />
-                본 정보는 {guide.last_updated ?? '학습 시점 미확인'} 기준입니다.
-              </p>
-              {guide.notes && <p className="text-slate-400 text-[10px] mt-1 leading-relaxed">{guide.notes}</p>}
+            {/* 푸터 — 학습 시점 + 데이터 수정 요청 */}
+            <div className="pt-3 border-t border-slate-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-slate-500 text-[11px] flex items-center gap-1.5">
+                  <Calendar className="w-3 h-3" />
+                  본 정보는 {guide.last_updated ?? '학습 시점 미확인'} 기준입니다.
+                </p>
+                <button
+                  onClick={() => { setCorrectionOpen(v => !v); setCorrectionDone(false) }}
+                  className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-rose-600 transition"
+                  title="정보가 오래되었거나 틀린 경우 신고"
+                >
+                  <Flag className="w-3 h-3" />
+                  정보 수정 요청
+                </button>
+              </div>
+              {guide.notes && <p className="text-slate-400 text-[10px] leading-relaxed">{guide.notes}</p>}
+
+              {/* 수정 요청 인라인 폼 */}
+              {correctionOpen && (
+                <div className="bg-rose-50 border border-rose-200 rounded-lg px-3 py-2.5 space-y-2">
+                  <p className="text-[11px] text-rose-700 font-medium">어떤 정보가 변경되었나요?</p>
+                  <textarea
+                    value={correctionText}
+                    onChange={e => setCorrectionText(e.target.value)}
+                    placeholder="예: 코엑스 그랜드볼룸 최대 폭이 4,000mm에서 3,500mm로 변경됨"
+                    rows={3}
+                    className="w-full text-[11px] px-2 py-1.5 border border-rose-300 rounded bg-white resize-none text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-400"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => { setCorrectionOpen(false); setCorrectionText('') }}
+                      className="text-[10px] text-slate-500 hover:text-slate-700 px-2 py-1"
+                    >취소</button>
+                    <button
+                      onClick={submitCorrection}
+                      disabled={!correctionText.trim()}
+                      className="flex items-center gap-1 text-[10px] px-2.5 py-1 bg-rose-600 text-white rounded hover:bg-rose-700 disabled:opacity-40 transition"
+                    >
+                      <Send className="w-2.5 h-2.5" /> 제출
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 제출 완료 메시지 */}
+              {correctionDone && (
+                <p className="text-[11px] text-emerald-600 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3 h-3" />
+                  수정 요청이 접수되었습니다. 관리자가 확인 후 반영합니다.
+                </p>
+              )}
             </div>
           </div>
         )}

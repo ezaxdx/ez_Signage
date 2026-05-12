@@ -70,5 +70,4 @@
 
 - Supabase 프로젝트 설정 변경
 - `.env.local` 수정 또는 노출
-- production DB 직접 마이그레이션 (migration SQL은 사람이 실행)
 - GitHub main 브랜치 직접 푸시

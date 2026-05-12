@@ -128,9 +128,9 @@ export default async function DashboardPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { label: '전체 프로젝트', value: stats.total, color: 'text-slate-900', sub: null },
-              { label: 'D-7 이내', value: stats.urgent, color: stats.urgent > 0 ? 'text-red-600' : 'text-slate-900', sub: '긴급 마감' },
+              { label: 'D-7 이내', value: stats.urgent, color: stats.urgent > 0 ? 'text-red-600' : 'text-slate-900', sub: null },
               { label: '이번달 행사', value: stats.thisMonth, color: 'text-amber-600', sub: null },
-              { label: '작업 진행중', value: stats.inProgress, color: 'text-emerald-600', sub: '발주~확정' },
+              { label: '작업 진행중', value: stats.inProgress, color: 'text-emerald-600', sub: null },
             ].map(stat => (
               <div key={stat.label} className="bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm">
                 <p className="text-slate-500 text-xs mb-1">{stat.label}</p>
