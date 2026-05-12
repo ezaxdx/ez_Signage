@@ -34,9 +34,9 @@ type TabKey = 'kpi' | 'users' | 'projects' | 'ai_usage'
 // IA 기준 메인 4탭
 const TABS: { key: TabKey; label: string; icon: React.ElementType; badge?: string }[] = [
   { key: 'kpi',      label: '운영 KPI',         icon: BarChart3 },
-  { key: 'users',    label: '유저 관리',         icon: Users,     badge: '신규' },
+  { key: 'users',    label: '유저 관리',         icon: Users },
   { key: 'projects', label: '전체 프로젝트 현황', icon: Briefcase },
-  { key: 'ai_usage', label: 'AI 사용량',        icon: Layers3,   badge: '신규' },
+  { key: 'ai_usage', label: 'AI 사용량',        icon: Layers3 },
 ]
 
 // 레거시 탭 (학습 관리자에 통합 예정 — 임시 ′상세 데이터′ 메뉴로 분리)
@@ -77,10 +77,15 @@ export function DataDashboard(_props: Props) {
               제작물 리스트 가이드
             </Link>
           </div>
-          <Link href="/dashboard" className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-300 text-xs transition">
-            <ArrowLeft className="w-3.5 h-3.5" />
-            프로젝트로
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/admin/learning" className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-300 text-xs transition">
+              관리자 페이지
+            </Link>
+            <Link href="/dashboard" className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-300 text-xs transition">
+              <ArrowLeft className="w-3.5 h-3.5" />
+              프로젝트로
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -207,31 +212,6 @@ export function DataDashboard(_props: Props) {
           {activeTab === 'designers' && <DesignersTab />}
         </div>
 
-        {/* 하단 — 데이터 수집 계획 (명세 6번 매핑) */}
-        <div className="bg-white/50 border border-slate-200 rounded-xl p-5">
-          <h2 className="text-slate-400 font-semibold text-sm mb-1">AI 사전 교육 자료 — 수집·분석 단계</h2>
-          <p className="text-slate-400 text-xs mb-4">우선순위 6번 명세 매핑. 현재 1단계, 분석 자동화는 2단계 예정.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {[
-              { num: '6.1.a',  title: '폴더명 → 행사 메타',     desc: '행사명 + 프로젝트 코드 자동 추출 (54개)',                status: '✅ 수집됨'  },
-              { num: '6.1.b.i',title: '환경장식물 동의어',      desc: '스프링배너=X배너 등 10건 시드 + 향후 보강',               status: '✅ 시드'    },
-              { num: '6.1.b.ii',title: '기본 환경장식물 11종',  desc: 'X·I·가로등·통천·가로/세로현수막·포디움·A4/A3',             status: '✅ 정의됨'  },
-              { num: '6.1.b.iii', title: '디자인 업체',          desc: '업체명만 DB화, 납기·수정률 메트릭 placeholder',          status: '🟡 명단만'  },
-              { num: '6.1.b.iv', title: '재질 기본값',           desc: '환경장식물별 주재질 매핑, 통계 산출 예정',                status: '🟡 기본값'  },
-              { num: '6.1.b.v',  title: '납기일 패턴',           desc: 'PM부서·디자인업체·행사장별 평균 — 분석 단계 진입 후',     status: '⏳ 예정'    },
-              { num: '6.2.1',   title: 'PM 사업부·부서명',       desc: '수행실적 엑셀에서 추출 — 향후 매핑',                     status: '⏳ 예정'    },
-            ].map(item => (
-              <div key={item.num} className="flex items-start gap-3 p-3 bg-slate-50/40 rounded-lg">
-                <span className="text-[10px] font-mono text-indigo-400/70 flex-shrink-0 mt-0.5">{item.num}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-slate-800 text-xs font-medium">{item.title}</p>
-                  <p className="text-slate-500 text-[10px] mt-0.5 leading-relaxed">{item.desc}</p>
-                </div>
-                <span className="text-[10px] text-slate-500 flex-shrink-0 whitespace-nowrap">{item.status}</span>
-              </div>
-            ))}
-          </div>
-        </div>
           </div>
         </div>
       </main>

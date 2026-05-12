@@ -591,17 +591,21 @@ export function LearningManagerClient({
           )}
         </section>
 
-        {/* ── 3. 도면 학습 큐 ─────────────────────────────────── */}
+        {/* ── 3. 도면 학습 큐 (미완료만 표시 — done/skipped는 행사장 목록에 반영됨) ── */}
+        {(() => {
+          const pendingJobs = jobs.filter(j => j.status !== 'done' && j.status !== 'skipped')
+          return (
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-4 flex items-center gap-2">
             <Clock className="w-4 h-4 text-violet-400" />
-            도면 학습 큐 ({jobs.length})
+            도면 학습 큐 ({pendingJobs.length})
           </h2>
-          {jobs.length === 0 ? (
-            <p className="text-slate-400 text-xs italic">큐가 비어있습니다.</p>
+          <p className="text-[11px] text-slate-400 mb-3">학습 완료된 도면은 아래 행사장 목록에서 확인하세요.</p>
+          {pendingJobs.length === 0 ? (
+            <p className="text-slate-400 text-xs italic">대기 중인 학습 큐가 없습니다.</p>
           ) : (
             <div className="space-y-1.5">
-              {jobs.map(job => {
+              {pendingJobs.map(job => {
                 const venue = venues.find(v => v.id === job.venue_id)
                 const statusColor = {
                   queued: 'text-slate-500 bg-slate-50',
@@ -651,6 +655,8 @@ export function LearningManagerClient({
             </div>
           )}
         </section>
+          )
+        })()}
 
         {/* ── 4. 학습된 행사장 현황 ───────────────────────────── */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
@@ -670,12 +676,18 @@ export function LearningManagerClient({
                     <th className="text-left p-2">유형</th>
                     <th className="text-left p-2">홀 분리</th>
                     <th className="text-left p-2">도면</th>
+                    <th className="text-left p-2">도면 학습</th>
                     <th className="text-left p-2">등록일</th>
                     <th className="text-right p-2">행위</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {venues.map(v => (
+                  {venues.map(v => {
+                    const venueJobs = jobs.filter(j => j.venue_id === v.id)
+                    const doneJob = venueJobs.find(j => j.status === 'done')
+                    const pendingJob = venueJobs.find(j => j.status === 'queued' || j.status === 'processing')
+                    const failedJob = venueJobs.find(j => j.status === 'failed')
+                    return (
                     <tr key={v.id} className="border-b border-slate-200/40 hover:bg-slate-50/30">
                       <td className="p-2 text-slate-800 font-medium">
                         <div className="flex items-center gap-1.5">
@@ -695,6 +707,17 @@ export function LearningManagerClient({
                           <span className="text-slate-400 italic">없음</span>
                         )}
                       </td>
+                      <td className="p-2 text-[10px]">
+                        {doneJob ? (
+                          <span className="text-emerald-600 font-medium">✓ 완료</span>
+                        ) : pendingJob ? (
+                          <span className="text-violet-500">대기중</span>
+                        ) : failedJob ? (
+                          <span className="text-rose-500">실패</span>
+                        ) : (
+                          <span className="text-slate-300">—</span>
+                        )}
+                      </td>
                       <td className="p-2 text-slate-500 text-[10px]">{new Date(v.created_at).toLocaleDateString('ko-KR')}</td>
                       <td className="p-2 text-right">
                         <button
@@ -707,7 +730,8 @@ export function LearningManagerClient({
                         </button>
                       </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
