@@ -1,8 +1,8 @@
 'use client'
 
-import { useMemo } from 'react'
-import { X, AlertCircle, AlertTriangle, Info, CheckCircle2, Send } from 'lucide-react'
-import { runPreflight, groupIssues } from '@/lib/services/preflightCheck'
+import { useMemo, useState } from 'react'
+import { X, AlertCircle, AlertTriangle, Info, CheckCircle2, Send, PackagePlus, ChevronDown, ChevronRight } from 'lucide-react'
+import { runPreflight, groupIssues, checkMissingCandidates } from '@/lib/services/preflightCheck'
 import type { DesignItem, ContentsMap } from '@/lib/types'
 
 interface Props {
@@ -17,6 +17,12 @@ export function PreflightModal({ items, allContents, onClose, onGoToItem, onExpo
   const issues = useMemo(() => runPreflight(items, allContents), [items, allContents])
   const { errors, warnings, infos } = groupIssues(issues)
   const canExport = errors.length === 0
+
+  const missingCandidates = useMemo(() => checkMissingCandidates(items), [items])
+  const commonMissing = missingCandidates.filter(c => c.frequency >= 2)
+  const rareMissing = missingCandidates.filter(c => c.frequency < 2)
+  const [missingExpanded, setMissingExpanded] = useState(true)
+  const [rareExpanded, setRareExpanded] = useState(false)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -52,7 +58,11 @@ export function PreflightModal({ items, allContents, onClose, onGoToItem, onExpo
             <Info className="w-3.5 h-3.5" />
             <strong>{infos.length}</strong>개 안내
           </div>
-          {canExport && issues.length === 0 && (
+          <div className={`flex items-center gap-1.5 text-xs ${commonMissing.length > 0 ? 'text-violet-400' : 'text-slate-400'}`}>
+            <PackagePlus className="w-3.5 h-3.5" />
+            <strong>{commonMissing.length}</strong>개 누락 후보
+          </div>
+          {canExport && issues.length === 0 && commonMissing.length === 0 && (
             <div className="flex items-center gap-1.5 text-xs text-emerald-400 ml-auto">
               <CheckCircle2 className="w-3.5 h-3.5" />
               모두 통과 — 발주 가능
@@ -80,6 +90,75 @@ export function PreflightModal({ items, allContents, onClose, onGoToItem, onExpo
                 <IssueSection title="ℹ️ 안내" issues={infos} level="info" onGoToItem={onGoToItem} />
               )}
             </>
+          )}
+
+          {/* 누락 품목 후보 — 표준 11종 중 현재 리스트에 없는 종류 */}
+          {missingCandidates.length > 0 && (
+            <div className="border border-violet-200 rounded-lg overflow-hidden">
+              <button
+                onClick={() => setMissingExpanded(v => !v)}
+                className="w-full flex items-center justify-between px-4 py-2.5 bg-violet-50 hover:bg-violet-100 transition text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <PackagePlus className="w-3.5 h-3.5 text-violet-500" />
+                  <span className="text-xs font-semibold text-violet-700">
+                    누락 품목 후보 ({missingCandidates.length}종)
+                  </span>
+                  <span className="text-[10px] text-violet-400">표준 11종 중 현재 목록에 없는 종류</span>
+                </div>
+                {missingExpanded ? <ChevronDown className="w-3.5 h-3.5 text-violet-400" /> : <ChevronRight className="w-3.5 h-3.5 text-violet-400" />}
+              </button>
+
+              {missingExpanded && (
+                <div className="px-4 py-3 space-y-3 bg-white">
+                  {commonMissing.length > 0 && (
+                    <div>
+                      <p className="text-[10px] text-violet-500 font-medium mb-1.5">범용 (2개 이상 행사 유형에서 권장)</p>
+                      <div className="space-y-1">
+                        {commonMissing.map(c => (
+                          <div key={c.typeId} className="flex items-center justify-between bg-violet-50 rounded px-3 py-1.5">
+                            <div>
+                              <span className="text-xs font-medium text-violet-800">{c.typeName}</span>
+                              <span className="text-[10px] text-violet-500 ml-2">{c.note}</span>
+                            </div>
+                            <span className="text-[10px] text-violet-400 flex-shrink-0">{c.frequency}/8 행사유형</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {rareMissing.length > 0 && (
+                    <div>
+                      <button
+                        onClick={() => setRareExpanded(v => !v)}
+                        className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-600 transition"
+                      >
+                        {rareExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                        특수 용도 {rareMissing.length}종 더 보기
+                      </button>
+                      {rareExpanded && (
+                        <div className="space-y-1 mt-1">
+                          {rareMissing.map(c => (
+                            <div key={c.typeId} className="flex items-center justify-between bg-slate-50 rounded px-3 py-1.5">
+                              <div>
+                                <span className="text-xs text-slate-600">{c.typeName}</span>
+                                <span className="text-[10px] text-slate-400 ml-2">{c.note}</span>
+                              </div>
+                              <span className="text-[10px] text-slate-300 flex-shrink-0">{c.frequency}/8 행사유형</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <p className="text-[10px] text-slate-400 pt-1 border-t border-slate-100">
+                    ※ 필요 없는 종류는 무시해도 됩니다. 추가하려면 편집기에서 '+ 행 추가'로 직접 입력하세요.
+                  </p>
+                </div>
+              )}
+            </div>
           )}
         </div>
 

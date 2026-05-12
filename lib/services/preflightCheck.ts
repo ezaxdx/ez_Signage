@@ -1,5 +1,6 @@
 import type { DesignItem, ContentsMap } from '@/lib/types'
 import { SLOT_MAX_CHARS } from '@/lib/constants'
+import { SEED_SIGNAGE_TYPES, SEED_EVENT_CATEGORIES, SEED_SYNONYMS } from '@/lib/data/dashboardSeed'
 
 export type IssueLevel = 'error' | 'warning' | 'info'
 
@@ -176,4 +177,51 @@ export function groupIssues(issues: PreflightIssue[]) {
     warnings: issues.filter(i => i.level === 'warning'),
     infos: issues.filter(i => i.level === 'info'),
   }
+}
+
+// ─── 누락 품목 후보 (표준 11종 중 현재 리스트에 없는 종류) ───────────────
+
+export interface MissingCandidate {
+  typeId: string
+  typeName: string
+  /** 예: "입구·등록 / 600×1800mm" */
+  note: string
+  /** 8개 표준 행사 유형 중 이 종류를 권장하는 유형 수 (많을수록 범용) */
+  frequency: number
+}
+
+function normCat(s: string): string {
+  return s.trim().toLowerCase().replace(/[\s\-_·]+/g, '')
+}
+
+/**
+ * 표준 11종 중 현재 design_items 목록에 없는 품목을 반환.
+ * frequency >= 2 인 것만 "범용 품목"으로 분류해 UI에서 강조.
+ */
+export function checkMissingCandidates(items: DesignItem[]): MissingCandidate[] {
+  // 동의어 정규화 맵 (alias norm → canonical norm)
+  const synonymMap: Record<string, string> = {}
+  for (const s of SEED_SYNONYMS) {
+    synonymMap[normCat(s.alias)] = normCat(s.canonical_name)
+  }
+
+  // 현재 items 카테고리 집합 (동의어 정규화 후)
+  const covered = new Set(
+    items.map(i => {
+      const n = normCat(i.category ?? '')
+      return synonymMap[n] ?? n
+    }).filter(Boolean)
+  )
+
+  return SEED_SIGNAGE_TYPES
+    .filter(seed => !covered.has(normCat(seed.name)))
+    .map(seed => ({
+      typeId: seed.id,
+      typeName: seed.name,
+      note: `${seed.category} / ${seed.width_mm}×${seed.height_mm}mm`,
+      frequency: SEED_EVENT_CATEGORIES.filter(ec =>
+        ec.recommended_signage_keys.includes(seed.id)
+      ).length,
+    }))
+    .sort((a, b) => b.frequency - a.frequency)
 }
