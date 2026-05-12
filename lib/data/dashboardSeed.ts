@@ -1077,6 +1077,8 @@ export interface CeilingBannerPattern {
   event_type?: string     // 행사 유형 참고
   attendees_approx?: number
   items: CeilingBannerItem[]
+  no_data?: boolean       // true = 행사장은 알려져 있으나 실측 데이터 미확보
+  no_data_reason?: string // 데이터 없는 사유
 }
 
 export const SEED_CEILING_BANNER_PATTERNS: CeilingBannerPattern[] = [
@@ -1111,7 +1113,39 @@ export const SEED_CEILING_BANNER_PATTERNS: CeilingBannerPattern[] = [
       },
     ],
   },
-  // TODO: 추가 행사 데이터 (코엑스·송도·ICC 제주 등) — 발주엑셀 분석 후 보강 예정
+  // ── 코엑스 — 실측 데이터 미확보 (2차 AI 시험 예정)
+  {
+    venue: '코엑스',
+    venue_hall: '코엑스 전시홀',
+    event_name: '(데이터 미확보)',
+    event_year: 0,
+    event_type: '전시회',
+    items: [],
+    no_data: true,
+    no_data_reason: '코엑스 발주엑셀 분석 전. 정답지 노출 편향 검증 후 추가 예정 (2차 AI 시험).',
+  },
+  // ── 송도컨벤시아 — 실측 데이터 미확보
+  {
+    venue: '송도',
+    venue_hall: '송도컨벤시아',
+    event_name: '(데이터 미확보)',
+    event_year: 0,
+    event_type: '컨퍼런스',
+    items: [],
+    no_data: true,
+    no_data_reason: '송도컨벤시아 발주엑셀 분석 전. 코엑스 시험 완료 후 순차 진행.',
+  },
+  // ── ICC 제주 — 실측 데이터 미확보
+  {
+    venue: 'ICC',
+    venue_hall: 'ICC 제주',
+    event_name: '(데이터 미확보)',
+    event_year: 0,
+    event_type: '국제회의',
+    items: [],
+    no_data: true,
+    no_data_reason: 'ICC 제주 발주엑셀 분석 전. 섬 지역 특성상 반입 규정 별도 확인 필요.',
+  },
 ]
 
 /**
