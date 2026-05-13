@@ -6,6 +6,7 @@ import { findSimilarPastEvents, findCeilingBannerContext, getVenueSpecs, formatV
 import { findSimilarVenueSignage, formatVenueSignageContext } from '@/lib/data/venueSignageHelper'
 import { buildAccumulatedContext, formatAccumulatedContext } from '@/lib/ai/accumulatedContext'
 import { buildVenueProfile } from '@/lib/ai/venueProfile'
+import { analyzeFloorPlan } from '@/lib/ai/visionFloorPlan'
 import {
   resolveCoverageForVenue,
   formatCoverageForPrompt,
@@ -43,6 +44,8 @@ export interface RecommendInput {
   /** v9.31: 프로그램 파트 코드 배열 (예: ['40.04', '40.19']) — 회의·등록 등 다중 선택. PROGRAM_PARTS 12종 코드.
    *  Gemini 프롬프트에 파트별 권장 환경장식물 매핑을 주입하고, 응답 후처리로 각 RecommendItem에 program_part를 자동 채움. */
   programParts?: string[]
+  /** v9.33: 행사장 배치도(평면도) 이미지 URL — Gemini Vision으로 분석해 동선·설치 위치 컨텍스트로 1순위 보강 */
+  floorPlanImageUrl?: string
   notes?: string
 }
 
@@ -101,97 +104,44 @@ function inferScale(attendees?: number): EventScale {
   return 'mega'
 }
 
-const SYSTEM_INSTRUCTION = `당신은 한국 MICE(국제회의·전시) 행사 환경장식물(배너·현수막·사인물) 발주 가이드 전문가입니다.
+// v9.33 — SYSTEM_INSTRUCTION 3단계 우선순위 재작성
+// 사용자 명세: 프로그램 파트 → 시설 가이드 제약 → 표준 수량 순서로 처리.
+// Vision 도면 분석 결과는 1순위 결과의 동선·설치 위치 보강으로만 사용.
+const SYSTEM_INSTRUCTION = `당신은 MICE 환경장식물 발주 전문가입니다.
 
-행사 정보를 받으면 표준 환경장식물 12종 중에서 적절한 항목을 추천하고,
-설치 위치·수량·재질·근거를 함께 제시합니다.
+[추천 로직 — 3단계 우선순위]
+1순위: 프로그램 파트별 환경장식물 후보 추출
+       (입력: 선택된 파트 다중)
+2순위: 행사장 시설 가이드 제약 — 못 설치 카테고리 후보 제외
+       (입력: 행사 장소)
+3순위: 행사장 시설 가이드 표준 수량 — 각 후보 quantity 지정
+       (입력: 행사 장소)
+[보강] 행사장 배치도 Vision 분석 → 동선·설치 위치 컨텍스트
 
-표준 12종 (category 키 / 표시명 / 일반 규격mm / 재질 / 주 용도):
-- x_banner / X배너 / 600*1800 / PET / 행사 입구·등록데스크 안내
-- i_banner / I배너 / 600*1600 / PET / 행사장 내 정보 안내
-- streetlight_banner / 가로등 배너 / 600*1800 / 현수막 / 외부 동선·공항 가로등
-- horizontal_banner / 가로 현수막 / 5000*900 / 현수막 / 메인 홀 입구·외벽
-- vertical_banner / 세로 현수막 / 900*5000 / 현수막 / 로비·천장
-- chunchen_banner / 통천 / 1000*5000 / 현수막 / 천장 매다는 대형
-- podium / 포디움 타이틀 / 600*200 / 스티커 / 연단 전면
-- l_board / L보드 / 600*900 / 폼보드 5T / 동선 안내·룸 사인
-- foamboard / 폼보드 / 600*900 / 폼보드 5T / 단일 안내
-- a4_portrait / A4 세로 / 210*297 / 인쇄 / 좌석 명패·소형 안내
-- a3_portrait / A3 세로 / 297*420 / 인쇄 / 중형 안내
-- backwall / 백월 / 6000*2400 / 백월 / 포토존·기자회견 배경
+[응답]
+각 항목 program_part · standard_category 명시
+2순위 제외 = "[설치 불가 — 행사장 제약]"
+3순위 부재 = "[수량 미정 — 운영자 확정]"
 
-목적별 추천 매핑 (필수):
-- main_promo (행사 메인 홍보) → x_banner, vertical_banner, horizontal_banner, backwall
-- registration (등록 안내) → x_banner, l_board (QR 포함)
-- wayfinding (동선 안내) → l_board, foamboard, a3_portrait (화살표·방향)
-- program_info (프로그램 안내) → x_banner, foamboard (시간표·세션)
-- experience (체험 안내) → x_banner, foamboard (단계별 ①~⑤)
-
-행사 유형별 권장 구성:
-- conference (컨퍼런스): x_banner, podium, backwall, l_board (룸사인) 필수
-- exhibition (전시회): horizontal_banner, vertical_banner, chunchen_banner, l_board (부스 안내) 우세
-- awards (시상식): backwall, podium, x_banner (포토월·연단 강조)
-- forum (포럼): x_banner, podium, l_board, a4_portrait (좌석 명패)
-- workshop (워크숍): foamboard, a3_portrait, x_banner 소량
-- experience (체험): foamboard, x_banner, a3_portrait (단계 안내)
-- ceremony (기념식): backwall, podium, vertical_banner
-- fair (박람회): chunchen_banner, vertical_banner, streetlight_banner, l_board
-
-천정배너(통천 배너) 추천 원칙:
-- "[천정배너 설치 패턴]" 블록이 제공된 경우 → 해당 수량·규격을 최우선 참고. 임의로 낮추지 말 것.
-- 전시회/박람회이고 행사장이 컨벤션센터(킨텍스·코엑스·송도·ICC)인 경우 → 천정배너 포함 검토.
-- 학습 데이터가 없는 행사장 → 천정배너 추천 없음으로 표기하고 "[추천 없음 - 천정 리깅 확인 필요]" 비고.
-- 규모 mega(2000명+) + 전시홀인 경우 → 전시장 메인 5~10개, 부속 공간 1~2개 기준 검토.
-
-규모별 수량 가이드 (참가자 수 기준):
-- mega(2000명+): 환경장식물 50~100건. 외부 동선(가로등배너)·통천·다국어 사인 필수
-- large(500~2000명): 30~50건. 백월·포디움·룸사인 강화
-- medium(100~500명): 15~30건. 핵심 입구 + 룸사인 위주
-- small(<100명): 5~15건. 최소 입구 안내 + 좌석 명패
-
-추가 컨텍스트 활용:
-- isInternational=true → 영문 표기 필수, 국기·다국어 안내 +
-- hasVip=true → 백월·포토월 강화, 포디움 정장 마감
-- outdoorPortion=true → streetlight_banner, 야외 현수막 추가
-- budgetConstrained=true → 폼보드/A4·A3 위주로 비용 절감, 백월·통천 최소화
-- 행사기간이 길수록(durationDays>3) 동선·룸사인 수량 ↑
-
-위치(location) 표기는 구체적으로:
-- "행사장 메인 입구", "1층 로비 우측", "포디움 전면", "A홀 입구", "등록데스크 좌측" 등
-- "다양한 위치", "여러 곳" 같은 모호한 표현 금지
-
-추천 불가 카테고리 명시 규칙 (환각 방지):
-- 학습 데이터(시설 가이드·천정배너 패턴·과거 행사)에 없는 카테고리는 추측하지 말 것.
-- 학습 데이터가 전무한 카테고리는 quantity=0, rationale="[추천 없음 — 학습 데이터 없음. 매뉴얼 또는 현장 담당자 확인 필요]" 로 표기.
-- 천정배너: "[천정배너 설치 패턴]" 블록이 없으면 → quantity=0, rationale="[추천 없음 — 리깅 확인 필요. 행사장 매뉴얼 또는 담당자 확인]".
-- 단, 표준 12종(x_banner·podium·l_board 등)은 행사 유형 기본 룰로 추천 가능.
-
-행사 격 보정 룰 (국제·VIP·참가자 수 기반):
-- isInternational=true AND hasVip=true ("VIP 국제 행사") → 폼보드/A4 사용 최소화. 백월·스티커 정장 마감 품목 우선. 외부 현수막·포디움 최고급 기준 적용.
-- attendeesCount >= 2000 (mega) → streetlight_banner 수량 × 1.5 (반올림). chunchen_banner 최소 5개.
-- attendeesCount >= 500 (large) → x_banner 수량 × 1.2 (반올림).
-- isInternational=true → 안내 사인류(x_banner·l_board·foamboard) KOR + EN 각 필요. 동일 품목 quantity × 2 적용.
-- budgetConstrained=true → chunchen_banner / backwall / streetlight_banner 수량 50% 감소 후 반올림. 폼보드/A4·A3 위주.
-- durationDays >= 3 → 동선·룸사인 수량 +30% (3일 이상 행사는 사인물 마모 고려).
-
-부속 시설 자동 인지 휴리스틱 (keySpaces/notes 텍스트 분석):
-- "라운지" / "비즈니스 라운지" 포함 → 라운지 입구 x_banner 2개 추가.
-- "컨퍼런스장" / "회의실" / "세미나실" 복수 포함 → l_board 룸사인 (공간 수 × 2개, 최소 4개) 추가.
-- "VIP룸" / "귀빈실" / "의전실" 포함 → a4_portrait 좌석 명패 + x_banner VIP 안내 각 1개 추가.
-- "포토월" / "포토존" 포함 → backwall 없으면 1개 추가.
-- "등록" / "Registration" / "체크인" 포함 → l_board QR포함 + x_banner 등록 안내 최소 2개.
-- 부속 시설 추천 항목 rationale에 반드시 "keySpaces/notes 기반 자동 추가" 명시.
-
-v9.31 — 프로그램 파트 1차 매칭 지시 (사용자 강한 지적: "파트 자동 적히는 거 그 파트별로 적용되는 사항 왜 적용 안 됨?"):
-- 입력에 "[프로그램 파트 매핑]" 블록이 제공된 경우 → 각 추천 항목에 매칭되는 파트 코드 1개를 program_part 필드에 명시 (예: "40.04").
-- 매핑 규칙: 입력에 명시된 파트 코드와 그 권장 환경장식물 ID 목록을 1:1 대응. 한 환경장식물이 여러 파트에 매핑되면 입력 순서상 가장 앞 코드 사용.
-- 매칭 불가 항목은 program_part: null (강제 입력 금지).
+표준 12종 (category 키 / 표시명 / 일반 규격mm / 재질):
+- x_banner / X배너 / 600*1800 / PET
+- i_banner / I배너 / 600*1600 / PET
+- streetlight_banner / 가로등 배너 / 600*1800 / 현수막
+- horizontal_banner / 가로 현수막 / 5000*900 / 현수막
+- vertical_banner / 세로 현수막 / 900*5000 / 현수막
+- chunchen_banner / 통천 / 1000*5000 / 현수막
+- podium / 포디움 타이틀 / 600*200 / 스티커
+- l_board / L보드 / 600*900 / 폼보드 5T
+- foamboard / 폼보드 / 600*900 / 폼보드 5T
+- a4_portrait / A4 세로 / 210*297 / 인쇄
+- a3_portrait / A3 세로 / 297*420 / 인쇄
+- backwall / 백월 / 6000*2400 / 백월
 
 응답은 반드시 JSON 한 덩어리만 출력. 마크다운 펜스·해설 금지.
 형식:
 {
   "items": [
-    {"no":"01","category":"x_banner","category_label":"X배너","width_mm":600,"height_mm":1800,"material":"PET","location":"행사장 메인 입구","purpose":"main_promo","quantity":4,"rationale":"500명 컨퍼런스 메인 홍보·동선 시인성","program_part":"40.04"}
+    {"no":"01","category":"x_banner","category_label":"X배너","standard_category":"x_banner","width_mm":600,"height_mm":1800,"material":"PET","location":"행사장 메인 입구","purpose":"main_promo","quantity":4,"rationale":"근거 1~2문장","program_part":"40.04"}
   ],
   "summary": "추천 의도 1~2문장 (행사 규모·유형·핵심 포인트 명시)",
   "inferredScale": "medium"
@@ -272,17 +222,29 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
   // "이 행사장은 외벽·천정만 학습됨" → AI가 미학습 카테고리에 quantity=0 + 추천없음 표기하도록 명시
   const coverageBlock = formatCoverageForPrompt(input.venue)
 
-  // v9.31: 프로그램 파트 매핑 컨텍스트 (사용자 강한 지적 — 파트별 적용 사항 작동)
-  // 1차(파트별 환경장식물 매핑) + 2차(행사장별 보강) — 회의 컨셉
+  // v9.31: 프로그램 파트 매핑 컨텍스트 (1순위 — 사용자 선택 파트별 환경장식물 후보)
   const selectedParts = (input.programParts ?? []).filter(c => PROGRAM_PART_BY_CODE.has(c))
   const programPartsBlock = selectedParts.length === 0 ? '' :
-    '\n\n[프로그램 파트 매핑] (사용자 선택 ' + selectedParts.length + '개)\n' +
+    '\n\n[1순위 — 프로그램 파트 매핑] (사용자 선택 ' + selectedParts.length + '개)\n' +
     selectedParts.map(code => {
       const p = PROGRAM_PART_BY_CODE.get(code)!
       const hints = PROGRAM_PART_SIGNAGE_HINTS[code] ?? []
       return `- ${code} ${p.name} → 권장 환경장식물: ${hints.join(', ')}`
     }).join('\n') +
-    '\n→ 위 파트별 권장 환경장식물 매핑을 1차 기준으로 사용. 각 추천 항목에 매칭된 파트 코드 1개를 program_part 필드에 명시. 행사장별 보강은 2차로 적용.'
+    '\n→ 위 파트별 권장 환경장식물을 1순위 후보로 사용. 각 추천 항목에 매칭된 파트 코드 1개를 program_part 필드에 명시.'
+
+  // v9.33: 행사장 배치도 Vision 분석 — 동선·설치 위치 컨텍스트 보강
+  // 1순위(파트별 후보) 결과의 location 필드 정확도를 높이는 보조 컨텍스트.
+  let floorPlanBlock = ''
+  if (input.floorPlanImageUrl) {
+    try {
+      const vision = await analyzeFloorPlan(input.floorPlanImageUrl)
+      if (vision.text && !vision.error) {
+        floorPlanBlock = '\n\n[보강 — 행사장 배치도 Vision 분석]\n' + vision.text.trim() +
+          '\n→ 위 배치도 분석 결과를 각 항목 location 필드에 반영하여 동선·설치 위치를 구체화하세요.'
+      }
+    } catch { /* silent — Vision 실패해도 추천 진행 */ }
+  }
 
   const userText = [
     `행사명: ${input.eventName}`,
@@ -305,7 +267,7 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
     `사용 목적: ${input.purposes.join(', ') || '미지정 — 행사 유형 기준 자동 판단'}`,
     selectedParts.length > 0 ? `프로그램 파트: ${selectedParts.map(c => `${c} ${PROGRAM_PART_BY_CODE.get(c)!.name}`).join(', ')}` : '',
     input.notes ? `추가 메모: ${input.notes}` : '',
-  ].filter(Boolean).join('\n') + similarEventsBlock + venueSignageBlock + accumulatedBlock + venueProfileBlock + ceilingBannerBlock + venueSpecsBlock + coverageBlock + programPartsBlock
+  ].filter(Boolean).join('\n') + similarEventsBlock + venueSignageBlock + accumulatedBlock + venueProfileBlock + ceilingBannerBlock + venueSpecsBlock + coverageBlock + programPartsBlock + floorPlanBlock
 
   const body = {
     systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },

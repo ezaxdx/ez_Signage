@@ -1,5 +1,80 @@
 # 작업 이력
 
+## 2026-05-13 (v9.33) — 통합 핫픽스 6건: 글로벌 사이드바 + 3단계 SYSTEM_INSTRUCTION + UI 버그·PM 정정·부연 제거·도면 Vision
+
+### 사용자 요청
+조기흠 사원(AXDX팀, 2026-05-13): 6개 작업 통합 처리
+1. 관리자 페이지 5개 라우트(/admin·/admin/ai·/admin/users·/admin/learning·/data) 글로벌 좌측 사이드바 도입 (기존 헤더 nav 5개 → 좌측 일원화)
+2. recommendSignage SYSTEM_INSTRUCTION 3단계 우선순위 재작성 (파트 → 시설 제약 → 표준 수량 + 도면 Vision 보강)
+3. 학습 관리자 ′환경장식물 종류 관리′ 클릭 시 버튼 바가 아래로 가는 버그
+4. "PM" → "사원/담당자" 일괄 정정 (AdminOpsClient 16컬럼 + DataDashboard 라벨)
+5. 부연 산문 잔존 정리 (description·subtitle 일괄 제거)
+6. 행사장 배치도 Vision 분석 컨텍스트 주입 (case-a 페이지)
+
+### 1. 글로벌 좌측 사이드바 (5 메뉴)
+- 신규 `app/(dashboard)/admin/components/AdminSidebar.tsx` — 5 메뉴 (운영 대시보드·AI 관리·유저 관리·데이터 학습·분석) + usePathname 기반 active 표시
+- 신규 `app/(dashboard)/admin/layout.tsx` — admin 그룹 공통 layout. isAdmin 가드 + 사이드바 + children
+- 신규 `app/(dashboard)/data/layout.tsx` — /data도 같은 사이드바 적용 (5번째 메뉴)
+- 4개 페이지에서 헤더 인라인 nav 제거: AdminOpsClient·AdminAiClient·learning/LearningManagerClient·admin/users/page.tsx
+- 비활성 메뉴 ′유저 관리′는 사이드바에서 disabled 시각화 (cursor-not-allowed)
+
+### 2. recommendSignage 3단계 우선순위 재작성
+`lib/ai/recommendSignage.ts`:
+- SYSTEM_INSTRUCTION 전면 재작성 — 사용자 명세 그대로:
+  ```
+  1순위: 프로그램 파트별 환경장식물 후보 추출 (입력: 선택 파트 다중)
+  2순위: 행사장 시설 가이드 제약 — 못 설치 카테고리 후보 제외 (입력: 행사 장소)
+  3순위: 행사장 시설 가이드 표준 수량 — 각 후보 quantity 지정 (입력: 행사 장소)
+  [보강] 행사장 배치도 Vision 분석 → 동선·설치 위치 컨텍스트
+  ```
+- 응답 규칙: 각 항목 program_part · standard_category 명시. 2순위 제외 = ′[설치 불가 — 행사장 제약]′. 3순위 부재 = ′[수량 미정 — 운영자 확정]′.
+- RecommendInput에 floorPlanImageUrl?: string 필드 추가
+- analyzeFloorPlan(imageUrl) 호출 후 결과 텍스트를 ′[보강 — 행사장 배치도 Vision 분석]′ 블록으로 userText에 부착
+
+### 3. 학습 관리자 환경장식물 종류 관리 버튼바 버그
+`app/(dashboard)/admin/learning/LearningManagerClient.tsx`:
+- 원인: `activeSection === 'synonyms' && synonymSubTab === 'types'` 블록이 SYNONYM_SUBTABS 버튼바보다 위에 위치 → types 클릭 시 종류 표가 위 / 버튼바가 아래에 표시되는 시각 버그
+- 수정: 기존 위치는 `false &&` 가드로 비활성. SYNONYM_SUBTABS 버튼바 바로 아래 동일 섹션을 신규 삽입 (mapping·category와 같은 댑스 — types 서브탭 일관 표시)
+
+### 4. PM → 담당자/사원 정정
+- `app/(dashboard)/admin/AdminOpsClient.tsx`: 필터 ′PM 전체′ → ′담당자 전체′ / 테이블 헤더 ′PM, 담당자′ → ′담당자, 확인자′
+- `app/(dashboard)/data/DataDashboard.tsx`: 행사이력 표 헤더 ′PM 부서′ → ′담당 부서′ / 납기 패턴 안내문 ′PM 부서별·디자인 업체별·행사장별′ → ′담당 부서별·디자인 업체별·행사장별′ / 알랏 안내문 ′PM 사업부·부서별′ → ′담당 사업부·부서별′
+
+### 5. 부연 산문 잔존 정리
+- recommendSignage SYSTEM_INSTRUCTION에서 ′행사 유형별 권장 구성′·′목적별 추천 매핑′·′규모별 수량 가이드′·′부속 시설 자동 인지 휴리스틱′ 등 부연 산문 일괄 제거 → 3단계 우선순위·표준 12종 목록·응답 형식만 남김
+- LearningManagerClient의 ′준 시드 13종은 DB에서도 is_standard=true 로 보호됩니다′·′비표준 입력을 표준명으로 자동 변환합니다′·′FacilityGuidePanel에서 사용자가 제출한′ 부연은 이미 v9.32에서 제거됨 (확인 완료)
+
+### 6. 행사장 배치도 Vision 분석 컨텍스트 주입
+`app/(dashboard)/projects/new/case-a/page.tsx`:
+- ′행사장 배치도 (선택)′ 필드 신규 (showAdvanced 안, 추가 메모 아래 위치)
+- 파일 선택 시 FileReader로 미리보기 → handleRecommend에서 Supabase Storage `<user_id>/temp-floor-plans/` 경로로 업로드 → publicUrl을 API에 floorPlanImageUrl로 전달
+- 서버 측 recommendSignage가 analyzeFloorPlan() 호출 → SYSTEM_INSTRUCTION [보강] 절로 자동 연결
+
+### 변경 파일 (9개)
+- 신규: `app/(dashboard)/admin/components/AdminSidebar.tsx`
+- 신규: `app/(dashboard)/admin/layout.tsx`
+- 신규: `app/(dashboard)/data/layout.tsx`
+- `lib/ai/recommendSignage.ts` (SYSTEM_INSTRUCTION 재작성 + floorPlanImageUrl + analyzeFloorPlan 보강)
+- `app/(dashboard)/admin/AdminOpsClient.tsx` (헤더 nav 제거 + PM → 담당자 정정)
+- `app/(dashboard)/admin/ai/AdminAiClient.tsx` (헤더 nav 제거)
+- `app/(dashboard)/admin/users/page.tsx` (헤더 nav 제거 + isAdmin 가드는 layout으로 위임)
+- `app/(dashboard)/admin/learning/LearningManagerClient.tsx` (헤더 nav 제거 + 환경장식물 종류 섹션 위치 정정)
+- `app/(dashboard)/data/DataDashboard.tsx` (PM → 담당자/담당 부서 정정)
+- `app/(dashboard)/projects/new/case-a/page.tsx` (행사장 배치도 업로드 + API 전달)
+
+### 검증
+- TSC 0 에러
+- Next 빌드 25/25 라우트 PASS
+- `/admin` 4.71 kB, `/admin/ai` 4.38 kB, `/admin/learning` 16.9 kB, `/admin/users` 179 B, `/data` 11.7 kB, `/projects/new/case-a` 11.7 kB
+
+### 라이브 사이트 확인 체크리스트 (사용자 영역)
+1. https://ez-signage2.vercel.app 로그인(admin) 후 5개 admin 라우트(/admin·/admin/ai·/admin/users·/admin/learning·/data) 진입 → 좌측 사이드바 5 메뉴 일관 표시 확인
+2. 학습 관리자 → 환경장식물 클릭 → 환경장식물 종류 관리 서브탭 클릭 → 버튼바가 위에 표시되는지 (이전에는 표 아래로 갔음)
+3. 새 프로젝트(case-a) → 고급 옵션 펼치기 → 행사장 배치도 첨부 → AI 추천 받기 → 항목별 location 필드에 도면 분석 컨텍스트 반영 확인
+4. AdminOps 테이블 헤더가 ′담당자·확인자′로 표시되는지
+
+---
+
 ## 2026-05-13 (v9.32) — 학습 관리자 사이드바 5 메뉴 정정 (프로그램 파트 신규 + 동의어 → 환경장식물)
 
 ### 사용자 요청

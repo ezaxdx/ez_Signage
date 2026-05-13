@@ -90,6 +90,10 @@ export default function CaseAPage() {
   const [isInternational, setIsInternational] = useState(false)
   const [notes, setNotes] = useState('')
 
+  // v9.33: 행사장 배치도 (선택) — Gemini Vision으로 분석해 추천에 보강
+  const [floorPlanFile, setFloorPlanFile] = useState<File | null>(null)
+  const [floorPlanPreview, setFloorPlanPreview] = useState<string | null>(null)
+
   const [showAdvanced, setShowAdvanced] = useState(false)
 
   const [stage, setStage] = useState<'form' | 'review' | 'creating'>('form')
@@ -117,6 +121,26 @@ export default function CaseAPage() {
     }
     setLoading(true)
     try {
+      // v9.33: 배치도 첨부 시 Supabase Storage 업로드 후 publicUrl을 API에 전달 (Vision 보강)
+      let floorPlanImageUrl: string | undefined
+      if (floorPlanFile) {
+        try {
+          const supabase = createClient()
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            const ext = floorPlanFile.name.split('.').pop() ?? 'jpg'
+            const path = `${user.id}/temp-floor-plans/${Date.now()}.${ext}`
+            const { error: upErr } = await supabase.storage
+              .from('design-images')
+              .upload(path, floorPlanFile, { upsert: true, contentType: floorPlanFile.type })
+            if (!upErr) {
+              const { data: { publicUrl } } = supabase.storage.from('design-images').getPublicUrl(path)
+              floorPlanImageUrl = publicUrl
+            }
+          }
+        } catch { /* silent — Vision 보강 실패해도 추천 진행 */ }
+      }
+
       const res = await fetch('/api/recommend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -141,6 +165,8 @@ export default function CaseAPage() {
           hasVip,
           isInternational,
           notes: notes.trim() || undefined,
+          // v9.33: 행사장 배치도 (선택) — Vision 분석으로 동선·설치 위치 보강
+          floorPlanImageUrl,
         }),
       })
       const data = await res.json()
@@ -449,6 +475,33 @@ export default function CaseAPage() {
                   <Field label="추가 메모 (자유 기술)">
                     <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="동시통역·기자 회견·체험존 운영 등 특이사항"
                       className={inputCls + ' resize-none'} />
+                  </Field>
+
+                  {/* v9.33: 행사장 배치도 — Vision 분석으로 동선·설치 위치 컨텍스트 보강 */}
+                  <Field label="행사장 배치도 (선택)">
+                    {floorPlanPreview ? (
+                      <div className="space-y-2">
+                        <img src={floorPlanPreview} alt="배치도 미리보기" className="w-full max-h-40 object-contain rounded-lg border border-slate-300 bg-slate-50" />
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500 text-[11px] truncate">{floorPlanFile?.name}</span>
+                          <button type="button" onClick={() => { setFloorPlanFile(null); setFloorPlanPreview(null) }} className="text-rose-500 text-[11px] hover:underline">제거</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={e => {
+                          const f = e.target.files?.[0]
+                          if (!f) return
+                          setFloorPlanFile(f)
+                          const reader = new FileReader()
+                          reader.onload = ev => setFloorPlanPreview(ev.target?.result as string)
+                          reader.readAsDataURL(f)
+                        }}
+                        className="block w-full text-slate-500 text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-slate-100 file:text-slate-700 file:cursor-pointer"
+                      />
+                    )}
                   </Field>
                 </div>
               )}

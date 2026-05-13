@@ -495,7 +495,7 @@ function EventsTab({ search }: { search: string }) {
       <table className="w-full text-xs">
         <thead className="sticky top-0 z-10">
           <tr className="border-b border-slate-200 bg-white">
-            {['행사명', '코드', '연도', '행사장', '발주처', 'PM 부서', '분류', '자료'].map(h => (
+            {['행사명', '코드', '연도', '행사장', '발주처', '담당 부서', '분류', '자료'].map(h => (
               <th key={h} className="text-left text-slate-500 font-medium px-3 py-3 whitespace-nowrap">{h}</th>
             ))}
           </tr>
@@ -671,14 +671,14 @@ function LeadTimeTab() {
           <h3 className="text-slate-800 text-sm font-semibold">납기 패턴 — 분석 자동화 예정</h3>
         </div>
         <p className="text-slate-500 text-xs leading-relaxed mb-4">
-          명세 6.1.b.v + 6.2.3 — PM 부서·디자인 업체·행사장별로 평균 D-N 발주/검토/수정/확정 일수를 산출.
+          명세 6.1.b.v + 6.2.3 — 담당 부서·디자인 업체·행사장별로 평균 D-N 발주/검토/수정/확정 일수를 산출.
           현재 자료에는 행사 일정(세팅·철거)만 있어 산출 불가. 향후 본 앱의 워크플로우(발주→시안→수정→확정)
           데이터가 누적되면 자동 계산 진입.
         </p>
         {SEED_LEAD_TIME.length === 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
-              { scope: 'PM 부서별',     desc: '부서명 → 평균 발주·확정 D-N 패턴' },
+              { scope: '담당 부서별',   desc: '부서명 → 평균 발주·확정 D-N 패턴' },
               { scope: '디자인 업체별', desc: '업체명 → 평균 시안 컴펌·수정 일수' },
               { scope: '행사장별',     desc: '행사장 → 표준 제작물 수량·납기 패턴' },
             ].map(p => (
@@ -885,7 +885,7 @@ function PmTab({ search }: { search: string }) {
       <div className="bg-rose-950/20 border border-rose-900/30 rounded-lg p-3 flex items-start gap-2 text-xs text-rose-200/80">
         <Briefcase className="w-3.5 h-3.5 text-rose-400 flex-shrink-0 mt-0.5" />
         <div>
-          <strong className="text-rose-300">명세 6.2.1</strong> — PM 사업부·부서별 데이터.
+          <strong className="text-rose-300">명세 6.2.1</strong> — 담당 사업부·부서별 데이터.
           향후 부서별 납기 소요일 패턴(D-N 발주/검수/수정/확정) 분석에 활용.
           현재 17건 매칭 (행사 폴더 ↔ 수행실적 엑셀).
         </div>
