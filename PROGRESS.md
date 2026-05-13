@@ -1,5 +1,180 @@
 # 작업 이력
 
+## 2026-05-13 (v9.23) — v9.22 후속 갭 7건 점검 + 5건 보강 + UI 시각화 적용
+
+### 배경 — 사용자 요청
+v9.22 적용 후 사용자 요청: "미학습 부분과 수정하면서 추가 학습 필요한 부분이 없는지 꼼꼼하게 확인하여 적용할 것"
+
+v9.22 코드를 다시 읽어 7개 갭을 식별:
+| 코드 | 갭 설명 | 심각도 |
+|---|---|---|
+| G1 | findVenueKey 매칭 실패 시(시설 가이드 미등록 행사장) coverage·후처리 전부 스킵 — SEED_PERFLIST 12+개 행사장(롯데호텔·평창·aT 등) 무시 | **높음** |
+| G2 | case-a UI가 no_data_flag·coverage 시각화 안 함 — 백엔드 보정이 사용자 화면에 노출 안 됨 | **높음** |
+| G3 | coverage.missing 카테고리 사용자 안내 박스 없음 | 중간 |
+| G4 | venueLearningStatus의 SEED_EVENT_HISTORY 합산 시 program_parts·learned_categories 0 (의도된 동작) | 낮음 (PASS) |
+| G5 | STANDARD_CATEGORIES match_keywords가 발주엑셀 실측 단어("거리두기 스티커" 370회, "행사 현수막" 100회 등) 반영 못 함 | 중간 |
+| G6 | computeVenueCategoryCoverage()는 venueFacilityGuide + 천정배너 시드만 사용 — 발주엑셀 13건 통합 맵(`_venue_signage_map.json`) 무시 → 실제 학습 데이터 누락 표기 (정답지 부정 편향) | **높음** |
+| G7 | lib/text/ 폴더가 untracked (v9.21 작업물 git add 누락) | 낮음 (PASS — 사용자 결정 영역) |
+
+### 핵심 변경 (5건 보강 — G1·G2·G3·G5·G6)
+
+#### G5: STANDARD_CATEGORIES.match_keywords 발주엑셀 실측 표기 대량 보강
+`signageCategoryStandards.ts`의 6대 카테고리 각각에 발주엑셀 13건 분석 결과 빈도 ≥3회 표기를 키워드로 추가:
+- **outer_wall**: 행사 현수막(100회)·통천현수막(33회)·기둥현수막·홍보탑·무지배너 추가
+- **gate**: 차량 게이트·공항 게이트·진입 아치 추가
+- **streetlight**: 폴대배너(15회)·물통배너(7회)·세로현수막(233회) 일관화
+- **x_banner**: 롤배너·A배너·I배너 추가
+- **ceiling**: 드롭배너(천장 매다는 형태) 추가
+- **support**: 거리두기 스티커(370회)·발자국 스티커(60회)·유도사인(32회)·행사 룸사인(17회)·영접피켓·시상보드·기념촬영보드·포토월·개회식 배치도·현황판·큐방/Q방 등 20+ 표기 추가
+
+#### G6: computeVenueCategoryCoverage에 발주엑셀 통합 맵 합산
+`computeMapCoverageByVenueKey()` 신설 — `_venue_signage_map.json` 13건을 fuzzy 매칭으로 venue_key별 6대 카테고리 학습 보유 여부 추출. 기존 venueFacilityGuide·천정배너 시드와 합산 후 최종 커버리지 계산.
+- 효과: 코엑스·송도·ICC 등 시설 가이드에 일부 카테고리 누락된 행사장도 실제 발주 기록으로 학습 보강
+- 사용자 명령 정합: 시설 가이드는 매뉴얼(가이드 데이터가 오래될 수 있음), 발주 기록은 실제 사용(최신) — decisions.md 2026-05-12 "제작 완료 > 시설 가이드" 원칙 코드화
+
+#### G1: 시설 가이드 미등록 행사장 fallback 처리
+`buildCoverageForUnregisteredVenue(venueName)` 신설 — findVenueKey 매칭 실패해도 발주엑셀 통합 맵 단독으로 카테고리 학습 데이터 추출. 매칭 안 되면 6대 전부 미학습으로 정직하게 표기 (정답지 부정 편향 방지).
+`resolveCoverageForVenue(venueName)` — 등록/미등록 분기 통합 헬퍼.
+`recommendSignage.ts` 후처리 변경: `findVenueKey` 직접 호출 → `resolveCoverageForVenue` 사용. 시설 가이드 5개 외 행사장(롯데호텔·웨스틴조선·그랜드하얏트·평창 알펜시아·aT·OSCO 등)에서도 후처리·coverage 정상 동작.
+`formatCoverageForPrompt`도 동일 분기 적용 + 미등록 행사장은 "※ 이 행사장은 시설 가이드 미등록. 발주엑셀 기록만으로 추출한 학습 데이터입니다." 주석 자동 부착.
+
+#### G2 + G3: case-a 페이지 학습 데이터 시각화
+- AlertTriangle 아이콘 import 추가 + STANDARD_CATEGORY_BY_KEY import
+- `coverage` state 추가, handleRecommend에서 data.coverage 받아 저장
+- review 스테이지 상단에 학습 데이터 부재 안내 박스 (amber, 학습됨·미학습 카테고리 한글 라벨 + 매뉴얼 확인 권장 메시지)
+- 각 추천 항목 row에 `no_data_flag === true` 시:
+  - amber 배경 (bg-amber-50/60)
+  - 카테고리명 옆에 "추천 없음 (학습 데이터 부재)" amber 배지 (AlertTriangle 아이콘)
+  - 텍스트 컬러 amber 계열로 전환 (강조)
+- 결과: AI가 추측한 미학습 카테고리 추천이 시각적으로 명확히 구분됨
+
+#### 추가 — 학습 관리자 페이지 미등록 행사장 커버리지 fallback
+`app/(dashboard)/admin/learning/page.tsx`에 `buildCoverageForUnregisteredVenue` import + venueLearningStatus 계산 시 findVenueKey null 케이스에 fallback 적용. 결과: 롯데호텔·평창 알펜시아 등 venueLearningStatus 행도 카테고리 학습 컬럼에 amber/slate 라벨 노출됨.
+
+### 변경 파일 (4개)
+- `lib/data/signageCategoryStandards.ts` (G5 키워드 보강 + G6 통합 맵 합산 + G1 buildCoverageForUnregisteredVenue/resolveCoverageForVenue 신설)
+- `lib/ai/recommendSignage.ts` (import 정리 + 후처리에 resolveCoverageForVenue 적용)
+- `app/(dashboard)/projects/new/case-a/page.tsx` (G2·G3 UI 시각화 — coverage state·안내 박스·no_data_flag 배지)
+- `app/(dashboard)/admin/learning/page.tsx` (미등록 행사장 fallback 적용)
+
+### 검증
+- TSC 0 에러 (1차 Set 이터레이션 에러 → Array.from 래핑으로 해결)
+- Next 빌드 22/22 라우트 통과 (case-a 7.81kB → 9.42kB)
+
+### 효과
+- v9.22 후처리가 시설 가이드 5개 행사장에서만 동작하던 한계 해소 → SEED_PERFLIST 17건 + 발주엑셀 13건 모두 커버
+- 사용자가 추천 결과에서 "AI가 추측한 카테고리"를 한눈에 식별 (amber 배경 + 배지)
+- 학습 관리자 페이지에서 시설 가이드 미등록 행사장도 카테고리 학습 현황 표시 — 행사장 보강 우선순위 식별 가능
+- 발주엑셀 실측 표기 키워드 추가로 향후 발주 결과 자동 분류 정확도 향상
+
+### 다음 사이클 후보 (남은 갭)
+- G7: lib/text/normalizeAiText.ts git add (사용자 결정 영역 — 직접 add 또는 다음 커밋에 포함)
+- G8: 시설 가이드 미등록 행사장(롯데호텔·평창·그랜드하얏트 등) 신규 등록 — SEED_VENUE_SPECS·SEED_CEILING_BANNER_PATTERNS·VENUE_FACILITY_GUIDE_SEED 3곳 동시 추가 필요 (작업량 큼)
+- EVENT_TYPE_RECOMMEND inline → lib/programParts.ts PROGRAM_PART_SIGNAGE_HINTS 통합 (v4.1 잔여 정리)
+- 행사 격 보정 룰 / 부속 시설 휴리스틱 코드 강제 (SYSTEM_INSTRUCTION 텍스트만 있음)
+- 발주엑셀 _venue_signage_map.json venue 라벨 정제 — "미상" "기타" "-" 같은 노이즈 venue 추가 매핑 필요
+
+### 후속 사용자 확인 사항
+- dev 서버 case-a 페이지에서 미등록 행사장(예: "롯데호텔 서울") 입력 후 AI 추천 받아 amber 안내 박스 + no_data_flag 배지 동작 확인
+- `/admin/learning` → SEED_PERFLIST 17건 venue가 카테고리 학습 컬럼에 표시되는지 (이전엔 5개만)
+- 코엑스/송도/ICC가 발주엑셀 통합 맵 합산으로 학습 카테고리 수 증가 확인
+
+## 2026-05-13 (v9.22) — 6대 표준 카테고리 학습 데이터 표준화 + 미학습 카테고리 자동 표기
+
+### 배경 — 부족 영역 점검 결과 (A~E 5영역)
+사용자 요청 "환경장식물 부족한 부분 있는지 확인 및 적용 특히 학습 관련하여 더 진행" 따라 시드 데이터·시설 가이드·AI 학습·학습 관리자·goals/current.md TODO 5영역을 일괄 점검. 5영역 공통 핵심 부족 = "카테고리별 학습 항목 표준화 (외벽/게이트/가로등/X배너/천정/부속시설)" — goals/current.md 1단계 TODO 1번 항목.
+
+### 핵심 변경 (3개 우선순위 적용)
+
+#### 1. `lib/data/signageCategoryStandards.ts` 신설 (영역 A·B·C·D 공통 기반)
+- `StandardCategoryKey` 6종 정의: outer_wall·gate·streetlight·x_banner·ceiling·support
+- `STANDARD_CATEGORIES[]` — 각 카테고리에 match_keywords·priority(1·2·3)·typical_size 명시
+- `classifyCategory(categoryText)` — 자유 문자열(`가로현수막 (외벽)` 등) → 표준 키 매핑
+- `computeVenueCategoryCoverage()` — VENUE_FACILITY_GUIDE_SEED + SEED_CEILING_BANNER_PATTERNS 기반으로 행사장별 6대 카테고리 학습 보유 여부 계산
+- `summarizeCoverage()` / `formatCoverageForPrompt()` — 학습 관리자·AI 프롬프트 양쪽 사용 헬퍼
+
+#### 2. `lib/ai/recommendSignage.ts` 후처리 + 커버리지 프롬프트 주입
+- 새 import: signageCategoryStandards 4개 함수 + findVenueKey
+- RecommendItem에 `standard_category?` + `no_data_flag?` 필드 추가
+- RecommendResult에 `coverage?: { venue_key, filled[], missing[] }` 필드 추가
+- userText에 `coverageBlock` 연결 — "이 행사장은 외벽·천정만 학습됨 → 미학습 카테고리는 quantity=0 + 추천없음 표기"를 Gemini에 명시
+- JSON 파싱 후 후처리: 각 item의 category_label을 classifyCategory로 분류 + 미학습이면서 X배너·부속시설이 아닌 카테고리는 `[추천 없음 — 학습 데이터 부재]` rationale 강제 prepend + no_data_flag=true
+- learnings.md 2026-05-11 "정답지 노출 편향" 코드화 — SYSTEM_INSTRUCTION 텍스트만 있던 약속을 코드 강제로 보강
+
+#### 3. 학습 관리자 페이지 — 카테고리 학습 현황 컬럼 추가
+- `LearningManagerClient` VenueLearningStatus 인터페이스에 `category_coverage?: { filled[], missing[], priority_1_missing[] }` 추가
+- venue-status 섹션 표에 "카테고리 학습" 컬럼 1개 추가 — emerald(학습)/slate(미학습)/rose(우선순위1 누락 = 외벽·천정) 3색 라벨
+- 안내문에 6대 표준 카테고리 명시 (외벽·게이트·가로등·X배너·천정·부속시설)
+- `page.tsx`에서 `computeVenueCategoryCoverage()` + findVenueKey 매칭하여 venueLearningStatus에 category_coverage 채워서 전달
+
+### 변경 파일 (3개)
+- `lib/data/signageCategoryStandards.ts` (신규)
+- `lib/ai/recommendSignage.ts` (import·인터페이스·후처리)
+- `app/(dashboard)/admin/learning/LearningManagerClient.tsx` (인터페이스·표 컬럼)
+- `app/(dashboard)/admin/learning/page.tsx` (커버리지 계산·매핑)
+
+### 검증
+- TSC 0 에러
+- Next 빌드 22/22 라우트 통과 (admin/learning 12.4kB → 12.6kB)
+
+### 효과
+- AI 추천 시 학습 데이터 없는 천정배너·외벽 카테고리에 자동 `[추천 없음]` 표기 — 환각 방지 (learnings.md 2026-05-11)
+- 학습 관리자 페이지에서 행사장별 어떤 카테고리가 부족한지 한눈에 확인 — DDP·ICC처럼 데이터 적은 행사장 식별 가능
+- 카테고리 분류 체계가 코드로 정착돼 향후 행사장 시드 추가·천정배너 패턴 보강 시 일관성 유지
+
+### 후속 사용자 확인 사항
+- dev 서버에서 `/admin/learning` → 행사장 학습 현황 표 카테고리 학습 컬럼 노출 확인
+- 새 프로젝트 만들어 AI 추천 받을 때 학습 없는 카테고리(예: DDP 천정배너)에 `[추천 없음]` 자동 표기 동작 확인
+- 시드 추가 보강은 정답지 노출 편향 우려로 보류 (코엑스·송도·ICC 천정배너 실측 — 2차 AI 시험 완료 후)
+- main 머지: v9.21·v9.22 두 브랜치를 묶어서 머지할지 별도로 진행할지 결정 필요
+
+## 2026-05-13 (v9.21) — 환경장식물 시설 가이드 피드백 회의 6개 결정 일괄 반영
+
+### 회의: 260513 환경장식물 시설 가이드 피드백 (회의록 6개 결정 우선순위 순)
+
+#### ① (최우선) FacilityGuidePanel 한 번 클릭 진입 보장
+- `app/components/facility/FacilityGuidePanel.tsx` outer wrapper의 onClick={onClose} 제거
+- pointer-events-none 컨테이너 + backdrop만 onClose / 패널 본체는 pointer-events-auto + stopPropagation
+- 첫 클릭 즉시 패널 표시 + 내부 자식 클릭이 닫지 못하도록 격리
+
+#### ② 시설 가이드 호버 텍스트 잘림 해결
+- install_allowed note의 `truncate max-w-[180px]` 제거 → 별도 줄에 break-words + whitespace-pre-wrap로 전체 노출
+- warnings.description / special_notes 동일하게 wrap + 줄바꿈
+- 행사장 객관 시설 정보(코엑스 등 1차 자료)는 잘림 없이 전부 노출 (메모리 feedback-facility-guide-full-visibility 적용)
+
+#### ③ AI 생성 텍스트 가독성 — `lib/text/normalizeAiText.ts` 신설
+- `formatNoteText()` — 마침표 + 공백 + 다음 문장 시작 시 줄바꿈 삽입
+- 약어·소수점·전화번호의 점(.)·D-1 등은 보존
+- case-a 페이지 추천 결과 rationale `truncate` 제거 + formatNoteText 적용
+
+#### ④ "운영팀 확인 필수" 강조 표시 톤다운
+- "미확인 항목 — 운영팀 직접 확인 필요" 헤더 → "사전 협의 권장 항목"으로 변경 (amber → slate)
+- 강조 라벨 남발 금지 — 일반적으로 어떻게 하더라 정보만 제공
+
+#### ⑤ 미확인 항목 처리 — 구체 카테고리로 리스트업
+- `getGuideUnknowns()` 재작성: install_allowed에서 "확인 필요/필수" 포함 항목의 category명을 직접 리스트업
+- 매뉴얼 OCR 미파싱·내부 처리 메시지(사용자에게 의미 없음) 제거
+- rigging 정보 중복 강조 제거 (install_allowed에 이미 노출됨)
+
+#### ⑥ 추상적 텍스트 = 시설 가이드 원문 그대로
+- venueFacilityGuide.ts는 이미 시드 원문 기반 (AI 의역 없음) → 추가 변경 불필요
+- 호버 잘림 해결로 원문 정보가 잘림 없이 노출됨
+
+### 변경 파일 (3개)
+- `app/components/facility/FacilityGuidePanel.tsx` (1·2·4·5번)
+- `app/(dashboard)/projects/new/case-a/page.tsx` (3번)
+- `lib/text/normalizeAiText.ts` (신규 — 3번)
+
+### 검증
+- TSC 0 에러 / Next 빌드 22/22 라우트 통과
+
+### 후속 사용자 확인 사항
+- dev 서버에서 행사장 가이드 버튼 첫 클릭에 즉시 패널 열리는지
+- install_allowed 항목 note 잘림 없이 전체 텍스트 보이는지
+- AI 추천 결과(case-a) rationale 줄바꿈으로 가독성 개선됐는지
+
+---
+
 ## 2026-05-12 (v9.19) — 엑셀/PPT/PDF 헤더 개편 + 동적 컬럼 + 날짜 연결
 
 ### 핵심 변경 (사용자 요청: 헤더 21컬럼 개편 + 숨김/표시 토글)

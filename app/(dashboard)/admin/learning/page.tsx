@@ -3,9 +3,15 @@ import { createClient } from '@/lib/supabase/server'
 import { isAdmin } from '@/lib/auth/role'
 import { LearningManagerClient } from './LearningManagerClient'
 import { SEED_SYNONYMS, SEED_EVENT_HISTORY } from '@/lib/data/dashboardSeed'
-import { VENUE_FACILITY_GUIDE_SEED } from '@/lib/data/venueFacilityGuide'
+import { VENUE_FACILITY_GUIDE_SEED, findVenueKey } from '@/lib/data/venueFacilityGuide'
 import { PROGRAM_PART_BY_CODE } from '@/lib/programParts'
 import { loadSignageTypes } from '@/lib/data/signageTypeLoader'
+import {
+  computeVenueCategoryCoverage,
+  buildCoverageForUnregisteredVenue,
+  STANDARD_CATEGORY_BY_KEY,
+  type StandardCategoryKey,
+} from '@/lib/data/signageCategoryStandards'
 
 export const metadata = { title: '데이터 학습 관리자 | 제작물 리스트 가이드' }
 
@@ -74,6 +80,9 @@ export default async function LearningManagerPage() {
     }
   }
 
+  // v9.22: 6대 표준 카테고리 학습 커버리지 계산 (시설 가이드 시드 + 천정배너 패턴)
+  const categoryCoverageList = computeVenueCategoryCoverage()
+
   const venueLearningStatus = Array.from(venueStatusMap.entries())
     .map(([venue, s]) => {
       const total = s.totalItems
@@ -81,6 +90,28 @@ export default async function LearningManagerPage() {
         : Math.round(((s.finalized * 100 + s.confirmed * 70 + s.mid * 30 + s.input * 10) / total))
       const partNames = Array.from(s.programParts)
         .map(code => PROGRAM_PART_BY_CODE.get(code)?.name ?? code)
+
+      // 6대 카테고리 커버리지 매칭 (venue 한글명 → venue_key)
+      // v9.23: findVenueKey 매칭 실패 시 buildCoverageForUnregisteredVenue fallback —
+      // 롯데호텔·평창 알펜시아 등 시설 가이드 미등록 행사장도 발주엑셀 통합 맵으로 커버리지 산출
+      const venueKey = findVenueKey(venue)
+      const cov = venueKey
+        ? categoryCoverageList.find(c => c.venue_key === venueKey) ?? null
+        : buildCoverageForUnregisteredVenue(venue)
+      const categoryCoverage = cov
+        ? {
+            filled: (Object.entries(cov.has_data) as [StandardCategoryKey, boolean][])
+              .filter(([, v]) => v)
+              .map(([k]) => STANDARD_CATEGORY_BY_KEY.get(k)?.label ?? k),
+            missing: (Object.entries(cov.has_data) as [StandardCategoryKey, boolean][])
+              .filter(([, v]) => !v)
+              .map(([k]) => STANDARD_CATEGORY_BY_KEY.get(k)?.label ?? k),
+            priority_1_missing: cov.missing_priority_1.map(
+              k => STANDARD_CATEGORY_BY_KEY.get(k)?.label ?? k
+            ),
+          }
+        : undefined
+
       return {
         venue,
         project_count: s.projects.size,
@@ -89,6 +120,7 @@ export default async function LearningManagerPage() {
         accuracy_estimate: accuracy,
         learned_categories: s.missingCats.size,
         program_parts: partNames,
+        category_coverage: categoryCoverage,
       }
     })
     .sort((a, b) => b.item_count - a.item_count)

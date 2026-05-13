@@ -6,6 +6,12 @@ import { findSimilarPastEvents, findCeilingBannerContext, getVenueSpecs, formatV
 import { findSimilarVenueSignage, formatVenueSignageContext } from '@/lib/data/venueSignageHelper'
 import { buildAccumulatedContext, formatAccumulatedContext } from '@/lib/ai/accumulatedContext'
 import { buildVenueProfile } from '@/lib/ai/venueProfile'
+import {
+  resolveCoverageForVenue,
+  formatCoverageForPrompt,
+  classifyCategory,
+  type StandardCategoryKey,
+} from '@/lib/data/signageCategoryStandards'
 
 export type EventType =
   | 'conference' | 'exhibition' | 'awards' | 'forum' | 'workshop'
@@ -47,12 +53,22 @@ export interface RecommendItem {
   purpose: string
   quantity: number
   rationale: string
+  /** v9.22: 6대 표준 카테고리 자동 분류 (외벽/게이트/가로등/X배너/천정/부속시설) */
+  standard_category?: StandardCategoryKey | null
+  /** v9.22: 학습 데이터 부재로 quantity=0 추천 처리되었는지 (UI에서 amber 표기) */
+  no_data_flag?: boolean
 }
 
 export interface RecommendResult {
   items: RecommendItem[]
   summary: string
   inferredScale?: EventScale
+  /** v9.22: 학습 데이터 커버리지 (행사장별 6대 카테고리 학습 현황 요약) */
+  coverage?: {
+    venue_key: string | null
+    filled: string[]
+    missing: string[]
+  }
 }
 
 const EVENT_TYPE_KO: Record<EventType, string> = {
@@ -238,6 +254,10 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
     ? '\n\n' + formatVenueSpecsContext(venueSpecs) + '\n→ 위 행사장 규모 기준으로 수량 스케일링 적용.'
     : ''
 
+  // v9.22: 6대 표준 카테고리 학습 데이터 커버리지 주입
+  // "이 행사장은 외벽·천정만 학습됨" → AI가 미학습 카테고리에 quantity=0 + 추천없음 표기하도록 명시
+  const coverageBlock = formatCoverageForPrompt(input.venue)
+
   const userText = [
     `행사명: ${input.eventName}`,
     input.eventType ? `행사 유형: ${eventTypeKo}` : '',
@@ -258,7 +278,7 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
     input.budgetConstrained ? `예산 제약: 있음 (비용 절감 우선)` : '',
     `사용 목적: ${input.purposes.join(', ') || '미지정 — 행사 유형 기준 자동 판단'}`,
     input.notes ? `추가 메모: ${input.notes}` : '',
-  ].filter(Boolean).join('\n') + similarEventsBlock + venueSignageBlock + accumulatedBlock + venueProfileBlock + ceilingBannerBlock + venueSpecsBlock
+  ].filter(Boolean).join('\n') + similarEventsBlock + venueSignageBlock + accumulatedBlock + venueProfileBlock + ceilingBannerBlock + venueSpecsBlock + coverageBlock
 
   const body = {
     systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
@@ -307,5 +327,36 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
     throw new Error('items 배열이 없습니다')
   }
   if (!parsed.inferredScale) parsed.inferredScale = scale
+
+  // v9.22 + v9.23: 후처리 — 6대 표준 카테고리 분류 + 미학습 카테고리 자동 표기 강제
+  // (SYSTEM_INSTRUCTION 텍스트 약속을 코드로 보강. 정답지 노출 편향 방지 — learnings.md 2026-05-11)
+  // v9.23: venueFacilityGuide 미등록 행사장(aT센터·OSCO·롯데호텔 등)도 발주엑셀 통합 맵 fallback으로 후처리 동작
+  const cov = resolveCoverageForVenue(input.venue)
+  if (cov) {
+    // 각 item에 standard_category 분류 + 미학습 시 no_data_flag 깃발 (quantity는 보존)
+    // x_banner·support는 일반 룰 추천 허용 — venueFacilityGuide.ts에 거의 항상 allowed
+    const COMMON_ALLOWED: StandardCategoryKey[] = ['x_banner', 'support']
+    for (const item of parsed.items) {
+      const sc = classifyCategory(item.category_label) || classifyCategory(item.category)
+      item.standard_category = sc
+      if (sc && !cov.has_data[sc] && !COMMON_ALLOWED.includes(sc) && item.quantity > 0) {
+        // 미학습 카테고리인데 수량이 있음 — 학습 없는 추측 추천
+        item.no_data_flag = true
+        const prevRationale = item.rationale ?? ''
+        item.rationale = `[추천 없음 — 학습 데이터 부재] ${prevRationale}`.trim()
+        // quantity는 보존 (UI에서 amber로 표시하고 사용자가 결정)
+        // → 0으로 강제하면 학습 시도 자체가 끊김. 깃발만 세워 사용자에게 알림.
+      }
+    }
+    // 결과에 커버리지 요약 포함 (UI 안내 박스용)
+    const filled: string[] = []
+    const missing: string[] = []
+    for (const [k, v] of Object.entries(cov.has_data) as [StandardCategoryKey, boolean][]) {
+      if (v) filled.push(k)
+      else missing.push(k)
+    }
+    parsed.coverage = { venue_key: cov.venue_key, filled, missing }
+  }
+
   return parsed
 }

@@ -6,11 +6,13 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Sparkles, Loader2, CheckCircle2, ChevronDown, ChevronUp, Download } from 'lucide-react'
+import { Sparkles, Loader2, CheckCircle2, ChevronDown, ChevronUp, Download, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { StepIndicator, GuideBox } from '@/app/components/guide'
 import type { RecommendItem, EventType, EventLanguage } from '@/lib/ai/recommendSignage'
 import { SEED_PERFLIST } from '@/lib/data/dashboardSeed'
+import { formatNoteText } from '@/lib/text/normalizeAiText'
+import { STANDARD_CATEGORY_BY_KEY, type StandardCategoryKey } from '@/lib/data/signageCategoryStandards'
 
 // 과거 수행실적에서 발주처·주관기관 후보 추출 (자동완성용)
 const KNOWN_CLIENTS = Array.from(new Set(SEED_PERFLIST.map(p => p.client))).sort()
@@ -91,6 +93,8 @@ export default function CaseAPage() {
   const [items, setItems] = useState<RecommendItem[]>([])
   const [summary, setSummary] = useState('')
   const [inferredScale, setInferredScale] = useState<string>('')
+  // v9.23: 6대 카테고리 학습 데이터 커버리지 (recommendSignage 후처리에서 받음)
+  const [coverage, setCoverage] = useState<{ venue_key: string | null; filled: string[]; missing: string[] } | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -142,6 +146,7 @@ export default function CaseAPage() {
       setItems(data.items)
       setSummary(data.summary || '')
       setInferredScale(data.inferredScale || '')
+      setCoverage(data.coverage ?? null)
       setStage('review')
     } catch (e) {
       setError(e instanceof Error ? e.message : '네트워크 오류')
@@ -414,27 +419,67 @@ export default function CaseAPage() {
                 {inferredScale && <span className="ml-2 text-indigo-400 text-xs">[규모: {inferredScale}]</span>}
               </div>
             )}
+
+            {/* v9.23: 학습 데이터 커버리지 안내 — 미학습 카테고리가 있으면 사용자에게 보강 안내 */}
+            {coverage && coverage.missing.length > 0 && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 text-xs text-amber-900 mb-4 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 leading-relaxed">
+                  <div className="font-semibold text-amber-800 mb-1">
+                    이 행사장은 {coverage.missing.length}개 카테고리의 학습 데이터가 부족합니다
+                  </div>
+                  <div className="text-amber-700">
+                    <span className="font-medium">학습됨:</span>{' '}
+                    {coverage.filled.length === 0
+                      ? '없음'
+                      : coverage.filled.map(k => STANDARD_CATEGORY_BY_KEY.get(k as StandardCategoryKey)?.label ?? k).join(' · ')}
+                  </div>
+                  <div className="text-amber-700 mt-0.5">
+                    <span className="font-medium">미학습:</span>{' '}
+                    {coverage.missing.map(k => STANDARD_CATEGORY_BY_KEY.get(k as StandardCategoryKey)?.label ?? k).join(' · ')}
+                  </div>
+                  <div className="text-amber-600 mt-1 text-[11px]">
+                    아래 항목 중 [추천 없음 — 학습 데이터 부재] 표기는 시스템이 추측한 값입니다. 행사장 매뉴얼·운영팀 확인 후 발주 결정 권장.
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="rounded-xl border border-slate-200 bg-white/40 overflow-hidden">
               <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
                 <div className="text-sm text-slate-400">추천 환경장식물 <span className="font-semibold text-slate-900">{items.length}건</span></div>
                 <button onClick={() => setStage('form')} className="text-xs text-slate-500 hover:text-slate-800">← 입력 수정</button>
               </div>
               <div className="divide-y divide-slate-800/60 max-h-[420px] overflow-y-auto">
-                {items.map((it, i) => (
-                  <div key={i} className="px-4 py-3 flex items-center gap-3">
+                {items.map((it, i) => {
+                  // v9.23: no_data_flag 시각 강조 — amber 배경 + 경고 아이콘
+                  const isUnknown = it.no_data_flag === true
+                  return (
+                  <div key={i} className={`px-4 py-3 flex items-center gap-3 ${isUnknown ? 'bg-amber-50/60' : ''}`}>
                     <span className="w-6 text-xs text-slate-500">{it.no}</span>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-slate-900">{it.category_label}</span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`font-medium ${isUnknown ? 'text-amber-900' : 'text-slate-900'}`}>{it.category_label}</span>
                         <span className="text-xs text-slate-500">{it.width_mm}×{it.height_mm}mm · {it.material}</span>
+                        {isUnknown && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-semibold">
+                            <AlertTriangle className="w-2.5 h-2.5" />
+                            추천 없음 (학습 데이터 부재)
+                          </span>
+                        )}
                       </div>
-                      <div className="mt-0.5 text-sm text-slate-500 truncate">{it.location} — {it.rationale}</div>
+                      {/* v9.21 (2026-05-13): 회의 결정 ③ — AI 텍스트 가독성
+                          이전: truncate로 한 줄 잘림 → ′정보가 가다가 만 것′ 느낌
+                          변경: 줄바꿈 + wrap + 마침표 후 자동 줄바꿈 (formatNoteText) */}
+                      <div className={`mt-0.5 text-sm leading-relaxed whitespace-pre-wrap break-words ${isUnknown ? 'text-amber-700' : 'text-slate-500'}`}>
+                        <span className={`font-medium ${isUnknown ? 'text-amber-800' : 'text-slate-700'}`}>{it.location}</span> — {formatNoteText(it.rationale)}
+                      </div>
                     </div>
                     <input type="number" min={1} value={it.quantity} onChange={e => updateItemQuantity(i, parseInt(e.target.value) || 1)}
                       className="w-16 bg-slate-50 border border-slate-300 rounded px-2 py-1 text-sm text-right" />
                     <button onClick={() => removeItem(i)} className="text-xs text-rose-400 hover:text-rose-300">삭제</button>
                   </div>
-                ))}
+                )})}
               </div>
             </div>
 

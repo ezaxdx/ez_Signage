@@ -59,14 +59,28 @@
 ### 1단계 (1개월)
 - [ ] HWP 본문 파싱 (한컴 변환 또는 한컴 API)
 - [ ] 행사장 학습 우선순위: 킨텍스 1전시장 5홀 → 1~4홀 → 2전시장 → 코엑스/송도/DCC
-- [ ] 카테고리별 학습 항목 표준화 (외벽/게이트/가로등/X배너/천정/부속시설)
+- [x] 카테고리별 학습 항목 표준화 (외벽/게이트/가로등/X배너/천정/부속시설) — `lib/data/signageCategoryStandards.ts` v9.22 (2026-05-13)
 - [ ] 코엑스·송도 2차 AI 시험 (정답지 노출 편향 검증)
 
 ### 2단계 (1~2개월)
 - [ ] 시안 파일명·메타 자동 분류 스크립트
-- [ ] 행사 격 보정 룰 구현 (국제·VIP·참가자 수 → 규격 보정)
-- [ ] 부속 시설 자동 인지 휴리스틱 (라운지·컨퍼런스장·VIP룸 위치 추론)
-- [ ] AI 추천에 "추천 없음 + 매뉴얼 보강" 자동 표기 로직
+- [ ] 행사 격 보정 룰 구현 (국제·VIP·참가자 수 → 규격 보정) — SYSTEM_INSTRUCTION 텍스트 약속만 있음, 코드 강제 필요
+- [ ] 부속 시설 자동 인지 휴리스틱 (라운지·컨퍼런스장·VIP룸 위치 추론) — SYSTEM_INSTRUCTION 텍스트 약속만 있음, 코드 강제 필요
+- [x] AI 추천에 "추천 없음 + 매뉴얼 보강" 자동 표기 로직 — `recommendSignage.ts` 후처리 v9.22 (2026-05-13)
+
+### v9.22 후속 작업 (v9.23 — 2026-05-13 일괄 적용)
+- [x] case-a 페이지에서 RecommendItem.no_data_flag === true 인 항목을 amber 배지·강조 — v9.23
+- [x] coverage.missing 카테고리를 UI에 별도 안내 박스로 표시 — v9.23 amber 박스
+- [x] STANDARD_CATEGORIES match_keywords 확장 — 발주엑셀 13건 실측 표기 대량 추가 (거리두기 스티커·행사 현수막·통천현수막·드롭배너 등) — v9.23
+- [x] computeVenueCategoryCoverage()에 발주엑셀(_venue_signage_map.json) 카테고리 합산 — v9.23 computeMapCoverageByVenueKey
+- [x] 시설 가이드 미등록 행사장 fallback — v9.23 buildCoverageForUnregisteredVenue + resolveCoverageForVenue
+
+### v9.23 후속 작업 (다음 사이클 후보)
+- [ ] EVENT_TYPE_RECOMMEND 매핑은 NewProjectButton.tsx inline에 있음 → lib/programParts.ts의 PROGRAM_PART_SIGNAGE_HINTS와 통합 (v4.1 잔여 정리)
+- [ ] 시설 가이드 미등록 행사장(롯데호텔·평창 알펜시아·그랜드하얏트·웨스틴조선·aT센터·OSCO 등 12개) 정식 등록 — VENUE_FACILITY_GUIDE_SEED·SEED_VENUE_SPECS·SEED_CEILING_BANNER_PATTERNS 3곳 동시 추가 필요 (작업량 큼, 정답지 노출 편향 우려로 단계별 진행)
+- [ ] lib/text/normalizeAiText.ts git add (v9.21 작업물 untracked 상태)
+- [ ] 행사 격 보정 룰 / 부속 시설 휴리스틱 — SYSTEM_INSTRUCTION 텍스트만 있음, 코드 강제 보강 필요
+- [ ] _venue_signage_map.json venue 라벨 정제 — "미상"·"기타"·"-" 같은 노이즈 venue를 실제 venue 매핑으로 보강
 
 ## 금지 행동 (자율 루프가 절대 자동 실행 안 하는 것)
 

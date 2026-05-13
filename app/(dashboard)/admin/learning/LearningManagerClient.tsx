@@ -56,6 +56,12 @@ interface VenueLearningStatus {
   accuracy_estimate: number   // 0~100
   learned_categories: number
   program_parts?: string[]
+  /** v9.22: 6대 표준 카테고리 학습 현황 (외벽·게이트·가로등·X배너·천정·부속시설) */
+  category_coverage?: {
+    filled: string[]    // 학습된 카테고리 한글 라벨
+    missing: string[]   // 미학습 카테고리 한글 라벨
+    priority_1_missing: string[]  // 우선순위 1 (외벽·천정) 누락 표시용
+  }
 }
 
 interface SynonymRow {
@@ -481,7 +487,7 @@ export function LearningManagerClient({
             행사장별 학습 현황
           </h2>
           <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">
-            행사장별 누적 데이터.
+            행사장별 누적 데이터. 카테고리 학습 컬럼은 시설 가이드 시드 + 천정배너 실측 패턴 기준으로 6대 표준 카테고리(외벽·게이트·가로등·X배너·천정·부속시설) 학습 현황을 표시합니다. 빨간색(!) 라벨은 우선순위 1 (외벽·천정) 누락 표시입니다.
           </p>
           {venueLearningStatus.length === 0 ? (
             <p className="text-slate-400 text-xs italic py-4 text-center">아직 누적된 프로젝트가 없습니다. 신규 프로젝트가 생성되면 5분 이내 반영됩니다.</p>
@@ -498,6 +504,7 @@ export function LearningManagerClient({
                     <th className="px-2 py-2 text-right font-semibold" title="사용자 컨펌 (가중치 70%)">컨펌</th>
                     <th className="px-2 py-2 text-right font-semibold" title="발주·다운로드 완료 (가중치 100% — 정답풀)">완료</th>
                     <th className="px-2 py-2 text-right font-semibold">정확도 추정</th>
+                    <th className="px-2 py-2 text-left font-semibold" title="6대 표준 카테고리 학습 현황 (외벽·게이트·가로등·X배너·천정·부속시설)">카테고리 학습</th>
                     <th className="px-2 py-2 text-left font-semibold" title="이 행사장 프로젝트에 사용된 프로그램 파트">프로그램 파트</th>
                   </tr>
                 </thead>
@@ -506,6 +513,7 @@ export function LearningManagerClient({
                     const acc = v.accuracy_estimate
                     const color = acc >= 70 ? 'text-emerald-600' : acc >= 40 ? 'text-amber-600' : 'text-rose-600'
                     const parts = v.program_parts ?? []
+                    const cov = v.category_coverage
                     return (
                       <tr key={v.venue} className="hover:bg-slate-50">
                         <td className="px-2 py-1.5 text-slate-800 font-medium truncate max-w-[160px]" title={v.venue}>{v.venue}</td>
@@ -516,6 +524,37 @@ export function LearningManagerClient({
                         <td className="px-2 py-1.5 text-right text-indigo-600 font-mono">{v.stage.confirmed}</td>
                         <td className="px-2 py-1.5 text-right text-emerald-600 font-mono font-semibold">{v.stage.finalized}</td>
                         <td className={`px-2 py-1.5 text-right font-mono font-semibold ${color}`}>{acc}%</td>
+                        <td className="px-2 py-1.5 text-left">
+                          {!cov ? (
+                            <span className="text-slate-300 text-[10px]">시설 가이드 미등록</span>
+                          ) : (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[10px] text-slate-600 font-mono">
+                                <span className="text-emerald-600 font-semibold">{cov.filled.length}</span>
+                                /6 학습
+                              </span>
+                              {cov.filled.length > 0 && (
+                                <div className="flex flex-wrap gap-0.5">
+                                  {cov.filled.map(c => (
+                                    <span key={c} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">{c}</span>
+                                  ))}
+                                </div>
+                              )}
+                              {cov.missing.length > 0 && (
+                                <div className="flex flex-wrap gap-0.5">
+                                  {cov.missing.map(c => {
+                                    const isP1 = cov.priority_1_missing.includes(c)
+                                    return (
+                                      <span key={c} className={`inline-block px-1 py-0.5 text-[9px] rounded ${isP1 ? 'bg-rose-50 text-rose-700 font-semibold' : 'bg-slate-100 text-slate-500'}`} title={isP1 ? '우선순위 1 — 보강 필요' : '미학습'}>
+                                        {isP1 ? '!' : ''}{c}
+                                      </span>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </td>
                         <td className="px-2 py-1.5 text-left">
                           {parts.length === 0 ? (
                             <span className="text-slate-300 text-[10px]">미입력</span>

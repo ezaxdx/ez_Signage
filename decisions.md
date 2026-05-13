@@ -290,6 +290,87 @@
 **되돌릴 수 있는가**: 쉬움 — 기본값 JSON만 수정하면 ON/OFF 상태 일괄 변경 가능. 컬럼 자체는 항상 DB에 존재(소프트 토글).
 **상세**: `docs/91.2_AI업무파트너기획_제작물_리스트_가이드_260511.md` §14
 
+## 2026-05-13 — 시설 가이드 미등록 행사장도 발주엑셀 fallback으로 학습 커버리지 산출 (v9.23)
+
+**컨텍스트**: v9.22의 `computeVenueCategoryCoverage()`는 venueFacilityGuide 5개(킨텍스·코엑스·송도·ICC·DDP)만 처리. SEED_PERFLIST 17건 중 나머지 12+개(롯데호텔·평창 알펜시아·그랜드하얏트·웨스틴조선·aT센터·OSCO·광주 등)는 findVenueKey가 null 반환 → coverage·후처리 모두 스킵. 미학습 카테고리가 노출되지 않아 사용자가 "이 행사장에서 AI가 정답을 안다"고 오해할 위험.
+
+**선택**:
+  1. **`buildCoverageForUnregisteredVenue(venueName)` 신설** — findVenueKey 매칭 실패해도 `_venue_signage_map.json` 단독으로 venue 이름 fuzzy 매칭 후 카테고리 학습 추출. 매칭 안 되면 6대 전부 미학습으로 정직 표기.
+  2. **`resolveCoverageForVenue(venueName)` 통합 헬퍼** — 등록(venueFacilityGuide) 케이스는 computeVenueCategoryCoverage에서, 미등록은 buildCoverageForUnregisteredVenue로 분기. recommendSignage 후처리·formatCoverageForPrompt·LearningManagerClient 세 곳에서 동일 헬퍼 사용.
+  3. **미등록 행사장 venue_key는 `unregistered::<slug>` 형식** — UI에서 식별 가능 + DB 충돌 방지. RecommendResult.coverage.venue_key 타입은 string으로 유지.
+  4. **formatCoverageForPrompt에 미등록 안내 주석 자동 부착** — "※ 이 행사장은 시설 가이드 미등록. 발주엑셀 기록만으로 추출한 학습 데이터입니다."
+  5. **case-a UI 시각화 동시 적용** — amber 안내 박스(coverage.missing.length>0) + 항목별 no_data_flag 배지 + amber 배경. 백엔드 보정이 사용자 화면에 노출되도록.
+
+**대안**:
+  - findVenueKey에 키워드 12개 더 추가 (롯데호텔·평창 등) — 시설 가이드 본문이 없는데 venue_key만 발급하면 다른 코드(buildVenueProfile·getVenueSpecs)에서도 매칭되어 정보 없는데 매칭됨 표시 발생
+  - 미등록 행사장은 coverage 자체를 안 만듦 (v9.22 동작) — 사용자에게 "AI가 안전한가" 정보 없음
+  - 시설 가이드 6개 신규 추가 — 한 사이클에 풀어야 할 작업이 너무 큼 (행사장당 30~50줄 시드 + max_width/standard_width 채움)
+
+**이유**:
+  - 사용자 명령 "미학습 부분과 추가 학습 필요한 부분 꼼꼼히 확인" — 시설 가이드 미등록 행사장 미처리는 v9.22의 명확한 갭
+  - 발주엑셀 통합 맵에 평창 알펜시아·코엑스·킨텍스 등 13건의 실제 발주 기록 존재 → 정답에 가까운 신호
+  - 사용자가 "이 행사장은 학습 데이터 부족"을 알면 매뉴얼 확인·운영팀 문의 등 추가 행동 취할 수 있음 (자동화 4필터 ④ "사람 검토 부담 줄이기" — 알게 만들면 일찍 처리)
+
+**되돌릴 수 있는가**: 매우 쉬움 — `buildCoverageForUnregisteredVenue`만 제거하면 v9.22 동작으로 복귀. `resolveCoverageForVenue`는 venueKey null 시 null 반환하도록 변경만 하면 됨.
+
+**상세**: PROGRESS.md 2026-05-13 (v9.23) / learnings.md 2026-05-11 "학습 데이터에 없는 카테고리는 솔직히 누락 표기"
+
+## 2026-05-13 — 6대 표준 카테고리(외벽·게이트·가로등·X배너·천정·부속시설) 학습 분류 체계 채택
+
+**컨텍스트**: goals/current.md 1단계 TODO "카테고리별 학습 항목 표준화" — 시드 데이터·시설 가이드·AI 추천·학습 관리자 4영역에서 카테고리명이 자유 문자열(예: '가로현수막 (외벽)', 'X-배너', '천정배너 (행잉)')로 표기되어 일관 분류·매칭 불가. AI 추천이 학습 없는 카테고리를 "그럴듯하게" 추측하는 환각 위험 (learnings.md 2026-05-11 정답지 노출 편향).
+
+**선택**:
+  1. **6대 표준 카테고리 키 신설** — outer_wall·gate·streetlight·x_banner·ceiling·support. 우선순위 1(외벽·천정) 2(게이트·가로등) 3(X배너·부속) 차등.
+  2. **자동 분류 함수** `classifyCategory(text)` — 자유 문자열을 표준 키로 fuzzy 매칭 (키워드 기반). 카테고리 매칭 우선순위: gate → ceiling → streetlight → outer_wall → x_banner → support
+  3. **행사장별 커버리지 자동 계산** `computeVenueCategoryCoverage()` — venueFacilityGuide.install_allowed + SEED_CEILING_BANNER_PATTERNS 두 시드를 합쳐 행사장별 6대 카테고리 학습 보유 여부 계산. denied 상태도 학습 데이터로 인정 (불가도 정보).
+  4. **AI 추천 후처리 강제** — Gemini가 반환한 quantity>0 항목 중 미학습 카테고리(단 x_banner·support는 거의 모든 행사장 allowed이므로 제외)는 `[추천 없음 — 학습 데이터 부재]` rationale 강제 prepend + no_data_flag=true. 사용자가 발주 결정.
+  5. **학습 관리자 시각화** — admin/learning 행사장 학습 현황 표에 카테고리 학습 컬럼 추가. emerald(학습)/slate(미학습)/rose(우선순위1 누락) 3색.
+
+**대안**:
+  - 11종 환경장식물 그대로 사용 (입자가 너무 작아 행사장별 부족 분야 식별 어려움)
+  - 자유 문자열 그대로 두기 (현행 — 매칭 불가능)
+  - 미학습 카테고리에 quantity=0 강제 (학습 시도 자체가 끊김 — 사용자가 처음 시도하는 행사장에서 항상 빈 추천)
+
+**이유**:
+  - 6개 그룹이 발주 실무자가 머릿속에서 정리하는 단위와 일치 (메모리 project-environment-decoration-ai-logic 파트별 추론 흐름과 동일)
+  - x_banner·support는 거의 모든 행사장 공통 — no_data_flag에서 제외하면 일반 룰 추천 유지하면서 학습 우선 분야(외벽·천정·게이트·가로등)만 보강 신호 강조
+  - quantity 보존 + 깃발만 세움 = 사용자 결정권 유지 (decisions.md 2026-05-11 "위반은 안내 알랏, 강제 차단 아님" 원칙과 정합)
+
+**되돌릴 수 있는가**: 쉬움 — STANDARD_CATEGORIES 키워드 조정·classifyCategory 우선순위 변경만으로 분류 결과 변경. recommendSignage 후처리 블록을 if(false)로 감싸면 후처리 비활성화.
+
+**상세**: PROGRESS.md 2026-05-13 (v9.22) 섹션 / learnings.md 2026-05-11 "학습 데이터에 없는 카테고리는 솔직히 누락 표기"
+
+## 2026-05-13 — 시설 가이드 패널: 객관 정보 잘림 금지 + 강조 라벨 톤다운
+
+**컨텍스트**: 환경장식물 시설 가이드 피드백 회의(260513) — 사용자 인용:
+  - "두 번씩 눌러야 들어가지", "한 번 눌러서 들어가는 게 맞다"
+  - "지금 다 잘리잖아요. 볼 수가 없잖아", "이 시설 가이드가 우리가 참고할 수 있는 코엑스에서 주는 객관적인 정보"
+  - "운영팀 확인 필수 이런 건 필요 없어요. 일반적으로 이때 하더라라는 정보만"
+  - "미확인 항목 ... 어떤 설치 품목·조건이 필요한지가 같이 리스트업이 돼야겠죠. 못 하겠다 하면 그냥 삭제"
+  - "AI가 작성한 거라 점 찍고 그냥 이렇게 쭉 가잖아요. 보기 쉽게만"
+
+**선택**:
+  1. **한 번 클릭 진입 보장** — outer onClick={onClose} 제거. pointer-events 분리 + backdrop만 onClose. 패널 본체 stopPropagation으로 자식 클릭 격리.
+  2. **호버 잘림 금지** — install_allowed note의 `truncate max-w-[180px]` 제거. break-words + whitespace-pre-wrap로 전체 노출. warnings·special_notes 동일.
+  3. **AI 텍스트 가독성** — `lib/text/normalizeAiText.ts`의 `formatNoteText()` 한 곳에서 처리. 마침표 후 줄바꿈 삽입. case-a rationale 적용.
+  4. **강조 라벨 톤다운** — "미확인 항목 — 운영팀 직접 확인 필요" → "사전 협의 권장 항목"(amber→slate).
+  5. **미확인 항목 구체화** — `getGuideUnknowns()`가 install_allowed에서 카테고리명 직접 추출. 매뉴얼 OCR/내부 처리 메시지 제거.
+  6. **원문 보존** — venueFacilityGuide.ts는 이미 시드 원문. AI 의역 금지 원칙 유지.
+
+**대안**:
+  - 호버 박스 max-width만 늘리기 (회의 의도 — "두 줄로 작성"과 부분 정합) → 행 자체를 wrap으로 바꾸는 게 더 안정적
+  - 미확인 항목 섹션 전체 삭제 → 구체 리스트업 가능한 케이스는 유지가 낫다고 판단
+  - AI 텍스트 가공을 추천 결과 컴포넌트마다 분산 → 단일 유틸로 한 곳에서 관리
+
+**이유**:
+  - 사용자 인용은 "사용자가 보는 객관 정보(코엑스 등 1차 자료)는 잘림 없이 전부 보여야 한다"는 메모리 [[feedback-facility-guide-full-visibility]] 원칙과 완전 일치
+  - pointer-events 분리는 React 모달 패턴 표준 — bubble 충돌 회피
+  - normalizeAiText 유틸 신설로 향후 AI 텍스트 노출 컴포넌트 추가 시 일관 적용
+
+**되돌릴 수 있는가**: 쉬움 — 각 변경이 독립적. install_allowed wrap은 className 1줄, pointer-events는 outer div 1곳, formatNoteText는 import 제거만으로 원복.
+
+**상세**: PROGRESS.md 2026-05-13 (v9.21) 섹션 / 회의록 `회의록_환경장식물_시설가이드_피드백_260513.md`
+
 ## 2026-05-12 — 제작 완료 데이터 > 시설 가이드 규칙 (신뢰도 계층)
 
 **컨텍스트**: 사용자 요청 — "제작 완료(PPT·엑셀 다운로드 시) 데이터가 가장 중요한 정보. 알랏 무시하고 완료한 케이스도 취합. 기존 가이드 데이터가 틀릴 수 있다."

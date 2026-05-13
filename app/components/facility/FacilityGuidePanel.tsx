@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react'
 import { X, AlertCircle, Wrench, Anchor, Shield, Ban, Monitor, Calendar, Star, Database, CheckCircle2, XCircle, Loader2, ClipboardList, Flag, Send } from 'lucide-react'
 import { getFacilityGuide, findVenueKey } from '@/lib/data/venueFacilityGuide'
 import { createClient } from '@/lib/supabase/client'
+import { formatNoteText } from '@/lib/text/normalizeAiText'
 import type { VenueFacilityGuide } from '@/lib/types'
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
@@ -40,28 +41,33 @@ function CollectionRow({ label, status, note }: { label: string; status: 'ok' | 
   )
 }
 
+// v9.21 (2026-05-13): 회의 결정 ④⑤ — 미확인 항목 처리 정리
+//
+// 회의 인용:
+//   "운영팀 확인 필수 이런 건 필요 없어요. 그냥 각별로 다른데 일반적으로 이때 하더라라는 정보만 주면 되고"
+//   "미확인 항목 ... 어떤 설치 품목이 조건 메뉴를 하 필요한지가 같이 리스트업이 돼야겠죠.
+//    만약에 그걸 못 하겠다 하면 이건 그냥 삭제하는 게 맞는 거 같고"
+//
+// 변경:
+//   - "일부 설치 품목 조건 매뉴얼 재확인 필요" 같은 추상 표현 → 실제 어떤 카테고리·왜 필요한지 구체 리스트업
+//   - 구체화 불가능한(매뉴얼 미파싱·OCR 등 내부 처리 정보) 항목은 사용자에게 의미 없으므로 제거
+//   - rigging 정보는 install_allowed 섹션 안에 이미 노출되므로 unknowns에서 중복 강조 제거
 function getGuideUnknowns(guide: VenueFacilityGuide): string[] {
   const items: string[] = []
-  if (guide.rigging) {
-    if (guide.rigging.available === undefined) {
-      items.push('천장 행잉 가능 여부 — 운영팀 직접 확인')
-    }
-    if (guide.rigging.grid_lines?.some(l => l.includes('확인 필요'))) {
-      items.push('리깅 그리드 라인 위치 — 매뉴얼 또는 운영팀 확인')
-    }
-    if ((guide.rigging.max_load_kg === undefined || guide.rigging.max_load_kg === null) && guide.rigging.available !== false) {
-      items.push('천장 행잉 하중 한계(kg) — 확인 필요')
-    }
-    if (guide.rigging.note && (guide.rigging.note.includes('OCR') || guide.rigging.note.includes('직접 확인') || guide.rigging.note.includes('확인 필요'))) {
-      items.push('리깅 섹션 매뉴얼 미파싱 — 운영팀에 직접 확인 권고')
-    }
+
+  // 설치 품목 중 "확인 필요" 문구가 들어간 항목을 구체적으로 리스트업
+  // (회의 결정: 모호한 "재확인 필요" → 어떤 카테고리인지 명확화)
+  const itemsNeedingConfirmation = guide.install_allowed
+    ?.filter(i => i.note?.includes('확인 필요') || i.note?.includes('확인 필수'))
+    .map(i => i.category) ?? []
+
+  for (const category of itemsNeedingConfirmation) {
+    items.push(`${category} — 사전 협의 후 발주 권장`)
   }
-  if (guide.install_allowed?.some(i => i.note?.includes('확인 필요'))) {
-    items.push('일부 설치 품목 조건 매뉴얼 재확인 필요')
-  }
-  if (guide.notes && (guide.notes.includes('직접 확인') || guide.notes.includes('OCR') || guide.notes.includes('미파싱'))) {
-    items.push('시설 매뉴얼 미파싱 구간 있음 — 행사장 운영팀에 직접 확인')
-  }
+
+  // rigging 정보는 install_allowed의 ′천정배너′ 항목 note에 이미 포함됨 → 중복 제거
+  // 매뉴얼 OCR 미파싱·내부 처리 메시지는 사용자에게 의미 없음 → 제거
+
   return items
 }
 
@@ -135,11 +141,19 @@ export function FacilityGuidePanel({ venueName, open, onClose, focusSection }: P
 
   const unknowns = guide ? getGuideUnknowns(guide) : []
 
+  // v9.21 (2026-05-13): 회의 결정 ① — 한 번 클릭에 진입 보장
+  // - outer wrapper에 onClick={onClose}를 두면 패널 내부 클릭이 bubble되어 닫힘 → 두 번 클릭 필요
+  // - 변경: pointer-events-none + backdrop만 onClose / 패널 본체는 pointer-events-auto + e.stopPropagation()
+  //   첫 클릭에 즉시 모달이 열리고 그 안에서 어떤 자식 클릭도 닫지 않도록 격리
   return (
-    <div className="fixed inset-0 z-40 flex justify-end" onClick={onClose}>
-      <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm" />
+    <div className="fixed inset-0 z-40 flex justify-end pointer-events-none">
       <div
-        className="relative w-full max-w-md bg-white border-l border-slate-200 shadow-2xl h-full overflow-y-auto"
+        className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm pointer-events-auto"
+        onClick={onClose}
+        aria-label="가이드 닫기"
+      />
+      <div
+        className="relative w-full max-w-md bg-white border-l border-slate-200 shadow-2xl h-full overflow-y-auto pointer-events-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
@@ -203,17 +217,19 @@ export function FacilityGuidePanel({ venueName, open, onClose, focusSection }: P
               />
             </section>
 
-            {/* 0-B. 미확인 항목 */}
+            {/* 0-B. 사전 협의 권장 항목 (v9.21: 회의 결정 ④ — 강조 라벨 톤다운)
+                이전 라벨: "미확인 항목 — 운영팀 직접 확인 필요" (강조 과다)
+                변경: "사전 협의 권장" + 어떤 카테고리인지 명시. 일반적으로 어떻게 하더라 정보만 제공. */}
             {unknowns.length > 0 && (
-              <section className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-                <div className="flex items-center gap-1.5 mb-2 text-amber-700">
+              <section className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3">
+                <div className="flex items-center gap-1.5 mb-2 text-slate-700">
                   <ClipboardList className="w-3.5 h-3.5" />
-                  <h3 className="font-semibold text-[12px]">미확인 항목 — 운영팀 직접 확인 필요</h3>
+                  <h3 className="font-semibold text-[12px]">사전 협의 권장 항목</h3>
                 </div>
                 <ul className="space-y-1.5">
                   {unknowns.map((item, i) => (
-                    <li key={i} className="flex gap-2 text-amber-800">
-                      <span className="mt-0.5 text-amber-500 flex-shrink-0">?</span>
+                    <li key={i} className="flex gap-2 text-slate-700">
+                      <span className="mt-0.5 text-slate-400 flex-shrink-0">·</span>
                       <span className="leading-relaxed">{item}</span>
                     </li>
                   ))}
@@ -221,7 +237,8 @@ export function FacilityGuidePanel({ venueName, open, onClose, focusSection }: P
               </section>
             )}
 
-            {/* 0-C. 행사장 특이사항 — 데이터 있을 때만 표시 */}
+            {/* 0-C. 행사장 특이사항 — 데이터 있을 때만 표시
+                v9.21: 시설 가이드 원문 전체 노출 (break-words + whitespace-pre-wrap) */}
             {guide.special_notes && guide.special_notes.length > 0 && (
               <section className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
                 <div className="flex items-center gap-1.5 mb-2 text-amber-700">
@@ -232,24 +249,34 @@ export function FacilityGuidePanel({ venueName, open, onClose, focusSection }: P
                   {guide.special_notes.map((note, i) => (
                     <li key={i} className="flex gap-2 text-amber-800">
                       <span className="mt-0.5 text-amber-500 flex-shrink-0">▸</span>
-                      <span className="leading-relaxed">{note}</span>
+                      <span className="leading-relaxed break-words whitespace-pre-wrap">
+                        {formatNoteText(note)}
+                      </span>
                     </li>
                   ))}
                 </ul>
               </section>
             )}
 
-            {/* 1. 설치 가능 품목 */}
+            {/* 1. 설치 가능 품목
+                v9.21 (2026-05-13): 회의 결정 ② — 호버 텍스트 잘림 해결
+                이전: 한 줄 가로 배치 + truncate max-w-[180px] → 사용자가 ′가다가 만′ 정보로 느낌
+                변경: 행사장 시설 가이드는 객관 정보(코엑스 등 1차 자료) → 잘림 없이 전부 노출
+                      카테고리·상태는 헤더 라인 + note는 아래 줄에 wrap. truncate / line-clamp 제거. */}
             <Section icon={<Wrench className="w-3.5 h-3.5" />} title="1. 설치 가능 품목" highlight={focusSection === 'install'}>
-              <div className="space-y-1.5">
+              <div className="space-y-2.5">
                 {guide.install_allowed.length === 0 && <p className="text-slate-400 text-[11px]">등록된 정보 없음</p>}
                 {guide.install_allowed.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between py-1 border-b border-slate-100 last:border-0">
-                    <span className="text-slate-800 font-medium">{item.category}</span>
-                    <div className="flex items-center gap-2">
+                  <div key={i} className="py-1.5 border-b border-slate-100 last:border-0">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-slate-800 font-medium">{item.category}</span>
                       <StatusBadge status={item.status} />
-                      {item.note && <span className="text-slate-500 text-[10px] max-w-[180px] truncate" title={item.note}>{item.note}</span>}
                     </div>
+                    {item.note && (
+                      <p className="text-slate-600 text-[11px] leading-relaxed break-words whitespace-pre-wrap">
+                        {formatNoteText(item.note)}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -296,18 +323,20 @@ export function FacilityGuidePanel({ venueName, open, onClose, focusSection }: P
               </dl>
             </Section>
 
-            {/* 5. 주의·금지 */}
+            {/* 5. 주의·금지 — v9.21: 시설 가이드 원문 전체 노출 (잘림 금지) */}
             <Section icon={<Ban className="w-3.5 h-3.5" />} title="5. 주의사항·금지조건" highlight={focusSection === 'warning'}>
               {guide.warnings.length === 0 ? (
                 <p className="text-slate-400 text-[11px]">등록된 정보 없음</p>
               ) : (
-                <ul className="space-y-1.5">
+                <ul className="space-y-2">
                   {guide.warnings.map((w, i) => (
                     <li key={i} className="flex gap-2">
-                      <span className="text-red-500 mt-0.5">●</span>
-                      <div>
+                      <span className="text-red-500 mt-0.5 flex-shrink-0">●</span>
+                      <div className="min-w-0">
                         <span className="text-slate-800 font-medium">{w.type}</span>
-                        <span className="text-slate-600"> — {w.description}</span>
+                        <p className="text-slate-600 text-[11px] leading-relaxed break-words whitespace-pre-wrap mt-0.5">
+                          {formatNoteText(w.description)}
+                        </p>
                       </div>
                     </li>
                   ))}
