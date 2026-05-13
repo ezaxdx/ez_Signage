@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { X, Loader2, AlertCircle, Send, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { explainStorageError } from '@/lib/services/storagePaths'
+import { REGION_ORDER } from '@/lib/venueIntel'
 
 interface Props {
   open: boolean
@@ -22,7 +23,8 @@ const VENUE_TYPES = [
   { value: '기타',       label: '기타' },
 ] as const
 
-const REGIONS = ['서울', '수도권', '지방', '제주', '해외'] as const
+// 행정 표준: 광역시 8 + 도 9 + 해외 (사용자 피드백 2026-05-13 — "지방" → 정확한 도 이름)
+const REGIONS = REGION_ORDER
 
 export function VenueRequestModal({ open, onClose, userId, initialName = '', onSubmitted }: Props) {
   const [name, setName] = useState(initialName)
