@@ -3,12 +3,14 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import {
-  Brain, DollarSign, AlertTriangle, Save, RefreshCw,
+  DollarSign, AlertTriangle, Save, RefreshCw,
+  Phone, Coins, Wallet,
 } from 'lucide-react'
+import { AiPipelineCard } from './AiPipelineCard'
+import { AccuracyTable, type AccuracyRow } from './AccuracyTable'
 
-// v9.27: 관리자가 AI 환경을 설정할 수 있는 영역 (사용자 피드백 ③)
-// — 모델·프롬프트·임계값을 관리자가 직접 설정. 1차는 localStorage 저장,
-//   다음 사이클에 admin_ai_settings 테이블로 영구화.
+// v9.39: KPI 3 + AI 추천 파이프라인 + 카테고리 정확도 테이블 (명세 ADMIN_REDESIGN_260513.md §1-4)
+// — 사용량/비용/예산/이상 사용자/환경 설정 폼은 하단에 보존 (v9.27 동작 그대로)
 
 interface Stats {
   todayCalls: number
@@ -23,7 +25,15 @@ interface Stats {
 interface DailyTrend { date: string; count: number }
 interface AbnormalUser { user_id: string; project_id: string; count: number }
 
+interface Kpi3 {
+  monthCalls: number | null
+  monthTokens: number | null
+  monthCostKrw: number | null
+}
+
 interface Props {
+  kpi3: Kpi3
+  accuracyRows: AccuracyRow[]
   stats: Stats
   dailyTrend: DailyTrend[]
   abnormalUsers: AbnormalUser[]
@@ -52,7 +62,7 @@ const DEFAULT_SETTINGS: AiSettings = {
 학습 데이터에 없는 카테고리는 "[추천 없음 — 학습 데이터 부재]"로 명시.`,
 }
 
-export function AdminAiClient({ stats, dailyTrend, abnormalUsers }: Props) {
+export function AdminAiClient({ kpi3, accuracyRows, stats, dailyTrend, abnormalUsers }: Props) {
   const [settings, setSettings] = useState<AiSettings>(DEFAULT_SETTINGS)
   const [savedMsg, setSavedMsg] = useState('')
 
@@ -85,12 +95,42 @@ export function AdminAiClient({ stats, dailyTrend, abnormalUsers }: Props) {
     <div className="min-h-screen bg-slate-50">
       {/* v9.33: 헤더 인라인 nav 제거 — 글로벌 좌측 사이드바(AdminSidebar)로 일원화 */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-        {/* v9.36 시안 매칭: 좌상단 페이지 타이틀만 유지, 부연 산문 제거 */}
+        {/* v9.39 명세 매칭: 좌상단 페이지 타이틀 */}
         <h1 className="text-slate-900 text-xl font-bold">AI 관리</h1>
 
-        {/* ── 사용량 KPI 4카드 ──────────────────────────── */}
+        {/* ── v9.39: KPI 3카드 (이번 달 호출·토큰·비용) ── 데이터 부재 시 — 표기 ── */}
         <section>
-          <h2 className="text-slate-700 text-sm font-semibold mb-3">Gemini API 사용량</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Kpi3Card
+              icon={<Phone className="w-4 h-4" />}
+              label="이번 달 호출"
+              value={kpi3.monthCalls !== null ? `${kpi3.monthCalls.toLocaleString()}회` : '—'}
+              color="text-indigo-600"
+            />
+            <Kpi3Card
+              icon={<Coins className="w-4 h-4" />}
+              label="이번 달 토큰"
+              value={kpi3.monthTokens !== null ? kpi3.monthTokens.toLocaleString() : '—'}
+              color="text-blue-600"
+            />
+            <Kpi3Card
+              icon={<Wallet className="w-4 h-4" />}
+              label="이번 달 비용 (KRW)"
+              value={kpi3.monthCostKrw !== null ? `₩${kpi3.monthCostKrw.toLocaleString()}` : '—'}
+              color="text-emerald-600"
+            />
+          </div>
+        </section>
+
+        {/* ── v9.39: AI 추천 파이프라인 (4 step) ─────────────────── */}
+        <AiPipelineCard />
+
+        {/* ── v9.39: 카테고리별 정확도 테이블 (도면 학습 = 커밍순) ── */}
+        <AccuracyTable rows={accuracyRows} />
+
+        {/* ── v9.27 보존: 일별 상세 사용량 4카드 (오늘/이번 달 호출·비용) ── */}
+        <section>
+          <h2 className="text-slate-700 text-sm font-semibold mb-3">상세 사용량</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <UsageCard label="오늘 호출" value={stats.todayCalls} unit="회" sub={`토큰 ${stats.todayTokens.toLocaleString()}`} color="text-indigo-600" />
             <UsageCard label="이번 달 호출" value={stats.monthCalls} unit="회" sub={`토큰 ${stats.monthTokens.toLocaleString()}`} color="text-blue-600" />
@@ -268,6 +308,18 @@ export function AdminAiClient({ stats, dailyTrend, abnormalUsers }: Props) {
         </section>
 
       </main>
+    </div>
+  )
+}
+
+function Kpi3Card({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: string }) {
+  return (
+    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-4 shadow-sm">
+      <div className="flex items-center gap-1.5 text-slate-500 text-xs mb-1.5">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <p className={`text-2xl font-bold ${color}`}>{value}</p>
     </div>
   )
 }
