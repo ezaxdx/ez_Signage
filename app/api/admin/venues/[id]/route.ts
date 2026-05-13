@@ -21,14 +21,23 @@ export async function PATCH(req: NextRequest, { params }: RouteCtx) {
   const id = params.id
   if (!id) return NextResponse.json({ error: 'id 필수' }, { status: 400 })
 
-  const body = await req.json()
+  let body: Record<string, unknown>
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'invalid body' }, { status: 400 }) }
+
   const patch: Record<string, unknown> = {}
   for (const key of EDITABLE) {
-    if (body[key] !== undefined) {
-      patch[key] = key === 'area_sqm' && body[key] !== null
-        ? Number(body[key])
-        : body[key]
+    if (body[key] === undefined) continue
+    // v9.44: area_sqm NaN 안전 처리 + null/빈문자 → DB null
+    if (key === 'area_sqm') {
+      if (body[key] === null || body[key] === '') { patch[key] = null; continue }
+      const n = Number(body[key])
+      if (!Number.isFinite(n) || n < 0) return NextResponse.json({ error: 'area_sqm 양수 필수' }, { status: 400 })
+      patch[key] = n
+      continue
     }
+    if (key === 'has_hall_split') { patch[key] = !!body[key]; continue }
+    // 그 외 text 필드: 빈 문자열은 null로 정규화
+    patch[key] = body[key] === '' ? null : body[key]
   }
   patch.updated_at = new Date().toISOString()
 

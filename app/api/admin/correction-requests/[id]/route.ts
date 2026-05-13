@@ -17,7 +17,8 @@ export async function PATCH(req: NextRequest, { params }: RouteCtx) {
   const id = params.id
   if (!id) return NextResponse.json({ error: 'id 필수' }, { status: 400 })
 
-  const body = await req.json() as { status?: string; review_note?: string }
+  let body: { status?: string; review_note?: string }
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'invalid body' }, { status: 400 }) }
   if (!body.status || !VALID_STATUS.has(body.status)) {
     return NextResponse.json({ error: 'status 값 오류 (pending/approved/rejected/resolved)' }, { status: 400 })
   }

@@ -6,7 +6,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
-  // 인증 확인 (서버사이드 — Anthropic API 키 보호)
+  // 인증 확인 (서버사이드 — Gemini API 키 보호. v9.44: 주석 정정 — 2026-05-07에 Anthropic→Gemini로 전환됨)
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 })

@@ -15,8 +15,13 @@ export async function PATCH(req: NextRequest, { params }: RouteCtx) {
   const id = params.id
   if (!id) return NextResponse.json({ error: 'id 필수' }, { status: 400 })
 
-  const body = await req.json() as { guide?: object }
-  if (!body.guide) return NextResponse.json({ error: 'guide JSON 필수' }, { status: 400 })
+  let body: { guide?: object }
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'invalid body' }, { status: 400 }) }
+
+  // v9.44: guide JSON 객체 강제 (null·배열·string 거부)
+  if (!body.guide || typeof body.guide !== 'object' || Array.isArray(body.guide)) {
+    return NextResponse.json({ error: 'guide JSON 객체 필수' }, { status: 400 })
+  }
 
   const { data, error } = await supabase
     .from('venues')

@@ -33,9 +33,14 @@ export async function POST(req: NextRequest) {
   const supabase = createClient()
   if (!await isAdmin(supabase)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const body = await req.json() as { venue_id?: string; guide?: object }
+  let body: { venue_id?: string; guide?: object }
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'invalid body' }, { status: 400 }) }
+
   if (!body.venue_id) return NextResponse.json({ error: 'venue_id 필수' }, { status: 400 })
-  if (!body.guide)    return NextResponse.json({ error: 'guide JSON 필수' }, { status: 400 })
+  // v9.44: guide JSON 타입 강화 — null·배열·string은 거부 (객체만 허용)
+  if (!body.guide || typeof body.guide !== 'object' || Array.isArray(body.guide)) {
+    return NextResponse.json({ error: 'guide JSON 객체 필수' }, { status: 400 })
+  }
 
   const { data, error } = await supabase
     .from('venues')
@@ -48,5 +53,6 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  if (!data) return NextResponse.json({ error: '행사장 없음' }, { status: 404 })
   return NextResponse.json({ ok: true, item: data })
 }

@@ -37,8 +37,18 @@ export async function POST(req: Request) {
   if (job.status === 'processing') return NextResponse.json({ error: '이미 실행 중' }, { status: 409 })
   if (job.status === 'done') return NextResponse.json({ ok: true, alreadyDone: true })
 
-  // 2) processing 상태로 마크
-  await supabase.from('learning_jobs').update({ status: 'processing' }).eq('id', jobId)
+  // 2) processing 상태로 atomic 락 (v9.44: 동시 호출 race condition 차단)
+  // 같은 job을 동시에 두 번 POST하면 한 호출만 status='queued/failed'→'processing' UPDATE에 성공.
+  // 다른 호출은 .eq('status', 'queued/failed') 조건 불일치로 row 0 반환 → 409.
+  const { data: claimed, error: claimErr } = await supabase
+    .from('learning_jobs')
+    .update({ status: 'processing' })
+    .eq('id', jobId)
+    .in('status', ['queued', 'failed'])     // queued / failed 만 클레임 가능 (재시도 허용)
+    .select('id')
+    .maybeSingle()
+  if (claimErr) return NextResponse.json({ error: claimErr.message }, { status: 500 })
+  if (!claimed) return NextResponse.json({ error: '이미 다른 호출이 점유 중' }, { status: 409 })
 
   // 3) Vision 호출 (도면 분석)
   const result = await analyzeFloorPlan(job.source_url ?? '')
