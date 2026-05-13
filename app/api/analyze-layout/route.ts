@@ -63,17 +63,38 @@ Return ONLY valid JSON:
               { inline_data: { mime_type: mimeType, data: base64 } },
             ],
           }],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 8000,            // 슬롯 다수 추출 시 4000은 부족
+            responseMimeType: 'application/json',
+          },
         }),
       }
     )
 
     const geminiData = await geminiRes.json()
+    if (geminiData.error) {
+      return NextResponse.json({ error: `Gemini: ${geminiData.error.message}` }, { status: 500 })
+    }
+
+    const finishReason = geminiData?.candidates?.[0]?.finishReason
     const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}'
     const cleaned = rawText.replace(/```json|```/gi, '').trim()
-    const parsed = JSON.parse(cleaned)
+
+    let parsed
+    try {
+      parsed = JSON.parse(cleaned)
+    } catch (e) {
+      return NextResponse.json({
+        error: 'Gemini 응답 파싱 실패',
+        finishReason,
+        raw: cleaned.slice(0, 500),
+      }, { status: 500 })
+    }
 
     return NextResponse.json({
       ai_used: true,
+      finishReason,
       slots: parsed.slots ?? [],
     })
   } catch (err) {

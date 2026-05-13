@@ -1,15 +1,42 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { Plus, Trash2, Layers, RotateCcw, CopyCheck, Pencil, Image as ImageIcon, X, QrCode } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Plus, Trash2, Layers, RotateCcw, CopyCheck, Pencil, Image as ImageIcon, X, QrCode, Layout, Save, ChevronDown, ChevronUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { SLOT_MAX_CHARS } from '@/lib/constants'
 import type { ContentsMap, SlotContent } from '@/lib/types'
+
+// ── 레이아웃 템플릿 (localStorage 기반) ───────────────────────────
+interface LayoutTemplate {
+  id: string
+  name: string
+  slots: Record<string, { x: number; y: number; w?: number; fontSize: number; color?: string; align?: 'left' | 'center' | 'right' }>
+  savedAt: number
+}
+
+const TEMPLATES_KEY = 'mice_layout_templates'
+
+function loadTemplates(): LayoutTemplate[] {
+  if (typeof window === 'undefined') return []
+  try { return JSON.parse(localStorage.getItem(TEMPLATES_KEY) ?? '[]') } catch { return [] }
+}
+
+function persistTemplates(tpls: LayoutTemplate[]) {
+  if (typeof window !== 'undefined') localStorage.setItem(TEMPLATES_KEY, JSON.stringify(tpls))
+}
+
+// ── 3×3 위치 단축 (PPT '위치 격자') ─────────────────────────────
+const POSITION_GRID: { x: number; y: number; label: string }[][] = [
+  [{ x: 10, y:  8, label: '좌상' }, { x: 50, y:  8, label: '상중' }, { x: 90, y:  8, label: '우상' }],
+  [{ x: 10, y: 50, label: '좌중' }, { x: 50, y: 50, label: '중앙' }, { x: 90, y: 50, label: '우중' }],
+  [{ x: 10, y: 88, label: '좌하' }, { x: 50, y: 88, label: '하중' }, { x: 90, y: 88, label: '우하' }],
+]
 
 interface Props {
   contents: ContentsMap
   selectedSlotKey: string | null
   selectedItemId?: string
+  projectId: string
   onSlotSelect: (key: string) => void
   onSlotAdd: (label: string, position?: { x: number; y: number }) => void
   onSlotDelete: (key: string) => void
@@ -26,6 +53,7 @@ const ALIGN_LABELS: Array<{ v: 'left' | 'center' | 'right'; label: string }> = [
 ]
 void ALIGN_LABELS
 
+
 const PRESET_COLORS = [
   'FFFFFF', 'F1F5F9', 'CBD5E1', '475569', '0F172A', '000000',
   'FCA5A5', 'EF4444', 'DC2626', '991B1B',
@@ -39,6 +67,7 @@ export function SlotPanel({
   contents,
   selectedSlotKey,
   selectedItemId,
+  projectId,
   onSlotSelect,
   onSlotAdd,
   onSlotDelete,
@@ -58,6 +87,44 @@ export function SlotPanel({
   const [generatingQr, setGeneratingQr] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadTargetRef = useRef<string | null>(null)
+
+  // ── 레이아웃 템플릿 state ────────────────────────────────────
+  const [templates, setTemplates] = useState<LayoutTemplate[]>([])
+  const [showTemplates, setShowTemplates] = useState(false)
+  const [templateNameInput, setTemplateNameInput] = useState('')
+  // ── 위치 단축 격자 ────────────────────────────────────────────
+  const [showPositionGrid, setShowPositionGrid] = useState(false)
+
+  useEffect(() => { setTemplates(loadTemplates()) }, [])
+
+  const handleSaveTemplate = () => {
+    const name = templateNameInput.trim()
+    if (!name) return
+    const slots: LayoutTemplate['slots'] = {}
+    for (const [key, slot] of Object.entries(contents)) {
+      slots[key] = { x: slot.x, y: slot.y, w: slot.w, fontSize: slot.fontSize, color: slot.color, align: slot.align }
+    }
+    const tpl: LayoutTemplate = { id: crypto.randomUUID(), name, slots, savedAt: Date.now() }
+    const updated = [...templates, tpl]
+    setTemplates(updated)
+    persistTemplates(updated)
+    setTemplateNameInput('')
+  }
+
+  const handleLoadTemplate = (tpl: LayoutTemplate) => {
+    for (const [key, s] of Object.entries(tpl.slots)) {
+      if (contents[key]) {
+        onSlotStyleUpdate(key, { x: s.x, y: s.y, ...(s.w !== undefined ? { w: s.w } : {}), fontSize: s.fontSize, ...(s.color ? { color: s.color } : {}), ...(s.align ? { align: s.align } : {}) })
+      }
+    }
+    setShowTemplates(false)
+  }
+
+  const handleDeleteTemplate = (id: string) => {
+    const updated = templates.filter(t => t.id !== id)
+    setTemplates(updated)
+    persistTemplates(updated)
+  }
 
   const slotEntries = Object.entries(contents)
 
@@ -101,21 +168,22 @@ export function SlotPanel({
     setUploadingImage(slotKey)
     try {
       const { compressToWebP } = await import('@/lib/services/imageUtils')
+      const { buildStoragePath, explainStorageError } = await import('@/lib/services/storagePaths')
       const blob = await compressToWebP(file)
       const supabase = createClient()
-      const path = `${selectedItemId}/slot-${slotKey}-${Date.now()}.webp`
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('로그인이 필요합니다')
+      const path = buildStoragePath('slot-image', {
+        userId: user.id,
+        projectId: projectId,
+        itemId: selectedItemId,
+        slotKey,
+      })
       const { error: uploadError } = await supabase.storage
         .from('design-images')
-        .upload(path, blob, { contentType: 'image/webp', upsert: false })
+        .upload(path, blob, { contentType: blob.type || 'image/webp', upsert: true })
       if (uploadError) {
-        const msg = uploadError.message || ''
-        if (/bucket|not found/i.test(msg)) {
-          alert('Supabase Storage에 design-images 버킷이 없습니다.\n\nSupabase Dashboard → Storage → New Bucket\n이름: design-images, Public 체크\n또는 supabase/migration_all.sql 실행')
-        } else if (/policy|permission|denied|row.*level/i.test(msg)) {
-          alert('Storage 권한 부족.\nsupabase/migration_all.sql의 Storage 정책을 실행해주세요.')
-        } else {
-          alert('이미지 업로드 실패: ' + msg)
-        }
+        alert(explainStorageError(uploadError.message || ''))
         throw uploadError
       }
       const { data: { publicUrl } } = supabase.storage.from('design-images').getPublicUrl(path)
@@ -153,19 +221,20 @@ export function SlotPanel({
       const blob = dataUrlToBlob(dataUrl)
 
       const supabase = createClient()
-      const path = `${selectedItemId}/qr-${slotKey}-${Date.now()}.png`
+      const { buildStoragePath, explainStorageError } = await import('@/lib/services/storagePaths')
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('로그인이 필요합니다')
+      const path = buildStoragePath('qr', {
+        userId: user.id,
+        projectId: projectId,
+        itemId: selectedItemId,
+        slotKey,
+      })
       const { error: uploadError } = await supabase.storage
         .from('design-images')
-        .upload(path, blob, { contentType: 'image/png', upsert: false })
+        .upload(path, blob, { contentType: 'image/png', upsert: true })
       if (uploadError) {
-        const msg = uploadError.message || ''
-        if (/bucket|not found/i.test(msg)) {
-          alert('Supabase Storage에 design-images 버킷이 없습니다.\nmigration_all.sql 실행 필요')
-        } else if (/policy|permission|denied|row.*level/i.test(msg)) {
-          alert('Storage 권한 부족.\nmigration_all.sql 실행 필요')
-        } else {
-          alert('QR 업로드 실패: ' + msg)
-        }
+        alert(explainStorageError(uploadError.message || ''))
         throw uploadError
       }
 
@@ -186,27 +255,97 @@ export function SlotPanel({
   }
 
   return (
-    <aside className="w-[260px] flex-shrink-0 border-l border-slate-800 flex flex-col bg-slate-900/40">
+    <aside className="w-[260px] flex-shrink-0 border-l border-slate-200 flex flex-col bg-white/40">
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageFileChange} />
 
       {/* 헤더 */}
-      <div className="px-3 py-2.5 border-b border-slate-800 flex items-center justify-between">
+      <div className="px-3 py-2.5 border-b border-slate-200 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Layers className="w-3.5 h-3.5 text-slate-500" />
-          <p className="text-slate-400 text-[11px] font-semibold">구역 설정</p>
+          <p className="text-slate-500 text-[11px] font-semibold">구역 설정</p>
         </div>
-        <button
-          onClick={() => setShowAddForm(v => !v)}
-          className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300 text-[10px] px-2 py-0.5 rounded hover:bg-indigo-900/30 transition"
-        >
-          <Plus className="w-3 h-3" />
-          추가
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowTemplates(v => !v)}
+            title="레이아웃 템플릿"
+            className={`flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded transition ${showTemplates ? 'bg-violet-800/50 text-violet-300' : 'text-slate-500 hover:text-violet-400 hover:bg-violet-900/20'}`}
+          >
+            <Layout className="w-3 h-3" />
+            <span className="hidden sm:inline">템플릿</span>
+          </button>
+          <button
+            onClick={() => setShowAddForm(v => !v)}
+            className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300 text-[10px] px-2 py-0.5 rounded hover:bg-indigo-900/30 transition"
+          >
+            <Plus className="w-3 h-3" />
+            추가
+          </button>
+        </div>
       </div>
+
+      {/* 레이아웃 템플릿 패널 */}
+      {showTemplates && (
+        <div className="border-b border-slate-200 bg-violet-950/20 px-3 py-2.5 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-violet-300 text-[11px] font-semibold flex items-center gap-1">
+              <Layout className="w-3 h-3" /> 레이아웃 템플릿
+            </p>
+            <button onClick={() => setShowTemplates(false)} className="text-slate-400 hover:text-slate-500 p-0.5 rounded transition"><X className="w-3 h-3" /></button>
+          </div>
+
+          {/* 저장된 템플릿 목록 */}
+          {templates.length === 0 ? (
+            <p className="text-slate-400 text-[10px] italic">저장된 템플릿 없음</p>
+          ) : (
+            <div className="space-y-1 max-h-32 overflow-y-auto">
+              {templates.map(tpl => (
+                <div key={tpl.id} className="flex items-center gap-1.5 group">
+                  <button
+                    onClick={() => handleLoadTemplate(tpl)}
+                    className="flex-1 text-left text-[10px] text-slate-800 bg-slate-50/60 hover:bg-violet-900/30 px-2 py-1 rounded transition truncate"
+                    title={`적용: ${tpl.name}`}
+                  >
+                    {tpl.name}
+                    <span className="ml-1 text-slate-400">{Object.keys(tpl.slots).length}구역</span>
+                  </button>
+                  <button
+                    onClick={() => handleDeleteTemplate(tpl.id)}
+                    className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-400 transition p-0.5 rounded flex-shrink-0"
+                    title="삭제"
+                  >
+                    <Trash2 className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 현재 레이아웃 저장 */}
+          <div className="flex gap-1.5 pt-1 border-t border-slate-200/60">
+            <input
+              value={templateNameInput}
+              onChange={e => setTemplateNameInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSaveTemplate()}
+              placeholder="템플릿 이름 (예: 컨퍼런스 기본)"
+              className="flex-1 min-w-0 bg-slate-50 border border-slate-300 rounded px-1.5 py-1 text-[10px] text-slate-800 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-violet-500"
+            />
+            <button
+              onClick={handleSaveTemplate}
+              disabled={!templateNameInput.trim() || Object.keys(contents).length === 0}
+              className="flex items-center gap-0.5 px-2 py-1 bg-violet-700 hover:bg-violet-600 disabled:opacity-40 text-white rounded text-[10px] transition flex-shrink-0"
+              title="현재 구역 레이아웃 저장"
+            >
+              <Save className="w-3 h-3" />
+              저장
+            </button>
+          </div>
+          <p className="text-slate-400 text-[9px]">구역 위치·크기·서식만 저장 (텍스트 제외)</p>
+        </div>
+      )}
 
       {/* 구역 추가 폼 */}
       {showAddForm && (
-        <div className="px-3 py-2.5 border-b border-slate-800 bg-slate-900/60">
+        <div className="px-3 py-2.5 border-b border-slate-200 bg-white/60">
           <p className="text-[10px] text-slate-500 mb-1.5">새 구역 이름</p>
           <div className="flex gap-1.5">
             <input
@@ -218,7 +357,7 @@ export function SlotPanel({
                 if (e.key === 'Escape') { setShowAddForm(false); setNewLabel('') }
               }}
               placeholder="예: 일시, QR코드"
-              className="flex-1 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-slate-200 text-[11px] placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="flex-1 bg-slate-50 border border-slate-300 rounded px-2 py-1 text-slate-800 text-[11px] placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
             <button
               onClick={handleAdd}
@@ -235,7 +374,7 @@ export function SlotPanel({
       <div className="flex-1 overflow-y-auto py-1">
         {slotEntries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 px-3 text-center gap-2">
-            <p className="text-slate-600 text-xs">구역이 없습니다</p>
+            <p className="text-slate-400 text-xs">구역이 없습니다</p>
             <button
               onClick={onInitDefaultSlots}
               className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300 text-[11px] px-2 py-1 rounded hover:bg-indigo-900/30 transition"
@@ -256,7 +395,7 @@ export function SlotPanel({
                   className={`group px-3 py-2 cursor-pointer transition ${
                     isSelected
                       ? 'bg-indigo-600/15 border-l-2 border-indigo-500'
-                      : 'hover:bg-slate-800/40 border-l-2 border-transparent'
+                      : 'hover:bg-slate-50/40 border-l-2 border-transparent'
                   }`}
                 >
                   {/* 구역명 + 편집 + 삭제 */}
@@ -272,11 +411,11 @@ export function SlotPanel({
                           if (e.key === 'Enter') handleCommitRename()
                           if (e.key === 'Escape') { setRenamingKey(null); setRenameValue('') }
                         }}
-                        className="flex-1 bg-slate-800 border border-indigo-500 rounded px-1.5 py-0.5 text-slate-200 text-[11px] focus:outline-none"
+                        className="flex-1 bg-slate-50 border border-indigo-500 rounded px-1.5 py-0.5 text-slate-800 text-[11px] focus:outline-none"
                       />
                     ) : (
                       <span className={`text-[11px] font-medium truncate flex-1 ${
-                        isSelected ? 'text-indigo-200' : 'text-slate-300'
+                        isSelected ? 'text-indigo-200' : 'text-slate-400'
                       }`}>
                         {slot.label || key}
                       </span>
@@ -288,7 +427,7 @@ export function SlotPanel({
                             e.stopPropagation()
                             handleStartRename(key, slot.label || key)
                           }}
-                          className="p-0.5 rounded hover:bg-slate-700 text-slate-500 hover:text-slate-300 transition"
+                          className="p-0.5 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-400 transition"
                           title="이름 수정"
                         >
                           <Pencil className="w-3 h-3" />
@@ -309,7 +448,7 @@ export function SlotPanel({
 
                   {/* 선택된 슬롯만 상세 편집 UI 표시 */}
                   {isSelected && (
-                    <div className="space-y-1.5 mt-2 pt-2 border-t border-slate-800/60">
+                    <div className="space-y-1.5 mt-2 pt-2 border-t border-slate-200/60">
                       {/* 폰트 크기 */}
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] text-slate-500 w-12 flex-shrink-0">크기</span>
@@ -323,45 +462,108 @@ export function SlotPanel({
                             const v = parseInt(e.target.value)
                             if (!isNaN(v) && v > 0) onSlotStyleUpdate(key, { fontSize: v })
                           }}
-                          className="flex-1 bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] text-slate-300 text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          className="flex-1 bg-slate-50 border border-slate-300 rounded px-1.5 py-0.5 text-[11px] text-slate-400 text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         />
-                        <span className="text-[10px] text-slate-600">pt</span>
+                        <span className="text-[10px] text-slate-400">pt</span>
                       </div>
 
-                      {/* 위치 X/Y */}
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-slate-500 w-12 flex-shrink-0">위치</span>
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={Math.round(slot.x ?? 50)}
-                          onClick={e => e.stopPropagation()}
-                          onChange={e => {
-                            const v = parseInt(e.target.value)
-                            if (!isNaN(v)) onSlotStyleUpdate(key, { x: Math.min(100, Math.max(0, v)) })
-                          }}
-                          placeholder="X"
-                          className="flex-1 min-w-0 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-[10px] text-slate-300 text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                        />
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={Math.round(slot.y ?? 50)}
-                          onClick={e => e.stopPropagation()}
-                          onChange={e => {
-                            const v = parseInt(e.target.value)
-                            if (!isNaN(v)) onSlotStyleUpdate(key, { y: Math.min(100, Math.max(0, v)) })
-                          }}
-                          placeholder="Y"
-                          className="flex-1 min-w-0 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-[10px] text-slate-300 text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                        />
-                        <span className="text-[10px] text-slate-600">%</span>
+                      {/* 위치 X/Y + 단축 격자 */}
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-slate-500 w-12 flex-shrink-0">위치</span>
+                          <div className="flex items-center gap-1 flex-1">
+                            <div className="flex items-center gap-0.5 flex-1">
+                              <span className="text-[9px] text-slate-400">X</span>
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                value={Math.round(slot.x ?? 50)}
+                                onClick={e => e.stopPropagation()}
+                                onChange={e => {
+                                  const v = parseInt(e.target.value)
+                                  if (!isNaN(v)) onSlotStyleUpdate(key, { x: Math.min(100, Math.max(0, v)) })
+                                }}
+                                className="flex-1 min-w-0 bg-slate-50 border border-slate-300 rounded px-1 py-0.5 text-[10px] text-slate-400 text-center focus:outline-none focus:ring-1 focus:ring-indigo-500 w-10"
+                              />
+                            </div>
+                            <div className="flex items-center gap-0.5 flex-1">
+                              <span className="text-[9px] text-slate-400">Y</span>
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                value={Math.round(slot.y ?? 50)}
+                                onClick={e => e.stopPropagation()}
+                                onChange={e => {
+                                  const v = parseInt(e.target.value)
+                                  if (!isNaN(v)) onSlotStyleUpdate(key, { y: Math.min(100, Math.max(0, v)) })
+                                }}
+                                className="flex-1 min-w-0 bg-slate-50 border border-slate-300 rounded px-1 py-0.5 text-[10px] text-slate-400 text-center focus:outline-none focus:ring-1 focus:ring-indigo-500 w-10"
+                              />
+                            </div>
+                            <span className="text-[9px] text-slate-400">%</span>
+                          </div>
+                          <button
+                            onClick={e => { e.stopPropagation(); setShowPositionGrid(v => !v) }}
+                            title="빠른 위치 선택"
+                            className={`p-0.5 rounded transition text-[9px] flex-shrink-0 ${showPositionGrid ? 'bg-indigo-800/50 text-indigo-300' : 'text-slate-400 hover:text-indigo-400 hover:bg-indigo-900/20'}`}
+                          >
+                            {showPositionGrid ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          </button>
+                        </div>
+
+                        {/* 3×3 위치 격자 */}
+                        {showPositionGrid && (
+                          <div className="ml-14 p-1.5 bg-slate-100/60 rounded border border-slate-200 inline-block">
+                            <div className="grid grid-cols-3 gap-0.5">
+                              {POSITION_GRID.map((row, ri) =>
+                                row.map((cell, ci) => {
+                                  const isCurrent = Math.abs(Math.round(slot.x ?? 50) - cell.x) < 5 && Math.abs(Math.round(slot.y ?? 50) - cell.y) < 5
+                                  return (
+                                    <button
+                                      key={`${ri}-${ci}`}
+                                      onClick={e => {
+                                        e.stopPropagation()
+                                        onSlotStyleUpdate(key, { x: cell.x, y: cell.y })
+                                        setShowPositionGrid(false)
+                                      }}
+                                      title={cell.label}
+                                      className={`w-8 h-8 rounded flex items-center justify-center transition ${isCurrent ? 'bg-indigo-600 text-white' : 'bg-slate-50 hover:bg-indigo-900/50 text-slate-500 hover:text-indigo-300'}`}
+                                    >
+                                      <div className={`w-1.5 h-1.5 rounded-full ${isCurrent ? 'bg-white' : 'bg-slate-400'}`} />
+                                    </button>
+                                  )
+                                })
+                              )}
+                            </div>
+                            <p className="text-[9px] text-slate-400 text-center mt-1">클릭 → 위치 snap</p>
+                          </div>
+                        )}
+
+                        {/* 너비(W%) */}
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-slate-500 w-12 flex-shrink-0">너비</span>
+                          <div className="flex items-center gap-1 flex-1">
+                            <input
+                              type="number"
+                              min={10}
+                              max={100}
+                              value={Math.round(slot.w ?? 80)}
+                              onClick={e => e.stopPropagation()}
+                              onChange={e => {
+                                const v = parseInt(e.target.value)
+                                if (!isNaN(v)) onSlotStyleUpdate(key, { w: Math.min(100, Math.max(10, v)) })
+                              }}
+                              className="bg-slate-50 border border-slate-300 rounded px-1 py-0.5 text-[10px] text-slate-400 text-center focus:outline-none focus:ring-1 focus:ring-indigo-500 w-14"
+                            />
+                            <span className="text-[9px] text-slate-400">% 너비</span>
+                          </div>
+                        </div>
                       </div>
 
                       {/* 텍스트 색상 */}
-                      <div className="pt-1.5 border-t border-slate-800/50">
+                      <div className="pt-1.5 border-t border-slate-200/50">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-[10px] text-slate-500">텍스트 색상</span>
                           <input
@@ -372,7 +574,7 @@ export function SlotPanel({
                               const hex = e.target.value.replace('#', '').toUpperCase()
                               onSlotStyleUpdate(key, { color: hex })
                             }}
-                            className="w-6 h-6 rounded border border-slate-700 cursor-pointer bg-transparent"
+                            className="w-6 h-6 rounded border border-slate-300 cursor-pointer bg-transparent"
                           />
                         </div>
                         <div className="grid grid-cols-12 gap-0.5">
@@ -380,7 +582,7 @@ export function SlotPanel({
                             <button
                               key={c}
                               onClick={e => { e.stopPropagation(); onSlotStyleUpdate(key, { color: c }) }}
-                              className="w-full aspect-square rounded border border-slate-700/50 hover:ring-1 hover:ring-indigo-400 transition"
+                              className="w-full aspect-square rounded border border-slate-300/50 hover:ring-1 hover:ring-indigo-400 transition"
                               style={{ backgroundColor: `#${c}` }}
                               title={`#${c}`}
                             />
@@ -396,7 +598,7 @@ export function SlotPanel({
                           onClick={e => e.stopPropagation()}
                           onChange={e => onSlotStyleUpdate(key, { placeholder: e.target.value })}
                           placeholder="예: 여기에 본문 입력"
-                          className="w-full bg-slate-800 border border-slate-700 rounded px-1.5 py-1 text-[11px] text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          className="w-full bg-slate-50 border border-slate-300 rounded px-1.5 py-1 text-[11px] text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         />
                       </div>
 
@@ -411,7 +613,7 @@ export function SlotPanel({
                               className={`flex-1 text-[10px] py-0.5 rounded transition ${
                                 (slot.align ?? 'center') === a
                                   ? 'bg-indigo-600/30 text-indigo-200'
-                                  : 'bg-slate-800 text-slate-500 hover:text-slate-300'
+                                  : 'bg-slate-50 text-slate-500 hover:text-slate-400'
                               }`}
                             >
                               {a === 'left' ? '좌' : a === 'center' ? '중' : '우'}
@@ -421,7 +623,7 @@ export function SlotPanel({
                       </div>
 
                       {/* 이미지 업로드 + QR 생성 */}
-                      <div className="pt-1.5 border-t border-slate-800/50">
+                      <div className="pt-1.5 border-t border-slate-200/50">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-[10px] text-slate-500">이미지</span>
                           <div className="flex items-center gap-1">
@@ -452,7 +654,7 @@ export function SlotPanel({
 
                         {/* QR URL 입력 폼 */}
                         {qrShownFor === key && (
-                          <div className="mb-2 p-1.5 bg-slate-950/60 rounded border border-slate-800">
+                          <div className="mb-2 p-1.5 bg-slate-100/60 rounded border border-slate-200">
                             <input
                               autoFocus
                               value={qrUrlInput}
@@ -463,7 +665,7 @@ export function SlotPanel({
                                 if (e.key === 'Escape') { setQrShownFor(null); setQrUrlInput('') }
                               }}
                               placeholder="https://... URL 입력"
-                              className="w-full bg-slate-800 border border-slate-700 rounded px-1.5 py-1 text-[10px] text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 mb-1"
+                              className="w-full bg-slate-50 border border-slate-300 rounded px-1.5 py-1 text-[10px] text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 mb-1"
                             />
                             <button
                               onClick={e => { e.stopPropagation(); handleGenerateQr(key) }}
@@ -479,7 +681,7 @@ export function SlotPanel({
                             {slot.images.map((url, idx) => (
                               <div key={idx} className="relative group/img aspect-square">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={url} alt="" className="w-full h-full object-contain bg-slate-800 rounded border border-slate-700" />
+                                <img src={url} alt="" className="w-full h-full object-contain bg-slate-50 rounded border border-slate-300" />
                                 <button
                                   onClick={e => {
                                     e.stopPropagation()
@@ -515,12 +717,12 @@ export function SlotPanel({
                     const totalChars = (slot.ko?.length ?? 0) + (slot.en?.length ?? 0)
                     const overflow = maxChars && totalChars > maxChars
                     return (
-                      <div className="flex items-center gap-2 text-[10px] text-slate-600">
+                      <div className="flex items-center gap-2 text-[10px] text-slate-400">
                         <span>{slot.fontSize}pt</span>
                         <span>·</span>
                         <span>{Math.round(slot.x)},{Math.round(slot.y)}</span>
                         {maxChars && (
-                          <span className={overflow ? 'text-red-400 font-medium' : 'text-slate-600'}>
+                          <span className={overflow ? 'text-red-400 font-medium' : 'text-slate-400'}>
                             · {totalChars}/{maxChars}자
                           </span>
                         )}
@@ -538,10 +740,10 @@ export function SlotPanel({
             })}
 
             {/* 기본 구역 초기화 */}
-            <div className="px-3 py-2 border-t border-slate-800 mt-1">
+            <div className="px-3 py-2 border-t border-slate-200 mt-1">
               <button
                 onClick={onInitDefaultSlots}
-                className="w-full flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-300 text-[11px] py-1.5 rounded hover:bg-slate-800 transition"
+                className="w-full flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-400 text-[11px] py-1.5 rounded hover:bg-slate-50 transition"
               >
                 <RotateCcw className="w-3 h-3" />
                 기본 구역으로 초기화

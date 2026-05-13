@@ -138,18 +138,18 @@ export function SeriesGenerator({ sourceItem, currentItemCount, projectId, onClo
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md max-h-[92vh] overflow-y-auto">
-        <div className="flex items-start justify-between p-5 border-b border-slate-800">
+      <div className="relative bg-white border border-slate-300 rounded-2xl shadow-2xl w-full max-w-md max-h-[92vh] overflow-y-auto">
+        <div className="flex items-start justify-between p-5 border-b border-slate-200">
           <div className="flex items-center gap-2">
             <Wand2 className="w-4 h-4 text-indigo-400" />
             <div>
-              <h2 className="text-slate-100 font-semibold text-sm">시리즈 자동 생성</h2>
+              <h2 className="text-slate-900 font-semibold text-sm">시리즈 자동 생성</h2>
               <p className="text-slate-500 text-xs mt-0.5">
                 {sourceItem.no} {sourceItem.category}을 변형하여 N장 동시 생성
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 p-1 rounded">
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-400 p-1 rounded">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -157,7 +157,7 @@ export function SeriesGenerator({ sourceItem, currentItemCount, projectId, onClo
         <div className="p-5 space-y-4">
           {/* 변형 축 선택 */}
           <div>
-            <label className="block text-slate-400 text-xs mb-2">변형 축</label>
+            <label className="block text-slate-500 text-xs mb-2">변형 축</label>
             <div className="grid grid-cols-3 gap-1">
               {[
                 { id: 'direction' as Axis, label: '방향', desc: '← → ↑ ↓' },
@@ -170,7 +170,7 @@ export function SeriesGenerator({ sourceItem, currentItemCount, projectId, onClo
                   className={`px-2 py-2 rounded-lg text-xs transition border ${
                     axis === opt.id
                       ? 'bg-indigo-600/20 text-indigo-300 border-indigo-600/40'
-                      : 'bg-slate-800/40 text-slate-400 border-slate-800 hover:border-slate-700'
+                      : 'bg-slate-50/40 text-slate-500 border-slate-200 hover:border-slate-300'
                   }`}
                 >
                   <div className="font-medium">{opt.label}</div>
@@ -184,7 +184,7 @@ export function SeriesGenerator({ sourceItem, currentItemCount, projectId, onClo
           {axis === 'direction' && (
             <>
               <div>
-                <label className="block text-slate-400 text-xs mb-2">생성할 방향 (8방향 — 차후 화살표 스티커 부착용)</label>
+                <label className="block text-slate-500 text-xs mb-2">생성할 방향 (8방향 — 차후 화살표 스티커 부착용)</label>
                 <div className="grid grid-cols-4 gap-1.5">
                   {DIRECTION_VALUES.map(d => (
                     <button
@@ -200,7 +200,7 @@ export function SeriesGenerator({ sourceItem, currentItemCount, projectId, onClo
                       className={`px-2 py-2 rounded-lg text-xs transition border ${
                         selectedDirections.has(d.key)
                           ? 'bg-indigo-600/20 text-indigo-300 border-indigo-600/40'
-                          : 'bg-slate-800/40 text-slate-500 border-slate-800 hover:border-slate-700'
+                          : 'bg-slate-50/40 text-slate-500 border-slate-200 hover:border-slate-300'
                       }`}
                     >
                       <div className="text-base">{d.key}</div>
@@ -210,8 +210,8 @@ export function SeriesGenerator({ sourceItem, currentItemCount, projectId, onClo
                 </div>
               </div>
               <div>
-                <label className="block text-slate-400 text-xs mb-1">방향 입력 위치</label>
-                <select value={targetSlot} onChange={e => setTargetSlot(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs focus:outline-none focus:border-indigo-500">
+                <label className="block text-slate-500 text-xs mb-1">방향 입력 위치</label>
+                <select value={targetSlot} onChange={e => setTargetSlot(e.target.value)} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 text-xs focus:outline-none focus:border-indigo-500">
                   {slotOptions.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
@@ -221,7 +221,7 @@ export function SeriesGenerator({ sourceItem, currentItemCount, projectId, onClo
           {/* 언어 선택 */}
           {axis === 'language' && (
             <div>
-              <label className="block text-slate-400 text-xs mb-2">생성할 언어</label>
+              <label className="block text-slate-500 text-xs mb-2">생성할 언어</label>
               <div className="flex gap-2">
                 {LANGUAGE_VALUES.map(l => (
                   <button
@@ -237,7 +237,7 @@ export function SeriesGenerator({ sourceItem, currentItemCount, projectId, onClo
                     className={`flex-1 px-3 py-2 rounded-lg text-sm transition border ${
                       selectedLanguages.has(l)
                         ? 'bg-indigo-600/20 text-indigo-300 border-indigo-600/40'
-                        : 'bg-slate-800/40 text-slate-500 border-slate-800 hover:border-slate-700'
+                        : 'bg-slate-50/40 text-slate-500 border-slate-200 hover:border-slate-300'
                     }`}
                   >
                     {l}
@@ -251,7 +251,7 @@ export function SeriesGenerator({ sourceItem, currentItemCount, projectId, onClo
           {axis === 'keyword' && (
             <>
               <div>
-                <label className="block text-slate-400 text-xs mb-2">키워드 목록 (각 키워드당 1장)</label>
+                <label className="block text-slate-500 text-xs mb-2">키워드 목록 (각 키워드당 1장)</label>
                 <div className="space-y-2">
                   {keywords.map((kw, idx) => (
                     <div key={idx} className="flex gap-2">
@@ -259,10 +259,10 @@ export function SeriesGenerator({ sourceItem, currentItemCount, projectId, onClo
                         value={kw}
                         onChange={e => setKeywords(prev => prev.map((v, i) => i === idx ? e.target.value : v))}
                         placeholder={`키워드 ${idx + 1} (예: 한복체험존)`}
-                        className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs focus:outline-none focus:border-indigo-500"
+                        className="flex-1 bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 text-xs focus:outline-none focus:border-indigo-500"
                       />
                       {keywords.length > 1 && (
-                        <button onClick={() => setKeywords(prev => prev.filter((_, i) => i !== idx))} className="text-slate-600 hover:text-red-400 p-1">
+                        <button onClick={() => setKeywords(prev => prev.filter((_, i) => i !== idx))} className="text-slate-400 hover:text-red-400 p-1">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       )}
@@ -274,8 +274,8 @@ export function SeriesGenerator({ sourceItem, currentItemCount, projectId, onClo
                 </div>
               </div>
               <div>
-                <label className="block text-slate-400 text-xs mb-1">키워드 적용 슬롯</label>
-                <select value={targetSlot} onChange={e => setTargetSlot(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs focus:outline-none focus:border-indigo-500">
+                <label className="block text-slate-500 text-xs mb-1">키워드 적용 슬롯</label>
+                <select value={targetSlot} onChange={e => setTargetSlot(e.target.value)} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 text-xs focus:outline-none focus:border-indigo-500">
                   {slotOptions.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
@@ -283,11 +283,11 @@ export function SeriesGenerator({ sourceItem, currentItemCount, projectId, onClo
           )}
 
           {/* 미리보기 */}
-          <div className="bg-slate-800/40 border border-slate-800 rounded-lg p-3">
-            <p className="text-slate-400 text-xs mb-2">생성 예정: <strong className="text-indigo-300">{variations.length}장</strong></p>
+          <div className="bg-slate-50/40 border border-slate-200 rounded-lg p-3">
+            <p className="text-slate-500 text-xs mb-2">생성 예정: <strong className="text-indigo-300">{variations.length}장</strong></p>
             <div className="flex flex-wrap gap-1">
               {variations.map(v => (
-                <span key={v.key} className="text-[10px] bg-slate-900 border border-slate-700 px-2 py-0.5 rounded text-slate-300">
+                <span key={v.key} className="text-[10px] bg-white border border-slate-300 px-2 py-0.5 rounded text-slate-400">
                   {v.label}
                 </span>
               ))}
@@ -295,8 +295,8 @@ export function SeriesGenerator({ sourceItem, currentItemCount, projectId, onClo
           </div>
         </div>
 
-        <div className="px-5 py-4 border-t border-slate-800 flex gap-2">
-          <button onClick={onClose} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm py-2 rounded-lg transition">
+        <div className="px-5 py-4 border-t border-slate-200 flex gap-2">
+          <button onClick={onClose} className="flex-1 bg-slate-50 hover:bg-slate-200 text-slate-400 text-sm py-2 rounded-lg transition">
             취소
           </button>
           <button

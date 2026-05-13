@@ -523,6 +523,15 @@ export const PRODUCTION_FORMATS: ProductionFormat[] = [
     orientation: 'landscape',
     description: '포토월·메인 무대 배경',
   },
+  {
+    id: 'sheet',
+    label: '시트지',
+    category: '시트지',
+    width_mm: 1650,
+    height_mm: 920,
+    orientation: 'landscape',
+    description: '출입구 유리창 부착. 바닥스티커·유도사인 포함',
+  },
 ]
 
 /** mm 치수로 포맷을 검색 */

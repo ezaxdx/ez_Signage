@@ -1,0 +1,100 @@
+{
+  "generated_at": "2026-05-07T09:59:17.017Z",
+  "program_parts": [
+    {
+      "code": "40.05",
+      "name": "전시",
+      "count": 23
+    },
+    {
+      "code": "40.04",
+      "name": "회의",
+      "count": 19
+    },
+    {
+      "code": "40.08",
+      "name": "공식행사",
+      "count": 7
+    },
+    {
+      "code": "40.17",
+      "name": "홍보",
+      "count": 5
+    },
+    {
+      "code": "40.19",
+      "name": "등록",
+      "count": 5
+    },
+    {
+      "code": "40.10",
+      "name": "부대행사 - 체험형",
+      "count": 2
+    },
+    {
+      "code": "40.07",
+      "name": "비즈니스 프로그램",
+      "count": 2
+    },
+    {
+      "code": "40.09",
+      "name": "부대행사 - 공모전형",
+      "count": 2
+    },
+    {
+      "code": "40.06",
+      "name": "비즈니스 매칭",
+      "count": 2
+    }
+  ],
+  "folder_type_candidates": [
+    {
+      "word": "안내",
+      "count": 11
+    },
+    {
+      "word": "현수막",
+      "count": 4
+    },
+    {
+      "word": "서울",
+      "count": 2
+    },
+    {
+      "word": "X배너",
+      "count": 2
+    },
+    {
+      "word": "(2,149㎡)",
+      "count": 2
+    },
+    {
+      "word": "DID",
+      "count": 2
+    },
+    {
+      "word": "타이틀_최종",
+      "count": 2
+    },
+    {
+      "word": "솔벤",
+      "count": 2
+    },
+    {
+      "word": "가로현수막",
+      "count": 2
+    },
+    {
+      "word": "포디움",
+      "count": 2
+    },
+    {
+      "word": "상담회",
+      "count": 2
+    },
+    {
+      "word": "(인생네컷)",
+      "count": 2
+    }
+  ]
+}

@@ -11,6 +11,9 @@ interface Props {
   selectedSlotKey?: string | null
   onUpdate: (slotKey: string, updated: SlotContent) => void
   onSlotSelect?: (key: string) => void
+  onSlotPanelOpen?: () => void
+  // v9.9: 회의록 ′마스터시안 = 모든 환경장식물에 배경 일괄 제공′
+  masterImageUrl?: string | null
 }
 
 interface FabricInstance {
@@ -27,16 +30,15 @@ interface BgCache {
 function buildDisplayText(slot: SlotContent): string {
   if (slot.ko && slot.en) return `${slot.ko}\n${slot.en}`
   if (slot.ko || slot.en) return slot.ko || slot.en
-  // 비어있음 — placeholder 힌트 사용, 없으면 라벨
-  if (slot.placeholder) return `📝 ${slot.placeholder}`
-  return `📝 ${slot.label ?? '내용 입력'}`
+  // 1차: 빈 슬롯 placeholder 표시 안 함 (사용자 요청 — 기존 입력값만 보이게)
+  return ''
 }
 
 function isSlotEmpty(slot: SlotContent): boolean {
   return !(slot.ko || slot.en)
 }
 
-export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, onUpdate, onSlotSelect }: Props) {
+export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, onUpdate, onSlotSelect, onSlotPanelOpen, masterImageUrl }: Props) {
   const outerRef = useRef<HTMLDivElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasElRef = useRef<HTMLCanvasElement>(null)
@@ -58,6 +60,8 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
   useEffect(() => { onSlotSelectRef.current = onSlotSelect }, [onSlotSelect])
   useEffect(() => { itemRef.current = item }, [item])
   useEffect(() => { selectedSlotKeyRef.current = selectedSlotKey }, [selectedSlotKey])
+  const onSlotPanelOpenRef = useRef(onSlotPanelOpen)
+  useEffect(() => { onSlotPanelOpenRef.current = onSlotPanelOpen }, [onSlotPanelOpen])
 
   // ── 캔버스 크기 계산 및 적용 ────────────────────────────
   const resizeCanvas = useCallback((canvas: any) => {
@@ -183,7 +187,8 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
             )
           }
         })
-        if (existingUrlMap.size > 0) imageKeyMapRef.current.set(slotKey, existingUrlMap)
+        // 항상 등록 (비어있어도) — 비동기 로드 callback의 guard가 올바르게 동작하도록
+        imageKeyMapRef.current.set(slotKey, existingUrlMap)
       }
       canvas.renderAll()
     },
@@ -279,12 +284,12 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
 
         const isHighlighted = selectedSlotKeyRef.current === slotKey
         const empty = isSlotEmpty(rawSlot)
-        // 빈 슬롯: 더 진한 점선 배경 (사용자에게 "여기에 입력" 시각적 표시)
+        // 1차: 빈 슬롯 시각화 OFF (사용자 요청 — 기존 입력값만 보이게)
+        // 빈 슬롯은 배경 투명 + 텍스트도 빈 문자열 → 사실상 안 보임
         const bgColor = empty
-          ? (isHighlighted ? 'rgba(251,191,36,0.22)' : 'rgba(251,191,36,0.10)')   // amber for empty
-          : (isHighlighted ? 'rgba(99,102,241,0.28)' : 'rgba(99,102,241,0.10)')    // indigo for filled
-        // 빈 슬롯이면 실제 텍스트 색상은 옅게, 내용 있으면 본 색상
-        const textFillOverride = empty ? 'rgba(255,255,255,0.55)' : undefined
+          ? 'transparent'
+          : (isHighlighted ? 'rgba(99,102,241,0.28)' : 'rgba(99,102,241,0.10)')
+        const textFillOverride = empty ? 'rgba(0,0,0,0)' : undefined
 
         // Fabric charSpacing: 1/1000 em 단위. 폰트 크기에 비례해 시각적으로 일정하게
         // letterSpacing(pt) → px → em (fontSize 기준) → 1000배
@@ -432,6 +437,16 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
         if (slotKey) onSlotSelectRef.current?.(slotKey)
       })
 
+      // 더블클릭 → 해당 구역 선택 + SlotPanel 열기
+      canvas.on('mouse:dblclick', (e: any) => {
+        const obj = e.target
+        const slotKey: string | undefined = (obj as any)?.__slotKey
+        if (slotKey) {
+          onSlotSelectRef.current?.(slotKey)
+          onSlotPanelOpenRef.current?.()
+        }
+      })
+
       // 텍스트 직접 편집 완료 → 첫 줄=ko, 나머지=en
       canvas.on('text:editing:exited', (e: any) => {
         const obj = e.target
@@ -476,16 +491,19 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
     if (!instance) return
     const { canvas, fabric } = instance
 
-    if (!item?.image_url) {
+    // v9.9: 회의록 ′마스터 시안 = 모든 환경장식물 배경 일괄 제공′
+    // 개별 item.image_url 우선 → 없으면 project.master_image_url 사용
+    const bgUrl = item?.image_url || masterImageUrl || null
+    if (!bgUrl) {
       bgCacheRef.current = null
       canvas.setBackgroundImage(null as any, canvas.renderAll.bind(canvas))
-      canvas.backgroundColor = '#0f172a'
+      canvas.backgroundColor = '#ffffff'
       canvas.renderAll()
       return
     }
 
     fabric.Image.fromURL(
-      item.image_url,
+      bgUrl,
       (img: any) => {
         if (!img || !instanceRef.current) return
         const c = instanceRef.current.canvas
@@ -497,7 +515,7 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
       },
       { crossOrigin: 'anonymous' }
     )
-  }, [item?.image_url])
+  }, [item?.image_url, masterImageUrl])
 
   // ── contents 또는 slotStyles 변경 → 텍스트 + 이미지 동기화 ──
   useEffect(() => {
@@ -520,30 +538,31 @@ export function CanvasBoard({ item, contents, slotStyles = {}, selectedSlotKey, 
   return (
     <div
       ref={outerRef}
-      className="w-full h-full flex items-center justify-center bg-slate-950 overflow-hidden"
+      className="w-full h-full flex items-center justify-center bg-slate-50 overflow-hidden"
       style={{
-        backgroundImage: 'radial-gradient(circle, rgba(51,65,85,0.4) 1px, transparent 1px)',
+        backgroundImage: 'radial-gradient(circle, rgba(148,163,184,0.25) 1px, transparent 1px)',
         backgroundSize: '24px 24px',
       }}
     >
-      <div ref={wrapRef} className="relative shadow-2xl ring-1 ring-slate-700/50">
+      <div ref={wrapRef} className="relative shadow-lg ring-1 ring-slate-200">
         <canvas ref={canvasElRef} />
-        {item?.width_mm && item?.height_mm && (
+        {/* 캔버스 하단 규격 표시 — 1차에서 일시 제거 (사용자 요청) */}
+        {/* {item?.width_mm && item?.height_mm && (
           <div className="absolute -bottom-5 left-0 right-0 text-center text-[10px] text-slate-600 font-mono pointer-events-none">
             {item.width_mm} × {item.height_mm} mm{item.category ? ` · ${item.category}` : ''}
           </div>
-        )}
+        )} */}
       </div>
 
       {!item && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none">
-          <div className="w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center">
-            <svg className="w-6 h-6 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center">
+            <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth="1.5" />
               <path strokeLinecap="round" strokeWidth="1.5" d="M3 9h18M9 21V9" />
             </svg>
           </div>
-          <p className="text-slate-600 text-sm">왼쪽에서 제작물을 선택하세요</p>
+          <p className="text-slate-500 text-sm">위 그리드에서 제작물을 선택하세요</p>
         </div>
       )}
     </div>

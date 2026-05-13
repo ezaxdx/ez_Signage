@@ -1,12 +1,20 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { LayoutGrid, FolderOpen, Archive } from 'lucide-react'
+import { LayoutGrid, Archive, MapPin, Database, GraduationCap } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { ProjectCard } from './components/ProjectCard'
 import { NewProjectButton } from './components/NewProjectButton'
 import { LogoutButton } from './components/LogoutButton'
-import { RecommenderWidget } from './components/RecommenderWidget'
+import { DashboardContent } from './components/DashboardContent'
+import { groupVenuesByRegion } from '@/lib/venueIntel'
+import { isAdmin } from '@/lib/auth/role'
 import type { ProjectWithCount } from '@/lib/types'
+
+function calcDdayDiff(eventDate: string | null): number {
+  if (!eventDate) return Infinity
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const event = new Date(eventDate); event.setHours(0, 0, 0, 0)
+  return Math.round((event.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+}
 
 export default async function DashboardPage() {
   const supabase = createClient()
@@ -14,7 +22,9 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // 소유 + 초대된 프로젝트 모두 가져오기 (RLS가 멤버 접근 허용)
+  // 관리자 권한 체크 (메뉴 표시·숨김용)
+  const userIsAdmin = await isAdmin(supabase)
+
   const { data: projects } = await supabase
     .from('projects')
     .select('*, design_items(count)')
@@ -22,86 +32,174 @@ export default async function DashboardPage() {
 
   const typedProjects = (projects ?? []) as ProjectWithCount[]
 
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+
   const stats = {
     total: typedProjects.length,
-    active: typedProjects.filter((p) => p.status === '진행중').length,
-    ready: typedProjects.filter((p) => p.status === '준비중').length,
+    urgent: typedProjects.filter(p => {
+      const d = calcDdayDiff(p.event_date)
+      return d >= 0 && d <= 7
+    }).length,
+    thisMonth: typedProjects.filter(p => {
+      if (!p.event_date) return false
+      const ev = new Date(p.event_date)
+      return ev >= monthStart && ev <= monthEnd
+    }).length,
+    inProgress: typedProjects.filter(p =>
+      p.stage && ['발주완료', '시안검수', '수정중', '확정'].includes(p.stage)
+    ).length,
   }
 
+  const venueGroups = groupVenuesByRegion()
+
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-white">
       {/* 네비게이션 */}
-      <header className="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-10">
+      {/* v8 (2026-05-11): 라이트 톤 헤더 + §13 IA 메뉴 구조 (사용자 작업 / 관리자 / 데이터 학습) */}
+      <header className="border-b border-slate-200 bg-white/80 backdrop-blur-md sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
               <LayoutGrid className="w-4 h-4 text-white" />
             </div>
-            <span className="text-slate-100 font-semibold text-sm tracking-tight">
-              MICE 디자인 가이드
+            <span className="text-slate-900 font-semibold text-sm tracking-tight">
+              제작물 리스트 가이드
             </span>
           </div>
-
           <div className="flex items-center gap-3">
+            {/* 사용자 작업 영역 */}
             <Link
-              href="/archive"
-              className="flex items-center gap-1.5 text-slate-400 hover:text-indigo-300 text-xs transition"
+              href="/dashboard"
+              className="flex items-center gap-1.5 text-slate-700 hover:text-indigo-600 text-xs transition"
+              title="내 프로젝트 (목록·생성·상세)"
             >
-              <Archive className="w-3.5 h-3.5" />
-              저장된 제작물
+              <LayoutGrid className="w-3.5 h-3.5" />
+              프로젝트
             </Link>
-            <div className="w-px h-4 bg-slate-800 hidden sm:block" />
+            {userIsAdmin && (
+              <>
+                <div className="w-px h-4 bg-slate-200 hidden sm:block" />
+                {/* 관리자 페이지: 운영 KPI · 유저 관리 · 전체 프로젝트 · AI 사용량 */}
+                <Link
+                  href="/data"
+                  className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 text-xs transition"
+                  title="관리자 페이지 — 운영 KPI / 유저 관리 / 전체 프로젝트 / AI 사용량"
+                >
+                  <Database className="w-3.5 h-3.5" />
+                  관리자 페이지
+                </Link>
+                {/* 데이터 학습 관리자: 행사장·환경장식물·동의어·시설 가이드 */}
+                <Link
+                  href="/admin/learning"
+                  className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 text-xs transition"
+                  title="데이터 학습 관리자 — 행사장 / 환경장식물 / 동의어 / 시설 가이드"
+                >
+                  <GraduationCap className="w-3.5 h-3.5" />
+                  데이터 학습 관리자
+                </Link>
+                {/* 저장된 제작물 (검수·저장) — 사용자 결정으로 메뉴 제거 (2026-05-11) */}
+              </>
+            )}
+            <div className="w-px h-4 bg-slate-200 hidden sm:block" />
             <span className="text-slate-500 text-xs hidden sm:block truncate max-w-[200px]">
               {user.email}
             </span>
-            <div className="w-px h-4 bg-slate-800 hidden sm:block" />
+            <div className="w-px h-4 bg-slate-200 hidden sm:block" />
             <LogoutButton />
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        {/* 페이지 헤더 */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+
+        {/* v8 (2026-05-11): 라이트 톤 — 페이지 헤더 */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-slate-100 text-xl font-bold">내 프로젝트</h1>
+            <h1 className="text-slate-900 text-xl font-bold">내 프로젝트</h1>
             <p className="text-slate-500 text-sm mt-0.5">MICE 행사 제작물을 관리하세요</p>
           </div>
           <NewProjectButton userId={user.id} userEmail={user.email ?? ''} />
         </div>
 
-        {/* 상황 기반 추천 위젯 */}
-        <RecommenderWidget />
-
-        {/* 통계 카드 */}
+        {/* v8: 통계 카드 — 라이트 톤 */}
         {typedProjects.length > 0 && (
-          <div className="grid grid-cols-3 gap-3 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { label: '전체 프로젝트', value: stats.total, color: 'text-slate-100' },
-              { label: '진행중', value: stats.active, color: 'text-emerald-400' },
-              { label: '준비중', value: stats.ready, color: 'text-amber-400' },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3"
-              >
+              { label: '전체 프로젝트', value: stats.total, color: 'text-slate-900', sub: null },
+              { label: 'D-7 이내', value: stats.urgent, color: stats.urgent > 0 ? 'text-red-600' : 'text-slate-900', sub: null },
+              { label: '이번달 행사', value: stats.thisMonth, color: 'text-amber-600', sub: null },
+              { label: '작업 진행중', value: stats.inProgress, color: 'text-emerald-600', sub: null },
+            ].map(stat => (
+              <div key={stat.label} className="bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm">
                 <p className="text-slate-500 text-xs mb-1">{stat.label}</p>
                 <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                {stat.sub && <p className="text-slate-400 text-[10px] mt-0.5">{stat.sub}</p>}
               </div>
             ))}
           </div>
         )}
 
-        {/* 프로젝트 그리드 */}
+        {/* 프로젝트 목록 (단계 필터 + 정렬 포함) */}
         {typedProjects.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {typedProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} isOwner={project.owner_id === user.id} />
-            ))}
-          </div>
+          <DashboardContent projects={typedProjects} userId={user.id} />
         )}
+
+        {/* 참고 행사장 — 향후 샘플 데이터 기반 추천 예정 */}
+        <details className="group">
+          <summary className="flex items-center gap-2 cursor-pointer list-none select-none">
+            <div className="flex items-center gap-1.5 text-slate-500 hover:text-slate-700 transition text-xs">
+              <MapPin className="w-3.5 h-3.5" />
+              <span>참고 행사장 — 샘플 데이터 보유 ({Object.values(venueGroups).flat().length}개소)</span>
+              <span className="text-slate-700 text-[10px]">▼ 클릭해서 보기</span>
+            </div>
+          </summary>
+
+          <div className="mt-4 bg-white/50 border border-slate-200 rounded-xl p-4">
+            <p className="text-[10px] text-slate-600 mb-4">
+              아래 행사장은 과거 제작물 샘플 폴더에 데이터가 있는 장소입니다.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {Object.entries(venueGroups).map(([region, venues]) => (
+                <div key={region}>
+                  <p className="text-[10px] font-semibold text-slate-500 mb-2 uppercase tracking-wider">{region}</p>
+                  <div className="space-y-1">
+                    {venues.map(v => (
+                      <div key={v.displayName} className="flex items-center gap-2 text-xs text-slate-400">
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                          v.type === '컨벤션' ? 'bg-indigo-500' :
+                          v.type === '전시장' ? 'bg-violet-500' :
+                          v.type === '호텔'   ? 'bg-amber-500' :
+                          v.type === '야외'   ? 'bg-emerald-500' : 'bg-slate-600'
+                        }`} />
+                        <span className="truncate">{v.displayName}</span>
+                        <span className="ml-auto text-slate-700 text-[9px] flex-shrink-0">{v.type}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 mt-4 pt-3 border-t border-slate-200 text-[9px] text-slate-700 flex-wrap gap-y-1">
+              {[
+                { color: 'bg-indigo-500', label: '컨벤션' },
+                { color: 'bg-violet-500', label: '전시장' },
+                { color: 'bg-amber-500',  label: '호텔' },
+                { color: 'bg-emerald-500',label: '야외' },
+                { color: 'bg-slate-600',  label: '기타' },
+              ].map(({ color, label }) => (
+                <span key={label} className="flex items-center gap-1">
+                  <span className={`w-1.5 h-1.5 rounded-full ${color}`} />
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
+        </details>
+
       </main>
     </div>
   )
@@ -109,13 +207,13 @@ export default async function DashboardPage() {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center py-28 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mb-4">
-        <FolderOpen className="w-8 h-8 text-slate-600" />
+    <div className="flex flex-col items-center justify-center py-24 text-center">
+      <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center mb-4">
+        <LayoutGrid className="w-7 h-7 text-slate-600" />
       </div>
-      <h3 className="text-slate-300 font-semibold mb-1.5">프로젝트가 없습니다</h3>
-      <p className="text-slate-500 text-sm">
-        첫 번째 MICE 행사 프로젝트를 만들어보세요.
+      <h3 className="text-slate-700 font-semibold mb-1.5">첫 프로젝트를 만들어보세요</h3>
+      <p className="text-slate-500 text-sm max-w-xs">
+        새 프로젝트 버튼으로 시작하세요
       </p>
     </div>
   )

@@ -1,0 +1,1797 @@
+{
+  "meta": {
+    "extracted_at": "2026-05-11T05:45:49.168Z",
+    "excel_count": 13,
+    "root": "C:/Users/EZPMP/Desktop/클로드 코드 활동용/제작물 디자인 의뢰 가이드/참고자료/환경장식물 행사별"
+  },
+  "by_venue": [
+    {
+      "venue": "평창 알펜시아",
+      "event_count": 2,
+      "events": [
+        "2020 평창평화포럼 193960",
+        "2021 평창평화포럼 203170"
+      ],
+      "total_items": 816,
+      "top_categories": "거리두기 스티커:370 / 세로현수막:206 / X배너:65 / 발자국 스티커:60 / 통천현수막:26 / 가로현수막:21 / 포디움 타이틀:17 / 시트지:8",
+      "has_domyen": false
+    },
+    {
+      "venue": "송도컨벤시아",
+      "event_count": 1,
+      "events": [
+        "KOREA MICE EXPO 2018 183000-1"
+      ],
+      "total_items": 175,
+      "top_categories": "행사 현수막:95 / 유도사인:20 / 행사 룸사인:17 / 폴대배너:15 / 포디움 타이틀:9 / 안내 룸사인:5 / X배너:4 / 안내사인:3",
+      "has_domyen": true
+    },
+    {
+      "venue": "미상",
+      "event_count": 4,
+      "events": [
+        "2021 한국관광박람회(KITE, Korea International Travel Expo 2021) 213060",
+        "2025 K-GEO Festa 252014 (20,000sqm)",
+        "제2회 세계리더스보전포럼 183060",
+        "2018 스마트국토엑스포 183080"
+      ],
+      "total_items": 158,
+      "top_categories": "이즈 직접 진행 항목:150 / 안내:4 / 포디움 타이틀:1 / VIP 오찬:1 / 참가자안내:1 / 코엑스 컨퍼런스룸:1 / 1:0 / 2:0",
+      "has_domyen": false
+    },
+    {
+      "venue": "킨텍스 (홀 미상)",
+      "event_count": 1,
+      "events": [
+        "2022 스마트국토엑스포 223080"
+      ],
+      "total_items": 75,
+      "top_categories": "X배너:39 / 천정배너:10 / 세로현수막:6 / 폼보드:5 / 포디움 타이틀:5 / 통천현수막:4 / 전자사인:3 / 물통배너:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "킨텍스 1전시장 5홀",
+      "event_count": 1,
+      "events": [
+        "2022 스마트국토엑스포 223080"
+      ],
+      "total_items": 26,
+      "top_categories": "세로현수막:21 / 가로현수막:2 / X배너:2 / 통천현수막:1",
+      "has_domyen": true
+    },
+    {
+      "venue": "전시장 천정",
+      "event_count": 1,
+      "events": [
+        "BCWW 2018 183090"
+      ],
+      "total_items": 22,
+      "top_categories": "행사장 조성:22",
+      "has_domyen": false
+    },
+    {
+      "venue": "전시",
+      "event_count": 1,
+      "events": [
+        "2018 스마트국토엑스포 183080"
+      ],
+      "total_items": 21,
+      "top_categories": "코엑스 D2:18 / 코엑스:3",
+      "has_domyen": false
+    },
+    {
+      "venue": "등록데스크",
+      "event_count": 2,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000",
+        "BCWW 2018 183090"
+      ],
+      "total_items": 17,
+      "top_categories": "행사장:15 / 행사장 조성:2",
+      "has_domyen": false
+    },
+    {
+      "venue": "3층",
+      "event_count": 1,
+      "events": [
+        "제2회 세계리더스보전포럼 183060"
+      ],
+      "total_items": 16,
+      "top_categories": "전문가세션:4 / 환경부 장관 사무실:2 / 도지사 사무실:2 / VIP접견실 및 연사라운지:2 / IUCN 사무국:2 / IUCN 사무총장 사무실:2 / 프레스 센터:2",
+      "has_domyen": false
+    },
+    {
+      "venue": "전시장 내 기둥",
+      "event_count": 1,
+      "events": [
+        "BCWW 2018 183090"
+      ],
+      "total_items": 16,
+      "top_categories": "행사장 조성:16",
+      "has_domyen": false
+    },
+    {
+      "venue": "전시장 외부",
+      "event_count": 1,
+      "events": [
+        "BCWW 2018 183090"
+      ],
+      "total_items": 15,
+      "top_categories": "행사장 조성:15",
+      "has_domyen": false
+    },
+    {
+      "venue": "음수대/쉼터",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 13,
+      "top_categories": "행사장:13",
+      "has_domyen": false
+    },
+    {
+      "venue": "전시장 내 이벤트 무대",
+      "event_count": 1,
+      "events": [
+        "BCWW 2018 183090"
+      ],
+      "total_items": 13,
+      "top_categories": "네트워킹 리셉션:7 / 부대행사:6",
+      "has_domyen": false
+    },
+    {
+      "venue": "경원재 호텔",
+      "event_count": 1,
+      "events": [
+        "KOREA MICE EXPO 2018 183000-1"
+      ],
+      "total_items": 12,
+      "top_categories": "유도사인:8 / 포디움 타이틀:2 / 행사 현수막:1 / 이벤트 룸사인(한복체험):1",
+      "has_domyen": false
+    },
+    {
+      "venue": "프리미어 볼룸(2F)",
+      "event_count": 1,
+      "events": [
+        "KOREA MICE EXPO 2019 193100"
+      ],
+      "total_items": 12,
+      "top_categories": "개막식:6 / 환영만찬:6",
+      "has_domyen": false
+    },
+    {
+      "venue": "세종로공원 주차장",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 10,
+      "top_categories": "야외:6 / 실내:4",
+      "has_domyen": false
+    },
+    {
+      "venue": "셔틀버스",
+      "event_count": 1,
+      "events": [
+        "제2회 세계리더스보전포럼 183060"
+      ],
+      "total_items": 10,
+      "top_categories": "참가자안내:10",
+      "has_domyen": false
+    },
+    {
+      "venue": "VIP 의전차량",
+      "event_count": 1,
+      "events": [
+        "제2회 세계리더스보전포럼 183060"
+      ],
+      "total_items": 10,
+      "top_categories": "참가자안내:10",
+      "has_domyen": false
+    },
+    {
+      "venue": "소노캄",
+      "event_count": 1,
+      "events": [
+        "2022 스마트국토엑스포 223080"
+      ],
+      "total_items": 9,
+      "top_categories": "X배너:4 / 포디움 타이틀:2 / 통천현수막:2 / 가로현수막:1",
+      "has_domyen": true
+    },
+    {
+      "venue": "-",
+      "event_count": 1,
+      "events": [
+        "2022 스마트국토엑스포 223080"
+      ],
+      "total_items": 8,
+      "top_categories": "영접피켓:8",
+      "has_domyen": false
+    },
+    {
+      "venue": "오크우드 호텔",
+      "event_count": 1,
+      "events": [
+        "KOREA MICE EXPO 2018 183000-1"
+      ],
+      "total_items": 8,
+      "top_categories": "유도사인:4 / 포디움 타이틀:2 / 행사 현수막:1 / 행사장안내:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "셔틀버스 ",
+      "event_count": 1,
+      "events": [
+        "KOREA MICE EXPO 2018 183000-1"
+      ],
+      "total_items": 7,
+      "top_categories": "Q방:7",
+      "has_domyen": false
+    },
+    {
+      "venue": "로비",
+      "event_count": 1,
+      "events": [
+        "2018 스마트국토엑스포 183080"
+      ],
+      "total_items": 7,
+      "top_categories": "코엑스 D2:7",
+      "has_domyen": false
+    },
+    {
+      "venue": "차량",
+      "event_count": 1,
+      "events": [
+        "2022 스마트국토엑스포 223080"
+      ],
+      "total_items": 6,
+      "top_categories": "디자인/칼라출력:6",
+      "has_domyen": false
+    },
+    {
+      "venue": "인천공항",
+      "event_count": 3,
+      "events": [
+        "2022 스마트국토엑스포 223080",
+        "KOREA MICE EXPO 2018 183000-1",
+        "제2회 세계리더스보전포럼 183060"
+      ],
+      "total_items": 6,
+      "top_categories": "사이니지:2 / 영접피켓:2 / 안내:2",
+      "has_domyen": false
+    },
+    {
+      "venue": "경복궁 주차장",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 6,
+      "top_categories": "야외:6",
+      "has_domyen": false
+    },
+    {
+      "venue": "방한용품배포대",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 6,
+      "top_categories": "행사장:6",
+      "has_domyen": false
+    },
+    {
+      "venue": "물품보관소",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 6,
+      "top_categories": "행사장:6",
+      "has_domyen": false
+    },
+    {
+      "venue": "전시홀",
+      "event_count": 1,
+      "events": [
+        "KOREA MICE EXPO 2019 193100"
+      ],
+      "total_items": 6,
+      "top_categories": "전시장:6",
+      "has_domyen": false
+    },
+    {
+      "venue": "개막식",
+      "event_count": 1,
+      "events": [
+        "2018 스마트국토엑스포 183080"
+      ],
+      "total_items": 6,
+      "top_categories": "개막식장:6",
+      "has_domyen": false
+    },
+    {
+      "venue": "비즈니스 미팅룸",
+      "event_count": 1,
+      "events": [
+        "BCWW 2018 183090"
+      ],
+      "total_items": 6,
+      "top_categories": "전시장 Hall B:6",
+      "has_domyen": false
+    },
+    {
+      "venue": "회의장 113-117호",
+      "event_count": 1,
+      "events": [
+        "KOREA MICE EXPO 2019 193100"
+      ],
+      "total_items": 5,
+      "top_categories": "지역홍보 및 베뉴설명회:5",
+      "has_domyen": false
+    },
+    {
+      "venue": "동선 안내",
+      "event_count": 1,
+      "events": [
+        "BCWW 2018 183090"
+      ],
+      "total_items": 5,
+      "top_categories": "VIP 오찬장:5",
+      "has_domyen": false
+    },
+    {
+      "venue": "적선노외공영주차장 (버스전용)",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 4,
+      "top_categories": "야외:4",
+      "has_domyen": false
+    },
+    {
+      "venue": "안내데스크",
+      "event_count": 1,
+      "events": [
+        "KOREA MICE EXPO 2019 193100"
+      ],
+      "total_items": 4,
+      "top_categories": "참가자관리:4",
+      "has_domyen": false
+    },
+    {
+      "venue": "7층 다목적홀",
+      "event_count": 1,
+      "events": [
+        "KOREA MICE EXPO 2019 193100"
+      ],
+      "total_items": 4,
+      "top_categories": "환영리셉션:4",
+      "has_domyen": false
+    },
+    {
+      "venue": "5층",
+      "event_count": 1,
+      "events": [
+        "제2회 세계리더스보전포럼 183060"
+      ],
+      "total_items": 4,
+      "top_categories": "리더스대화:2 / 장치장식물:1 / VIP 오찬:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "제주공항",
+      "event_count": 1,
+      "events": [
+        "제2회 세계리더스보전포럼 183060"
+      ],
+      "total_items": 4,
+      "top_categories": "의전:2 / 안내:2",
+      "has_domyen": false
+    },
+    {
+      "venue": "등록 ",
+      "event_count": 1,
+      "events": [
+        "2018 스마트국토엑스포 183080"
+      ],
+      "total_items": 4,
+      "top_categories": "개막식장:4",
+      "has_domyen": false
+    },
+    {
+      "venue": "오만찬",
+      "event_count": 1,
+      "events": [
+        "2018 스마트국토엑스포 183080"
+      ],
+      "total_items": 4,
+      "top_categories": "인터컨티넨탈 코엑스:4",
+      "has_domyen": false
+    },
+    {
+      "venue": "컨설팅",
+      "event_count": 1,
+      "events": [
+        "2018 스마트국토엑스포 183080"
+      ],
+      "total_items": 4,
+      "top_categories": "코엑스 컨퍼런스룸:4",
+      "has_domyen": false
+    },
+    {
+      "venue": "영접/영송",
+      "event_count": 1,
+      "events": [
+        "2018 스마트국토엑스포 183080"
+      ],
+      "total_items": 4,
+      "top_categories": "인천공항:4",
+      "has_domyen": false
+    },
+    {
+      "venue": "B2 주최자 사무실",
+      "event_count": 1,
+      "events": [
+        "BCWW 2018 183090"
+      ],
+      "total_items": 4,
+      "top_categories": "VIP 대기실:4",
+      "has_domyen": false
+    },
+    {
+      "venue": "국립고궁박물관 주차장",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 3,
+      "top_categories": "야외:3",
+      "has_domyen": false
+    },
+    {
+      "venue": "포스트 투어",
+      "event_count": 1,
+      "events": [
+        "KOREA MICE EXPO 2018 183000-1"
+      ],
+      "total_items": 3,
+      "top_categories": "행사 현수막:3",
+      "has_domyen": false
+    },
+    {
+      "venue": "라운드테이블회의",
+      "event_count": 1,
+      "events": [
+        "2018 스마트국토엑스포 183080"
+      ],
+      "total_items": 3,
+      "top_categories": "코엑스 컨퍼런스룸:3",
+      "has_domyen": false
+    },
+    {
+      "venue": "운영요원 대기실 1 (연출팀)",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 2,
+      "top_categories": "야외:2",
+      "has_domyen": false
+    },
+    {
+      "venue": "운영요원 대기실 2 (운영팀)",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 2,
+      "top_categories": "야외:2",
+      "has_domyen": false
+    },
+    {
+      "venue": "의무실",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 2,
+      "top_categories": "행사장:2",
+      "has_domyen": false
+    },
+    {
+      "venue": "쉐라톤, 오크우드 호텔",
+      "event_count": 1,
+      "events": [
+        "KOREA MICE EXPO 2018 183000-1"
+      ],
+      "total_items": 2,
+      "top_categories": "안내 사인:2",
+      "has_domyen": false
+    },
+    {
+      "venue": "공무원교육",
+      "event_count": 1,
+      "events": [
+        "KOREA MICE EXPO 2019 193100"
+      ],
+      "total_items": 2,
+      "top_categories": "기타:2",
+      "has_domyen": false
+    },
+    {
+      "venue": "제주대학교",
+      "event_count": 1,
+      "events": [
+        "제2회 세계리더스보전포럼 183060"
+      ],
+      "total_items": 2,
+      "top_categories": "미래세대를 위한 특별 강연:2",
+      "has_domyen": false
+    },
+    {
+      "venue": "오찬",
+      "event_count": 1,
+      "events": [
+        "2018 스마트국토엑스포 183080"
+      ],
+      "total_items": 2,
+      "top_categories": "인터컨티넨탈 코엑스:2",
+      "has_domyen": false
+    },
+    {
+      "venue": "컨퍼런스",
+      "event_count": 1,
+      "events": [
+        "2018 스마트국토엑스포 183080"
+      ],
+      "total_items": 2,
+      "top_categories": "코엑스 컨퍼런스룸:1 / 코엑스 컨퍼런스룸 남:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "워크숍1~2",
+      "event_count": 1,
+      "events": [
+        "2018 스마트국토엑스포 183080"
+      ],
+      "total_items": 2,
+      "top_categories": "코엑스 컨퍼런스룸:2",
+      "has_domyen": false
+    },
+    {
+      "venue": "비즈니스 미팅룸 ",
+      "event_count": 1,
+      "events": [
+        "BCWW 2018 183090"
+      ],
+      "total_items": 2,
+      "top_categories": "전시장 Hall B:2",
+      "has_domyen": false
+    },
+    {
+      "venue": "코엑스",
+      "event_count": 1,
+      "events": [
+        "BCWW 2018 183090"
+      ],
+      "total_items": 2,
+      "top_categories": "행사장 조성:2",
+      "has_domyen": true
+    },
+    {
+      "venue": "호텔 로비",
+      "event_count": 1,
+      "events": [
+        "BCWW 2018 183090"
+      ],
+      "total_items": 2,
+      "top_categories": "호텔 로비:2",
+      "has_domyen": false
+    },
+    {
+      "venue": "비너스룸(30F)",
+      "event_count": 1,
+      "events": [
+        "BCWW 2018 183090"
+      ],
+      "total_items": 2,
+      "top_categories": "VIP 오찬장:2",
+      "has_domyen": false
+    },
+    {
+      "venue": "행신역",
+      "event_count": 1,
+      "events": [
+        "2022 스마트국토엑스포 223080"
+      ],
+      "total_items": 1,
+      "top_categories": "물통배너:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "기타",
+      "event_count": 1,
+      "events": [
+        "2022 스마트국토엑스포 223080"
+      ],
+      "total_items": 1,
+      "top_categories": "가로현수막:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "서울정부청사 주차장",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 1,
+      "top_categories": "야외:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "서울정부청사 별관(외교부) 주차장",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 1,
+      "top_categories": "야외:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "청운초등학교 운동장",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 1,
+      "top_categories": "야외:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "대행사 운영사무국 1(연출팀)",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 1,
+      "top_categories": "야외:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "대행사 운영사무국 2(운영팀)",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 1,
+      "top_categories": "야외:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "통역부스",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 1,
+      "top_categories": "행사장:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "경호 CP",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 1,
+      "top_categories": "행사장:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "행안부 본부",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 1,
+      "top_categories": "행사장:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "안내소",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 1,
+      "top_categories": "행사장:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "경원재",
+      "event_count": 1,
+      "events": [
+        "KOREA MICE EXPO 2019 193100"
+      ],
+      "total_items": 1,
+      "top_categories": "VIP오찬:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "국기게양대 뒤 벽 전면",
+      "event_count": 1,
+      "events": [
+        "KOREA MICE EXPO 2019 193100"
+      ],
+      "total_items": 1,
+      "top_categories": "운영:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "김포공항",
+      "event_count": 1,
+      "events": [
+        "제2회 세계리더스보전포럼 183060"
+      ],
+      "total_items": 1,
+      "top_categories": "안내:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "롯데호텔",
+      "event_count": 1,
+      "events": [
+        "제2회 세계리더스보전포럼 183060"
+      ],
+      "total_items": 1,
+      "top_categories": "참가자안내:1",
+      "has_domyen": true
+    },
+    {
+      "venue": "기조연설",
+      "event_count": 1,
+      "events": [
+        "2018 스마트국토엑스포 183080"
+      ],
+      "total_items": 1,
+      "top_categories": "개막식장:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "MOU",
+      "event_count": 1,
+      "events": [
+        "2018 스마트국토엑스포 183080"
+      ],
+      "total_items": 1,
+      "top_categories": "코엑스 컨퍼런스룸:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "서울 및 경기도 수원",
+      "event_count": 1,
+      "events": [
+        "2018 스마트국토엑스포 183080"
+      ],
+      "total_items": 1,
+      "top_categories": "투어코스:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "컨퍼런스룸",
+      "event_count": 1,
+      "events": [
+        "2018 스마트국토엑스포 183080"
+      ],
+      "total_items": 1,
+      "top_categories": "코엑스 컨퍼런스룸:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "바이어라운지 및 비즈니스 미팅룸",
+      "event_count": 1,
+      "events": [
+        "BCWW 2018 183090"
+      ],
+      "total_items": 1,
+      "top_categories": "전시장 Hall B:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "B2 입구 상단",
+      "event_count": 1,
+      "events": [
+        "BCWW 2018 183090"
+      ],
+      "total_items": 1,
+      "top_categories": "행사장 조성:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "전시 사무국",
+      "event_count": 1,
+      "events": [
+        "BCWW 2018 183090"
+      ],
+      "total_items": 1,
+      "top_categories": "전시 사무국:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "킷데스크&인포데스크",
+      "event_count": 1,
+      "events": [
+        "BCWW 2018 183090"
+      ],
+      "total_items": 1,
+      "top_categories": "행사장 조성:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "호텔 바이어 안내데스크",
+      "event_count": 1,
+      "events": [
+        "BCWW 2018 183090"
+      ],
+      "total_items": 1,
+      "top_categories": "호텔 로비:1",
+      "has_domyen": false
+    },
+    {
+      "venue": "창고 1(연출소품)",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 0,
+      "top_categories": "야외:0",
+      "has_domyen": false
+    },
+    {
+      "venue": "창고 2(운영물자)",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 0,
+      "top_categories": "야외:0",
+      "has_domyen": false
+    },
+    {
+      "venue": "출연자대기실(세종로공원)",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 0,
+      "top_categories": "야외:0",
+      "has_domyen": false
+    },
+    {
+      "venue": "출연진 대기실",
+      "event_count": 1,
+      "events": [
+        "제100주년 3.1절 중앙기념식 192000"
+      ],
+      "total_items": 0,
+      "top_categories": "행사장:0",
+      "has_domyen": false
+    },
+    {
+      "venue": "알림터 1관 천장",
+      "event_count": 1,
+      "events": [
+        "제1회 대한민국 정부혁신박람회 191400"
+      ],
+      "total_items": 0,
+      "top_categories": "전시:0",
+      "has_domyen": false
+    },
+    {
+      "venue": "알림터 2관  무대 근처 포디움",
+      "event_count": 1,
+      "events": [
+        "제1회 대한민국 정부혁신박람회 191400"
+      ],
+      "total_items": 0,
+      "top_categories": "개막식\r\n및\r\n부대행사:0",
+      "has_domyen": false
+    },
+    {
+      "venue": "알림2관 개막식장 플로어",
+      "event_count": 1,
+      "events": [
+        "제1회 대한민국 정부혁신박람회 191400"
+      ],
+      "total_items": 0,
+      "top_categories": "등록\r\n및\r\n안내:0",
+      "has_domyen": false
+    },
+    {
+      "venue": "알림터 로비",
+      "event_count": 1,
+      "events": [
+        "제1회 대한민국 정부혁신박람회 191400"
+      ],
+      "total_items": 0,
+      "top_categories": "운영:0",
+      "has_domyen": false
+    }
+  ],
+  "by_event": [
+    {
+      "event": "2020 평창평화포럼 193960",
+      "venue_inferred": "평창 알펜시아",
+      "excel": "2020 평창평화포럼_제작물 리스트_ 0202_v5.xlsx",
+      "item_count": 62,
+      "total_qty": 251,
+      "categories": "세로현수막:174 / X배너:30 / 가로현수막:15 / 통천현수막:7 / 큐방:7 / 스탠드 POP\r\n(검토중):5 / 포디움 타이틀:5 / 개회식 배치도:3 / 무지배너:2 / 롤배너:1 / 현황판:1 / A배너:1 / 홍보탑:0"
+    },
+    {
+      "event": "2021 한국관광박람회(KITE, Korea International Travel Expo 2021) 213060",
+      "venue_inferred": "미상",
+      "excel": "★KITE2021_물자 및 제작물 리스트_0621.xlsx",
+      "item_count": 23,
+      "total_qty": 0,
+      "categories": "1:0 / 2:0 / 3:0 / 4:0 / 5:0 / 6:0 / 7:0 / 8:0 / 9:0 / 10:0 / 11:0 / 12:0 / 13:0 / 14:0 / 15:0 / 16:0 / 17:0 / 18:0 / 19:0 / 20:0 / 21:0 / 22:0 / 연 번:0"
+    },
+    {
+      "event": "2022 스마트국토엑스포 223080",
+      "venue_inferred": "킨텍스 1전시장 5홀, 킨텍스 (홀 미상), 행신역, 차량, 소노캄, 기타, 인천공항, -",
+      "excel": "20221027 스마트국토엑스포_작물시트만(글로벌+이벤트)_공식행사수정.xlsx",
+      "item_count": 68,
+      "total_qty": 128,
+      "categories": "X배너:45 / 세로현수막:27 / 천정배너:10 / 영접피켓:8 / 통천현수막:7 / 포디움 타이틀:7 / 디자인/칼라출력:6 / 가로현수막:5 / 폼보드:5 / 전자사인:3 / 물통배너:2 / 사이니지:2 / I배너:1"
+    },
+    {
+      "event": "2025 K-GEO Festa 252014 (20,000sqm)",
+      "venue_inferred": "미상",
+      "excel": "2025 K-GEO_제작물_피알라이브.xlsx",
+      "item_count": 2,
+      "total_qty": 0,
+      "categories": "▶ 행사기간 및 장소 : 2025.9.24 ~ 9.26(3일간) / KINTEX:0 / 25.08.21:0"
+    },
+    {
+      "event": "2021 평창평화포럼 203170",
+      "venue_inferred": "평창 알펜시아",
+      "excel": "★2021 평창평화포럼_제작물 리스트_210218_1757.xlsx",
+      "item_count": 102,
+      "total_qty": 565,
+      "categories": "거리두기 스티커:370 / 발자국 스티커:60 / X배너:35 / 세로현수막:32 / 통천현수막:19 / 포디움 타이틀:12 / 시트지:8 / 폼보드:8 / 가로현수막:6 / 물통배너:5 / x배너:4 / A배너:2 / I배너:2 / 스탠드 POP:2 / 큐방:0"
+    },
+    {
+      "event": "제100주년 3.1절 중앙기념식 192000",
+      "venue_inferred": "서울정부청사 주차장, 서울정부청사 별관(외교부) 주차장, 세종로공원 주차장, 경복궁 주차장, 국립고궁박물관 주차장, 적선노외공영주차장 (버스전용), 청운초등학교 운동장, 대행사 운영사무국 1(연출팀), 창고 1(연출소품), 운영요원 대기실 1 (연출팀), 대행사 운영사무국 2(운영팀), 창고 2(운영물자), 운영요원 대기실 2 (운영팀), 출연자대기실(세종로공원), 출연진 대기실, 등록데스크, 방한용품배포대, 물품보관소, 음수대/쉼터, 통역부스, 경호 CP, 의무실, 행안부 본부, 안내소",
+      "excel": "100주년 3.1절 중앙기념식 제작물리스트_20190219.xlsx",
+      "item_count": 52,
+      "total_qty": 78,
+      "categories": "행사장:46 / 야외:28 / 실내:4"
+    },
+    {
+      "event": "제1회 대한민국 정부혁신박람회 191400",
+      "venue_inferred": "알림터 1관 천장, 알림터 2관  무대 근처 포디움, 알림2관 개막식장 플로어, 알림터 로비",
+      "excel": "정부혁신박람회_환경연출물_라이브피알_191119_최종.xlsx",
+      "item_count": 4,
+      "total_qty": 0,
+      "categories": "전시:0 / 개막식\r\n및\r\n부대행사:0 / 등록\r\n및\r\n안내:0 / 운영:0"
+    },
+    {
+      "event": "KOREA MICE EXPO 2018 183000-1",
+      "venue_inferred": "송도컨벤시아, 오크우드 호텔, 경원재 호텔, 셔틀버스 , 인천공항, 쉐라톤, 오크우드 호텔, 포스트 투어",
+      "excel": "KME_환경제작물리스트_0613-환영리셉션.xlsx",
+      "item_count": 59,
+      "total_qty": 209,
+      "categories": "행사 현수막:100 / 유도사인:32 / 행사 룸사인:17 / 폴대배너:15 / 포디움 타이틀:13 / Q방:7 / 안내 룸사인:5 / X배너:4 / 안내사인:3 / 유도사인(개막식/전시):3 / 폼보드:2 / 영접피켓:2 / 안내 사인:2 / 행사장안내:1 / 이벤트 룸사인(한복체험):1 / 안내:1 / 현황판 및 안내:1"
+    },
+    {
+      "event": "KOREA MICE EXPO 2019 193100",
+      "venue_inferred": "안내데스크, 전시홀, 7층 다목적홀, 프리미어 볼룸(2F), 경원재, 회의장 113-117호, 국기게양대 뒤 벽 전면, 공무원교육",
+      "excel": "KME 2019_제작물 리스트_190608_2000.xlsx",
+      "item_count": 9,
+      "total_qty": 35,
+      "categories": "전시장:6 / 개막식:6 / 환영만찬:6 / 지역홍보 및 베뉴설명회:5 / 참가자관리:4 / 환영리셉션:4 / 기타:2 / VIP오찬:1 / 운영:1"
+    },
+    {
+      "event": "제2회 세계리더스보전포럼 183060",
+      "venue_inferred": "5층, 3층, 제주대학교, 제주공항, 미상",
+      "excel": "2018WLCF_제작물리스트-180929.xlsx",
+      "item_count": 13,
+      "total_qty": 164,
+      "categories": "이즈 직접 진행 항목:150 / 전문가세션:2 / 의전:2 / 장치장식물:1 / VIP 오찬:1 / 환경부 장관 사무실:1 / 도지사 사무실:1 / VIP접견실 및 연사라운지:1 / IUCN 사무국:1 / IUCN 사무총장 사무실:1 / 프레스 센터:1 / 미래세대를 위한 특별 강연:1 / 포디움 타이틀:1"
+    },
+    {
+      "event": "제2회 세계리더스보전포럼 183060",
+      "venue_inferred": "5층, 미상, 3층, 제주대학교, 인천공항, 김포공항, 제주공항, 롯데호텔, 셔틀버스, VIP 의전차량",
+      "excel": "리더스_제작물 리스트_180911(이즈).xlsx",
+      "item_count": 20,
+      "total_qty": 43,
+      "categories": "참가자안내:22 / 안내:9 / 리더스대화:2 / 전문가세션:2 / VIP 오찬:1 / 환경부 장관 사무실:1 / 도지사 사무실:1 / VIP접견실 및 연사라운지:1 / IUCN 사무국:1 / IUCN 사무총장 사무실:1 / 프레스 센터:1 / 미래세대를 위한 특별 강연:1"
+    },
+    {
+      "event": "2018 스마트국토엑스포 183080",
+      "venue_inferred": "등록 , 개막식, 기조연설, 오만찬, 오찬, 전시, 로비, MOU, 컨설팅, 컨퍼런스, 워크숍1~2, 라운드테이블회의, 서울 및 경기도 수원, 컨퍼런스룸, 미상, 영접/영송",
+      "excel": "2018 스마트국토엑스포_제작물리스트_0909.xlsx",
+      "item_count": 41,
+      "total_qty": 64,
+      "categories": "코엑스 D2:25 / 코엑스 컨퍼런스룸:13 / 개막식장:11 / 인터컨티넨탈 코엑스:6 / 인천공항:4 / 코엑스:3 / 투어코스:1 / 코엑스 컨퍼런스룸 남:1"
+    },
+    {
+      "event": "BCWW 2018 183090",
+      "venue_inferred": "바이어라운지 및 비즈니스 미팅룸, 비즈니스 미팅룸 , 비즈니스 미팅룸, 전시장 천정, 전시장 내 기둥, 전시장 내 이벤트 무대, 전시장 외부, 코엑스, B2 입구 상단, 전시 사무국, 킷데스크&인포데스크, 등록데스크, 호텔 바이어 안내데스크, 호텔 로비, B2 주최자 사무실, 비너스룸(30F), 동선 안내",
+      "excel": "BCWW 2018_제작물리스트_20180820_Final_VER02 (1).xlsx",
+      "item_count": 36,
+      "total_qty": 96,
+      "categories": "행사장 조성:59 / 전시장 Hall B:9 / 네트워킹 리셉션:7 / VIP 오찬장:7 / 부대행사:6 / VIP 대기실:4 / 호텔 로비:3 / 전시 사무국:1"
+    }
+  ],
+  "by_category": [
+    {
+      "category": "거리두기 스티커",
+      "total_qty": 370,
+      "occurrences": 4,
+      "top_venues": "평창 알펜시아:370",
+      "top_sizes": "350*350:320 / 500*150:50"
+    },
+    {
+      "category": "세로현수막",
+      "total_qty": 233,
+      "occurrences": 49,
+      "top_venues": "평창 알펜시아:206 / 킨텍스 1전시장 5홀:21 / 킨텍스 (홀 미상):6",
+      "top_sizes": "600*1800:115 / 700*1800:25 / 600*2000:21 / 770*3450:18 / 1200*4500:9"
+    },
+    {
+      "category": "이즈 직접 진행 항목",
+      "total_qty": 150,
+      "occurrences": 1,
+      "top_venues": "미상:150",
+      "top_sizes": "65*110:150"
+    },
+    {
+      "category": "X배너",
+      "total_qty": 114,
+      "occurrences": 59,
+      "top_venues": "평창 알펜시아:65 / 킨텍스 (홀 미상):39 / 소노캄:4 / 송도컨벤시아:4 / 킨텍스 1전시장 5홀:2",
+      "top_sizes": "600*1800:114"
+    },
+    {
+      "category": "행사 현수막",
+      "total_qty": 100,
+      "occurrences": 19,
+      "top_venues": "송도컨벤시아:95 / 포스트 투어:3 / 오크우드 호텔:1 / 경원재 호텔:1",
+      "top_sizes": "6*1.8:52 / 950*2300:12 / 7*2.5:10 / 8*10:6 / 1000*7200:6"
+    },
+    {
+      "category": "발자국 스티커",
+      "total_qty": 60,
+      "occurrences": 1,
+      "top_venues": "평창 알펜시아:60",
+      "top_sizes": "350*350:60"
+    },
+    {
+      "category": "행사장 조성",
+      "total_qty": 59,
+      "occurrences": 16,
+      "top_venues": "전시장 천정:22 / 전시장 내 기둥:16 / 전시장 외부:15 / 코엑스:2 / 등록데스크:2",
+      "top_sizes": "1200*6000:16 / 600*1800:15 / 6000*4000:8 / 4000*3000:8 / 5000*3750:6"
+    },
+    {
+      "category": "행사장",
+      "total_qty": 46,
+      "occurrences": 33,
+      "top_venues": "등록데스크:15 / 음수대/쉼터:13 / 방한용품배포대:6 / 물품보관소:6 / 의무실:2",
+      "top_sizes": "2:33 / 1:13"
+    },
+    {
+      "category": "포디움 타이틀",
+      "total_qty": 38,
+      "occurrences": 33,
+      "top_venues": "평창 알펜시아:17 / 송도컨벤시아:9 / 킨텍스 (홀 미상):5 / 소노캄:2 / 오크우드 호텔:2",
+      "top_sizes": "630*1000:5 / (MW):4 / 600*200:4 / 확인필요:3 / 600*150:2"
+    },
+    {
+      "category": "통천현수막",
+      "total_qty": 33,
+      "occurrences": 27,
+      "top_venues": "평창 알펜시아:26 / 킨텍스 (홀 미상):4 / 소노캄:2 / 킨텍스 1전시장 5홀:1",
+      "top_sizes": "2230*4100:6 / 2000*2300:3 / 6880*5350:2 / 2400*2200:2 / 7000*3800:2"
+    },
+    {
+      "category": "유도사인",
+      "total_qty": 32,
+      "occurrences": 8,
+      "top_venues": "송도컨벤시아:20 / 경원재 호텔:8 / 오크우드 호텔:4",
+      "top_sizes": "600*1800:28 / 6*1.8:4"
+    },
+    {
+      "category": "야외",
+      "total_qty": 28,
+      "occurrences": 18,
+      "top_venues": "세종로공원 주차장:6 / 경복궁 주차장:6 / 적선노외공영주차장 (버스전용):4 / 국립고궁박물관 주차장:3 / 운영요원 대기실 1 (연출팀):2",
+      "top_sizes": "-:22 / 5x5:6"
+    },
+    {
+      "category": "가로현수막",
+      "total_qty": 26,
+      "occurrences": 18,
+      "top_venues": "평창 알펜시아:21 / 킨텍스 1전시장 5홀:2 / 킨텍스 (홀 미상):1 / 소노캄:1 / 기타:1",
+      "top_sizes": "10000*900:9 / 12000*1500:2 / 9400*3000:2 / 7000*900:2 / 4060*1080:1"
+    },
+    {
+      "category": "코엑스 D2",
+      "total_qty": 25,
+      "occurrences": 14,
+      "top_venues": "전시:18 / 로비:7",
+      "top_sizes": "60cm*180cm:21 / 1500(W)*7000(H):1 / 24000(W)*7000(H):1 / 700*170cm:1"
+    },
+    {
+      "category": "참가자안내",
+      "total_qty": 22,
+      "occurrences": 4,
+      "top_venues": "셔틀버스:10 / VIP 의전차량:10 / 롯데호텔:1 / 미상:1",
+      "top_sizes": "210*297(A4):20 / 600*1800:2"
+    },
+    {
+      "category": "행사 룸사인",
+      "total_qty": 17,
+      "occurrences": 5,
+      "top_venues": "송도컨벤시아:17",
+      "top_sizes": "600*1800:17"
+    },
+    {
+      "category": "폼보드",
+      "total_qty": 15,
+      "occurrences": 9,
+      "top_venues": "평창 알펜시아:8 / 킨텍스 (홀 미상):5 / 송도컨벤시아:2",
+      "top_sizes": "420*594:7 / 600*400:5 / 0.42*0.175:1 / A1:1 / 확인필요:1"
+    },
+    {
+      "category": "폴대배너",
+      "total_qty": 15,
+      "occurrences": 1,
+      "top_venues": "송도컨벤시아:15",
+      "top_sizes": "0.85*5.9:15"
+    },
+    {
+      "category": "코엑스 컨퍼런스룸",
+      "total_qty": 13,
+      "occurrences": 10,
+      "top_venues": "컨설팅:4 / 라운드테이블회의:3 / 워크숍1~2:2 / MOU:1 / 컨퍼런스:1",
+      "top_sizes": "60cm*180cm:2 / 297*420cm(A3 사이즈):2 / 100cm*300cm:2 / 50*8cm:2 / 가로 현수막 340cm*320cm:1"
+    },
+    {
+      "category": "개막식장",
+      "total_qty": 11,
+      "occurrences": 6,
+      "top_venues": "개막식:6 / 등록 :4 / 기조연설:1",
+      "top_sizes": "60cm*180cm:4 / 62cm*15cm / 52cm*98cm:2 / 1.5m x 6m:2 / 1.5m x 4m:2 / 20cm*20cm:1"
+    },
+    {
+      "category": "천정배너",
+      "total_qty": 10,
+      "occurrences": 4,
+      "top_venues": "킨텍스 (홀 미상):10",
+      "top_sizes": "5500*4000(확인필요):7 / 3500*3000(확인필요):3"
+    },
+    {
+      "category": "영접피켓",
+      "total_qty": 10,
+      "occurrences": 2,
+      "top_venues": "-:8 / 인천공항:2",
+      "top_sizes": "A2사이즈:8 / 0.42*0.297:2"
+    },
+    {
+      "category": "안내",
+      "total_qty": 10,
+      "occurrences": 7,
+      "top_venues": "미상:4 / 인천공항:2 / 제주공항:2 / 송도컨벤시아:1 / 김포공항:1",
+      "top_sizes": "420*297:7 / 600*1800:2 / 배너 가로형:1"
+    },
+    {
+      "category": "전시장 Hall B",
+      "total_qty": 9,
+      "occurrences": 8,
+      "top_venues": "비즈니스 미팅룸:6 / 비즈니스 미팅룸 :2 / 바이어라운지 및 비즈니스 미팅룸:1",
+      "top_sizes": "A4:5 / 600*1800:3 / A1:1"
+    },
+    {
+      "category": "시트지",
+      "total_qty": 8,
+      "occurrences": 4,
+      "top_venues": "평창 알펜시아:8",
+      "top_sizes": "1650*920:4 / 1790*830:2 / 1670*830:2"
+    },
+    {
+      "category": "큐방",
+      "total_qty": 7,
+      "occurrences": 4,
+      "top_venues": "평창 알펜시아:7",
+      "top_sizes": "297*420:7"
+    },
+    {
+      "category": "물통배너",
+      "total_qty": 7,
+      "occurrences": 7,
+      "top_venues": "평창 알펜시아:5 / 킨텍스 (홀 미상):1 / 행신역:1",
+      "top_sizes": "600*1800:7"
+    },
+    {
+      "category": "Q방",
+      "total_qty": 7,
+      "occurrences": 2,
+      "top_venues": "셔틀버스 :7",
+      "top_sizes": "210*297(A4):7"
+    },
+    {
+      "category": "네트워킹 리셉션",
+      "total_qty": 7,
+      "occurrences": 2,
+      "top_venues": "전시장 내 이벤트 무대:7",
+      "top_sizes": "600*1800:5 / 700*400:2"
+    },
+    {
+      "category": "VIP 오찬장",
+      "total_qty": 7,
+      "occurrences": 3,
+      "top_venues": "동선 안내:5 / 비너스룸(30F):2",
+      "top_sizes": "600*1800:5 / A1:1 / (호텔 확인중):1"
+    },
+    {
+      "category": "디자인/칼라출력",
+      "total_qty": 6,
+      "occurrences": 3,
+      "top_venues": "차량:6",
+      "top_sizes": "A3 사이즈:4 / A 사이즈:2"
+    },
+    {
+      "category": "전시장",
+      "total_qty": 6,
+      "occurrences": 1,
+      "top_venues": "전시홀:6",
+      "top_sizes": "8000*8000:6"
+    },
+    {
+      "category": "개막식",
+      "total_qty": 6,
+      "occurrences": 1,
+      "top_venues": "프리미어 볼룸(2F):6",
+      "top_sizes": "1000*7200:6"
+    },
+    {
+      "category": "환영만찬",
+      "total_qty": 6,
+      "occurrences": 1,
+      "top_venues": "프리미어 볼룸(2F):6",
+      "top_sizes": "600*1800:6"
+    },
+    {
+      "category": "인터컨티넨탈 코엑스",
+      "total_qty": 6,
+      "occurrences": 5,
+      "top_venues": "오만찬:4 / 오찬:2",
+      "top_sizes": "60cm*180cm:2 / 60cm*20cm:2 / 7.3m*3m:1 / 5m*1m:1"
+    },
+    {
+      "category": "부대행사",
+      "total_qty": 6,
+      "occurrences": 2,
+      "top_venues": "전시장 내 이벤트 무대:6",
+      "top_sizes": "600*1800:4 / 1200*1500:2"
+    },
+    {
+      "category": "스탠드 POP\r\n(검토중)",
+      "total_qty": 5,
+      "occurrences": 5,
+      "top_venues": "평창 알펜시아:5",
+      "top_sizes": "420*594:5"
+    },
+    {
+      "category": "안내 룸사인",
+      "total_qty": 5,
+      "occurrences": 2,
+      "top_venues": "송도컨벤시아:5",
+      "top_sizes": "600*1800:5"
+    },
+    {
+      "category": "지역홍보 및 베뉴설명회",
+      "total_qty": 5,
+      "occurrences": 1,
+      "top_venues": "회의장 113-117호:5",
+      "top_sizes": "950*2300:5"
+    },
+    {
+      "category": "x배너",
+      "total_qty": 4,
+      "occurrences": 2,
+      "top_venues": "평창 알펜시아:4",
+      "top_sizes": "600*1800:4"
+    },
+    {
+      "category": "실내",
+      "total_qty": 4,
+      "occurrences": 1,
+      "top_venues": "세종로공원 주차장:4",
+      "top_sizes": "600*1800:4"
+    },
+    {
+      "category": "참가자관리",
+      "total_qty": 4,
+      "occurrences": 1,
+      "top_venues": "안내데스크:4",
+      "top_sizes": "420*297:4"
+    },
+    {
+      "category": "환영리셉션",
+      "total_qty": 4,
+      "occurrences": 1,
+      "top_venues": "7층 다목적홀:4",
+      "top_sizes": "600*1800:4"
+    },
+    {
+      "category": "전문가세션",
+      "total_qty": 4,
+      "occurrences": 2,
+      "top_venues": "3층:4",
+      "top_sizes": "1100*4500:2 / 1050*4400:2"
+    },
+    {
+      "category": "인천공항",
+      "total_qty": 4,
+      "occurrences": 1,
+      "top_venues": "영접/영송:4",
+      "top_sizes": "A2사이즈:4"
+    },
+    {
+      "category": "VIP 대기실",
+      "total_qty": 4,
+      "occurrences": 2,
+      "top_venues": "B2 주최자 사무실:4",
+      "top_sizes": "600*1800:3 / A1:1"
+    },
+    {
+      "category": "개회식 배치도",
+      "total_qty": 3,
+      "occurrences": 1,
+      "top_venues": "평창 알펜시아:3",
+      "top_sizes": "600*950:3"
+    },
+    {
+      "category": "A배너",
+      "total_qty": 3,
+      "occurrences": 2,
+      "top_venues": "평창 알펜시아:3",
+      "top_sizes": "900*1800:3"
+    },
+    {
+      "category": "전자사인",
+      "total_qty": 3,
+      "occurrences": 3,
+      "top_venues": "킨텍스 (홀 미상):3",
+      "top_sizes": ""
+    },
+    {
+      "category": "I배너",
+      "total_qty": 3,
+      "occurrences": 3,
+      "top_venues": "평창 알펜시아:2 / 킨텍스 (홀 미상):1",
+      "top_sizes": "1200*2000:2 / 4000*2500(확인 필요):1"
+    },
+    {
+      "category": "안내사인",
+      "total_qty": 3,
+      "occurrences": 2,
+      "top_venues": "송도컨벤시아:3",
+      "top_sizes": "600*1800:3"
+    },
+    {
+      "category": "유도사인(개막식/전시)",
+      "total_qty": 3,
+      "occurrences": 1,
+      "top_venues": "송도컨벤시아:3",
+      "top_sizes": "600*1800:3"
+    },
+    {
+      "category": "코엑스",
+      "total_qty": 3,
+      "occurrences": 3,
+      "top_venues": "전시:3",
+      "top_sizes": "3500(W)*3000(H):2 / 1800*2000:1"
+    },
+    {
+      "category": "호텔 로비",
+      "total_qty": 3,
+      "occurrences": 2,
+      "top_venues": "호텔 로비:2 / 호텔 바이어 안내데스크:1",
+      "top_sizes": "600*1800:3"
+    },
+    {
+      "category": "무지배너",
+      "total_qty": 2,
+      "occurrences": 1,
+      "top_venues": "평창 알펜시아:2",
+      "top_sizes": "600*1800:2"
+    },
+    {
+      "category": "사이니지",
+      "total_qty": 2,
+      "occurrences": 1,
+      "top_venues": "인천공항:2",
+      "top_sizes": "600*1800:2"
+    },
+    {
+      "category": "스탠드 POP",
+      "total_qty": 2,
+      "occurrences": 2,
+      "top_venues": "평창 알펜시아:2",
+      "top_sizes": "420*594:2"
+    },
+    {
+      "category": "안내 사인",
+      "total_qty": 2,
+      "occurrences": 1,
+      "top_venues": "쉐라톤, 오크우드 호텔:2",
+      "top_sizes": "0.6*1.8:2"
+    },
+    {
+      "category": "기타",
+      "total_qty": 2,
+      "occurrences": 1,
+      "top_venues": "공무원교육:2",
+      "top_sizes": "950*2300:2"
+    },
+    {
+      "category": "VIP 오찬",
+      "total_qty": 2,
+      "occurrences": 2,
+      "top_venues": "5층:1 / 미상:1",
+      "top_sizes": "8000*1000:1 / 12000*900:1"
+    },
+    {
+      "category": "환경부 장관 사무실",
+      "total_qty": 2,
+      "occurrences": 2,
+      "top_venues": "3층:2",
+      "top_sizes": "510*740:1 / 600*1800:1"
+    },
+    {
+      "category": "도지사 사무실",
+      "total_qty": 2,
+      "occurrences": 2,
+      "top_venues": "3층:2",
+      "top_sizes": "510*740:1 / 600*1800:1"
+    },
+    {
+      "category": "VIP접견실 및 연사라운지",
+      "total_qty": 2,
+      "occurrences": 2,
+      "top_venues": "3층:2",
+      "top_sizes": "4920*2640:2"
+    },
+    {
+      "category": "IUCN 사무국",
+      "total_qty": 2,
+      "occurrences": 2,
+      "top_venues": "3층:2",
+      "top_sizes": "510*740:1 / 600*1800:1"
+    },
+    {
+      "category": "IUCN 사무총장 사무실",
+      "total_qty": 2,
+      "occurrences": 2,
+      "top_venues": "3층:2",
+      "top_sizes": "510*740:1 / 600*1800:1"
+    },
+    {
+      "category": "프레스 센터",
+      "total_qty": 2,
+      "occurrences": 2,
+      "top_venues": "3층:2",
+      "top_sizes": "4000*2980:2"
+    },
+    {
+      "category": "미래세대를 위한 특별 강연",
+      "total_qty": 2,
+      "occurrences": 2,
+      "top_venues": "제주대학교:2",
+      "top_sizes": "7000*900:2"
+    },
+    {
+      "category": "의전",
+      "total_qty": 2,
+      "occurrences": 1,
+      "top_venues": "제주공항:2",
+      "top_sizes": "420*297:2"
+    },
+    {
+      "category": "리더스대화",
+      "total_qty": 2,
+      "occurrences": 1,
+      "top_venues": "5층:2",
+      "top_sizes": "3000*9000:2"
+    },
+    {
+      "category": "롤배너",
+      "total_qty": 1,
+      "occurrences": 1,
+      "top_venues": "평창 알펜시아:1",
+      "top_sizes": "600*1800:1"
+    },
+    {
+      "category": "현황판",
+      "total_qty": 1,
+      "occurrences": 1,
+      "top_venues": "평창 알펜시아:1",
+      "top_sizes": "3000*1800:1"
+    },
+    {
+      "category": "운영",
+      "total_qty": 1,
+      "occurrences": 2,
+      "top_venues": "국기게양대 뒤 벽 전면:1 / 알림터 로비:0",
+      "top_sizes": "14400*6000:1 / 0.6m X 1.8m:0"
+    },
+    {
+      "category": "행사장안내",
+      "total_qty": 1,
+      "occurrences": 1,
+      "top_venues": "오크우드 호텔:1",
+      "top_sizes": "6*1.8:1"
+    },
+    {
+      "category": "이벤트 룸사인(한복체험)",
+      "total_qty": 1,
+      "occurrences": 1,
+      "top_venues": "경원재 호텔:1",
+      "top_sizes": "600*1800:1"
+    },
+    {
+      "category": "현황판 및 안내",
+      "total_qty": 1,
+      "occurrences": 1,
+      "top_venues": "송도컨벤시아:1",
+      "top_sizes": "확인필요:1"
+    },
+    {
+      "category": "VIP오찬",
+      "total_qty": 1,
+      "occurrences": 1,
+      "top_venues": "경원재:1",
+      "top_sizes": "5000*900:1"
+    },
+    {
+      "category": "장치장식물",
+      "total_qty": 1,
+      "occurrences": 1,
+      "top_venues": "5층:1",
+      "top_sizes": "14000*12000:1"
+    },
+    {
+      "category": "투어코스",
+      "total_qty": 1,
+      "occurrences": 1,
+      "top_venues": "서울 및 경기도 수원:1",
+      "top_sizes": "350*50cm:1"
+    },
+    {
+      "category": "코엑스 컨퍼런스룸 남",
+      "total_qty": 1,
+      "occurrences": 1,
+      "top_venues": "컨퍼런스:1",
+      "top_sizes": "2,500(w)*2,000(h):1"
+    },
+    {
+      "category": "전시 사무국",
+      "total_qty": 1,
+      "occurrences": 1,
+      "top_venues": "전시 사무국:1",
+      "top_sizes": "600*1800:1"
+    },
+    {
+      "category": "1",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "2",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "3",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "4",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "5",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "6",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "7",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "8",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "9",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "10",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "11",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "12",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "13",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "14",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "15",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "16",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "17",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "18",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "19",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "20",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "21",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "22",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "홍보탑",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "평창 알펜시아:0",
+      "top_sizes": "8000*1200:0"
+    },
+    {
+      "category": "연 번",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "▶ 행사기간 및 장소 : 2025.9.24 ~ 9.26(3일간) / KINTEX",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "25.08.21",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "미상:0",
+      "top_sizes": ""
+    },
+    {
+      "category": "전시",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "알림터 1관 천장:0",
+      "top_sizes": "1,0m X 5.0m:0"
+    },
+    {
+      "category": "개막식\r\n및\r\n부대행사",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "알림터 2관  무대 근처 포디움:0",
+      "top_sizes": "0.7m x 0.16m:0"
+    },
+    {
+      "category": "등록\r\n및\r\n안내",
+      "total_qty": 0,
+      "occurrences": 1,
+      "top_venues": "알림2관 개막식장 플로어:0",
+      "top_sizes": "A1:0"
+    }
+  ]
+}

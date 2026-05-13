@@ -7,7 +7,9 @@ import { ArrowLeft, Plus, Trash2, Save, LayoutGrid, Users, Settings2, Palette, S
 import { createClient } from '@/lib/supabase/client'
 import { DEFAULT_SLOTS } from '@/lib/types'
 import { STYLE_PRESETS } from '@/lib/constants'
-import type { Project, ProjectMember, ProjectStatus, SlotStyle, Profile, OrgLogoAsset } from '@/lib/types'
+import type { Project, ProjectMember, ProjectStatus, ProjectStage, SlotStyle, Profile, OrgLogoAsset } from '@/lib/types'
+import { PROGRAM_PARTS, PROGRAM_PART_GROUPS } from '@/lib/programParts'
+import { VENUE_LIST, groupVenuesByRegion } from '@/lib/venueIntel'
 
 interface Props {
   project: Project
@@ -17,6 +19,14 @@ interface Props {
 }
 
 const STATUS_OPTIONS: ProjectStatus[] = ['준비중', '진행중', '완료']
+const STAGE_OPTIONS: { value: ProjectStage; label: string; color: string; desc: string }[] = [
+  { value: '의뢰서작성', label: '의뢰서 작성', color: 'border-slate-500 text-slate-400',    desc: '제작물 목록 작성 중' },
+  { value: '발주완료',   label: '발주 완료',   color: 'border-blue-500 text-blue-400',     desc: '디자인 업체에 발주됨' },
+  { value: '시안검수',   label: '시안 검수',   color: 'border-violet-500 text-violet-400', desc: '초안 확인 중' },
+  { value: '수정중',     label: '수정 중',     color: 'border-amber-500 text-amber-400',   desc: '수정 요청 반영 중' },
+  { value: '확정',       label: '확정',         color: 'border-emerald-500 text-emerald-400', desc: '최종 시안 확정' },
+  { value: '납품완료',   label: '납품 완료',   color: 'border-slate-400 text-slate-700',   desc: '파일 납품 완료' },
+]
 const ALIGN_OPTIONS: Array<'left' | 'center' | 'right'> = ['left', 'center', 'right']
 const FONT_OPTIONS = [
   // ── 로컬 폰트 (사용자 제공) ─────────────
@@ -93,7 +103,7 @@ const PRESET_COLORS = [
   'DBEAFE', '60A5FA', '2563EB', '1E40AF', '6366F1', 'A855F7', '7C3AED', '4338CA',
 ]
 
-const INPUT_CLS = 'w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 transition'
+const INPUT_CLS = 'w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 text-sm placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 transition'
 const LABEL_CLS = 'block text-slate-400 text-xs mb-1.5'
 
 export function ProjectInfoClient({ project, members: initialMembers, isOwner, userEmail }: Props) {
@@ -106,18 +116,49 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
   const [eventDate, setEventDate] = useState(project.event_date ?? '')
   const [eventVenue, setEventVenue] = useState(project.event_venue ?? '')
   const [status, setStatus] = useState<ProjectStatus>(project.status)
+  const [stage, setStage] = useState<ProjectStage>(project.stage ?? '의뢰서작성')
+  const [programParts, setProgramParts] = useState<Set<string>>(
+    new Set(project.program_parts ?? [])
+  )
+  const [attendeesCount, setAttendeesCount] = useState(
+    project.attendees_count ? String(project.attendees_count) : ''
+  )
   const [isSavingInfo, setIsSavingInfo] = useState(false)
   const [infoSaved, setInfoSaved] = useState(false)
 
+  const toggleProgramPart = (code: string) => {
+    setProgramParts(prev => {
+      const next = new Set(prev)
+      if (next.has(code)) next.delete(code)
+      else next.add(code)
+      return next
+    })
+  }
+
   const handleSaveInfo = async () => {
     setIsSavingInfo(true)
-    await supabase.from('projects').update({
+    const updatePayload: Record<string, unknown> = {
       name: name.trim() || project.name,
       client_name: clientName.trim() || null,
       event_date: eventDate || null,
       event_venue: eventVenue.trim() || null,
       status,
-    }).eq('id', project.id)
+      stage,
+      program_parts: Array.from(programParts),
+      attendees_count: attendeesCount ? parseInt(attendeesCount) : null,
+    }
+    const { error } = await supabase.from('projects').update(updatePayload).eq('id', project.id)
+    // program_parts 컬럼 미적용(마이그레이션 v6 미실행) 시 기본 필드만 재시도
+    if (error && /program_parts|attendees_count/i.test(error.message)) {
+      await supabase.from('projects').update({
+        name: updatePayload.name,
+        client_name: updatePayload.client_name,
+        event_date: updatePayload.event_date,
+        event_venue: updatePayload.event_venue,
+        status: updatePayload.status,
+        stage: updatePayload.stage,
+      }).eq('id', project.id)
+    }
     setIsSavingInfo(false)
     setInfoSaved(true)
     setTimeout(() => setInfoSaved(false), 2000)
@@ -203,12 +244,15 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
     setIsUploadingMaster(true)
     try {
       const { compressToWebP } = await import('@/lib/services/imageUtils')
+      const { buildStoragePath, explainStorageError } = await import('@/lib/services/storagePaths')
       const blob = await compressToWebP(file)
-      const path = `${project.id}/master.webp`
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('로그인이 필요합니다')
+      const path = buildStoragePath('master', { userId: user.id, projectId: project.id })
       const { error: uploadError } = await supabase.storage
         .from('design-images')
-        .upload(path, blob, { contentType: 'image/webp', upsert: true })
-      if (uploadError) throw uploadError
+        .upload(path, blob, { contentType: blob.type || 'image/webp', upsert: true })
+      if (uploadError) { alert(explainStorageError(uploadError.message || '')); throw uploadError }
       const { data: { publicUrl } } = supabase.storage.from('design-images').getPublicUrl(path)
       const urlWithTs = `${publicUrl}?t=${Date.now()}`
 
@@ -521,12 +565,19 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
     setUploadingLogo(true)
     try {
       const { compressToWebP } = await import('@/lib/services/imageUtils')
+      const { buildStoragePath, explainStorageError } = await import('@/lib/services/storagePaths')
       const blob = await compressToWebP(file)
-      const path = `${project.id}/logos/${Date.now()}-${name}.webp`
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('로그인이 필요합니다')
+      const path = buildStoragePath('logo', {
+        userId: user.id,
+        projectId: project.id,
+        suffix: `${Date.now()}-${name}`,
+      })
       const { error: uploadError } = await supabase.storage
         .from('design-images')
-        .upload(path, blob, { contentType: 'image/webp', upsert: false })
-      if (uploadError) throw uploadError
+        .upload(path, blob, { contentType: blob.type || 'image/webp', upsert: true })
+      if (uploadError) { alert(explainStorageError(uploadError.message || '')); throw uploadError }
       const { data: { publicUrl } } = supabase.storage.from('design-images').getPublicUrl(path)
 
       const { data: inserted } = await supabase
@@ -549,20 +600,30 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-white">
       {/* 헤더 */}
-      <header className="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-10">
+      <header className="border-b border-slate-200/80 bg-white/60 backdrop-blur-md sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-md bg-indigo-600 flex items-center justify-center">
+            <Link
+              href="/dashboard"
+              className="w-6 h-6 rounded-md bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center transition"
+              title="메인 대시보드로 이동"
+            >
               <LayoutGrid className="w-3.5 h-3.5 text-white" />
-            </div>
-            <Link href="/dashboard" className="flex items-center gap-1 text-slate-500 hover:text-slate-300 transition text-xs">
+            </Link>
+            <Link href="/dashboard" className="flex items-center gap-1 text-slate-500 hover:text-slate-700 transition text-xs">
               <ArrowLeft className="w-3.5 h-3.5" />
               대시보드
             </Link>
             <span className="text-slate-700 text-xs">/</span>
-            <span className="text-slate-300 text-xs font-medium truncate max-w-[160px]">{project.name}</span>
+            <Link
+              href="/dashboard"
+              className="text-slate-700 hover:text-indigo-300 text-xs font-medium truncate max-w-[160px] transition"
+              title="메인 대시보드로 돌아가기"
+            >
+              {project.name}
+            </Link>
             <span className="text-slate-700 text-xs">/</span>
             <span className="text-slate-500 text-xs">프로젝트 정보</span>
           </div>
@@ -578,36 +639,100 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
 
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-6">
         {/* 프로젝트 정보 */}
-        <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+        <section className="bg-white border border-slate-200 rounded-xl p-6">
           <div className="flex items-center gap-2 mb-5">
             <Settings2 className="w-4 h-4 text-indigo-400" />
-            <h2 className="text-slate-200 font-semibold text-sm">프로젝트 정보</h2>
+            <h2 className="text-slate-800 font-semibold text-sm">프로젝트 정보</h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={LABEL_CLS}>프로젝트명 *</label>
-              <input value={name} onChange={e => setName(e.target.value)} className={INPUT_CLS} />
+          <div className="space-y-4">
+            {/* 기본 2열 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={LABEL_CLS}>프로젝트명 *</label>
+                <input value={name} onChange={e => setName(e.target.value)} className={INPUT_CLS} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>발주처 / 주최기관</label>
+                <input value={clientName} onChange={e => setClientName(e.target.value)} className={INPUT_CLS} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>행사 장소</label>
+                {(() => {
+                  const venueGroups = groupVenuesByRegion()
+                  return (
+                    <select value={eventVenue} onChange={e => setEventVenue(e.target.value)} className={INPUT_CLS}>
+                      <option value="">행사장 선택…</option>
+                      {eventVenue && !VENUE_LIST.find(v => v.displayName === eventVenue) && (
+                        <option value={eventVenue}>{eventVenue}</option>
+                      )}
+                      {Object.entries(venueGroups).map(([region, items]) => (
+                        <optgroup key={region} label={region}>
+                          {items.map((v: { displayName: string }) => (
+                            <option key={v.displayName} value={v.displayName}>{v.displayName}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  )
+                })()}
+              </div>
+              <div>
+                <label className={LABEL_CLS}>행사일</label>
+                <input type="date" value={eventDate} onChange={e => setEventDate(e.target.value)} className={INPUT_CLS} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>예상 참가자 수</label>
+                <input type="number" min={1} value={attendeesCount} onChange={e => setAttendeesCount(e.target.value)} placeholder="예: 500" className={INPUT_CLS} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>진행 상태</label>
+                <select value={status} onChange={e => setStatus(e.target.value as ProjectStatus)} className={INPUT_CLS}>
+                  {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
             </div>
+
+            {/* 프로그램 파트 (다중선택) */}
             <div>
-              <label className={LABEL_CLS}>발주처 / 주최기관</label>
-              <input value={clientName} onChange={e => setClientName(e.target.value)} className={INPUT_CLS} />
-            </div>
-            <div>
-              <label className={LABEL_CLS}>행사 날짜</label>
-              <input type="date" value={eventDate} onChange={e => setEventDate(e.target.value)} className={INPUT_CLS} />
-            </div>
-            <div>
-              <label className={LABEL_CLS}>행사 장소</label>
-              <input value={eventVenue} onChange={e => setEventVenue(e.target.value)} className={INPUT_CLS} />
-            </div>
-            <div>
-              <label className={LABEL_CLS}>진행 상태</label>
-              <select value={status} onChange={e => setStatus(e.target.value as ProjectStatus)} className={INPUT_CLS}>
-                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+              <label className={LABEL_CLS}>
+                프로그램 파트 <span className="text-slate-300 font-normal normal-case">(다중선택 가능)</span>
+              </label>
+              <div className="space-y-2">
+                {PROGRAM_PART_GROUPS.map(g => {
+                  const items = PROGRAM_PARTS.filter(p => p.group === g.group)
+                  return (
+                    <div key={g.group}>
+                      <p className="text-[10px] text-slate-400 mb-1">{g.label}</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
+                        {items.map(p => {
+                          const on = programParts.has(p.code)
+                          return (
+                            <button
+                              key={p.code}
+                              type="button"
+                              onClick={() => isOwner && toggleProgramPart(p.code)}
+                              disabled={!isOwner}
+                              title={p.hint}
+                              className={`px-2 py-1.5 rounded-lg border text-[11px] flex items-center gap-1.5 transition text-left disabled:cursor-not-allowed ${on ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-50 border-slate-300 text-slate-500 hover:bg-slate-100'}`}
+                            >
+                              {on && <span className="text-[9px]">✓</span>}
+                              <span className="truncate">{p.name}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              {programParts.size > 0 && (
+                <p className="text-[10px] text-indigo-500 mt-1.5">{programParts.size}개 선택됨</p>
+              )}
             </div>
           </div>
+
+          {/* 행사 진행 단계 — 사용자 결정으로 숨김 (2026-05-11) */}
 
           {isOwner && (
             <div className="mt-5 flex justify-end">
@@ -624,24 +749,24 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
         </section>
 
         {/* 팀원 초대 */}
-        <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+        <section className="bg-white border border-slate-200 rounded-xl p-6">
           <div className="flex items-center gap-2 mb-5">
             <Users className="w-4 h-4 text-indigo-400" />
-            <h2 className="text-slate-200 font-semibold text-sm">팀원 초대</h2>
-            <span className="ml-auto text-slate-600 text-xs">{members.length}명</span>
+            <h2 className="text-slate-800 font-semibold text-sm">팀원 초대</h2>
+            <span className="ml-auto text-slate-500 text-xs">{members.length}명</span>
           </div>
 
           <div className="space-y-2 mb-5">
             {members.length === 0 && (
-              <p className="text-slate-600 text-sm text-center py-4">초대된 팀원이 없습니다</p>
+              <p className="text-slate-500 text-sm text-center py-4">초대된 팀원이 없습니다</p>
             )}
             {members.map(member => (
               <div
                 key={member.id}
-                className="flex items-center justify-between bg-slate-800/60 rounded-lg px-4 py-2.5"
+                className="flex items-center justify-between bg-slate-50 rounded-lg px-4 py-2.5"
               >
                 <div>
-                  <span className="text-slate-200 text-sm">{member.user_email}</span>
+                  <span className="text-slate-800 text-sm">{member.user_email}</span>
                   {member.part_name && (
                     <span className="ml-2 text-indigo-400/70 text-xs">[{member.part_name}]</span>
                   )}
@@ -652,7 +777,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
                 {isOwner && member.user_email !== userEmail && (
                   <button
                     onClick={() => handleRemoveMember(member.id, member.user_email)}
-                    className="text-slate-600 hover:text-red-400 transition p-1 rounded"
+                    className="text-slate-500 hover:text-red-400 transition p-1 rounded"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -663,9 +788,9 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
 
           {/* 이름 검색 초대 폼 */}
           {isOwner && (
-            <div className="border-t border-slate-800 pt-4">
+            <div className="border-t border-slate-200 pt-4">
               <p className="text-slate-500 text-xs mb-3">
-                가입한 사용자의 <strong className="text-slate-300">이름</strong>으로 검색해 초대하세요.
+                가입한 사용자의 <strong className="text-slate-700">이름</strong>으로 검색해 초대하세요.
                 (동명이인 방지를 위해 이메일이 함께 표시됩니다)
               </p>
 
@@ -687,7 +812,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
                 {selectedProfile && (
                   <button
                     onClick={() => { setSelectedProfile(null); setSearchQuery('') }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -695,7 +820,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
 
                 {/* 검색 결과 드롭다운 */}
                 {showSearch && !selectedProfile && searchResults.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl max-h-64 overflow-y-auto z-20">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-slate-50 border border-slate-300 rounded-lg shadow-xl max-h-64 overflow-y-auto z-20">
                     {searchResults.map(p => (
                       <button
                         key={p.id}
@@ -704,16 +829,16 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
                           setShowSearch(false)
                           setSearchQuery('')
                         }}
-                        className="w-full text-left px-3 py-2 hover:bg-slate-700/60 transition border-b border-slate-700/50 last:border-b-0"
+                        className="w-full text-left px-3 py-2 hover:bg-slate-100 transition border-b border-slate-300/50 last:border-b-0"
                       >
-                        <div className="text-sm text-slate-200">{p.display_name || '(이름 없음)'}</div>
+                        <div className="text-sm text-slate-800">{p.display_name || '(이름 없음)'}</div>
                         <div className="text-xs text-slate-500">{p.email}</div>
                       </button>
                     ))}
                   </div>
                 )}
                 {showSearch && !selectedProfile && searchQuery.trim() && searchResults.length === 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg p-3 text-xs z-20 space-y-2">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-slate-50 border border-slate-300 rounded-lg p-3 text-xs z-20 space-y-2">
                     <p className="text-slate-400">일치하는 가입 사용자가 없습니다</p>
                     <p className="text-slate-500 leading-relaxed">
                       • 초대할 사람이 먼저 <a href="/signup" target="_blank" className="text-indigo-400 underline">/signup</a> 에서 가입해야 합니다<br />
@@ -729,7 +854,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
                   onChange={e => setNewPart(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleAddMember()}
                   placeholder="담당 파트 (예: 종합안내)"
-                  className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition"
+                  className="flex-1 bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 text-sm placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition"
                 />
                 <button
                   onClick={handleAddMember}
@@ -746,26 +871,26 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
         </section>
 
         {/* 마스터 시안 업로드 */}
-        <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+        <section className="bg-white border border-slate-200 rounded-xl p-6">
           <input ref={masterFileRef} type="file" accept="image/*" className="hidden" onChange={handleMasterUpload} />
           <div className="flex items-center gap-2 mb-5">
             <ImagePlus className="w-4 h-4 text-indigo-400" />
-            <h2 className="text-slate-200 font-semibold text-sm">마스터 시안</h2>
-            <span className="ml-auto text-slate-600 text-xs">전체 디자인 기준 이미지</span>
+            <h2 className="text-slate-800 font-semibold text-sm">마스터 시안</h2>
+            <span className="ml-auto text-slate-500 text-xs">전체 디자인 기준 이미지</span>
           </div>
           <p className="text-slate-500 text-xs mb-4 leading-relaxed">
             완성된 디자인 시안을 업로드하면 모든 제작물의 기준이 됩니다. 팀원들이 이 시안을 보고 텍스트만 수정하므로 일관된 결과물이 나옵니다.
           </p>
           <div className="flex gap-4 items-start">
             {masterImageUrl ? (
-              <div className="w-40 h-40 bg-slate-800 rounded-lg overflow-hidden border border-slate-700 flex-shrink-0">
+              <div className="w-40 h-40 bg-slate-50 rounded-lg overflow-hidden border border-slate-300 flex-shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={masterImageUrl} alt="master" className="w-full h-full object-contain" />
               </div>
             ) : (
-              <div className="w-40 h-40 bg-slate-800/40 rounded-lg border border-dashed border-slate-700 flex flex-col items-center justify-center gap-1 flex-shrink-0">
+              <div className="w-40 h-40 bg-slate-50 rounded-lg border border-dashed border-slate-300 flex flex-col items-center justify-center gap-1 flex-shrink-0">
                 <ImagePlus className="w-6 h-6 text-slate-700" />
-                <span className="text-slate-600 text-xs">시안 없음</span>
+                <span className="text-slate-500 text-xs">시안 없음</span>
               </div>
             )}
             {isOwner && (
@@ -792,7 +917,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
                     </button>
                   )}
                 </div>
-                <p className="text-slate-600 text-[11px]">JPG·PNG 권장 · 자동으로 WebP 변환됩니다</p>
+                <p className="text-slate-500 text-[11px]">JPG·PNG 권장 · 자동으로 WebP 변환됩니다</p>
                 {analyzeMessage && (
                   <p className="text-emerald-400 text-[11px]">{analyzeMessage}</p>
                 )}
@@ -801,12 +926,12 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
           </div>
         </section>
 
-        {/* 스타일 프리셋 6종 */}
-        <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+        {/* 스타일 프리셋 6종 — 사용자 결정으로 숨김 (2026-05-11) */}
+        {false && <section className="bg-white border border-slate-200 rounded-xl p-6">
           <div className="flex items-center gap-2 mb-5">
             <Sparkles className="w-4 h-4 text-indigo-400" />
-            <h2 className="text-slate-200 font-semibold text-sm">스타일 프리셋</h2>
-            <span className="ml-auto text-slate-600 text-xs">클릭하면 행사 전체 서식에 적용</span>
+            <h2 className="text-slate-800 font-semibold text-sm">스타일 프리셋</h2>
+            <span className="ml-auto text-slate-500 text-xs">클릭하면 행사 전체 서식에 적용</span>
           </div>
           <p className="text-slate-500 text-xs mb-4 leading-relaxed">
             행사 성격에 맞는 디자인 톤을 선택하세요. 폰트·색상이 모든 구역에 일괄 적용됩니다.
@@ -819,7 +944,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
                   key={preset.id}
                   onClick={() => isOwner && handleApplyPreset(preset.id)}
                   disabled={!isOwner}
-                  className="text-left rounded-lg overflow-hidden border border-slate-800 hover:border-indigo-500/60 transition disabled:cursor-not-allowed disabled:opacity-60 group"
+                  className="text-left rounded-lg overflow-hidden border border-slate-200 hover:border-indigo-500/60 transition disabled:cursor-not-allowed disabled:opacity-60 group"
                 >
                   <div
                     className="h-16 flex items-center justify-center px-3"
@@ -837,23 +962,23 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
                       {preset.mood}
                     </span>
                   </div>
-                  <div className="px-3 py-2 bg-slate-900 flex items-center justify-between">
-                    <span className="text-slate-200 text-xs font-medium">{preset.label}</span>
+                  <div className="px-3 py-2 bg-white flex items-center justify-between">
+                    <span className="text-slate-800 text-xs font-medium">{preset.label}</span>
                     {isApplied && <span className="text-emerald-400 text-[10px]">✓ 적용됨</span>}
                   </div>
                 </button>
               )
             })}
           </div>
-        </section>
+        </section>}
 
-        {/* 로고 자산 카탈로그 */}
-        <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+        {/* 로고 자산 카탈로그 — 사용자 결정으로 숨김 (2026-05-11) */}
+        {false && <section className="bg-white border border-slate-200 rounded-xl p-6">
           <input ref={logoFileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
           <div className="flex items-center gap-2 mb-5">
             <Building2 className="w-4 h-4 text-indigo-400" />
-            <h2 className="text-slate-200 font-semibold text-sm">로고 자산 카탈로그</h2>
-            <span className="ml-auto text-slate-600 text-xs">주최·주관·후원 로고 재사용</span>
+            <h2 className="text-slate-800 font-semibold text-sm">로고 자산 카탈로그</h2>
+            <span className="ml-auto text-slate-500 text-xs">주최·주관·후원 로고 재사용</span>
           </div>
           <p className="text-slate-500 text-xs mb-4 leading-relaxed">
             반복 사용되는 로고를 등록해두면 후원사 배너·크레딧에 재사용할 수 있습니다.
@@ -863,19 +988,19 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
             <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-4">
               {logos.map(logo => (
                 <div key={logo.id} className="relative group">
-                  <div className="aspect-square bg-slate-800 border border-slate-700 rounded-lg overflow-hidden flex items-center justify-center p-2">
+                  <div className="aspect-square bg-slate-50 border border-slate-300 rounded-lg overflow-hidden flex items-center justify-center p-2">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={logo.image_url} alt={logo.name} className="max-w-full max-h-full object-contain" />
                   </div>
                   <div className="mt-1 flex items-center justify-between">
                     <div className="min-w-0">
-                      <p className="text-slate-300 text-[10px] truncate">{logo.name}</p>
-                      <p className="text-slate-600 text-[9px]">{logo.category}</p>
+                      <p className="text-slate-700 text-[10px] truncate">{logo.name}</p>
+                      <p className="text-slate-500 text-[9px]">{logo.category}</p>
                     </div>
                     {isOwner && (
                       <button
                         onClick={() => handleLogoDelete(logo.id)}
-                        className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-red-400 transition"
+                        className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 transition"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -887,14 +1012,14 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
           )}
 
           {isOwner && (
-            <div className="flex gap-2 items-end border-t border-slate-800 pt-3">
+            <div className="flex gap-2 items-end border-t border-slate-200 pt-3">
               <div className="flex-1">
                 <label className="block text-slate-500 text-[10px] mb-1">기관명</label>
                 <input
                   value={logoName}
                   onChange={e => setLogoName(e.target.value)}
                   placeholder="예: 한국관광공사"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 text-xs focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800 text-xs focus:outline-none focus:border-indigo-500"
                 />
               </div>
               <div className="w-24">
@@ -902,7 +1027,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
                 <select
                   value={logoCategory}
                   onChange={e => setLogoCategory(e.target.value as OrgLogoAsset['category'])}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 text-xs focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800 text-xs focus:outline-none focus:border-indigo-500"
                 >
                   {(['주최', '주관', '후원', '협찬', '기타'] as const).map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
@@ -920,18 +1045,18 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
               </button>
             </div>
           )}
-        </section>
+        </section>}
 
-        {/* 행사별 기본 양식 (slot_styles) */}
-        <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+        {/* 행사별 기본 양식 — 사용자 결정으로 숨김 (2026-05-11) */}
+        {false && <section className="bg-white border border-slate-200 rounded-xl p-6">
           <div className="flex items-center gap-2 mb-5">
             <Palette className="w-4 h-4 text-indigo-400" />
-            <h2 className="text-slate-200 font-semibold text-sm">행사 기본 양식</h2>
-            <span className="ml-auto text-slate-600 text-xs">팀원이 모든 제작물의 이 서식을 공유합니다</span>
+            <h2 className="text-slate-800 font-semibold text-sm">행사 기본 양식</h2>
+            <span className="ml-auto text-slate-500 text-xs">팀원이 모든 제작물의 이 서식을 공유합니다</span>
           </div>
 
           <p className="text-slate-500 text-xs mb-5 leading-relaxed">
-            여기서 설정한 서식(폰트·크기·색상·정렬)은 이 프로젝트의 <strong className="text-slate-300">모든 제작물</strong>에 동일하게 적용됩니다.
+            여기서 설정한 서식(폰트·크기·색상·정렬)은 이 프로젝트의 <strong className="text-slate-700">모든 제작물</strong>에 동일하게 적용됩니다.
             각 담당자는 이 기본 양식을 바탕으로 텍스트만 수정하므로 여러 사람이 편집해도 같은 느낌의 결과물이 나옵니다.
           </p>
 
@@ -940,11 +1065,11 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
               const style = getStyle(slotKey)
               const defaults = DEFAULT_SLOTS[slotKey]
               return (
-                <div key={slotKey} className="bg-slate-800/40 border border-slate-800 rounded-lg p-4">
+                <div key={slotKey} className="bg-slate-50 border border-slate-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div>
-                      <span className="text-slate-200 text-sm font-medium">{defaults.label}</span>
-                      <span className="ml-2 text-slate-600 text-[10px] font-mono">{slotKey}</span>
+                      <span className="text-slate-800 text-sm font-medium">{defaults.label}</span>
+                      <span className="ml-2 text-slate-500 text-[10px] font-mono">{slotKey}</span>
                     </div>
                     {stylesSaved === slotKey && (
                       <span className="text-emerald-400 text-xs">✓ 저장됨</span>
@@ -961,7 +1086,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
                         value={style.font_face}
                         onChange={e => handleStylePatch(slotKey, { font_face: e.target.value })}
                         disabled={!isOwner}
-                        className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-slate-200 text-xs focus:outline-none focus:border-indigo-500 disabled:opacity-60"
+                        className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-slate-800 text-xs focus:outline-none focus:border-indigo-500 disabled:opacity-60"
                       >
                         {FONT_OPTIONS.map(f => <option key={f} value={f}>{f}</option>)}
                       </select>
@@ -975,7 +1100,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
                         value={style.font_size}
                         onChange={e => handleStylePatch(slotKey, { font_size: parseInt(e.target.value) || 16 })}
                         disabled={!isOwner}
-                        className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-slate-200 text-xs focus:outline-none focus:border-indigo-500 disabled:opacity-60"
+                        className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-slate-800 text-xs focus:outline-none focus:border-indigo-500 disabled:opacity-60"
                       />
                     </div>
                     <div>
@@ -984,7 +1109,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
                         value={style.align}
                         onChange={e => handleStylePatch(slotKey, { align: e.target.value as 'left' | 'center' | 'right' })}
                         disabled={!isOwner}
-                        className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-slate-200 text-xs focus:outline-none focus:border-indigo-500 disabled:opacity-60"
+                        className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-slate-800 text-xs focus:outline-none focus:border-indigo-500 disabled:opacity-60"
                       >
                         {ALIGN_OPTIONS.map(a => <option key={a} value={a}>{a}</option>)}
                       </select>
@@ -993,7 +1118,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
                       <label className="block text-slate-500 text-[10px] mb-1">색상</label>
                       <div className="flex items-center gap-1.5">
                         <div
-                          className="w-6 h-6 rounded border border-slate-700 flex-shrink-0"
+                          className="w-6 h-6 rounded border border-slate-300 flex-shrink-0"
                           style={{ backgroundColor: `#${style.color}` }}
                         />
                         <input
@@ -1002,7 +1127,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
                           onChange={e => handleStylePatch(slotKey, { color: e.target.value.replace(/[^0-9A-Fa-f]/g, '').slice(0, 6).toUpperCase() })}
                           disabled={!isOwner}
                           placeholder="FFFFFF"
-                          className="flex-1 bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-indigo-500 disabled:opacity-60"
+                          className="flex-1 bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-slate-800 text-xs font-mono focus:outline-none focus:border-indigo-500 disabled:opacity-60"
                         />
                       </div>
                     </div>
@@ -1010,7 +1135,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
 
                   {/* 프리셋 색상 */}
                   <div className="flex items-center gap-1 mt-2">
-                    <span className="text-slate-600 text-[10px] mr-1">프리셋:</span>
+                    <span className="text-slate-500 text-[10px] mr-1">프리셋:</span>
                     {PRESET_COLORS.map(c => (
                       <button
                         key={c}
@@ -1033,7 +1158,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
                           min={-5} max={10}
                           value={style.letter_spacing ?? 0}
                           onChange={e => handleStylePatch(slotKey, { letter_spacing: parseInt(e.target.value) || 0 })}
-                          className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-slate-200 text-xs focus:outline-none focus:border-indigo-500"
+                          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-slate-800 text-xs focus:outline-none focus:border-indigo-500"
                         />
                       </div>
                       <div>
@@ -1043,7 +1168,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
                           value={style.master_x ?? ''}
                           placeholder="미사용"
                           onChange={e => handleStylePatch(slotKey, { master_x: e.target.value ? parseFloat(e.target.value) : null })}
-                          className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-slate-200 text-xs focus:outline-none focus:border-indigo-500"
+                          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-slate-800 text-xs focus:outline-none focus:border-indigo-500"
                         />
                       </div>
                       <div>
@@ -1053,7 +1178,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
                           value={style.master_y ?? ''}
                           placeholder="미사용"
                           onChange={e => handleStylePatch(slotKey, { master_y: e.target.value ? parseFloat(e.target.value) : null })}
-                          className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-slate-200 text-xs focus:outline-none focus:border-indigo-500"
+                          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-slate-800 text-xs focus:outline-none focus:border-indigo-500"
                         />
                       </div>
                       <div>
@@ -1063,7 +1188,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
                           value={style.master_w ?? ''}
                           placeholder="미사용"
                           onChange={e => handleStylePatch(slotKey, { master_w: e.target.value ? parseFloat(e.target.value) : null })}
-                          className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-slate-200 text-xs focus:outline-none focus:border-indigo-500"
+                          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-slate-800 text-xs focus:outline-none focus:border-indigo-500"
                         />
                       </div>
                     </div>
@@ -1071,24 +1196,24 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
 
                   {/* 일괄 적용 버튼 — 명세 7-2 */}
                   {isOwner && (
-                    <div className="flex gap-2 mt-3 pt-3 border-t border-slate-800 flex-wrap">
+                    <div className="flex gap-2 mt-3 pt-3 border-t border-slate-200 flex-wrap">
                       <span className="text-slate-500 text-[10px] self-center mr-1">기존 제작물에 적용:</span>
                       <button
                         onClick={() => handleApplyToAll(slotKey, 'text')}
-                        className="text-[10px] text-slate-400 hover:text-indigo-300 bg-slate-800/60 hover:bg-indigo-900/30 px-2.5 py-1 rounded transition"
+                        className="text-[10px] text-slate-400 hover:text-indigo-300 bg-slate-50 hover:bg-indigo-900/30 px-2.5 py-1 rounded transition"
                         title="가장 최근 편집된 제작물의 텍스트를 모든 제작물에 복사"
                       >
                         텍스트만
                       </button>
                       <button
                         onClick={() => handleApplyToAll(slotKey, 'style')}
-                        className="text-[10px] text-slate-400 hover:text-indigo-300 bg-slate-800/60 hover:bg-indigo-900/30 px-2.5 py-1 rounded transition"
+                        className="text-[10px] text-slate-400 hover:text-indigo-300 bg-slate-50 hover:bg-indigo-900/30 px-2.5 py-1 rounded transition"
                       >
                         서식만
                       </button>
                       <button
                         onClick={() => handleApplyToAll(slotKey, 'both')}
-                        className="text-[10px] text-slate-400 hover:text-indigo-300 bg-slate-800/60 hover:bg-indigo-900/30 px-2.5 py-1 rounded transition"
+                        className="text-[10px] text-slate-400 hover:text-indigo-300 bg-slate-50 hover:bg-indigo-900/30 px-2.5 py-1 rounded transition"
                       >
                         전부 (텍스트+서식)
                       </button>
@@ -1105,7 +1230,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
               )
             })}
           </div>
-        </section>
+        </section>}
       </main>
     </div>
   )

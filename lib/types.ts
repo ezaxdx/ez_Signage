@@ -1,5 +1,37 @@
 export type ProjectStatus = '준비중' | '진행중' | '완료'
+export type ProjectStage = '의뢰서작성' | '발주완료' | '시안검수' | '수정중' | '확정' | '납품완료'
 export type ItemLanguage = 'KOR' | 'EN' | 'EN/KOR'
+export type UserRole = 'admin' | 'user'
+
+// 환경장식물 동의어 사전 (signage_aliases 테이블)
+export interface SignageAlias {
+  id?: string
+  alias_name: string
+  canonical_name: string
+  kind: string             // category 키 (x_banner, vertical_banner …)
+  default_size: string | null
+  note: string | null
+}
+
+// 외부 공유 토큰 (share_tokens 테이블)
+export interface ShareToken {
+  id: string
+  project_id: string
+  token: string
+  created_by: string
+  expires_at: string | null
+  enabled: boolean
+  created_at: string
+}
+
+// Profile 확장 (role 추가)
+export interface Profile {
+  id: string
+  email: string
+  display_name: string | null
+  role: UserRole
+  created_at: string
+}
 
 // ─── DB 엔티티 ────────────────────────────────────────────────
 
@@ -13,9 +45,13 @@ export interface Project {
   status: ProjectStatus
   allowed_users: string[]        // 접근 허용 사용자 이메일 목록
   master_image_url: string | null  // 총괄자가 업로드한 마스터 시안 (전체 디자인 기준)
+  floor_plan_url: string | null    // 행사장 배치도 이미지 (향후 AI 설치위치 추천용)
   purposes: string[]               // 사용 목적 5종 (main_promo, registration, wayfinding, program_info, experience)
   share_token: string | null       // 클라이언트 공유용 토큰 (로그인 없이 미리보기)
   share_enabled: boolean           // 공유 활성화 여부
+  stage?: ProjectStage             // 행사 진행 단계 (의뢰서작성→납품완료) — migration_v4 이후 필수
+  program_parts?: string[] | null  // 프로그램 파트 코드 배열 (EZ 폴더링 40.04~40.20) — migration_v6 이후
+  attendees_count?: number | null  // 예상 참가자 수
   created_at: string
   updated_at: string
 }
@@ -62,7 +98,8 @@ export interface DesignItem {
   id: string
   project_id: string
   no: string           // 순번 "01", "02" …
-  part: string | null  // 파트 "종합안내", "세션" …
+  part: string | null  // 업무파트 자유입력 (예: "종합안내", "세션") — legacy
+  program_part: string | null  // v4.1: EZ 폴더링 40.xx 코드 (단일 또는 쉼표 구분). 엑셀 출력 시 한글 변환.
   category: string | null   // 구분 "X-Banner", "현수막" …
   location: string | null   // 설치 장소
   purpose: string | null    // 사용 목적
@@ -80,8 +117,108 @@ export interface DesignItem {
   is_master: boolean             // 같은 category의 마스터 디자인 (기본값)
   review_status: '작업중' | '확인필요' | '검수완료' | '발주완료' | '수정요청'
   review_note: string | null     // 관리자 코멘트
+  revision_count?: number        // 수정 횟수 (3회 이상 시 경고) — migration_v4 이후 필수
+
+  // v8 (2026-05-11): 1차안 17컬럼 복원 — 추가 5개 필드
+  content_text: string | null    // 1차안 "내용" (자유 텍스트). 기존 purpose는 "사용 목적"으로 환원
+  design_vendor: string | null   // (legacy — v9.3에서 사용자 결정으로 컬럼 노출 제외)
+  print_vendor: string | null    // (legacy — v9.3에서 사용자 결정으로 컬럼 노출 제외)
+  install_time: string | null    // 설치시간 (편집 초기 숨김)
+  uninstall_time: string | null  // 철거시간 (편집 초기 숨김)
+
+  // v9.3 (2026-05-11): 회의록 — 새 발주 양식 21컬럼 매핑 (모두 기본 숨김)
+  space_type: string | null      // 공간 유형 (회의장/부대시설/전시장/안내시설)
+  place_detail: string | null    // 세부 장소 (103+104, 208 등)
+  place_contact: string | null   // 장소 담당자 (현장 담당)
+  unit: string | null            // 단위 (개/세트/식 등)
+  type_kind: string | null       // 유형 (임대/구매/출력+설치/디자인)
+  supplier: string | null        // 수급업체
+  install_date: string | null    // 설치일자
+  usage_period: string | null    // 사용기간
+  uninstall_date: string | null  // 철거일자
+  order_contact: string | null   // 발주 담당자
+  order_date: string | null      // 발주일
+
+  // v8: §11-2 입력 데이터 단계별 축적
+  confirmed?: boolean            // 사용자 컨펌 플래그 (학습 가중치 70%)
+  finalized_at?: string | null   // 발주·다운로드 완료 시점 (학습 가중치 100%)
+
   created_at: string
   updated_at: string
+}
+
+// v8 (2026-05-11): 프로젝트별 컬럼 가시성 설정 (§14)
+export interface ProjectColumnSettings {
+  project_id: string
+  show_in_editor: Record<string, boolean>     // 컬럼 ID → 편집 그리드 표시
+  include_in_excel: Record<string, boolean>   // 컬럼 ID → 엑셀 출력 포함
+  include_in_ppt: Record<string, boolean>     // 컬럼 ID → PPT 출력 포함
+  facility_check_mode: 'verbose' | 'silent_icon' | 'off'  // §11-6 시설 알림 강도
+  updated_at?: string
+}
+
+// v8: 행사장별 시설 가이드 (§11-6-2 6종 정보)
+export interface VenueFacilityGuide {
+  id?: string
+  venue_key: string
+  venue_name: string
+  install_allowed: Array<{
+    category: string
+    status: 'allowed' | 'conditional' | 'denied'
+    note?: string
+    /** 행사장이 명시한 최대 허용 폭(mm). 초과 시 warn */
+    max_width_mm?: number
+    /** 행사장이 명시한 최대 허용 높이(mm). 초과 시 warn */
+    max_height_mm?: number
+    /** 행사장 공식 표준 규격 폭(mm). 벗어나면 info */
+    standard_width_mm?: number
+    /** 행사장 공식 표준 규격 높이(mm). 벗어나면 info */
+    standard_height_mm?: number
+  }>
+  mount_methods: {
+    taka?: 'allowed' | 'conditional' | 'denied'
+    magnet?: 'allowed' | 'conditional' | 'denied'
+    adhesive?: 'allowed' | 'conditional' | 'denied'
+    hanger?: 'allowed' | 'conditional' | 'denied'
+    rope?: 'allowed' | 'conditional' | 'denied'
+    note?: string
+  }
+  rigging: {
+    available?: boolean
+    grid_lines?: string[]
+    max_load_kg?: number
+    note?: string
+  }
+  safety: {
+    fire?: string
+    fall?: string
+    electric?: string
+    weather?: string
+    note?: string
+  }
+  warnings: Array<{ type: string; description: string }>
+  digital_signage: {
+    allowed_locations?: string[]
+    led_size_limit?: string
+    content_review?: boolean
+    note?: string
+  }
+  last_updated?: string
+  notes?: string
+  /** 행사장별 특이사항 — 사원이 현장에서 반드시 알아야 할 장소 고유 주의사항 */
+  special_notes?: string[]
+}
+
+// v8: 시설 가이드 예외 케이스 로그 (§11-6-1 '그래도 진행' 누적)
+export interface FacilityExceptionLog {
+  id?: string
+  project_id: string
+  item_id?: string
+  venue_key: string
+  violated_rule: string
+  user_value?: string
+  user_choice: 'proceed' | 'correct'
+  created_at?: string
 }
 
 export interface ItemContent {

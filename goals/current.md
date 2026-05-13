@@ -4,31 +4,85 @@
 
 ## Goal (분기 1회 갱신)
 
-MICE 제작물 디자인 의뢰 가이드 자동화 앱 — MVP 실무 투입 (2026 Q2)
+제작물 리스트 가이드 — MVP 실무 투입 (2026 Q2). 학습 기반 환경장식물 추천 + 발주 엑셀/PPT 자동 생성.
 
-## Strategy (월 1회 갱신)
+## Strategy (월 1회 갱신) — v4.1 대전환 (2026-05-07)
 
-- 핵심 워크플로우(프로젝트 생성 → 텍스트 편집 → Excel/PPT 출력) 완성도 우선
-- 발주 오류 방지: Preflight 18항목 자동 점검 구현
-- 실무자(사원·대리급) 테스트 후 피드백 반영
+- **방향 전환**: 디자인 편집기 → 학습 기반 추천 도구 (회의 결정)
+- **핵심 워크플로우**: 행사 정보(드롭다운+다중선택) → 룰베이스 추천 → 엑셀/PPT(빈 슬라이드) 다운로드
+- **자동 누적 학습**: 신규 프로젝트 INSERT → liveStats 자동 누적 → 추천 정확도 자동 개선
+- **2단계 (다음 사이클)**: Vision API 도면 분석 + 동선배너 좌표 추천
 
 ## Initiative (주 1회 갱신)
 
-이번 주: 미구현 화면 완성
-- 화면 5 — 제작물 종류 정의 (프로젝트 설정 페이지)
-- 화면 6 — 구역 지정 에디터 (슬롯 추가·삭제·속성 패널)
-- 화면 8 — 저장된 제작물 목록 (/archive)
+### 명세 8장 — 진행 단계
+- ✅ **1단계 (당장 가능)**: 폴더링·정리 + 행사 정보 → AI 추천 + 엑셀 다운로드
+- 🟡 **1단계 보강**: 비표준 규격 매핑 룰 / 재질 분포 자동 산출 (시드 임베드 완료, 실시간 자동화는 다음)
+- ⏳ **2단계 (데이터 누적 후)**: 도면 업로드 → Gemini Vision으로 출입구·동선 분석 + 유도사인 배치 추천 + PPT 슬라이드 자동 생성
 
-## Task (자율 루프 또는 PO가 채움)
+## Task
 
-- [ ] /projects/[id]/info 페이지 구현 (팀원 초대 + 마스터 시안)
-- [ ] Preflight 모달 18항목 구현
-- [ ] /share/[token] 클라이언트 공유 링크 (로그인 없이 승인·코멘트)
-- [ ] harness.mjs 72개 항목 0 fail 유지
+- [x] PreflightModal 에디터 연결 (발주 전 점검 버튼 → 모달 → 이슈 클릭 시 해당 제작물 이동)
+- [x] AI 엔진 Gemini 2.5 Flash 전환 + .env.local 적재
+- [x] 행사 정보 입력 폼 풍부화 (행사 유형·세팅일·참가자·언어·국제/VIP/야외/예산제약)
+- [x] 추천 결과 엑셀 다운로드 버튼 (17컬럼)
+- [x] 데이터 관리 대시보드 (`/data`) 13개 탭 신설
+- [x] 수행실적 엑셀 파싱 (54건 ↔ 17건 매핑)
+- [x] 폴더 엑셀 281개 제작물 파싱 (비표준 규격 37%·재질 분포 9종)
+- [x] AI 추천에 과거 유사 행사 컨텍스트 자동 주입
+- [x] 발주처·행사장 자동완성 (datalist) — 케이스A + 위자드
+- [x] PROGRESS / decisions / goals 갱신
+- [x] v9.18: 행사장 규모 스펙 AI 주입 (getVenueSpecs → recommendSignage)
+- [x] v9.19: 엑셀/PPT/PDF 헤더 21컬럼 개편 + 동적 컬럼 + 날짜 연결
+
+## v4.1 클로징 — PM 직접 처리 필요
+
+- [ ] Supabase Studio에서 `migration_v6_v4_1.sql` 실행 (필수 — venues / venue_requests / learning_jobs / usage_logs / program_parts)
+- [ ] 본인 profiles.role = 'admin' 확인
+- [ ] /admin/learning 진입 → 컨벤션센터·호텔 도면 5~10건 등록 (학습 우선순위)
+- [ ] git push v2 auto/v4-stage-20260507:main (현재 ahead 38+ commits)
+- [ ] 새 프로젝트 1건 만들어서 자동 누적 학습 사이클 동작 확인
+
+## 2단계 진입 조건 (Vision API 도입)
+
+- 룰베이스 동선배너 추천 동작 검증 (5~10건 실사용)
+- 컨벤션센터·호텔 도면 10~20건 학습 데이터 확보
+- venues 테이블 안정화 (요청 → 승인 → 학습 큐 사이클)
+
+## 행사장별 환경장식물 학습 데이터 (2026-05-11 1차 시험 후 확정 — `docs/VENUE_LEARNING_INSIGHTS_260511.md`)
+
+### 즉시 작업 (1~2주)
+- [ ] Tesseract 한국어 OCR 자동화 — 매뉴얼 PDF 폰트 깨짐 보강
+- [x] 천정배너 카테고리 시드 데이터 확보 (킨텍스 5홀 2022엑스포 실측 10개 추가)
+- [x] `SEED_CEILING_BANNER_PATTERNS` 신설 + `findCeilingBannerContext()` + recommendSignage.ts 자동 주입 (v9.17)
+
+### 1단계 (1개월)
+- [ ] HWP 본문 파싱 (한컴 변환 또는 한컴 API)
+- [ ] 행사장 학습 우선순위: 킨텍스 1전시장 5홀 → 1~4홀 → 2전시장 → 코엑스/송도/DCC
+- [x] 카테고리별 학습 항목 표준화 (외벽/게이트/가로등/X배너/천정/부속시설) — `lib/data/signageCategoryStandards.ts` v9.22 (2026-05-13)
+- [ ] 코엑스·송도 2차 AI 시험 (정답지 노출 편향 검증)
+
+### 2단계 (1~2개월)
+- [ ] 시안 파일명·메타 자동 분류 스크립트
+- [ ] 행사 격 보정 룰 구현 (국제·VIP·참가자 수 → 규격 보정) — SYSTEM_INSTRUCTION 텍스트 약속만 있음, 코드 강제 필요
+- [ ] 부속 시설 자동 인지 휴리스틱 (라운지·컨퍼런스장·VIP룸 위치 추론) — SYSTEM_INSTRUCTION 텍스트 약속만 있음, 코드 강제 필요
+- [x] AI 추천에 "추천 없음 + 매뉴얼 보강" 자동 표기 로직 — `recommendSignage.ts` 후처리 v9.22 (2026-05-13)
+
+### v9.22 후속 작업 (v9.23 — 2026-05-13 일괄 적용)
+- [x] case-a 페이지에서 RecommendItem.no_data_flag === true 인 항목을 amber 배지·강조 — v9.23
+- [x] coverage.missing 카테고리를 UI에 별도 안내 박스로 표시 — v9.23 amber 박스
+- [x] STANDARD_CATEGORIES match_keywords 확장 — 발주엑셀 13건 실측 표기 대량 추가 (거리두기 스티커·행사 현수막·통천현수막·드롭배너 등) — v9.23
+- [x] computeVenueCategoryCoverage()에 발주엑셀(_venue_signage_map.json) 카테고리 합산 — v9.23 computeMapCoverageByVenueKey
+- [x] 시설 가이드 미등록 행사장 fallback — v9.23 buildCoverageForUnregisteredVenue + resolveCoverageForVenue
+
+### v9.23 후속 작업 (다음 사이클 후보)
+- [ ] EVENT_TYPE_RECOMMEND 매핑은 NewProjectButton.tsx inline에 있음 → lib/programParts.ts의 PROGRAM_PART_SIGNAGE_HINTS와 통합 (v4.1 잔여 정리)
+- [ ] 시설 가이드 미등록 행사장(롯데호텔·평창 알펜시아·그랜드하얏트·웨스틴조선·aT센터·OSCO 등 12개) 정식 등록 — VENUE_FACILITY_GUIDE_SEED·SEED_VENUE_SPECS·SEED_CEILING_BANNER_PATTERNS 3곳 동시 추가 필요 (작업량 큼, 정답지 노출 편향 우려로 단계별 진행)
+- [ ] lib/text/normalizeAiText.ts git add (v9.21 작업물 untracked 상태)
+- [ ] 행사 격 보정 룰 / 부속 시설 휴리스틱 — SYSTEM_INSTRUCTION 텍스트만 있음, 코드 강제 보강 필요
+- [ ] _venue_signage_map.json venue 라벨 정제 — "미상"·"기타"·"-" 같은 노이즈 venue를 실제 venue 매핑으로 보강
 
 ## 금지 행동 (자율 루프가 절대 자동 실행 안 하는 것)
 
 - Supabase 프로젝트 설정 변경
 - `.env.local` 수정 또는 노출
-- production DB 직접 마이그레이션 (migration SQL은 사람이 실행)
-- GitHub main 브랜치 직접 푸시

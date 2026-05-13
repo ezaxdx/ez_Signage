@@ -2,11 +2,15 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { ItemSidebar } from './components/ItemSidebar'
 import { EditorGrid } from './components/EditorGrid'
 import { CanvasBoard } from './components/CanvasBoard'
 import { EditorToolbar } from './components/EditorToolbar'
-import { SlotPanel } from './components/SlotPanel'
+import { PreflightModal } from './components/PreflightModal'
+import { FacilityGuidePanel } from '@/app/components/facility/FacilityGuidePanel'
+import { FacilityGuideAlert } from '@/app/components/facility/FacilityGuideAlert'
+import { validateAgainstFacility, buildIssueMap, countViolations, type ValidationIssue } from '@/lib/services/facilityValidator'
+import { getFacilityGuideAsync } from '@/lib/data/venueFacilityGuide'
+import type { VenueFacilityGuide } from '@/lib/types'
 import { DEFAULT_SLOTS } from '@/lib/types'
 import type { Project, DesignItem, SlotContent, ContentsMap, SlotStylesMap } from '@/lib/types'
 
@@ -35,12 +39,69 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
 
   const [items, setItems] = useState<DesignItem[]>(initialItems)
   const [selectedItemId, setSelectedItemId] = useState<string>(initialItems[0]?.id ?? '')
+  // v9.11: 회의록 ′가로/세로 분할 한번 생각해 봅시다′ — 사용자 선택 가능
+  const [splitMode, setSplitMode] = useState<'horizontal' | 'vertical'>('horizontal')
+  const [splitPos, setSplitPos] = useState(50)   // 퍼센트 (20~80)
+  const isDragging = useRef(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem('mice_editor_split')
+      if (s === 'vertical' || s === 'horizontal') setSplitMode(s)
+      const p = localStorage.getItem('mice_editor_split_pos')
+      if (p) setSplitPos(Math.max(20, Math.min(80, Number(p))))
+    } catch {}
+  }, [])
   const [allContents, setAllContents] = useState<Record<string, ContentsMap>>({})
   const [slotStyles, setSlotStyles] = useState<SlotStylesMap>({})
   const [isLoading, setIsLoading] = useState(true)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [slotPanelOpen, setSlotPanelOpen] = useState(false)
   const [selectedSlotKey, setSelectedSlotKey] = useState<string | null>(null)
+  const [showPreflight, setShowPreflight] = useState(false)
+  // 시설 가이드 — 마운트 시 DB 우선 조회, 없으면 시드 폴백
+  const [facilityGuide, setFacilityGuide] = useState<VenueFacilityGuide | null>(null)
+  useEffect(() => {
+    getFacilityGuideAsync(project.event_venue, supabase).then(setFacilityGuide)
+  }, [project.event_venue, supabase])
+
+  // v8: 시설 가이드 (§11-6)
+  const [facilityGuideOpen, setFacilityGuideOpen] = useState(false)
+  const [facilityCheckMode, setFacilityCheckMode] = useState<'verbose'|'silent_icon'|'off'>('verbose')
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const saved = localStorage.getItem(`facility_check_mode_${project.id}`)
+    if (saved === 'verbose' || saved === 'silent_icon' || saved === 'off') setFacilityCheckMode(saved)
+  }, [project.id])
+  const handleFacilityCheckModeChange = useCallback((mode: 'verbose'|'silent_icon'|'off') => {
+    setFacilityCheckMode(mode)
+    if (typeof window !== 'undefined') localStorage.setItem(`facility_check_mode_${project.id}`, mode)
+  }, [project.id])
+
+  // 드래그 크기 조절
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    isDragging.current = true
+    e.preventDefault()
+  }, [])
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!isDragging.current || !containerRef.current) return
+      const rect = containerRef.current.getBoundingClientRect()
+      const pos = splitMode === 'horizontal'
+        ? ((e.clientY - rect.top) / rect.height) * 100
+        : ((e.clientX - rect.left) / rect.width) * 100
+      const clamped = Math.max(20, Math.min(80, pos))
+      setSplitPos(clamped)
+      try { localStorage.setItem('mice_editor_split_pos', String(clamped)) } catch {}
+    }
+    const onUp = () => { isDragging.current = false }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+    return () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp) }
+  }, [splitMode])
+  // v8: 첫 위반 알랏 (§11-6-1 — 한 행사에서 1회만)
+  const [activeAlert, setActiveAlert] = useState<ValidationIssue | null>(null)
+  const alertedItemsRef = useRef<Set<string>>(new Set())  // 알랏 표시 이력
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>()
   const loadedItemIds = useRef(new Set<string>())
 
@@ -245,13 +306,111 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
   )
 
   // ── 제작물 메타 업데이트 (Grid용) ────────────────────────
+  // v8: 시설 가이드 검증 + 첫 위반 알랏 (§11-6-1) + 입력 데이터 단계별 축적 (§11-2)
   const updateItem = useCallback(
     async (id: string, patch: Partial<DesignItem>) => {
-      setItems(prev => prev.map(item => item.id === id ? { ...item, ...patch } : item))
+      const prev = items.find(it => it.id === id)
+      const next = prev ? { ...prev, ...patch } : null
+      setItems(curr => curr.map(item => item.id === id ? { ...item, ...patch } : item))
       await supabase.from('design_items').update(patch).eq('id', id)
+
+      // v8: 시설 가이드 검증 — 첫 위반 시 알랏 (verbose 모드만)
+      if (next && facilityCheckMode === 'verbose' && !alertedItemsRef.current.has(id)) {
+        const issues = validateAgainstFacility(next as DesignItem, facilityGuide)
+        const warnIssue = issues.find(i => i.severity === 'warn')
+        if (warnIssue) {
+          alertedItemsRef.current.add(id)
+          setActiveAlert(warnIssue)
+        }
+      }
+
+      // v8 §11-2: 입력 데이터 단계별 축적 — 중간 수정 로그 (학습 가중치 30%)
+      // 변경된 필드만 item_edit_log에 기록 (best-effort, RLS 정책에 의해 자동 권한 체크)
+      if (prev) {
+        const editRows = Object.entries(patch)
+          .filter(([k]) => !['updated_at', 'last_edited_by', 'updating_by'].includes(k))
+          .map(([field, newVal]) => ({
+            item_id: id,
+            field,
+            old_value: String((prev as unknown as Record<string, unknown>)[field] ?? ''),
+            new_value: String(newVal ?? ''),
+          }))
+        if (editRows.length > 0) {
+          // best-effort — DB 마이그레이션 안 됐어도 silent fail
+          supabase.from('item_edit_log').insert(editRows).then(() => {}, () => {})
+        }
+      }
     },
-    [supabase]
+    [supabase, items, facilityCheckMode, project.event_venue]
   )
+
+  // ── 제작물 추가 (Grid용) — 종류 선택 시 카테고리·규격·재질 자동 채움 ────
+  const handleAddItem = useCallback(async (preset?: { category: string; width_mm: number; height_mm: number; material: string }) => {
+    const nextNo = String(items.length + 1).padStart(2, '0')
+    const newItem: Partial<DesignItem> = {
+      project_id: project.id,
+      no: nextNo,
+      category: preset?.category ?? '',
+      quantity: 1,
+      width_mm: preset?.width_mm ?? 600,
+      height_mm: preset?.height_mm ?? 1800,
+      material: preset?.material ?? null,
+    }
+    const { data, error } = await supabase.from('design_items').insert(newItem).select().single()
+    if (error || !data) {
+      alert('제작물 추가 실패: ' + (error?.message ?? ''))
+      return
+    }
+    const created = data as DesignItem
+    setItems(prev => [...prev, created])
+    setSelectedItemId(created.id)
+    // 종류가 지정된 경우 — 기본 슬롯도 자동 삽입 (SEED_LAYOUT_DNA 우선)
+    if (preset?.category) {
+      const { insertDefaultSlotsForItem } = await import('@/lib/services/itemService')
+      await insertDefaultSlotsForItem(supabase, created.id, project.id)
+    }
+  }, [items.length, project.id, supabase])
+
+  // ── 제작물 삭제 (Grid용) ──────────────────────────────────
+  const handleDeleteItem = useCallback(async (id: string) => {
+    const target = items.find(i => i.id === id)
+    if (!target) return
+    const ok = window.confirm(`'${target.no ?? ''} ${target.category ?? ''}' 제작물을 삭제할까요?\n관련 슬롯·이미지가 함께 사라지며 되돌릴 수 없습니다.`)
+    if (!ok) return
+    await supabase.from('item_contents').delete().eq('item_id', id)
+    await supabase.from('design_items').delete().eq('id', id)
+    setItems(prev => {
+      const next = prev.filter(i => i.id !== id)
+      if (id === selectedItemId && next.length > 0) setSelectedItemId(next[0].id)
+      return next
+    })
+  }, [items, selectedItemId, supabase])
+
+  // ── 제작물 행 순서 변경 (Grid용) ───────────────────────────
+  const handleReorderItems = useCallback((newOrder: DesignItem[]) => {
+    setItems(newOrder)
+    // 1차: 화면 순서만 변경 (DB 저장은 향후 sort_order 컬럼 추가 후)
+    // localStorage에 순서 저장하면 새로고침 후에도 유지
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`mice_item_order_${project.id}`, JSON.stringify(newOrder.map(i => i.id)))
+    }
+  }, [project.id])
+
+  // 초기 로드 시 localStorage 순서 적용
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const stored = localStorage.getItem(`mice_item_order_${project.id}`)
+    if (!stored) return
+    try {
+      const ids = JSON.parse(stored) as string[]
+      setItems(prev => {
+        const map = new Map(prev.map(i => [i.id, i]))
+        const reordered = ids.map(id => map.get(id)).filter((i): i is DesignItem => !!i)
+        const newIds = prev.filter(i => !ids.includes(i.id))   // 새로 추가된 항목
+        return [...reordered, ...newIds]
+      })
+    } catch {}
+  }, [project.id])
 
   // ── 슬롯 추가 ────────────────────────────────────────────
   const handleSlotAdd = useCallback(
@@ -406,17 +565,50 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
   const selectedItem = items.find(i => i.id === selectedItemId) ?? null
   const contents = allContents[selectedItemId] ?? {}
 
+  // v8: 시설 가이드 위반 항목 카운트 (다운로드 직전 일괄 요약 — §11-6 안전망)
+  const facilityIssueMap = useMemo(() => buildIssueMap(items, facilityGuide), [items, facilityGuide])
+  const facilityViolationSummary = useMemo(() => countViolations(items, facilityGuide), [items, facilityGuide])
+
+  // 다운로드 직전 일괄 요약 확인 (어떤 모드든 안전망)
+  const confirmFacilityBeforeExport = useCallback((): boolean => {
+    const { warn, info, total } = facilityViolationSummary
+    if (total === 0) return true
+    const lines = [
+      `시설 가이드 외 항목이 ${total}건 있습니다.`,
+      warn > 0 ? `· 경고 ${warn}건 (설치 불가·행잉 불가 등)` : null,
+      info > 0 ? `· 조건부 ${info}건 (매뉴얼 추가 확인 권장)` : null,
+      '',
+      '그래도 다운로드하시겠습니까?',
+      '',
+      '※ 시스템 정보가 오래됐을 가능성 있음. 확신 없으면 행사장에 직접 확인 권장.',
+    ].filter(Boolean).join('\n')
+    return window.confirm(lines)
+  }, [facilityViolationSummary])
+
+  // v8 §11-2: 다운로드 완료 시 finalized_at 기록 (학습 가중치 100% — 정답 풀)
+  const markFinalized = useCallback(async () => {
+    const now = new Date().toISOString()
+    const ids = items.map(i => i.id)
+    if (ids.length === 0) return
+    // best-effort — DB 마이그레이션 안 됐어도 silent fail
+    supabase.from('design_items').update({ finalized_at: now }).in('id', ids).then(() => {}, () => {})
+  }, [items, supabase])
+
   // ── Excel 전체 내보내기 ────────────────────────────────────
   const handleExcelExport = useCallback(async () => {
+    if (!confirmFacilityBeforeExport()) return
     const { exportToExcel } = await import('@/lib/services/ExportService')
     await exportToExcel(project, items, allContents)
-  }, [items, project, allContents])
+    await markFinalized()
+  }, [items, project, allContents, confirmFacilityBeforeExport, markFinalized])
 
   // ── PPT 전체 내보내기 ──────────────────────────────────────
   const handlePPTExport = useCallback(async () => {
+    if (!confirmFacilityBeforeExport()) return
     const { exportToPPT } = await import('@/lib/services/ExportService')
     await exportToPPT(project, items, allContents)
-  }, [items, project, allContents])
+    await markFinalized()
+  }, [items, project, allContents, confirmFacilityBeforeExport, markFinalized])
 
   // ── 단일 제작물 PPT ─────────────────────────────────────
   const handleSinglePPTExport = useCallback(async () => {
@@ -463,46 +655,151 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
     alert(`✓ '${current.category}' 마스터로 지정됨.\n${res.propagated}개 제작물에 서식·위치 전파 완료.`)
   }, [items, selectedItemId, supabase])
 
+  // 1차 출시는 좌측 제작물 사이드바 + 우측 구역 설정 패널 없이 제공
+  // 슬롯 관련 핸들러는 향후 구역 설정 재도입 시 사용 (현재 비활성)
+  void handleSlotAdd; void handleSlotDelete; void handleSlotRename
+  void handleSlotStyleUpdate; void handleApplyStyleToAll; void handleInitDefaultSlots
+  void slotPanelOpen; void setSlotPanelOpen
+
   return (
-    <div className="h-screen flex flex-col bg-slate-950 overflow-hidden">
+    <div className="h-screen flex flex-col bg-white overflow-hidden">
       <EditorToolbar
         project={project}
         selectedItem={selectedItem}
         saveStatus={saveStatus}
-        slotPanelOpen={slotPanelOpen}
+        slotPanelOpen={false}
         onItemUpdate={handleItemUpdate}
         onExcelExport={handleExcelExport}
         onPPTExport={handlePPTExport}
         onSinglePPTExport={handleSinglePPTExport}
         onPDFExport={handlePDFExport}
         onSetAsMaster={handleSetAsMaster}
-        onToggleSlotPanel={() => setSlotPanelOpen(v => !v)}
+        onToggleSlotPanel={() => { /* 1차 비활성 */ }}
+        onPreflight={() => setShowPreflight(true)}
+        // v8: 시설 가이드 (§11-6)
+        onOpenFacilityGuide={() => setFacilityGuideOpen(true)}
+        facilityCheckMode={facilityCheckMode}
+        onFacilityCheckModeChange={handleFacilityCheckModeChange}
       />
 
-      <div className="flex flex-1 min-h-0">
-        <ItemSidebar
+      {showPreflight && (
+        <PreflightModal
           items={items}
-          selectedItemId={selectedItemId}
-          onSelect={setSelectedItemId}
-          projectId={project.id}
-          onItemsChange={setItems}
+          allContents={allContents}
+          onClose={() => setShowPreflight(false)}
+          onGoToItem={(itemId) => {
+            setSelectedItemId(itemId)
+            setShowPreflight(false)
+          }}
+          onExportAll={async () => {
+            await handleExcelExport()
+            await handlePPTExport()
+          }}
         />
+      )}
 
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* 데이터 그리드 — 40% */}
-          <div className="h-[40%] border-b border-slate-800 overflow-hidden">
+      {/* v8: 시설 가이드 슬라이드 패널 (§11-6-2) */}
+      <FacilityGuidePanel
+        venueName={project.event_venue}
+        open={facilityGuideOpen}
+        onClose={() => setFacilityGuideOpen(false)}
+      />
+
+      {/* v8: 시설 가이드 자동 알랏 (§11-6-1) — 첫 위반 1회 */}
+      <FacilityGuideAlert
+        open={activeAlert !== null}
+        message={activeAlert?.message ?? ''}
+        standardValue={activeAlert?.standardValue}
+        userValue={activeAlert?.userValue}
+        venueName={project.event_venue ?? undefined}
+        onCorrect={() => setActiveAlert(null)}
+        onProceed={async () => {
+          // ′그래도 진행′ — 회의록 ′학습 3종 ③′: 우리 매뉴얼 정보가 틀렸을 가능성 학습
+          const alert = activeAlert
+          setActiveAlert(null)
+          if (!alert) return
+          try {
+            const { data: { user } } = await supabase.auth.getUser()
+            // ① facility_exception_log INSERT (예외 케이스 누적 → 매뉴얼 갱신 신호)
+            await supabase.from('facility_exception_log').insert({
+              project_id: project.id,
+              item_id: alert.itemId,
+              venue: project.event_venue,
+              field: alert.field,
+              rule: alert.rule,
+              standard_value: alert.standardValue ?? null,
+              user_value: alert.userValue ?? null,
+              message: alert.message,
+              created_by: user?.id ?? null,
+            })
+            // ② 비고(review_note)에 자동 표기
+            const it = items.find(i => i.id === alert.itemId)
+            const prevNote = it?.review_note ?? ''
+            const tag = '[시설 가이드 외] 사용자 확인 진행'
+            if (!prevNote.includes(tag)) {
+              updateItem(alert.itemId, { review_note: prevNote ? `${prevNote} · ${tag}` : tag })
+            }
+          } catch {
+            // facility_exception_log 미적용 시 silent (마이그레이션 v8 필요)
+          }
+        }}
+        onOpenGuide={() => {
+          setActiveAlert(null)
+          setFacilityGuideOpen(true)
+        }}
+      />
+
+      {/* v9.11: 회의록 ′가로/세로 분할 한번 생각해 봅시다′ — 사용자 선택 토글 */}
+      <div className="px-3 py-1 bg-slate-50 border-b border-slate-200 flex items-center gap-2 text-[10px]">
+        <span className="text-slate-500">레이아웃:</span>
+        <button
+          onClick={() => { setSplitMode('horizontal'); try { localStorage.setItem('mice_editor_split', 'horizontal') } catch {} }}
+          className={`px-2 py-0.5 rounded ${splitMode === 'horizontal' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}
+        >
+          ⊟ 위·아래
+        </button>
+        <button
+          onClick={() => { setSplitMode('vertical'); try { localStorage.setItem('mice_editor_split', 'vertical') } catch {} }}
+          className={`px-2 py-0.5 rounded ${splitMode === 'vertical' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}
+        >
+          ⊟ 좌·우
+        </button>
+      </div>
+
+      <div className="flex flex-1 min-h-0">
+        <div ref={containerRef} className={`flex-1 ${splitMode === 'vertical' ? 'flex flex-row' : 'flex flex-col'} min-w-0`}>
+          <div
+            className={`${splitMode === 'vertical' ? 'border-r' : 'border-b'} border-slate-200 overflow-hidden`}
+            style={splitMode === 'vertical' ? { width: `${splitPos}%` } : { height: `${splitPos}%` }}
+          >
             <EditorGrid
               items={items}
               allContents={allContents}
               selectedItemId={selectedItemId}
               onSelectItem={setSelectedItemId}
               onUpdateItem={updateItem}
+              onAddItem={handleAddItem}
+              onDeleteItem={handleDeleteItem}
+              onReorderItems={handleReorderItems}
               isLoading={isLoading}
+              facilityIssueMap={facilityIssueMap}
+              facilityCheckMode={facilityCheckMode}
             />
           </div>
 
-          {/* 디자인 캔버스 — 60% */}
-          <div className="h-[60%]">
+          {/* 드래그 크기 조절 핸들 */}
+          <div
+            onMouseDown={handleDragStart}
+            className={`flex-shrink-0 flex items-center justify-center bg-slate-100 hover:bg-indigo-200 active:bg-indigo-300 transition-colors group ${splitMode === 'horizontal' ? 'h-1.5 cursor-row-resize w-full' : 'w-1.5 cursor-col-resize h-full'}`}
+          >
+            <div className={`bg-slate-300 group-hover:bg-indigo-400 transition-colors rounded-full ${splitMode === 'horizontal' ? 'w-10 h-0.5' : 'w-0.5 h-10'}`} />
+          </div>
+
+          {/* 디자인 캔버스 */}
+          <div
+            className="overflow-hidden"
+            style={splitMode === 'vertical' ? { width: `${100 - splitPos}%` } : { height: `${100 - splitPos}%` }}
+          >
             <CanvasBoard
               item={selectedItem}
               contents={contents}
@@ -510,25 +807,11 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
               selectedSlotKey={selectedSlotKey}
               onUpdate={updateSlot}
               onSlotSelect={setSelectedSlotKey}
+              onSlotPanelOpen={() => { /* 1차 비활성 */ }}
+              masterImageUrl={project.master_image_url ?? null}
             />
           </div>
         </div>
-
-        {/* 슬롯 패널 */}
-        {slotPanelOpen && (
-          <SlotPanel
-            contents={contents}
-            selectedSlotKey={selectedSlotKey}
-            selectedItemId={selectedItemId}
-            onSlotSelect={setSelectedSlotKey}
-            onSlotAdd={handleSlotAdd}
-            onSlotDelete={handleSlotDelete}
-            onSlotRename={handleSlotRename}
-            onSlotStyleUpdate={handleSlotStyleUpdate}
-            onApplyStyleToAll={handleApplyStyleToAll}
-            onInitDefaultSlots={handleInitDefaultSlots}
-          />
-        )}
       </div>
     </div>
   )

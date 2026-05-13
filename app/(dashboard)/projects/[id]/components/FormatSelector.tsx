@@ -15,7 +15,7 @@ interface Props {
 const GROUPS = [
   { label: '배너류', ids: ['x_banner', 'i_banner', 'streetlight_banner'] },
   { label: '현수막 / 통천', ids: ['horizontal_banner', 'vertical_banner', 'chunchen_banner'] },
-  { label: '기타 제작물', ids: ['podium', 'a4_portrait', 'a4_landscape', 'a3_portrait', 'a3_landscape'] },
+  { label: '기타 제작물', ids: ['podium', 'foamboard', 'sheet', 'a4_portrait', 'a4_landscape', 'a3_portrait', 'a3_landscape'] },
 ]
 
 export function FormatSelector({ item, onItemUpdate }: Props) {
@@ -64,12 +64,12 @@ export function FormatSelector({ item, onItemUpdate }: Props) {
   return (
     <div className="flex items-center gap-1">
       {/* 규격 직접 입력 */}
-      <div className="flex items-center gap-1 bg-slate-800 px-2 py-1 rounded-md">
+      <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md">
         <input
           type="number"
           value={item.width_mm ?? ''}
           onChange={e => handleCustomWidth(e.target.value)}
-          className="w-14 bg-slate-700 rounded px-1.5 py-0.5 text-slate-200 text-[11px] text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="w-14 bg-slate-200 rounded px-1.5 py-0.5 text-slate-800 text-[11px] text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
           placeholder="W"
         />
         <span className="text-slate-500 text-[10px]">×</span>
@@ -77,7 +77,7 @@ export function FormatSelector({ item, onItemUpdate }: Props) {
           type="number"
           value={item.height_mm ?? ''}
           onChange={e => handleCustomHeight(e.target.value)}
-          className="w-14 bg-slate-700 rounded px-1.5 py-0.5 text-slate-200 text-[11px] text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="w-14 bg-slate-200 rounded px-1.5 py-0.5 text-slate-800 text-[11px] text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
           placeholder="H"
         />
         <span className="text-slate-500 text-[9px]">mm</span>
@@ -87,7 +87,7 @@ export function FormatSelector({ item, onItemUpdate }: Props) {
       <div className="relative">
         <button
           onClick={() => setIsOpen((v) => !v)}
-          className="flex items-center gap-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-md transition"
+          className="flex items-center gap-1.5 text-xs bg-slate-50 hover:bg-slate-200 text-slate-400 px-2.5 py-1.5 rounded-md transition"
         >
           <span className="font-medium">{currentFormat?.label ?? '양식 선택'}</span>
           <ChevronDown className="w-3 h-3 text-slate-500" />
@@ -99,11 +99,11 @@ export function FormatSelector({ item, onItemUpdate }: Props) {
             <div className="fixed inset-0 z-20" onClick={() => setIsOpen(false)} />
 
             {/* 드롭다운 패널 */}
-            <div className="absolute top-full left-0 mt-1 w-60 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-30 overflow-hidden">
+            <div className="absolute top-full left-0 mt-1 w-60 bg-white border border-slate-300 rounded-xl shadow-2xl z-30 overflow-hidden">
               <div className="max-h-80 overflow-y-auto py-1">
                 {GROUPS.map((group) => (
                   <div key={group.label}>
-                    <div className="px-3 pt-2.5 pb-1 text-[9px] font-semibold text-slate-600 uppercase tracking-widest">
+                    <div className="px-3 pt-2.5 pb-1 text-[9px] font-semibold text-slate-400 uppercase tracking-widest">
                       {group.label}
                     </div>
                     {PRODUCTION_FORMATS.filter((f) => group.ids.includes(f.id)).map((fmt) => {
@@ -115,7 +115,7 @@ export function FormatSelector({ item, onItemUpdate }: Props) {
                           className={`w-full text-left px-3 py-2 text-xs transition flex items-center justify-between gap-2 ${
                             isActive
                               ? 'bg-indigo-950/40 text-indigo-300'
-                              : 'text-slate-300 hover:bg-slate-800'
+                              : 'text-slate-400 hover:bg-slate-50'
                           }`}
                         >
                           <div className="min-w-0">
@@ -123,9 +123,9 @@ export function FormatSelector({ item, onItemUpdate }: Props) {
                               {isActive && <Check className="w-3 h-3 text-indigo-400 flex-shrink-0" />}
                               <p className="font-medium truncate">{fmt.label}</p>
                             </div>
-                            <p className="text-slate-600 text-[10px] mt-0.5">{fmt.description}</p>
+                            <p className="text-slate-400 text-[10px] mt-0.5">{fmt.description}</p>
                           </div>
-                          <span className="text-slate-600 font-mono text-[10px] flex-shrink-0">
+                          <span className="text-slate-400 font-mono text-[10px] flex-shrink-0">
                             {fmt.width_mm}×{fmt.height_mm}
                           </span>
                         </button>
@@ -143,7 +143,7 @@ export function FormatSelector({ item, onItemUpdate }: Props) {
       <button
         onClick={toggleOrientation}
         title="가로 ↔ 세로 전환"
-        className="p-1.5 text-slate-600 hover:text-slate-300 hover:bg-slate-800 rounded-md transition"
+        className="p-1.5 text-slate-400 hover:text-slate-400 hover:bg-slate-50 rounded-md transition"
       >
         <RotateCcw className="w-3.5 h-3.5" />
       </button>

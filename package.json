@@ -12,6 +12,7 @@
     "check:all": "npm run check:types && npm run check:harness && npm run build"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.94.0",
     "@supabase/ssr": "^0.5.1",
     "@supabase/supabase-js": "^2.45.4",
     "fabric": "^5.3.0",

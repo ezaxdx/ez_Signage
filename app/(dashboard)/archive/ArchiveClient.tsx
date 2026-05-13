@@ -25,7 +25,7 @@ interface ItemRow {
 }
 
 const STATUS_COLORS: Record<ReviewStatus, string> = {
-  '작업중':   'bg-slate-700/50 text-slate-300 border-slate-600',
+  '작업중':   'bg-slate-200/50 text-slate-400 border-slate-600',
   '확인필요': 'bg-amber-900/40 text-amber-300 border-amber-700/60',
   '검수완료': 'bg-emerald-900/40 text-emerald-300 border-emerald-700/60',
   '발주완료': 'bg-indigo-900/40 text-indigo-300 border-indigo-700/60',
@@ -95,7 +95,7 @@ export function ArchiveClient({ initialItems }: { initialItems: ItemRow[] }) {
         <button
           onClick={() => setFilterStatus('전체')}
           className={`px-3 py-2 rounded-lg border text-xs transition ${
-            filterStatus === '전체' ? 'bg-slate-800 border-slate-500 text-slate-100' : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700'
+            filterStatus === '전체' ? 'bg-slate-50 border-slate-500 text-slate-900' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
           }`}
         >
           <div className="font-semibold">전체</div>
@@ -106,7 +106,7 @@ export function ArchiveClient({ initialItems }: { initialItems: ItemRow[] }) {
             key={s}
             onClick={() => setFilterStatus(s)}
             className={`px-3 py-2 rounded-lg border text-xs transition ${
-              filterStatus === s ? STATUS_COLORS[s] : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700'
+              filterStatus === s ? STATUS_COLORS[s] : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
             }`}
           >
             <div className="font-semibold">{s}</div>
@@ -120,7 +120,7 @@ export function ArchiveClient({ initialItems }: { initialItems: ItemRow[] }) {
         <button
           onClick={() => setFilterProject('전체')}
           className={`text-[11px] px-2.5 py-1 rounded-full transition ${
-            filterProject === '전체' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+            filterProject === '전체' ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-500 hover:bg-slate-200'
           }`}
         >
           모든 프로젝트
@@ -130,7 +130,7 @@ export function ArchiveClient({ initialItems }: { initialItems: ItemRow[] }) {
             key={name}
             onClick={() => setFilterProject(name)}
             className={`text-[11px] px-2.5 py-1 rounded-full transition ${
-              filterProject === name ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+              filterProject === name ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-500 hover:bg-slate-200'
             }`}
           >
             {name}
@@ -140,10 +140,10 @@ export function ArchiveClient({ initialItems }: { initialItems: ItemRow[] }) {
 
       {/* 테이블 */}
       {filtered.length === 0 ? (
-        <div className="text-center py-20 text-slate-600 text-sm">해당 조건의 제작물이 없습니다</div>
+        <div className="text-center py-20 text-slate-400 text-sm">해당 조건의 제작물이 없습니다</div>
       ) : (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <div className="grid grid-cols-[40px_120px_80px_80px_100px_1fr_100px_110px_24px_80px] gap-2 px-4 py-2.5 bg-slate-900/80 border-b border-slate-800 text-slate-500 text-[10px] font-semibold uppercase tracking-wide">
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="grid grid-cols-[40px_120px_80px_80px_100px_1fr_100px_110px_24px_80px] gap-2 px-4 py-2.5 bg-white/80 border-b border-slate-200 text-slate-500 text-[10px] font-semibold uppercase tracking-wide">
             <span>No</span>
             <span>프로젝트</span>
             <span>품목</span>
@@ -161,24 +161,24 @@ export function ArchiveClient({ initialItems }: { initialItems: ItemRow[] }) {
               return (
                 <div
                   key={row.id}
-                  className="grid grid-cols-[40px_120px_80px_80px_100px_1fr_100px_110px_24px_80px] gap-2 px-4 py-2.5 text-xs hover:bg-slate-800/40 transition items-center"
+                  className="grid grid-cols-[40px_120px_80px_80px_100px_1fr_100px_110px_24px_80px] gap-2 px-4 py-2.5 text-xs hover:bg-slate-50/40 transition items-center"
                 >
-                  <span className="text-slate-600 font-mono">{row.no}</span>
+                  <span className="text-slate-400 font-mono">{row.no}</span>
                   <Link href={`/projects/${row.project_id}`} className="text-indigo-300 hover:text-indigo-200 truncate flex items-center gap-1">
                     {row.projects?.name ?? '—'}
                     <ExternalLink className="w-2.5 h-2.5 flex-shrink-0" />
                   </Link>
-                  <span className="text-slate-400 truncate">{row.category ?? '—'}</span>
+                  <span className="text-slate-500 truncate">{row.category ?? '—'}</span>
                   <span className="text-slate-500 truncate">{row.part ?? '—'}</span>
                   <span className="text-slate-500 truncate">{row.location ?? '—'}</span>
                   <div className="min-w-0">
-                    <div className="text-slate-400 truncate">{extractContent(row)}</div>
+                    <div className="text-slate-500 truncate">{extractContent(row)}</div>
                     {row.review_note && (
-                      <div className="text-amber-400/80 text-[10px] truncate italic mt-0.5">📝 {row.review_note}</div>
+                      <div className="text-amber-400/80 text-[10px] truncate italic mt-0.5">{row.review_note}</div>
                     )}
                   </div>
                   <span className="text-slate-500 truncate text-[11px]">
-                    {row.last_edited_by ? row.last_edited_by.split('@')[0] : <span className="text-slate-700 italic">미편집</span>}
+                    {row.last_edited_by ? row.last_edited_by.split('@')[0] : <span className="text-slate-400 italic">미편집</span>}
                   </span>
                   <select
                     value={status}
@@ -189,12 +189,12 @@ export function ArchiveClient({ initialItems }: { initialItems: ItemRow[] }) {
                   </select>
                   <button
                     onClick={() => setNoteEdit({ id: row.id, note: row.review_note ?? '' })}
-                    className="text-slate-600 hover:text-indigo-400 transition"
+                    className="text-slate-400 hover:text-indigo-400 transition"
                     title="검수 코멘트 남기기"
                   >
                     <MessageSquarePlus className="w-3.5 h-3.5" />
                   </button>
-                  <span className="text-slate-600 text-[10px] font-mono">
+                  <span className="text-slate-400 text-[10px] font-mono">
                     {new Date(row.updated_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}
                   </span>
                 </div>
@@ -208,18 +208,18 @@ export function ArchiveClient({ initialItems }: { initialItems: ItemRow[] }) {
       {noteEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setNoteEdit(null)} />
-          <div className="relative bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md p-5">
-            <h3 className="text-slate-200 font-semibold text-sm mb-3">검수 코멘트</h3>
+          <div className="relative bg-white border border-slate-300 rounded-xl shadow-2xl w-full max-w-md p-5">
+            <h3 className="text-slate-800 font-semibold text-sm mb-3">검수 코멘트</h3>
             <textarea
               autoFocus
               value={noteEdit.note}
               onChange={e => setNoteEdit({ ...noteEdit, note: e.target.value })}
               placeholder="예: 행사명 재확인 필요 / 로고 해상도 부족 / 오탈자 수정 요청"
               rows={4}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+              className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500"
             />
             <div className="flex gap-2 mt-3 justify-end">
-              <button onClick={() => setNoteEdit(null)} className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-4 py-2 rounded-lg transition">
+              <button onClick={() => setNoteEdit(null)} className="bg-slate-50 hover:bg-slate-200 text-slate-400 text-xs px-4 py-2 rounded-lg transition">
                 취소
               </button>
               <button onClick={handleSaveNote} className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-4 py-2 rounded-lg transition">

@@ -1,5 +1,66 @@
 import { pickDefaultSlots } from '@/lib/types'
+import { findLayoutDNA, type LayoutDNAEntry } from '@/lib/data/dashboardSeed'
 import type { SupabaseClient } from '@supabase/supabase-js'
+
+// SEED_LAYOUT_DNA의 type_id ↔ 환경장식물 카테고리 명칭 매핑
+// (대시보드 시드에서는 영어 type_id 사용, items.category는 한글)
+const CATEGORY_TO_DNA_TYPE: Record<string, string> = {
+  'X배너':         'x_banner',
+  'X-배너':        'x_banner',
+  'I배너':         'i_banner',
+  'I-배너':        'i_banner',
+  '가로등 배너':   'streetlight_banner',
+  '가로 현수막':   'horizontal_banner',
+  '세로 현수막':   'vertical_banner',
+  '통천':          'chunchen_banner',
+  '통천 배너':     'chunchen_banner',
+  '포디움 타이틀': 'podium',
+  '폼보드':        'foamboard',
+  'L보드':         'foamboard',
+  'A4 세로':       'a4_portrait',
+  'A4 가로':       'a4_landscape',
+  'A3 세로':       'a3_portrait',
+  'A3 가로':       'a3_landscape',
+  '백월':          'backwall',
+}
+
+/** 카테고리(한글) → SEED_LAYOUT_DNA 적합 항목 조회. 없으면 null. */
+function findDnaForCategory(category: string | null): LayoutDNAEntry | null {
+  if (!category) return null
+  // 정확 매치
+  const exactKey = CATEGORY_TO_DNA_TYPE[category]
+  if (exactKey) {
+    const dna = findLayoutDNA(exactKey)
+    if (dna) return dna
+  }
+  // 부분 매치 (사용자가 "X-배너 정문" 같이 자유 입력했을 때)
+  for (const [koLabel, typeId] of Object.entries(CATEGORY_TO_DNA_TYPE)) {
+    if (category.includes(koLabel)) {
+      const dna = findLayoutDNA(typeId)
+      if (dna) return dna
+    }
+  }
+  return null
+}
+
+/** 0~1000 bbox → 0~100% 슬롯 좌표(중심+너비) 변환 */
+function dnaSlotToSlotContent(dnaSlot: { key: string; label: string; role: string; box: { xmin: number; ymin: number; xmax: number; ymax: number } }) {
+  const { xmin, ymin, xmax, ymax } = dnaSlot.box
+  const cx = ((xmin + xmax) / 2) / 10  // 중심 x in %
+  const cy = ((ymin + ymax) / 2) / 10  // 중심 y in %
+  const w = ((xmax - xmin)) / 10       // 너비 %
+  // 역할별 폰트 크기 가이드
+  const fontByRole: Record<string, number> = { logo: 13, title: 38, subtitle: 20, body: 16, footer: 11, image: 13, arrow: 24, qr: 13 }
+  return {
+    label: dnaSlot.label,
+    ko: '',
+    en: '',
+    x: Math.round(cx),
+    y: Math.round(cy),
+    w: Math.round(w),
+    fontSize: fontByRole[dnaSlot.role] ?? 16,
+  }
+}
 
 /** 프로젝트의 slot_styles 폰트 크기를 가져와 DEFAULT_SLOTS에 병합 */
 async function fetchProjectFontSizes(
@@ -77,10 +138,29 @@ export async function insertDefaultSlotsForItem(
     }
   }
 
-  // 2) 마스터 없으면 기본 레이아웃 사용 (프로젝트 slot_styles 폰트 적용)
+  // 2) 마스터 없으면 SEED_LAYOUT_DNA 우선 (Vision 분석 기반 종류별 슬롯)
+  //    매칭 안 되면 규격 기반 기본 레이아웃 fallback
   const fontSizes = projectId ? await fetchProjectFontSizes(supabase, projectId) : {}
-  const slots = pickDefaultSlots(info.width_mm, info.height_mm)
+  const dna = findDnaForCategory(info.category)
 
+  if (dna) {
+    const rows = dna.slots.map(dnaSlot => {
+      const slot = dnaSlotToSlotContent(dnaSlot)
+      return {
+        item_id: itemId,
+        slot_key: dnaSlot.key,
+        slot_value: JSON.stringify({
+          ...slot,
+          fontSize: fontSizes[dnaSlot.key] ?? slot.fontSize,
+        }),
+      }
+    })
+    await supabase.from('item_contents').insert(rows)
+    return
+  }
+
+  // 3) Fallback — 규격 기반 기본 레이아웃 (DNA 없는 종류)
+  const slots = pickDefaultSlots(info.width_mm, info.height_mm)
   const rows = Object.entries(slots).map(([slot_key, slot]) => ({
     item_id: itemId,
     slot_key,

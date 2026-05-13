@@ -1,0 +1,628 @@
+[
+  {
+    "type_id": "x_banner",
+    "file": "코엑스/2018 스마트국토엑스포 183080/엑스배너 (1).png",
+    "ok": true,
+    "elapsed": 20781,
+    "sizeKB": "1012.4",
+    "finishReason": "STOP",
+    "slots": [
+      {
+        "key": "header_brand",
+        "label": "행사 로고",
+        "role": "logo",
+        "box": {
+          "xmin": 700,
+          "ymin": 30,
+          "xmax": 950,
+          "ymax": 100
+        }
+      },
+      {
+        "key": "main_title",
+        "label": "행사 메인 타이틀",
+        "role": "title",
+        "box": {
+          "xmin": 50,
+          "ymin": 150,
+          "xmax": 950,
+          "ymax": 300
+        }
+      },
+      {
+        "key": "subtitle_eng",
+        "label": "행사 영문 타이틀",
+        "role": "subtitle",
+        "box": {
+          "xmin": 50,
+          "ymin": 310,
+          "xmax": 950,
+          "ymax": 350
+        }
+      },
+      {
+        "key": "event_details",
+        "label": "행사 일시 및 장소",
+        "role": "body",
+        "box": {
+          "xmin": 50,
+          "ymin": 360,
+          "xmax": 950,
+          "ymax": 400
+        }
+      },
+      {
+        "key": "location_text_korean",
+        "label": "장소명 (한글)",
+        "role": "body",
+        "box": {
+          "xmin": 50,
+          "ymin": 450,
+          "xmax": 950,
+          "ymax": 500
+        }
+      },
+      {
+        "key": "location_text_english",
+        "label": "장소명 (영문)",
+        "role": "body",
+        "box": {
+          "xmin": 50,
+          "ymin": 500,
+          "xmax": 950,
+          "ymax": 540
+        }
+      },
+      {
+        "key": "direction_arrow",
+        "label": "방향 지시",
+        "role": "arrow",
+        "box": {
+          "xmin": 350,
+          "ymin": 570,
+          "xmax": 650,
+          "ymax": 670
+        }
+      },
+      {
+        "key": "illustration_image",
+        "label": "스마트 도시 일러스트",
+        "role": "image",
+        "box": {
+          "xmin": 50,
+          "ymin": 680,
+          "xmax": 950,
+          "ymax": 850
+        }
+      },
+      {
+        "key": "footer_logos",
+        "label": "주최/주관 기관 로고",
+        "role": "footer",
+        "box": {
+          "xmin": 50,
+          "ymin": 880,
+          "xmax": 950,
+          "ymax": 960
+        }
+      }
+    ],
+    "layout_pattern": "상단에 행사 로고 및 타이틀, 중단에 장소명과 방향 지시, 하단에 행사 주제 일러스트와 주최/주관 기관 로고가 배치된 수직형 안내 배너.",
+    "estimated_signage_type": "vertical_banner",
+    "dominant_color": "파란색",
+    "summary": "스마트 국토엑스포의 행사 정보와 장소 안내를 위한 수직 배너로, 상단에 행사명과 일시, 중단에 장소명과 방향 지시, 하단에 스마트 도시 일러스트와 주최/주관 기관 로고가 배치되어 있다."
+  },
+  {
+    "type_id": "x_banner_v2",
+    "file": "2035 국가 온실가스 감축목표 대국민 공개 논의 251015/X배너_접수처 (1).jpg",
+    "error": "JSON 파싱 실패: Unterminated string in JSON at position 2499 (line 136 column 22)",
+    "elapsed": 36394,
+    "sizeKB": "576.2",
+    "finishReason": "MAX_TOKENS",
+    "raw": "{\n  \"slots\": [\n    {\n      \"key\": \"header_disclaimer\",\n      \"label\": \"상단 안내문\",\n      \"role\": \"body\",\n      \"box\": {\n        \"xmin\": 111,\n        \"ymin\": 47,\n        \"xmax\": 889,\n        \"ymax\": 63\n  "
+  },
+  {
+    "type_id": "horizontal_banner",
+    "file": "2035 국가 온실가스 감축목표 대국민 공개 논의 251015/무대 가로배너.jpg",
+    "ok": true,
+    "elapsed": 22049,
+    "sizeKB": "1737.5",
+    "finishReason": "STOP",
+    "slots": [
+      {
+        "key": "header_brand",
+        "label": "주최기관 로고",
+        "role": "logo",
+        "box": {
+          "xmin": 49,
+          "ymin": 260,
+          "xmax": 151,
+          "ymax": 729
+        }
+      },
+      {
+        "key": "header_subtitle",
+        "label": "주최기관 부제",
+        "role": "subtitle",
+        "box": {
+          "xmin": 115,
+          "ymin": 365,
+          "xmax": 208,
+          "ymax": 625
+        }
+      },
+      {
+        "key": "event_subtitle",
+        "label": "행사 부제",
+        "role": "subtitle",
+        "box": {
+          "xmin": 229,
+          "ymin": 260,
+          "xmax": 521,
+          "ymax": 469
+        }
+      },
+      {
+        "key": "event_title",
+        "label": "행사명",
+        "role": "title",
+        "box": {
+          "xmin": 229,
+          "ymin": 495,
+          "xmax": 573,
+          "ymax": 755
+        }
+      },
+      {
+        "key": "session_topic",
+        "label": "세션 주제",
+        "role": "subtitle",
+        "box": {
+          "xmin": 583,
+          "ymin": 521,
+          "xmax": 677,
+          "ymax": 729
+        }
+      },
+      {
+        "key": "event_date",
+        "label": "행사 일시",
+        "role": "body",
+        "box": {
+          "xmin": 693,
+          "ymin": 391,
+          "xmax": 859,
+          "ymax": 521
+        }
+      },
+      {
+        "key": "event_location",
+        "label": "행사 장소",
+        "role": "body",
+        "box": {
+          "xmin": 693,
+          "ymin": 547,
+          "xmax": 885,
+          "ymax": 677
+        }
+      },
+      {
+        "key": "background_image",
+        "label": "배경 이미지",
+        "role": "image",
+        "box": {
+          "xmin": 521,
+          "ymin": 0,
+          "xmax": 1000,
+          "ymax": 1000
+        }
+      }
+    ],
+    "layout_pattern": "좌측 로고 및 부제, 중앙 메인 제목, 우측 행사 정보 및 배경 이미지가 배치된 다단 레이아웃",
+    "estimated_signage_type": "horizontal_banner",
+    "dominant_color": "남색",
+    "summary": "남색 배경에 좌측 주최기관 로고와 부제, 중앙에 행사명과 부제, 우측에 행사 일시 및 장소 정보와 지구본 이미지가 배치된 환경 관련 토론회 배너 디자인."
+  },
+  {
+    "type_id": "horizontal_banner_v2",
+    "file": "코엑스/2018 스마트국토엑스포 183080/가로배너.png",
+    "error": "HTTP 503",
+    "elapsed": 5816,
+    "sizeKB": "910.2"
+  },
+  {
+    "type_id": "i_banner",
+    "file": "코엑스/2018 스마트국토엑스포 183080/무대 아이배너.png",
+    "error": "JSON 파싱 실패: Expected double-quoted property name in JSON at position 2487 (line 130 column 21)",
+    "elapsed": 33942,
+    "sizeKB": "321.8",
+    "finishReason": "MAX_TOKENS",
+    "raw": "{\n  \"slots\": [\n    {\n      \"key\": \"header_brand\",\n      \"label\": \"Smart Geospatial Expo 2018 로고\",\n      \"role\": \"logo\",\n      \"box\": {\n        \"xmin\": 751,\n        \"ymin\": 40,\n        \"xmax\": 930,\n   "
+  },
+  {
+    "type_id": "vertical_banner",
+    "file": "코엑스/2018 스마트국토엑스포 183080/세로배너 수정.png",
+    "ok": true,
+    "elapsed": 15423,
+    "sizeKB": "2148.5",
+    "finishReason": "STOP",
+    "slots": [
+      {
+        "key": "header_brand",
+        "label": "행사 로고 및 명칭",
+        "role": "logo",
+        "box": {
+          "xmin": 650,
+          "ymin": 30,
+          "xmax": 950,
+          "ymax": 80
+        }
+      },
+      {
+        "key": "title",
+        "label": "메인 행사명",
+        "role": "title",
+        "box": {
+          "xmin": 50,
+          "ymin": 180,
+          "xmax": 950,
+          "ymax": 350
+        }
+      },
+      {
+        "key": "subtitle",
+        "label": "행사 슬로건",
+        "role": "subtitle",
+        "box": {
+          "xmin": 100,
+          "ymin": 380,
+          "xmax": 900,
+          "ymax": 430
+        }
+      },
+      {
+        "key": "body_event_details",
+        "label": "행사 일시 및 장소",
+        "role": "body",
+        "box": {
+          "xmin": 100,
+          "ymin": 450,
+          "xmax": 900,
+          "ymax": 500
+        }
+      },
+      {
+        "key": "main_graphic",
+        "label": "메인 그래픽",
+        "role": "image",
+        "box": {
+          "xmin": 50,
+          "ymin": 520,
+          "xmax": 950,
+          "ymax": 750
+        }
+      },
+      {
+        "key": "footer_logos",
+        "label": "주최/주관 기관 로고",
+        "role": "footer",
+        "box": {
+          "xmin": 50,
+          "ymin": 780,
+          "xmax": 950,
+          "ymax": 950
+        }
+      }
+    ],
+    "layout_pattern": "상단 로고, 중앙 대형 타이틀, 슬로건, 행사 정보, 메인 그래픽, 하단 주최/주관 로고가 수직으로 배치된 패턴",
+    "estimated_signage_type": "vertical_banner",
+    "dominant_color": "남색",
+    "summary": "남색 배경에 상단 로고, 중앙 대형 타이틀, 슬로건, 행사 정보, 메인 그래픽, 하단 주최/주관 로고가 수직으로 배치된 현수막 디자인."
+  },
+  {
+    "type_id": "podium",
+    "file": "코엑스/2018 스마트국토엑스포 183080/포디움 타이틀_IMAGIC.png",
+    "ok": true,
+    "elapsed": 36178,
+    "sizeKB": "207.7",
+    "finishReason": "STOP",
+    "slots": [
+      {
+        "key": "header_title",
+        "label": "행사명",
+        "role": "title",
+        "box": {
+          "xmin": 86,
+          "ymin": 26,
+          "xmax": 891,
+          "ymax": 71
+        }
+      },
+      {
+        "key": "header_subtitle",
+        "label": "행사 부제",
+        "role": "subtitle",
+        "box": {
+          "xmin": 86,
+          "ymin": 80,
+          "xmax": 891,
+          "ymax": 106
+        }
+      },
+      {
+        "key": "header_logo_globe",
+        "label": "로고 아이콘",
+        "role": "logo",
+        "box": {
+          "xmin": 459,
+          "ymin": 35,
+          "xmax": 546,
+          "ymax": 61
+        }
+      },
+      {
+        "key": "body_illustration",
+        "label": "스마트 도시 일러스트",
+        "role": "image",
+        "box": {
+          "xmin": 0,
+          "ymin": 619,
+          "xmax": 1000,
+          "ymax": 1000
+        }
+      }
+    ],
+    "layout_pattern": "상단에 행사명과 부제가 배치되고, 하단에 주제를 나타내는 일러스트 이미지가 넓게 자리 잡은 형태이며, 중앙부는 여백으로 구성됩니다.",
+    "estimated_signage_type": "vertical_banner",
+    "dominant_color": "청색",
+    "summary": "청색 배경의 세로형 배너로, 상단에 행사명과 부제가 배치되어 있고 하단에는 스마트 도시를 형상화한 일러스트가 넓게 자리 잡고 있습니다."
+  },
+  {
+    "type_id": "foamboard",
+    "file": "코엑스/2018 스마트국토엑스포 183080/컨설팅 폼보드.png",
+    "ok": true,
+    "elapsed": 31613,
+    "sizeKB": "218.4",
+    "finishReason": "STOP",
+    "slots": [
+      {
+        "key": "header_brand",
+        "label": "주최기관 로고 및 행사명",
+        "role": "logo",
+        "box": {
+          "xmin": 55,
+          "ymin": 27,
+          "xmax": 472,
+          "ymax": 101
+        }
+      },
+      {
+        "key": "header_subtitle",
+        "label": "행사 영문명",
+        "role": "subtitle",
+        "box": {
+          "xmin": 55,
+          "ymin": 92,
+          "xmax": 472,
+          "ymax": 115
+        }
+      },
+      {
+        "key": "header_body",
+        "label": "행사 일시 및 장소",
+        "role": "body",
+        "box": {
+          "xmin": 55,
+          "ymin": 120,
+          "xmax": 694,
+          "ymax": 138
+        }
+      },
+      {
+        "key": "header_image",
+        "label": "헤더 배경 이미지",
+        "role": "image",
+        "box": {
+          "xmin": 486,
+          "ymin": 0,
+          "xmax": 1000,
+          "ymax": 157
+        }
+      },
+      {
+        "key": "room_title",
+        "label": "회의실 번호",
+        "role": "title",
+        "box": {
+          "xmin": 250,
+          "ymin": 175,
+          "xmax": 736,
+          "ymax": 248
+        }
+      },
+      {
+        "key": "floor_plan_area",
+        "label": "회의실 배치도",
+        "role": "image",
+        "box": {
+          "xmin": 138,
+          "ymin": 268,
+          "xmax": 861,
+          "ymax": 824
+        }
+      },
+      {
+        "key": "table_1_number",
+        "label": "테이블 번호 1",
+        "role": "body",
+        "box": {
+          "xmin": 555,
+          "ymin": 629,
+          "xmax": 611,
+          "ymax": 666
+        }
+      },
+      {
+        "key": "table_2_number",
+        "label": "테이블 번호 2",
+        "role": "body",
+        "box": {
+          "xmin": 555,
+          "ymin": 351,
+          "xmax": 611,
+          "ymax": 388
+        }
+      },
+      {
+        "key": "table_3_number",
+        "label": "테이블 번호 3",
+        "role": "body",
+        "box": {
+          "xmin": 263,
+          "ymin": 351,
+          "xmax": 319,
+          "ymax": 388
+        }
+      },
+      {
+        "key": "table_4_number",
+        "label": "테이블 번호 4",
+        "role": "body",
+        "box": {
+          "xmin": 263,
+          "ymin": 629,
+          "xmax": 319,
+          "ymax": 666
+        }
+      },
+      {
+        "key": "entrance_arrow",
+        "label": "입구 화살표",
+        "role": "arrow",
+        "box": {
+          "xmin": 208,
+          "ymin": 814,
+          "xmax": 277,
+          "ymax": 861
+        }
+      },
+      {
+        "key": "entrance_text",
+        "label": "입구 텍스트",
+        "role": "body",
+        "box": {
+          "xmin": 166,
+          "ymin": 870,
+          "xmax": 333,
+          "ymax": 888
+        }
+      },
+      {
+        "key": "exit_symbol",
+        "label": "출구 표시",
+        "role": "image",
+        "box": {
+          "xmin": 416,
+          "ymin": 814,
+          "xmax": 486,
+          "ymax": 861
+        }
+      }
+    ],
+    "layout_pattern": "상단 헤더, 중앙 룸 번호, 하단 회의실 배치도 및 입출구 안내로 구성된 수직형 레이아웃",
+    "estimated_signage_type": "foamboard",
+    "dominant_color": "화이트",
+    "summary": "MICE 행사장의 회의실 배치도를 안내하는 표지판 디자인으로, 상단에 행사 정보와 하단에 입출구 안내가 포함된 레이아웃."
+  },
+  {
+    "type_id": "chunchen_banner",
+    "file": "코엑스/2018 스마트국토엑스포 183080/MOU 통천_305호.png",
+    "ok": true,
+    "elapsed": 24140,
+    "sizeKB": "386.0",
+    "finishReason": "STOP",
+    "slots": [
+      {
+        "key": "event_name",
+        "label": "행사명",
+        "role": "subtitle",
+        "box": {
+          "xmin": 350,
+          "ymin": 300,
+          "xmax": 650,
+          "ymax": 338
+        }
+      },
+      {
+        "key": "logo_cambodia",
+        "label": "캄보디아 기관 로고",
+        "role": "logo",
+        "box": {
+          "xmin": 88,
+          "ymin": 363,
+          "xmax": 263,
+          "ymax": 525
+        }
+      },
+      {
+        "key": "main_title",
+        "label": "메인 타이틀",
+        "role": "title",
+        "box": {
+          "xmin": 288,
+          "ymin": 388,
+          "xmax": 713,
+          "ymax": 475
+        }
+      },
+      {
+        "key": "logo_korea",
+        "label": "대한민국 기관 로고",
+        "role": "logo",
+        "box": {
+          "xmin": 738,
+          "ymin": 363,
+          "xmax": 913,
+          "ymax": 525
+        }
+      },
+      {
+        "key": "participants",
+        "label": "참여국",
+        "role": "subtitle",
+        "box": {
+          "xmin": 288,
+          "ymin": 538,
+          "xmax": 838,
+          "ymax": 575
+        }
+      },
+      {
+        "key": "date_location",
+        "label": "일시 및 장소",
+        "role": "body",
+        "box": {
+          "xmin": 288,
+          "ymin": 588,
+          "xmax": 838,
+          "ymax": 613
+        }
+      },
+      {
+        "key": "bottom_graphic",
+        "label": "하단 그래픽",
+        "role": "image",
+        "box": {
+          "xmin": 250,
+          "ymin": 650,
+          "xmax": 875,
+          "ymax": 975
+        }
+      }
+    ],
+    "layout_pattern": "중앙 정렬 텍스트와 양 옆 로고, 하단 그래픽 패턴",
+    "estimated_signage_type": "chunchen_banner",
+    "dominant_color": "파란색",
+    "summary": "MOU 체결식을 위한 파란색 배경의 통천 디자인으로, 양국 국기, 행사 정보 및 스마트 도시 그래픽이 포함되어 있습니다."
+  }
+]

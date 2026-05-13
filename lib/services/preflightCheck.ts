@@ -177,3 +177,4 @@ export function groupIssues(issues: PreflightIssue[]) {
     infos: issues.filter(i => i.level === 'info'),
   }
 }
+
