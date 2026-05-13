@@ -81,11 +81,11 @@ export default async function DashboardPage() {
             {userIsAdmin && (
               <>
                 <div className="w-px h-4 bg-slate-200 hidden sm:block" />
-                {/* 관리자 페이지: 운영 KPI · 유저 관리 · 전체 프로젝트 · AI 사용량 */}
+                {/* v9.26: 관리자 페이지 — 운영 KPI ↔ 전체 프로젝트 현황 통합 (피드백 ①) */}
                 <Link
-                  href="/data"
+                  href="/admin"
                   className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 text-xs transition"
-                  title="관리자 페이지 — 운영 KPI / 유저 관리 / 전체 프로젝트 / AI 사용량"
+                  title="관리자 페이지 — 운영 대시보드 (KPI + 프로젝트 현황 통합)"
                 >
                   <Database className="w-3.5 h-3.5" />
                   관리자 페이지
