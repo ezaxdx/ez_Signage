@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import {
-  LayoutGrid, ArrowLeft, GraduationCap, MapPin, Plus, Loader2,
+  GraduationCap, MapPin, Plus, Loader2,
   CheckCircle2, XCircle, AlertCircle, Clock, FileText, Inbox, Building2,
   Sparkles, Flag, BarChart3, TrendingUp, AlertTriangle, Workflow, Image as ImageIcon,
 } from 'lucide-react'
@@ -430,28 +429,7 @@ export function LearningManagerClient({
 
   return (
     <div className="min-h-screen bg-white">
-      <header className="border-b border-slate-200/80 bg-white/60 backdrop-blur-md sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <Link href="/dashboard" className="w-7 h-7 rounded-lg bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center transition">
-              <LayoutGrid className="w-4 h-4 text-white" />
-            </Link>
-            <Link href="/dashboard" className="text-slate-900 hover:text-indigo-300 font-semibold text-sm tracking-tight transition">
-              제작물 리스트 가이드
-            </Link>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link href="/admin" className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-300 text-xs transition">
-              관리자 페이지
-            </Link>
-            <Link href="/dashboard" className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-300 text-xs transition">
-              <ArrowLeft className="w-3.5 h-3.5" />
-              프로젝트로
-            </Link>
-          </div>
-        </div>
-      </header>
-
+      {/* v9.33: 헤더 인라인 nav 제거 — 글로벌 좌측 사이드바(AdminSidebar)로 일원화 */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
         <div>
           <div className="flex items-center gap-2">
@@ -1020,8 +998,9 @@ export function LearningManagerClient({
 
         </>}
         </>}
-        {/* v9.31: signage-types 사이드바 항목은 제거됨 — 동의어 대섹션 내 ′환경장식물 종류 관리′ 서브탭으로 통합 */}
-        {activeSection === 'synonyms' && synonymSubTab === 'types' && (
+        {/* v9.33: 환경장식물 종류 섹션은 SYNONYM_SUBTABS 버튼바 아래(동의어 블록 안)로 이동
+            — 이전엔 이 위치에 렌더 → 버튼바가 종류 표 아래에 표시되는 버그 발생 */}
+        {false && activeSection === 'synonyms' && synonymSubTab === 'types' && (
           <section className="bg-white border border-slate-200 rounded-xl p-5">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-slate-900 font-semibold text-sm flex items-center gap-2">
@@ -1153,6 +1132,117 @@ export function LearningManagerClient({
             )
           })}
         </div>
+
+        {/* v9.33: 환경장식물 종류 섹션을 SYNONYM_SUBTABS 버튼바 뒤로 이동 (버튼바가 종류 표 아래에 보이는 버그 수정) */}
+        {synonymSubTab === 'types' && (
+          <section className="bg-white border border-slate-200 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-slate-900 font-semibold text-sm flex items-center gap-2">
+                <Inbox className="w-4 h-4 text-indigo-500" />
+                환경장식물 종류 ({signageTypeList.length})
+              </h2>
+              {isAdmin && (
+                <button
+                  onClick={() => { setStShowForm(v => !v); setStError(null) }}
+                  className="flex items-center gap-1 text-[11px] bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded font-medium"
+                >
+                  <Plus className="w-3 h-3" />
+                  종류 추가
+                </button>
+              )}
+            </div>
+
+            {isAdmin && stShowForm && (
+              <div className="mb-3 bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-0.5">종류명 *</label>
+                    <input value={stName} onChange={e => setStName(e.target.value)} placeholder="예: 물통배너"
+                      className="w-full border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-0.5">분류</label>
+                    <select value={stCategory} onChange={e => setStCategory(e.target.value)}
+                      className="w-full border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                      <option>배너</option><option>현수막</option><option>기타</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-0.5">너비 mm *</label>
+                    <input type="number" value={stWidth} onChange={e => setStWidth(e.target.value)} placeholder="600"
+                      className="w-full border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-0.5">높이 mm *</label>
+                    <input type="number" value={stHeight} onChange={e => setStHeight(e.target.value)} placeholder="1800"
+                      className="w-full border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-0.5">레이아웃</label>
+                    <select value={stLayout} onChange={e => setStLayout(e.target.value as '세로' | '가로' | '정사각')}
+                      className="w-full border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                      <option>세로</option><option>가로</option><option>정사각</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-500 block mb-0.5">기본 재질</label>
+                  <input value={stMaterial} onChange={e => setStMaterial(e.target.value)} placeholder="예: PET, 현수막, 인쇄"
+                    className="w-full border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                </div>
+                {stError && <p className="text-[11px] text-red-600">{stError}</p>}
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => { setStShowForm(false); setStError(null) }}
+                    className="text-[11px] text-slate-500 hover:text-slate-700 px-2 py-1">취소</button>
+                  <button onClick={addSignageType} disabled={stSaving}
+                    className="flex items-center gap-1 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded disabled:opacity-50">
+                    {stSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                    추가
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="overflow-x-auto border border-slate-200 rounded">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr className="text-slate-600 text-[11px]">
+                    <th className="px-2 py-1.5 text-left font-semibold">종류명</th>
+                    <th className="px-2 py-1.5 text-left font-semibold">레이아웃</th>
+                    <th className="px-2 py-1.5 text-right font-semibold">너비 (mm)</th>
+                    <th className="px-2 py-1.5 text-right font-semibold">높이 (mm)</th>
+                    <th className="px-2 py-1.5 text-left font-semibold">기본 재질</th>
+                    <th className="px-2 py-1.5 text-left font-semibold">분류</th>
+                    {isAdmin && <th className="px-2 py-1.5 text-center font-semibold w-8"></th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {signageTypeList.map(t => (
+                    <tr key={t.id} className="hover:bg-slate-50">
+                      <td className="px-2 py-1 text-slate-800 font-medium">{t.name}</td>
+                      <td className="px-2 py-1">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${t.layout === '세로' ? 'bg-violet-100 text-violet-700' : t.layout === '가로' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>{t.layout}</span>
+                      </td>
+                      <td className="px-2 py-1 text-right text-slate-700 font-mono text-[11px]">{t.width_mm.toLocaleString()}</td>
+                      <td className="px-2 py-1 text-right text-slate-700 font-mono text-[11px]">{t.height_mm.toLocaleString()}</td>
+                      <td className="px-2 py-1 text-slate-600 text-[11px]">{t.default_material}</td>
+                      <td className="px-2 py-1 text-slate-500 text-[11px]">{t.category}</td>
+                      {isAdmin && (
+                        <td className="px-2 py-1 text-center">
+                          <button onClick={() => deleteSignageType(t.name)}
+                            title="삭제 (표준 시드는 삭제 불가)"
+                            className="text-slate-300 hover:text-red-500 text-[11px] leading-none">✕</button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
 
         {synonymSubTab === 'mapping' && <>
         {/* ── 비표준 → 표준 매핑 (5-① 서브) ─────────────────── */}

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import {
   Activity, TrendingUp, CheckCircle, BarChart3, Sparkles, Plus, Calendar,
-  ExternalLink, Filter, Brain, Users, GraduationCap, Database
+  ExternalLink, Filter,
 } from 'lucide-react'
 
 // v9.26: 운영 KPI ↔ 전체 프로젝트 현황 통합 (사용자 피드백 ① 반영)
@@ -119,41 +119,7 @@ export function AdminOpsClient({ kpi, projects, partStageBars, calendar }: Props
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* 상단 네비 (관리자 4섹션 진입) */}
-      <header className="border-b border-slate-200 bg-white sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
-              <Activity className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-slate-900 font-semibold text-sm tracking-tight">
-              관리자 페이지 — 운영 대시보드
-            </span>
-          </div>
-          <nav className="flex items-center gap-3">
-            <Link href="/dashboard" className="text-slate-700 hover:text-indigo-600 text-xs">
-              내 프로젝트
-            </Link>
-            <div className="w-px h-4 bg-slate-200" />
-            <Link href="/admin" className="text-indigo-600 font-medium text-xs flex items-center gap-1">
-              <Activity className="w-3.5 h-3.5" /> 운영 대시보드
-            </Link>
-            <Link href="/admin/ai" className="text-slate-500 hover:text-indigo-600 text-xs flex items-center gap-1">
-              <Brain className="w-3.5 h-3.5" /> AI 관리
-            </Link>
-            <Link href="/admin/users" className="text-slate-400 cursor-not-allowed text-xs flex items-center gap-1" title="데이터허브 연동 결정 전 — 접근 차단">
-              <Users className="w-3.5 h-3.5" /> 유저 관리
-            </Link>
-            <Link href="/admin/learning" className="text-slate-500 hover:text-indigo-600 text-xs flex items-center gap-1">
-              <GraduationCap className="w-3.5 h-3.5" /> 데이터 학습
-            </Link>
-            <Link href="/data" className="text-slate-400 hover:text-indigo-600 text-xs flex items-center gap-1" title="과거 분석 자료 (13탭)">
-              <Database className="w-3.5 h-3.5" /> 분석 자료
-            </Link>
-          </nav>
-        </div>
-      </header>
-
+      {/* v9.33: 헤더 인라인 nav 제거 — 글로벌 좌측 사이드바(AdminSidebar)로 일원화 */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
 
         {/* 페이지 헤더 */}
@@ -237,7 +203,7 @@ export function AdminOpsClient({ kpi, projects, partStageBars, calendar }: Props
                 {partOptions.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
               <select value={filterPm} onChange={e => setFilterPm(e.target.value)} className="text-xs border border-slate-200 rounded-md px-2 py-1.5 bg-white">
-                <option value="">PM 전체</option>
+                <option value="">담당자 전체</option>
                 {pmOptions.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
               <select value={filterVenue} onChange={e => setFilterVenue(e.target.value)} className="text-xs border border-slate-200 rounded-md px-2 py-1.5 bg-white">
@@ -258,7 +224,7 @@ export function AdminOpsClient({ kpi, projects, partStageBars, calendar }: Props
             <table className="w-full text-xs">
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
-                  {['NO', '파트', 'PM', '행사', '상태', '발주일', '컨펌율', '항목수', 'AI정확도', '담당자', '비고', '편집', '다운로드', '승인', '반려', '보기'].map(h => (
+                  {['NO', '파트', '담당자', '행사', '상태', '발주일', '컨펌율', '항목수', 'AI정확도', '확인자', '비고', '편집', '다운로드', '승인', '반려', '보기'].map(h => (
                     <th key={h} className="px-2 py-2 text-left font-medium whitespace-nowrap border-b border-slate-200">{h}</th>
                   ))}
                 </tr>

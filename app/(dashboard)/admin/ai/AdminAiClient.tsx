@@ -3,8 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import {
-  Activity, Brain, DollarSign, AlertTriangle, Save, RefreshCw,
-  Users, GraduationCap, Database
+  Brain, DollarSign, AlertTriangle, Save, RefreshCw,
 } from 'lucide-react'
 
 // v9.27: 관리자가 AI 환경을 설정할 수 있는 영역 (사용자 피드백 ③)
@@ -84,38 +83,7 @@ export function AdminAiClient({ stats, dailyTrend, abnormalUsers }: Props) {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
-              <Brain className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-slate-900 font-semibold text-sm tracking-tight">
-              관리자 페이지 — AI 관리
-            </span>
-          </div>
-          <nav className="flex items-center gap-3">
-            <Link href="/dashboard" className="text-slate-700 hover:text-indigo-600 text-xs">내 프로젝트</Link>
-            <div className="w-px h-4 bg-slate-200" />
-            <Link href="/admin" className="text-slate-500 hover:text-indigo-600 text-xs flex items-center gap-1">
-              <Activity className="w-3.5 h-3.5" /> 운영 대시보드
-            </Link>
-            <Link href="/admin/ai" className="text-indigo-600 font-medium text-xs flex items-center gap-1">
-              <Brain className="w-3.5 h-3.5" /> AI 관리
-            </Link>
-            <Link href="/admin/users" className="text-slate-400 cursor-not-allowed text-xs flex items-center gap-1" title="접근 차단 — 데이터허브 연동 결정 전">
-              <Users className="w-3.5 h-3.5" /> 유저 관리
-            </Link>
-            <Link href="/admin/learning" className="text-slate-500 hover:text-indigo-600 text-xs flex items-center gap-1">
-              <GraduationCap className="w-3.5 h-3.5" /> 데이터 학습
-            </Link>
-            <Link href="/data" className="text-slate-400 hover:text-indigo-600 text-xs flex items-center gap-1">
-              <Database className="w-3.5 h-3.5" /> 분석 자료
-            </Link>
-          </nav>
-        </div>
-      </header>
-
+      {/* v9.33: 헤더 인라인 nav 제거 — 글로벌 좌측 사이드바(AdminSidebar)로 일원화 */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
         <div>
           <h1 className="text-slate-900 text-xl font-bold">AI 관리</h1>
