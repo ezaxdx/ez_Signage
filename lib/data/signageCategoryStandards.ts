@@ -175,14 +175,44 @@ interface VenueSignageMap {
 const VENUE_SIGNAGE_MAP = rawVenueSignageMap as unknown as VenueSignageMap
 
 /**
+ * v9.25: 발주엑셀 venue 라벨 노이즈 필터 (goals/current.md v9.23 후속 작업).
+ * _venue_signage_map.json에서 venue로 잘못 등록된 비행사장 항목을 제외.
+ * 발견 노이즈 (실측): "미상"·"기타"·"-"·"차량"·"인천공항"·"등록데스크"·"안내소"·
+ *   "통역부스"·"의무실"·"창고"·"대기실"·"운영사무국"·"본부"·"CP"·"방한용품배포대"·
+ *   "물품보관소"·"음수대"·"쉼터"·"포디움"·"천장"·"플로어"·"로비" 등 비행사장 위치 표기.
+ * 이 라벨들은 행사장이 아니라 행사 내부 부속 위치이므로 venue_key 매칭 대상에서 제외.
+ */
+const VENUE_LABEL_NOISE_EXACT = new Set([
+  '미상', '기타', '-', '차량', '인천공항',
+])
+const VENUE_LABEL_NOISE_PATTERNS = [
+  /등록데스크/, /안내소/, /통역부스/, /의무실/, /창고/,
+  /대기실/, /운영사무국/, /연출팀/, /운영팀/, /본부$/, /\bCP\b/,
+  /방한용품/, /물품보관소/, /음수대/, /쉼터/, /경호/,
+  /포디움/, /^주차장$/, /^로비$/,
+  // 행사장 내부 위치만 표기된 경우 (행사장명 없음)
+  /^플로어$/, /^무대$/, /^천장$/, /^로비\s/,
+  /운영요원/, /출연자대기실/, /출연진/,
+]
+
+function isVenueLabelNoise(label: string): boolean {
+  if (!label) return true
+  const trimmed = label.trim()
+  if (VENUE_LABEL_NOISE_EXACT.has(trimmed)) return true
+  if (trimmed.length <= 1) return true
+  return VENUE_LABEL_NOISE_PATTERNS.some(re => re.test(trimmed))
+}
+
+/**
  * 발주엑셀 통합 맵에서 venue 단위로 카테고리 학습 보유 여부 추출.
  * fuzzy 매칭으로 venueFacilityGuide의 venue_key에 합산.
  * SignageType 빈도 ≥ 1이면 학습 데이터로 인정 (denied 아닌 실제 발주 기록).
+ * v9.25: venue 라벨 노이즈 필터 추가 (isVenueLabelNoise).
  */
 function computeMapCoverageByVenueKey(): Map<string, Record<StandardCategoryKey, boolean>> {
   const result = new Map<string, Record<StandardCategoryKey, boolean>>()
   for (const ev of VENUE_SIGNAGE_MAP.events) {
-    const venues = (ev.venues_seen ?? []).filter(v => v && v !== '미상' && v !== '-')
+    const venues = (ev.venues_seen ?? []).filter(v => v && !isVenueLabelNoise(v))
     if (venues.length === 0) continue
     // 각 venue 후보에 대해 findVenueKey 매칭
     const matchedKeys = new Set<string>()
@@ -279,9 +309,10 @@ export function buildCoverageForUnregisteredVenue(venueName: string): VenueCateg
     x_banner: false, ceiling: false, support: false,
   }
   // 발주엑셀 통합 맵에서 venue 이름 fuzzy 매칭
+  // v9.25: 노이즈 필터 적용 — 비행사장 라벨 제외
   const target = venueName.replace(/\s/g, '').toLowerCase()
   for (const ev of VENUE_SIGNAGE_MAP.events) {
-    const venues = (ev.venues_seen ?? []).filter(v => v && v !== '미상' && v !== '-')
+    const venues = (ev.venues_seen ?? []).filter(v => v && !isVenueLabelNoise(v))
     const hit = venues.some(v => {
       const vn = v.replace(/\s/g, '').toLowerCase()
       return vn.includes(target) || target.includes(vn)
