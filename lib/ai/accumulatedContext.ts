@@ -40,6 +40,30 @@ export interface ExceptionPattern {
   finalized_count: number // 이 중 실제 완료(finalized)된 건수
 }
 
+// v9.37 — 어드민 마스터 자동 주입 데이터
+export interface AdminSignageType {
+  name: string
+  category: string | null
+  default_width_mm: number | null
+  default_height_mm: number | null
+  default_material: string | null
+  layout: string | null
+  is_standard: boolean
+  notes: string | null
+}
+
+export interface AdminSynonym {
+  alias_name: string
+  canonical_name: string
+  kind: string | null
+}
+
+export interface AdminFacilityGuide {
+  venue_id: string
+  venue_name: string
+  guide: unknown    // facility_guide_json — VenueFacilityGuide 호환 구조
+}
+
 export interface AccumulatedContext {
   matched_projects: number
   total_items: number
@@ -47,6 +71,10 @@ export interface AccumulatedContext {
   category_distribution: Array<{ category: string; weighted_count: number }>
   top_items: AccumulatedItem[]   // 상위 8건 — 프롬프트 직접 주입
   exception_patterns: ExceptionPattern[]  // 시설 가이드 예외 누적 패턴
+  // v9.37 — 어드민 마스터 자동 주입
+  admin_signage_types: AdminSignageType[]
+  admin_synonyms: AdminSynonym[]
+  admin_facility_guide: AdminFacilityGuide | null
   note: string
 }
 
@@ -79,8 +107,16 @@ export async function buildAccumulatedContext(
     category_distribution: [],
     top_items: [],
     exception_patterns: [],
+    admin_signage_types: [],
+    admin_synonyms: [],
+    admin_facility_guide: null,
     note: '누적 앱 사용 데이터 없음 — seed 데이터만 사용',
   }
+
+  // v9.37 — 어드민 마스터(환경장식물 종류·동의어·행사장 시설 가이드) 자동 조회
+  // venue가 비어 있어도 종류·동의어는 주입한다.
+  const adminMaster = await loadAdminMaster(opts.venue ?? '')
+  Object.assign(empty, adminMaster)
 
   if (!opts.venue?.trim()) return empty
 
@@ -102,6 +138,7 @@ export async function buildAccumulatedContext(
       .slice(0, opts.limit ?? 5)
 
     if (matched.length === 0) return { ...empty, exception_patterns: [], note: '같은 행사장 누적 데이터 없음 — seed 데이터만 사용' }
+    // (admin_master_* 필드는 empty에 이미 채워져 있음)
 
     // 2) 해당 프로젝트들의 design_items 모두 끌어오기
     const pids = matched.map(p => p.id)
@@ -211,6 +248,9 @@ export async function buildAccumulatedContext(
       category_distribution: distribution,
       top_items: topItems,
       exception_patterns: exceptionPatterns,
+      admin_signage_types: empty.admin_signage_types,
+      admin_synonyms: empty.admin_synonyms,
+      admin_facility_guide: empty.admin_facility_guide,
       note: `누적 ${matched.length}개 프로젝트 · ${weighted.length}건 항목 (입력 ${stageCount.input}/중간 ${stageCount.mid}/컨펌 ${stageCount.confirmed}/완료 ${stageCount.finalized})`,
     }
   } catch {
@@ -218,9 +258,76 @@ export async function buildAccumulatedContext(
   }
 }
 
+/**
+ * v9.37 — 어드민 마스터(환경장식물 종류·동의어·시설 가이드) 자동 로드.
+ * 테이블 미존재·RLS 차단 등 모든 오류는 안전 폴백(빈 배열).
+ */
+async function loadAdminMaster(venueName: string): Promise<{
+  admin_signage_types: AdminSignageType[]
+  admin_synonyms: AdminSynonym[]
+  admin_facility_guide: AdminFacilityGuide | null
+}> {
+  const fallback = {
+    admin_signage_types: [] as AdminSignageType[],
+    admin_synonyms: [] as AdminSynonym[],
+    admin_facility_guide: null as AdminFacilityGuide | null,
+  }
+  try {
+    const supabase = createClient()
+
+    // 환경장식물 종류 — 표준 시드 우선
+    const { data: stypes } = await supabase
+      .from('signage_types')
+      .select('name, category, default_width_mm, default_height_mm, default_material, layout, is_standard, notes')
+      .order('sort_order', { ascending: true })
+      .limit(50)
+
+    // 동의어 매핑
+    const { data: synonyms } = await supabase
+      .from('signage_aliases')
+      .select('alias_name, canonical_name, kind')
+      .limit(200)
+
+    // 시설 가이드 — venue 이름 부분 일치로 1건 선택
+    let guide: AdminFacilityGuide | null = null
+    if (venueName.trim()) {
+      const { data: venues } = await supabase
+        .from('venues')
+        .select('id, name, facility_guide_json')
+        .not('facility_guide_json', 'is', null)
+        .limit(50)
+
+      if (venues && venues.length > 0) {
+        const ranked = venues
+          .map(v => ({ ...v, score: venueMatchScore(venueName, v.name) }))
+          .filter(v => v.score > 0)
+          .sort((a, b) => b.score - a.score)
+        const best = ranked[0]
+        if (best) {
+          guide = {
+            venue_id: best.id,
+            venue_name: best.name,
+            guide: best.facility_guide_json,
+          }
+        }
+      }
+    }
+
+    return {
+      admin_signage_types: (stypes as AdminSignageType[] | null) ?? [],
+      admin_synonyms: (synonyms as AdminSynonym[] | null) ?? [],
+      admin_facility_guide: guide,
+    }
+  } catch {
+    return fallback
+  }
+}
+
 /** Gemini 프롬프트용 텍스트 압축 */
 export function formatAccumulatedContext(ctx: AccumulatedContext): string {
-  if (ctx.matched_projects === 0) return ''
+  // v9.37 — 어드민 마스터 블록을 먼저 조립한다(누적 프로젝트가 0건이어도 노출).
+  const adminBlock = formatAdminMaster(ctx)
+  if (ctx.matched_projects === 0) return adminBlock
   const dist = ctx.category_distribution.slice(0, 10)
     .map(d => `${d.category}(${d.weighted_count})`).join(' / ')
   const tops = ctx.top_items.map((it, i) => {
@@ -253,5 +360,47 @@ export function formatAccumulatedContext(ctx: AccumulatedContext): string {
     }
   }
 
-  return lines.join('\n')
+  return [adminBlock, lines.join('\n')].filter(Boolean).join('\n')
+}
+
+/** v9.37 — 어드민 마스터(환경장식물 종류·동의어·시설 가이드) 블록 */
+function formatAdminMaster(ctx: AccumulatedContext): string {
+  const blocks: string[] = []
+
+  // 환경장식물 종류
+  if (ctx.admin_signage_types.length > 0) {
+    const top = ctx.admin_signage_types.slice(0, 30).map(t => {
+      const size = (t.default_width_mm && t.default_height_mm)
+        ? ` ${t.default_width_mm}×${t.default_height_mm}mm`
+        : ''
+      const mat  = t.default_material ? ` / ${t.default_material}` : ''
+      const lay  = t.layout ? ` (${t.layout})` : ''
+      const std  = t.is_standard ? ' ★표준' : ''
+      return `- ${t.name}${size}${mat}${lay}${std}`
+    }).join('\n')
+    blocks.push(`[환경장식물 종류 — 어드민 마스터(${ctx.admin_signage_types.length}종)]\n${top}`)
+  }
+
+  // 동의어
+  if (ctx.admin_synonyms.length > 0) {
+    const pairs = ctx.admin_synonyms.slice(0, 40)
+      .map(s => `${s.alias_name} → ${s.canonical_name}`)
+      .join(' / ')
+    blocks.push(`[동의어 매핑 — 어드민 마스터(${ctx.admin_synonyms.length}건)]\n※ 사용자가 비표준 표기를 입력했을 때 표준명으로 정규화.\n${pairs}`)
+  }
+
+  // 시설 가이드
+  if (ctx.admin_facility_guide) {
+    const g = ctx.admin_facility_guide
+    let body = ''
+    try {
+      body = JSON.stringify(g.guide, null, 0)
+      if (body.length > 1200) body = body.slice(0, 1200) + '…'
+    } catch {
+      body = '(guide JSON 직렬화 실패)'
+    }
+    blocks.push(`[시설 가이드 — ${g.venue_name}]\n※ 행사장 시설 제약·표준 수량·금지 항목. 추천 후처리에서 강제 반영할 것.\n${body}`)
+  }
+
+  return blocks.length > 0 ? '\n' + blocks.join('\n\n') : ''
 }
