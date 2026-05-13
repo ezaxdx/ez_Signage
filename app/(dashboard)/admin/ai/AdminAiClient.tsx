@@ -6,10 +6,10 @@ import {
   DollarSign, AlertTriangle, Save, RefreshCw,
   Phone, Coins, Wallet,
 } from 'lucide-react'
-import { AiPipelineCard } from './AiPipelineCard'
 import { AccuracyTable, type AccuracyRow } from './AccuracyTable'
 
-// v9.39: KPI 3 + AI 추천 파이프라인 + 카테고리 정확도 테이블 (명세 ADMIN_REDESIGN_260513.md §1-4)
+// v9.43: AI 추천 파이프라인 카드는 화면에서 제거 (프롬프트 SYSTEM_INSTRUCTION 조립에만 사용)
+// v9.39: KPI 3 + 카테고리 정확도 테이블 (명세 ADMIN_REDESIGN_260513.md §1-4)
 // — 사용량/비용/예산/이상 사용자/환경 설정 폼은 하단에 보존 (v9.27 동작 그대로)
 
 interface Stats {
@@ -122,8 +122,7 @@ export function AdminAiClient({ kpi3, accuracyRows, stats, dailyTrend, abnormalU
           </div>
         </section>
 
-        {/* ── v9.39: AI 추천 파이프라인 (4 step) ─────────────────── */}
-        <AiPipelineCard />
+        {/* ── v9.43: AI 추천 파이프라인 카드 제거 — 프롬프트(SYSTEM_INSTRUCTION) 조립에만 사용 ── */}
 
         {/* ── v9.39: 카테고리별 정확도 테이블 (도면 학습 = 커밍순) ── */}
         <AccuracyTable rows={accuracyRows} />
