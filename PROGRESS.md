@@ -1,5 +1,56 @@
 # 작업 이력
 
+## 2026-05-14 (v9.45) — 잔존 오류·문제 일괄 점검 + AdminOps KPI 데드 prop 정리
+
+### 사용자 요청
+조기흠 사원(AXDX팀, 2026-05-14): "v9.45 잔존 오류·문제 일괄 해결 — 오류 및 여러 문제 사항 확인 및 해결"
++ 보존 조건: AiPipelineCard.tsx 삭제 금지 + v9.44 백엔드 점검 작업물 유지 + DB·의존성 변경 X.
+
+### 점검 영역별 결과 (8 영역)
+
+| 영역 | 진단 | 결과 |
+|------|------|------|
+| ① TypeScript·빌드 | `npx tsc --noEmit` + `npm run build` | TSC 0 에러 / Next 빌드 25/25 라우트 PASS |
+| ② harness | `node scripts/harness.mjs` | 72/72 (0 fail, 2 warn = dev 미실행·worktree env 부재) |
+| ③ JSON.parse 런타임 안전 | 직접 호출 12건 모두 try/catch 또는 `?? '{}'` 폴백 확인 | PASS |
+| ④ console.log 잔존 | NewProjectButton의 `[Excel Parse]`·`[Mockup Upload]` 다수 | **의도적 유지** — alert 메시지에 "F12 → Console" 안내가 명시되어 운영 디버그 자료로 사용 중 |
+| ⑤ 보안 — 클라이언트 노출 | `SUPABASE_SERVICE_ROLE_KEY` 검색 | 서버 스크립트(seed_venues.mjs)·README·docs만 사용 → 클라이언트 코드 노출 0건 |
+| ⑥ 환경변수 안전 핸들링 | GEMINI_API_KEY 미설정 시 휴리스틱 폴백 + 명확 에러 메시지 | PASS |
+| ⑦ DB 마이그레이션 idempotent | v9.37 + v9.40(admin_master 누적) 비교 — v9.40은 `ADD COLUMN IF NOT EXISTS`·`ON CONFLICT` 기반 재실행 안전 | PASS |
+| ⑧ 데드 코드 — AiPipelineCard.tsx | import 끊긴 dead component | **보존 유지** (사용자 명시 — 향후 어드민 편집 재활용) |
+
+### 식별·수정한 데드 코드: AdminOps KPI 신호등 prop
+**원인**: v9.39에서 `/admin` 운영 대시보드의 AI 정확도 신호등 카드를 `/admin/ai`로 이관했지만, page.tsx의 데이터 계산(weighted/aiAccuracy/accuracySignal)과 AdminOpsClient KpiData 인터페이스 prop은 잔존. 클라이언트에서 사용되지 않는 미사용 prop drilling.
+
+**수정 범위 (2개 파일)**:
+- `app/(dashboard)/admin/AdminOpsClient.tsx`: KpiData에서 `aiAccuracy`·`accuracySignal` 필드 제거 + v9.45 코멘트
+- `app/(dashboard)/admin/page.tsx`: 미사용 가중치 합산 루프(96~112줄) 제거 + AdminOpsClient kpi prop에서 두 필드 제외
+
+**보존**:
+  - `projectsTable.map`의 프로젝트별 `pAccuracy`·`ai_accuracy`는 표 컬럼에서 활용 중 → 유지
+  - `/admin/ai`의 AccuracyTable은 별도 데이터 경로(category coverage)로 정확도 표시 → 영향 없음
+
+### 변경 파일 (2개)
+- `app/(dashboard)/admin/AdminOpsClient.tsx` (KpiData 인터페이스 슬림화)
+- `app/(dashboard)/admin/page.tsx` (미사용 데이터 계산 + prop 제거)
+
+### 손대지 않은 영역
+- AiPipelineCard.tsx (사용자 명시 보존)
+- v9.44 백엔드 점검 작업물 (admin API 입력 검증)
+- DB 스키마 / 의존성 / 환경변수
+- console.log 디버그 잔존 (실무 디버그 자료로 활용 중)
+
+### 검증
+- TSC 0 에러
+- Next 빌드 25/25 라우트 PASS
+- `/admin` 4.24 kB 동일 유지 (서버 코드만 슬림)
+- harness 72/72 (0 fail)
+
+### 결론
+v9.44에서 admin API 백엔드 정밀 점검이 완료된 후 잔존 코드 품질 이슈는 미세. 명백한 데드 prop 1건만 정리하고 기능·동작 변경 없음을 확인.
+
+---
+
 ## 2026-05-13 (v9.39) — Admin IA 재구조화 (명세 v4.7 정확 적용)
 
 ### 사용자 요청
