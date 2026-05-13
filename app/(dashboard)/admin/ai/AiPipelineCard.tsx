@@ -1,55 +1,25 @@
-// v9.39: AI 추천 파이프라인 4 step 시각화 카드
-// 명세: ADMIN_REDESIGN_260513.md §1-4 (AI 환경 설정 + 흐름 시각화)
-// 1) 파트 후보 → 2) 시설 가이드 제약 → 3) 표준 수량 → 4) 도면 Vision 보강
+// v9.42: AI 추천 파이프라인 4 step 시각화 카드
+// 데이터 소스: `lib/ai/agentPipeline.ts` (PIPELINE_BLOCK_LIST — 동일 SOT를 SYSTEM_INSTRUCTION과 공유)
+// 향후 어드민 편집 UI 추가 시 PIPELINE_BLOCKS만 변경하면 프롬프트·카드 양쪽에 즉시 반영됨.
 
 import { Layers, ShieldAlert, Calculator, Camera } from 'lucide-react'
+import { PIPELINE_BLOCK_LIST } from '@/lib/ai/agentPipeline'
 
-interface PipelineStep {
-  num: number
-  title: string
-  desc: string
-  icon: typeof Layers
-  status: 'active' | 'coming'
-}
-
-const STEPS: PipelineStep[] = [
-  {
-    num: 1,
-    title: '파트 후보 추출',
-    desc: '선택된 프로그램 파트 다중 → 권장 환경장식물 ID 풀',
-    icon: Layers,
-    status: 'active',
-  },
-  {
-    num: 2,
-    title: '시설 가이드 제약',
-    desc: '행사장별 설치 불가 카테고리 후보 제외',
-    icon: ShieldAlert,
-    status: 'active',
-  },
-  {
-    num: 3,
-    title: '표준 수량 산정',
-    desc: '행사장 시설 가이드 표준 규격·수량 적용',
-    icon: Calculator,
-    status: 'active',
-  },
-  {
-    num: 4,
-    title: '도면 Vision 보강',
-    desc: '행사장 배치도 분석 → 동선·설치 위치 컨텍스트',
-    icon: Camera,
-    status: 'coming',
-  },
-]
+// step num → 아이콘 매핑 (시각화 전용 — 데이터 소스에 아이콘 포함 X)
+const STEP_ICONS = {
+  1: Layers,
+  2: ShieldAlert,
+  3: Calculator,
+  4: Camera,
+} as const
 
 export function AiPipelineCard() {
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-4">
       <h2 className="text-slate-700 text-sm font-semibold mb-3">AI 추천 파이프라인</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-        {STEPS.map(step => {
-          const Icon = step.icon
+        {PIPELINE_BLOCK_LIST.map(step => {
+          const Icon = STEP_ICONS[step.num]
           const isComing = step.status === 'coming'
           return (
             <div
