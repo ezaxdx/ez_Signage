@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { LayoutGrid, Archive, MapPin, Database, GraduationCap } from 'lucide-react'
+import { LayoutGrid, MapPin, Database } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { NewProjectButton } from './components/NewProjectButton'
 import { LogoutButton } from './components/LogoutButton'
@@ -81,25 +81,15 @@ export default async function DashboardPage() {
             {userIsAdmin && (
               <>
                 <div className="w-px h-4 bg-slate-200 hidden sm:block" />
-                {/* v9.26: 관리자 페이지 — 운영 KPI ↔ 전체 프로젝트 현황 통합 (피드백 ①) */}
+                {/* v9.39: 헤더 4메뉴 → 3메뉴 — '데이터 학습 관리자' 링크는 AdminSidebar 안으로 이동 (중복 제거) */}
                 <Link
                   href="/admin"
                   className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 text-xs transition"
-                  title="관리자 페이지 — 운영 대시보드 (KPI + 프로젝트 현황 통합)"
+                  title="관리자 페이지 — 운영 대시보드 / AI 관리 / 데이터 학습 관리자"
                 >
                   <Database className="w-3.5 h-3.5" />
                   관리자 페이지
                 </Link>
-                {/* 데이터 학습 관리자: 행사장·환경장식물·동의어·시설 가이드 */}
-                <Link
-                  href="/admin/learning"
-                  className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 text-xs transition"
-                  title="데이터 학습 관리자 — 행사장 / 환경장식물 / 동의어 / 시설 가이드"
-                >
-                  <GraduationCap className="w-3.5 h-3.5" />
-                  데이터 학습 관리자
-                </Link>
-                {/* 저장된 제작물 (검수·저장) — 사용자 결정으로 메뉴 제거 (2026-05-11) */}
               </>
             )}
             <div className="w-px h-4 bg-slate-200 hidden sm:block" />
