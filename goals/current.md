@@ -77,11 +77,10 @@
 - [x] 시설 가이드 미등록 행사장 fallback — v9.23 buildCoverageForUnregisteredVenue + resolveCoverageForVenue
 
 ### v9.23 후속 작업 (다음 사이클 후보)
-- [ ] EVENT_TYPE_RECOMMEND 매핑은 NewProjectButton.tsx inline에 있음 → lib/programParts.ts의 PROGRAM_PART_SIGNAGE_HINTS와 통합 (v4.1 잔여 정리)
+- [ ] EVENT_TYPE_RECOMMEND 매핑은 NewProjectButton.tsx inline에 있음 → lib/programParts.ts의 PROGRAM_PART_SIGNAGE_HINTS와 통합 (v4.1 잔여 정리) — ⛔ 사용자 결정 추진 안 함
 - [ ] 시설 가이드 미등록 행사장(롯데호텔·평창 알펜시아·그랜드하얏트·웨스틴조선·aT센터·OSCO 등 12개) 정식 등록 — VENUE_FACILITY_GUIDE_SEED·SEED_VENUE_SPECS·SEED_CEILING_BANNER_PATTERNS 3곳 동시 추가 필요 (작업량 큼, 정답지 노출 편향 우려로 단계별 진행)
-- [ ] lib/text/normalizeAiText.ts git add (v9.21 작업물 untracked 상태)
-- [ ] 행사 격 보정 룰 / 부속 시설 휴리스틱 — SYSTEM_INSTRUCTION 텍스트만 있음, 코드 강제 보강 필요
-- [ ] _venue_signage_map.json venue 라벨 정제 — "미상"·"기타"·"-" 같은 노이즈 venue를 실제 venue 매핑으로 보강
+- [x] lib/text/normalizeAiText.ts git add (v9.21 작업물) — 점검 결과 이미 tracked 확인 (v9.25)
+- [x] _venue_signage_map.json venue 라벨 정제 — `isVenueLabelNoise()` 헬퍼로 23종 노이즈 라벨(미상·기타·-·차량·인천공항·등록데스크·통역부스·의무실·창고·대기실·운영사무국 등) 필터링 (v9.25 — `lib/data/signageCategoryStandards.ts`)
 
 ## 금지 행동 (자율 루프가 절대 자동 실행 안 하는 것)
 
