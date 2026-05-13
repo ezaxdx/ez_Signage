@@ -11,13 +11,15 @@ export const runtime = 'nodejs'
 export async function POST(req: NextRequest) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  // v9.44: 인증 사용자만 제출 허용 (이전: 비로그인도 INSERT 시도 가능했음 — RLS가 막아도 명시적 거부가 더 안전)
+  if (!user) return NextResponse.json({ error: '인증 필요' }, { status: 401 })
 
-  const body = await req.json() as {
-    venue_key: string
-    venue_name?: string
-    correction_text: string
+  let body: { venue_key?: string; venue_name?: string; correction_text?: string }
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'invalid body' }, { status: 400 }) }
+
+  if (!body.venue_key?.trim()) {
+    return NextResponse.json({ error: 'venue_key 필요' }, { status: 400 })
   }
-
   if (!body.correction_text?.trim()) {
     return NextResponse.json({ error: '내용 필요' }, { status: 400 })
   }
@@ -25,10 +27,10 @@ export async function POST(req: NextRequest) {
   const { error } = await supabase
     .from('venue_correction_requests')
     .insert({
-      venue_key: body.venue_key,
-      venue_name: body.venue_name,
+      venue_key:       body.venue_key.trim(),
+      venue_name:      body.venue_name?.trim() || null,
       correction_text: body.correction_text.trim(),
-      submitted_by: user?.id ?? null,
+      submitted_by:    user.id,
     })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

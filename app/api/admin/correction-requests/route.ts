@@ -41,7 +41,8 @@ export async function POST(req: NextRequest) {
   if (!await isAdmin(supabase)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { data: { user } } = await supabase.auth.getUser()
-  const body = await req.json() as { venue_key?: string; venue_name?: string; correction_text?: string }
+  let body: { venue_key?: string; venue_name?: string; correction_text?: string }
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'invalid body' }, { status: 400 }) }
   if (!body.venue_key || !body.correction_text?.trim()) {
     return NextResponse.json({ error: 'venue_key·correction_text 필수' }, { status: 400 })
   }

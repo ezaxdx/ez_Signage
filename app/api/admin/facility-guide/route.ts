@@ -31,10 +31,11 @@ export async function POST(req: NextRequest) {
   const admin = await isAdmin(supabase)
   if (!admin) return NextResponse.json({ error: '권한 없음' }, { status: 403 })
 
-  const body = await req.json() as {
-    venueId: string
-    guide?: object
-    action?: 'extract'
+  let body: { venueId?: string; guide?: object; action?: 'extract' }
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'invalid body' }, { status: 400 }) }
+
+  if (!body.venueId || typeof body.venueId !== 'string') {
+    return NextResponse.json({ error: 'venueId 필수' }, { status: 400 })
   }
 
   if (body.action === 'extract') {
@@ -66,6 +67,10 @@ export async function POST(req: NextRequest) {
 
   // 직접 저장 (관리자 수동 편집)
   if (body.guide) {
+    // v9.44: guide JSON 객체 강제
+    if (typeof body.guide !== 'object' || Array.isArray(body.guide)) {
+      return NextResponse.json({ error: 'guide JSON 객체 필수' }, { status: 400 })
+    }
     const { error } = await supabase
       .from('venues')
       .update({
