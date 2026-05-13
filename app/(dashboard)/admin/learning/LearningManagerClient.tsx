@@ -1183,6 +1183,46 @@ export function LearningManagerClient({
 
         </>}
         {activeSection === 'facility-guides' && <>
+        {/* ── v9.30: 시설 가이드 KPI 요약 (명세 §2-4) ───────────── */}
+        <section className="bg-white border border-slate-200 rounded-xl p-5">
+          <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-indigo-500" />
+            시설 가이드 요약
+          </h2>
+          {(() => {
+            const totalVenues = facilityGuideStatus.length
+            const fullyDocumented = facilityGuideStatus.filter(f => f.completeness >= 5).length
+            const totalCategories = facilityGuideStatus.reduce((sum, f) => sum + f.categories_count, 0)
+            const totalWarnings = facilityGuideStatus.reduce((sum, f) => sum + f.warnings_count, 0)
+            const avgCompleteness = totalVenues === 0 ? 0 : Math.round(
+              (facilityGuideStatus.reduce((sum, f) => sum + f.completeness, 0) / totalVenues) * 100 / 6
+            )
+            return (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+                  <p className="text-[10px] text-slate-500">등록 행사장</p>
+                  <p className="text-xl font-bold text-slate-900">{totalVenues}<span className="text-xs text-slate-400 ml-1">개</span></p>
+                  <p className="text-[10px] text-emerald-600 mt-0.5">{fullyDocumented}개 완성도 5/6↑</p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+                  <p className="text-[10px] text-slate-500">카테고리 제약 누계</p>
+                  <p className="text-xl font-bold text-indigo-600">{totalCategories}<span className="text-xs text-slate-400 ml-1">건</span></p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+                  <p className="text-[10px] text-slate-500">주의사항 누계</p>
+                  <p className="text-xl font-bold text-amber-600">{totalWarnings}<span className="text-xs text-slate-400 ml-1">건</span></p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+                  <p className="text-[10px] text-slate-500">평균 완성도</p>
+                  <p className={`text-xl font-bold ${avgCompleteness >= 80 ? 'text-emerald-600' : avgCompleteness >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>
+                    {avgCompleteness}<span className="text-xs text-slate-400 ml-1">%</span>
+                  </p>
+                </div>
+              </div>
+            )
+          })()}
+        </section>
+
         {/* ── 6. 시설 가이드 학습 현황 (§13-3 신규) ────────────── */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
@@ -1269,7 +1309,7 @@ export function LearningManagerClient({
           )}
         </section>
 
-        {/* ── 예외 빈도 모니터 — 제작 완료 데이터 > 가이드 규칙 (v9.16) ── */}
+        {/* ── 예외 빈도 모니터 — 제작 완료 데이터 > 가이드 규칙 (v9.16, v9.30 보강) ── */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-amber-500" />
@@ -1280,6 +1320,33 @@ export function LearningManagerClient({
             <strong className="text-amber-700"> 3회 이상</strong>이면 가이드 데이터 자체가 오래됐거나 틀렸을 가능성이 높습니다.
             완료 데이터가 가이드보다 신뢰도가 높습니다.
           </p>
+
+          {/* v9.30: 예외 패턴 요약 KPI */}
+          {exceptionAlerts.length > 0 && (
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              {(() => {
+                const total = exceptionAlerts.length
+                const review = exceptionAlerts.filter(a => a.needs_review).length
+                const finalizedSum = exceptionAlerts.reduce((s, a) => s + a.finalized_count, 0)
+                return (
+                  <>
+                    <div className="border border-slate-200 rounded-md px-3 py-2 bg-slate-50">
+                      <p className="text-[10px] text-slate-500">전체 예외 패턴</p>
+                      <p className="text-xl font-bold text-slate-900">{total}<span className="text-xs text-slate-400 ml-1">건</span></p>
+                    </div>
+                    <div className="border border-amber-200 rounded-md px-3 py-2 bg-amber-50">
+                      <p className="text-[10px] text-amber-700">가이드 검토 필요 (≥3회)</p>
+                      <p className="text-xl font-bold text-amber-700">{review}<span className="text-xs text-amber-500 ml-1">건</span></p>
+                    </div>
+                    <div className="border border-emerald-200 rounded-md px-3 py-2 bg-emerald-50">
+                      <p className="text-[10px] text-emerald-700">완료 누계 (검증값)</p>
+                      <p className="text-xl font-bold text-emerald-700">{finalizedSum}<span className="text-xs text-emerald-500 ml-1">건</span></p>
+                    </div>
+                  </>
+                )
+              })()}
+            </div>
+          )}
           {exceptionLoading ? (
             <div className="flex items-center gap-2 text-slate-400 text-xs py-4 justify-center">
               <Loader2 className="w-4 h-4 animate-spin" /> 집계 중…
