@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import {
-  Activity, TrendingUp, CheckCircle, BarChart3, Sparkles, Plus, Calendar,
+  Activity, TrendingUp, CheckCircle, BarChart3, Plus, Calendar,
   ExternalLink, Filter,
 } from 'lucide-react'
 
@@ -106,16 +106,7 @@ export function AdminOpsClient({ kpi, projects, partStageBars, calendar }: Props
     setFilterFromDate(''); setFilterToDate('')
   }
 
-  const signalBg = {
-    green: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    amber: 'bg-amber-100 text-amber-700 border-amber-200',
-    red: 'bg-rose-100 text-rose-700 border-rose-200',
-  }[kpi.accuracySignal]
-  const signalLabel = {
-    green: '목표 달성 (70%↑)',
-    amber: '주의 (50~69%)',
-    red: '학습 보강 필요 (50% 미만)',
-  }[kpi.accuracySignal]
+  // v9.39: AI 정확도 신호등 카드는 /admin/ai로 이동 — 운영 대시보드는 운영 KPI만 노출
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -125,10 +116,10 @@ export function AdminOpsClient({ kpi, projects, partStageBars, calendar }: Props
         {/* v9.36 시안 매칭: 좌상단 페이지 타이틀만 유지, 부연 산문 제거 */}
         <h1 className="text-slate-900 text-xl font-bold">운영 대시보드</h1>
 
-        {/* ── 운영 KPI 6카드 ─────────────────────────────────── */}
+        {/* ── 운영 KPI 5카드 (v9.39: AI 정확도 카드는 /admin/ai로 이동) ─────── */}
         <section>
           <h2 className="text-slate-700 text-sm font-semibold mb-3">운영 KPI</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             <KpiCard
               icon={<Activity className="w-4 h-4" />}
               label="진행 중 프로젝트"
@@ -165,14 +156,6 @@ export function AdminOpsClient({ kpi, projects, partStageBars, calendar }: Props
               color="text-violet-600"
               note="컨펌 → 완료"
             />
-            <div className={`border rounded-xl px-3 py-3 shadow-sm ${signalBg}`}>
-              <div className="flex items-center gap-1.5 text-xs mb-1">
-                <Sparkles className="w-4 h-4" />
-                <span>AI 정확도</span>
-              </div>
-              <p className="text-2xl font-bold">{kpi.aiAccuracy}<span className="text-sm font-normal ml-0.5">%</span></p>
-              <p className="text-[10px] opacity-80 mt-0.5">{signalLabel}</p>
-            </div>
           </div>
         </section>
 
