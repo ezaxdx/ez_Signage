@@ -108,3 +108,41 @@ export function recommendSignageByParts(codes: string[]): string[] {
   }
   return Array.from(set)
 }
+
+/**
+ * v9.31: 환경장식물 ID → 선택된 파트 중 첫 번째 매칭 파트 코드
+ *
+ * NewProjectButton에서 design_items 생성 시 program_part 컬럼을 자동 채움.
+ * 같은 환경장식물이 여러 파트에 매핑된 경우(예: x_banner는 회의·등록·체험 모두) 선택된 파트 중 우선순위 가장 높은 첫 매치 사용.
+ * 매칭 실패 시 null 반환.
+ */
+export function pickPartForFormat(formatId: string, selectedParts: string[]): string | null {
+  for (const code of selectedParts) {
+    const ids = PROGRAM_PART_SIGNAGE_HINTS[code] ?? []
+    if (ids.includes(formatId)) return code
+  }
+  return null
+}
+
+/**
+ * v9.31: 환경장식물 카테고리(라벨 또는 ID) → 매핑된 파트 코드 목록 (전부)
+ *
+ * recommendSignage.ts에서 Gemini가 반환한 RecommendItem.category(id)와 program_parts 입력 교집합으로 program_part 자동 채움 fallback에 사용.
+ */
+export function partsForFormat(formatId: string): string[] {
+  const matched: string[] = []
+  for (const [code, ids] of Object.entries(PROGRAM_PART_SIGNAGE_HINTS)) {
+    if (ids.includes(formatId)) matched.push(code)
+  }
+  return matched
+}
+
+/**
+ * v9.31: 파트 코드 → 한글명 (단일 코드)
+ *
+ * Gemini SYSTEM_INSTRUCTION에서 "각 항목에 매칭된 파트 1개 명시" 지시 + UI 노출용.
+ */
+export function programPartName(code: string | null | undefined): string | null {
+  if (!code) return null
+  return PROGRAM_PART_BY_CODE.get(code)?.name ?? null
+}

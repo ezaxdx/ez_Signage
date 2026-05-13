@@ -42,27 +42,25 @@ function CollectionRow({ label, status, note }: { label: string; status: 'ok' | 
 }
 
 // v9.21 (2026-05-13): 회의 결정 ④⑤ — 미확인 항목 처리 정리
+// v9.31 (2026-05-13): 회의 결정 ⑤ 추가 강조 텍스트 제거 — 사용자 지적
+//   "사전 협의 후 발주 권장" 같은 추가 문구는 강조 라벨 톤다운 원칙과 맞지 않음.
+//   카테고리명만 표기. 추가 안내가 필요하면 install_allowed의 note에서 이미 노출됨.
 //
 // 회의 인용:
 //   "운영팀 확인 필수 이런 건 필요 없어요. 그냥 각별로 다른데 일반적으로 이때 하더라라는 정보만 주면 되고"
 //   "미확인 항목 ... 어떤 설치 품목이 조건 메뉴를 하 필요한지가 같이 리스트업이 돼야겠죠.
 //    만약에 그걸 못 하겠다 하면 이건 그냥 삭제하는 게 맞는 거 같고"
-//
-// 변경:
-//   - "일부 설치 품목 조건 매뉴얼 재확인 필요" 같은 추상 표현 → 실제 어떤 카테고리·왜 필요한지 구체 리스트업
-//   - 구체화 불가능한(매뉴얼 미파싱·OCR 등 내부 처리 정보) 항목은 사용자에게 의미 없으므로 제거
-//   - rigging 정보는 install_allowed 섹션 안에 이미 노출되므로 unknowns에서 중복 강조 제거
 function getGuideUnknowns(guide: VenueFacilityGuide): string[] {
   const items: string[] = []
 
-  // 설치 품목 중 "확인 필요" 문구가 들어간 항목을 구체적으로 리스트업
-  // (회의 결정: 모호한 "재확인 필요" → 어떤 카테고리인지 명확화)
+  // 설치 품목 중 "확인 필요" 문구가 들어간 항목을 카테고리명만 리스트업
+  // (회의 결정 ⑤: 모호한 "재확인 필요" → 어떤 카테고리인지 명확화. 단, 추가 강조 텍스트 X)
   const itemsNeedingConfirmation = guide.install_allowed
     ?.filter(i => i.note?.includes('확인 필요') || i.note?.includes('확인 필수'))
     .map(i => i.category) ?? []
 
   for (const category of itemsNeedingConfirmation) {
-    items.push(`${category} — 사전 협의 후 발주 권장`)
+    items.push(category)
   }
 
   // rigging 정보는 install_allowed의 ′천정배너′ 항목 note에 이미 포함됨 → 중복 제거

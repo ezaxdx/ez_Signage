@@ -10,7 +10,7 @@ import type { ProjectStatus, Profile } from '@/lib/types'
 import { SEED_PERFLIST, recommendByProbability, getSelectionRates } from '@/lib/data/dashboardSeed'
 import { fetchLiveStats, invalidateLiveStatsCache, type LiveStats } from '@/lib/data/liveStats'
 import { VENUE_LIST, groupVenuesByRegion } from '@/lib/venueIntel'
-import { PROGRAM_PARTS, PROGRAM_PART_GROUPS, recommendSignageByParts } from '@/lib/programParts'
+import { PROGRAM_PARTS, PROGRAM_PART_GROUPS, recommendSignageByParts, pickPartForFormat, programPartName } from '@/lib/programParts'
 import { VenueRequestModal } from './VenueRequestModal'
 
 // 과거 수행실적에서 발주처·행사장 후보 추출 (자동완성)
@@ -523,9 +523,11 @@ export function NewProjectButton({ userId, userEmail }: Props) {
     }
 
     // ── 프리셋 + 커스텀 제작물 생성 ─────────────────────────
-    const selectedList: { name: string; width: number; height: number; material: string; count: number }[] = [
+    // v9.31: presetId 보존 — design_items 생성 시 program_part 자동 채움에 사용
+    const selectedList: { name: string; presetId: string | null; width: number; height: number; material: string; count: number }[] = [
       ...FORMAT_PRESETS.filter(f => formats[f.id]?.selected).map(f => ({
         name: formats[f.id].name,
+        presetId: f.id,
         width: formats[f.id].width,
         height: formats[f.id].height,
         material: formats[f.id].material,
@@ -533,6 +535,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
       })),
       ...customFormats.filter(f => f.selected).map(f => ({
         name: f.name,
+        presetId: null,
         width: f.width,
         height: f.height,
         material: f.material,
@@ -542,12 +545,20 @@ export function NewProjectButton({ userId, userEmail }: Props) {
 
     // 회의록 v9.1: 3단계 ′제작물 선택′ 홀딩 — selectedList 비면 기본 빈 행 1건 자동 생성
     if (selectedList.length === 0 && excelRows.length === 0) {
-      selectedList.push({ name: '미정', width: 600, height: 1800, material: '', count: 1 })
+      selectedList.push({ name: '미정', presetId: null, width: 600, height: 1800, material: '', count: 1 })
     }
 
     // 카테고리별 item_id 추적 (formatMockups 일괄 적용용)
     const idsByFormat: Record<string, string[]> = {}
     for (const f of selectedList) {
+      // v9.31: 파트 매칭 자동 채움 (사용자 강한 지적: "파트별로 적용되는 사항 왜 적용 안 됨?")
+      // 1차: presetId 기반 PROGRAM_PART_SIGNAGE_HINTS ∩ programPartsArr 첫 매치
+      // 2차: 매칭 실패 시 멤버 part_name fallback (legacy)
+      const matchedPartCode = f.presetId ? pickPartForFormat(f.presetId, programPartsArr) : null
+      const matchedPartName = programPartName(matchedPartCode)
+      const memberPart = members.find(m => m.email === userEmail)?.part || null
+      const partLabel = matchedPartName ?? memberPart
+
       const rows = Array.from({ length: f.count }, () => ({
         project_id: project.id,
         no: String(idx++).padStart(2, '0'),
@@ -556,13 +567,24 @@ export function NewProjectButton({ userId, userEmail }: Props) {
         height_mm: f.height,
         material: f.material,
         quantity: 1,
+        part: partLabel,
+        program_part: matchedPartCode,
       }))
-      const { data: created } = await supabase.from('design_items').insert(rows).select('id')
+      let created: { id: string }[] | null = null
+      const r1 = await supabase.from('design_items').insert(rows).select('id')
+      if (r1.error && /program_part/i.test(r1.error.message)) {
+        // DB에 program_part 컬럼 없음 (마이그레이션 미적용) → 제외하고 재시도
+        const rowsNoPart = rows.map(({ program_part: _pp, ...rest }) => rest)
+        const r2 = await supabase.from('design_items').insert(rowsNoPart).select('id')
+        created = r2.data as { id: string }[] | null
+      } else {
+        created = r1.data as { id: string }[] | null
+      }
       if (created) {
         const ids = created.map((i: { id: string }) => i.id)
         allItemIds.push(...ids)
         // FORMAT_PRESETS의 id로 매칭 (커스텀은 name 기준)
-        const presetId = FORMAT_PRESETS.find(p => p.name === f.name)?.id ?? f.name
+        const presetId = f.presetId ?? f.name
         idsByFormat[presetId] = (idsByFormat[presetId] ?? []).concat(ids)
       }
     }
