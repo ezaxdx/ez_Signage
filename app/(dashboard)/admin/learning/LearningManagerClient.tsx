@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   LayoutGrid, ArrowLeft, GraduationCap, MapPin, Plus, Loader2,
   CheckCircle2, XCircle, AlertCircle, Clock, FileText, Inbox, Building2,
-  Sparkles, Flag,
+  Sparkles, Flag, BarChart3, TrendingUp,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { explainStorageError } from '@/lib/services/storagePaths'
@@ -211,9 +211,13 @@ export function LearningManagerClient({
   const [requests, setRequests] = useState<VenueRequest[]>(initialRequests)
   const [jobs, setJobs] = useState<LearningJob[]>(initialJobs)
   const [migrationMissing, setMigrationMissing] = useState(initialVenues.length === 0 && initialJobs.length === 0)
-  // 좌측 사이드바 페이지 전환 (피그마: 각 박스 = 한 페이지)
-  type SectionKey = 'venue-status' | 'venues' | 'signage-types' | 'synonyms' | 'facility-guides' | 'correction-requests'
-  const [activeSection, setActiveSection] = useState<SectionKey>('venue-status')
+  // v9.29: 명세 IA 5섹션 재정렬 (docs/ADMIN_REDESIGN_260513.md §2)
+  // 1) 개요 — 학습 누적 그래프 · 단계별 분포 · 정확도 추이
+  // 2) 행사장 학습 현황 — venue별 누적 + 카테고리 학습
+  // 3) 행사장 마스터 — 행사장 관리(추가/신규 요청/도면 학습 큐) + 시설 가이드 + 수정 요청 통합
+  // 4) 동의어 — 매핑 표 + 환경장식물 종류 관리
+  type SectionKey = 'overview' | 'venue-status' | 'venues' | 'facility-guides' | 'correction-requests' | 'signage-types' | 'synonyms'
+  const [activeSection, setActiveSection] = useState<SectionKey>('overview')
 
   // 시설 가이드 섹션 진입 시 예외 빈도 조회
   useEffect(() => {
@@ -237,13 +241,19 @@ export function LearningManagerClient({
       .finally(() => setCorrectionLoading(false))
   }, [activeSection])
 
-  const SECTIONS: { key: SectionKey; label: string; icon: typeof GraduationCap }[] = [
-    { key: 'venue-status',         label: '행사장 학습 현황', icon: GraduationCap },
-    { key: 'venues',               label: '행사장 관리',     icon: Building2 },
-    { key: 'signage-types',        label: '환경장식물 종류', icon: Inbox },
-    { key: 'synonyms',             label: '동의어 매핑',     icon: FileText },
-    { key: 'facility-guides',      label: '시설 가이드',     icon: AlertCircle },
-    { key: 'correction-requests',  label: '수정 요청',       icon: Flag },
+  // 명세 5섹션 IA — 그룹 구분 (사이드바 시각 분리)
+  const SECTIONS: { key: SectionKey; label: string; icon: typeof GraduationCap; group: '개요' | '행사장' | '동의어' }[] = [
+    // 1) 개요 (학습 누적·정확도 추이)
+    { key: 'overview',             label: '개요',             icon: BarChart3,    group: '개요' },
+    // 2) 행사장별 학습 현황 (단계별 분포 · 카테고리 학습)
+    { key: 'venue-status',         label: '행사장 학습 현황', icon: GraduationCap, group: '개요' },
+    // 3) 행사장 마스터 관리 (추가/요청 대기/도면 학습 큐/시설 가이드/예외 패턴)
+    { key: 'venues',               label: '행사장 관리',     icon: Building2,    group: '행사장' },
+    { key: 'facility-guides',      label: '시설 가이드',     icon: AlertCircle,  group: '행사장' },
+    { key: 'correction-requests',  label: '수정 요청',       icon: Flag,         group: '행사장' },
+    // 4) 동의어 마스터 + 환경장식물 종류
+    { key: 'synonyms',             label: '동의어 매핑',     icon: FileText,     group: '동의어' },
+    { key: 'signage-types',        label: '환경장식물 종류', icon: Inbox,        group: '동의어' },
   ]
 
   // ── 행사장 추가 폼 ───────────────────────────────────────
@@ -398,7 +408,7 @@ export function LearningManagerClient({
             </Link>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/data" className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-300 text-xs transition">
+            <Link href="/admin" className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-300 text-xs transition">
               관리자 페이지
             </Link>
             <Link href="/dashboard" className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-300 text-xs transition">
@@ -446,23 +456,28 @@ export function LearningManagerClient({
               <div className="px-3 py-2 bg-slate-50 border-b border-slate-200">
                 <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">데이터 학습 관리자</p>
               </div>
-              <nav className="p-1.5 space-y-0.5">
-                {SECTIONS.map(s => {
-                  const Icon = s.icon
-                  const active = activeSection === s.key
-                  return (
-                    <button
-                      key={s.key}
-                      onClick={() => setActiveSection(s.key)}
-                      className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium transition text-left ${
-                        active ? 'bg-emerald-600 text-white' : 'text-slate-700 hover:bg-slate-50'
-                      }`}
-                    >
-                      <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span className="flex-1">{s.label}</span>
-                    </button>
-                  )
-                })}
+              <nav className="p-1.5 space-y-2">
+                {(['개요', '행사장', '동의어'] as const).map(group => (
+                  <div key={group} className="space-y-0.5">
+                    <p className="px-2 pt-1 text-[9px] uppercase tracking-wider text-slate-400 font-semibold">{group}</p>
+                    {SECTIONS.filter(s => s.group === group).map(s => {
+                      const Icon = s.icon
+                      const active = activeSection === s.key
+                      return (
+                        <button
+                          key={s.key}
+                          onClick={() => setActiveSection(s.key)}
+                          className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium transition text-left ${
+                            active ? 'bg-emerald-600 text-white' : 'text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span className="flex-1">{s.label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                ))}
               </nav>
             </div>
           </aside>
@@ -481,6 +496,135 @@ export function LearningManagerClient({
           </div>
         )}
 
+        {activeSection === 'overview' && <>
+        {/* ── v9.29: 개요 (명세 §2-2) — 학습 누적 / 단계별 분포 / 정확도 추이 ── */}
+        <section className="bg-white border border-slate-200 rounded-xl p-5">
+          <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-indigo-500" />
+            개요
+          </h2>
+          <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">
+            전체 학습 누적 그래프 · 단계별 분포(입력 10% / 중간 30% / 컨펌 70% / 완료 100%) · AI 추천 정확도 추이.
+          </p>
+
+          {/* 학습 행사장 TOP 10 누적 그래프 */}
+          <div className="space-y-5">
+            <div>
+              <h3 className="text-slate-700 text-xs font-semibold mb-2">학습 누적 (행사장별 항목 수 TOP 10)</h3>
+              {venueLearningStatus.length === 0 ? (
+                <p className="text-slate-400 text-xs italic py-4 text-center">아직 누적된 데이터가 없습니다.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {venueLearningStatus.slice(0, 10).map(v => {
+                    const max = Math.max(1, ...venueLearningStatus.slice(0, 10).map(x => x.item_count))
+                    const ratio = (v.item_count / max) * 100
+                    return (
+                      <div key={v.venue}>
+                        <div className="flex items-center justify-between text-[10px] mb-0.5">
+                          <span className="text-slate-700 truncate max-w-[200px]">{v.venue}</span>
+                          <span className="text-slate-500 font-mono">{v.item_count}</span>
+                        </div>
+                        <div className="h-3 bg-slate-100 rounded-md overflow-hidden">
+                          <div className="h-full bg-indigo-500" style={{ width: `${ratio}%` }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* 단계별 분포 (전체 누적) */}
+            <div>
+              <h3 className="text-slate-700 text-xs font-semibold mb-2">단계별 분포 (전체 누적)</h3>
+              {(() => {
+                const totals = venueLearningStatus.reduce(
+                  (acc, v) => ({
+                    input: acc.input + v.stage.input,
+                    mid: acc.mid + v.stage.mid,
+                    confirmed: acc.confirmed + v.stage.confirmed,
+                    finalized: acc.finalized + v.stage.finalized,
+                  }),
+                  { input: 0, mid: 0, confirmed: 0, finalized: 0 }
+                )
+                const total = Math.max(1, totals.input + totals.mid + totals.confirmed + totals.finalized)
+                const stages = [
+                  { label: '입력 (10%)', value: totals.input, color: 'bg-slate-400', text: 'text-slate-700' },
+                  { label: '중간 (30%)', value: totals.mid, color: 'bg-amber-400', text: 'text-amber-700' },
+                  { label: '컨펌 (70%)', value: totals.confirmed, color: 'bg-indigo-500', text: 'text-indigo-700' },
+                  { label: '완료 (100%)', value: totals.finalized, color: 'bg-emerald-500', text: 'text-emerald-700' },
+                ]
+                return (
+                  <>
+                    <div className="h-6 flex rounded-md overflow-hidden bg-slate-100">
+                      {stages.map(s => (
+                        s.value > 0 && (
+                          <div key={s.label} className={s.color} style={{ width: `${(s.value / total) * 100}%` }} title={`${s.label}: ${s.value}건`} />
+                        )
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+                      {stages.map(s => (
+                        <div key={s.label} className="border border-slate-200 rounded-md px-2 py-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-2 h-2 rounded-sm ${s.color}`} />
+                            <span className="text-[10px] text-slate-500">{s.label}</span>
+                          </div>
+                          <p className={`text-lg font-bold ${s.text}`}>{s.value}<span className="text-xs text-slate-400 ml-0.5">건</span></p>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )
+              })()}
+            </div>
+
+            {/* AI 정확도 추이 (행사장별 추정) */}
+            <div>
+              <h3 className="text-slate-700 text-xs font-semibold mb-2 flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                AI 추천 정확도 추이 (행사장별, rolling)
+              </h3>
+              {venueLearningStatus.length === 0 ? (
+                <p className="text-slate-400 text-xs italic py-4 text-center">데이터 없음</p>
+              ) : (
+                <div className="overflow-x-auto border border-slate-200 rounded-md">
+                  <table className="w-full text-[11px]">
+                    <thead className="bg-slate-50">
+                      <tr className="text-slate-600">
+                        <th className="px-2 py-1.5 text-left font-semibold">행사장</th>
+                        <th className="px-2 py-1.5 text-left font-semibold">정확도 진행</th>
+                        <th className="px-2 py-1.5 text-right font-semibold w-16">값</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {venueLearningStatus.slice(0, 8).map(v => {
+                        const acc = v.accuracy_estimate
+                        const color = acc >= 70 ? 'bg-emerald-500' : acc >= 40 ? 'bg-amber-500' : 'bg-rose-500'
+                        const textColor = acc >= 70 ? 'text-emerald-700' : acc >= 40 ? 'text-amber-700' : 'text-rose-700'
+                        return (
+                          <tr key={v.venue}>
+                            <td className="px-2 py-1.5 text-slate-700 truncate max-w-[200px]" title={v.venue}>{v.venue}</td>
+                            <td className="px-2 py-1.5">
+                              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div className={`h-full ${color}`} style={{ width: `${acc}%` }} />
+                              </div>
+                            </td>
+                            <td className={`px-2 py-1.5 text-right font-mono font-semibold ${textColor}`}>{acc}%</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <p className="text-[10px] text-slate-400 mt-2">
+                ※ 행사장 정확도 = (입력×10 + 중간×30 + 컨펌×70 + 완료×100) / 전체. 누적 데이터 증가에 따라 자동 갱신됩니다.
+              </p>
+            </div>
+          </div>
+        </section>
+        </>}
         {activeSection === 'venue-status' && <>
         {/* ── 0. 행사장별 학습 현황 — 점진적 정확도 가시화 (★ v9) ── */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
@@ -1039,6 +1183,46 @@ export function LearningManagerClient({
 
         </>}
         {activeSection === 'facility-guides' && <>
+        {/* ── v9.30: 시설 가이드 KPI 요약 (명세 §2-4) ───────────── */}
+        <section className="bg-white border border-slate-200 rounded-xl p-5">
+          <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-indigo-500" />
+            시설 가이드 요약
+          </h2>
+          {(() => {
+            const totalVenues = facilityGuideStatus.length
+            const fullyDocumented = facilityGuideStatus.filter(f => f.completeness >= 5).length
+            const totalCategories = facilityGuideStatus.reduce((sum, f) => sum + f.categories_count, 0)
+            const totalWarnings = facilityGuideStatus.reduce((sum, f) => sum + f.warnings_count, 0)
+            const avgCompleteness = totalVenues === 0 ? 0 : Math.round(
+              (facilityGuideStatus.reduce((sum, f) => sum + f.completeness, 0) / totalVenues) * 100 / 6
+            )
+            return (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+                  <p className="text-[10px] text-slate-500">등록 행사장</p>
+                  <p className="text-xl font-bold text-slate-900">{totalVenues}<span className="text-xs text-slate-400 ml-1">개</span></p>
+                  <p className="text-[10px] text-emerald-600 mt-0.5">{fullyDocumented}개 완성도 5/6↑</p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+                  <p className="text-[10px] text-slate-500">카테고리 제약 누계</p>
+                  <p className="text-xl font-bold text-indigo-600">{totalCategories}<span className="text-xs text-slate-400 ml-1">건</span></p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+                  <p className="text-[10px] text-slate-500">주의사항 누계</p>
+                  <p className="text-xl font-bold text-amber-600">{totalWarnings}<span className="text-xs text-slate-400 ml-1">건</span></p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+                  <p className="text-[10px] text-slate-500">평균 완성도</p>
+                  <p className={`text-xl font-bold ${avgCompleteness >= 80 ? 'text-emerald-600' : avgCompleteness >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>
+                    {avgCompleteness}<span className="text-xs text-slate-400 ml-1">%</span>
+                  </p>
+                </div>
+              </div>
+            )
+          })()}
+        </section>
+
         {/* ── 6. 시설 가이드 학습 현황 (§13-3 신규) ────────────── */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
@@ -1125,7 +1309,7 @@ export function LearningManagerClient({
           )}
         </section>
 
-        {/* ── 예외 빈도 모니터 — 제작 완료 데이터 > 가이드 규칙 (v9.16) ── */}
+        {/* ── 예외 빈도 모니터 — 제작 완료 데이터 > 가이드 규칙 (v9.16, v9.30 보강) ── */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-amber-500" />
@@ -1136,6 +1320,33 @@ export function LearningManagerClient({
             <strong className="text-amber-700"> 3회 이상</strong>이면 가이드 데이터 자체가 오래됐거나 틀렸을 가능성이 높습니다.
             완료 데이터가 가이드보다 신뢰도가 높습니다.
           </p>
+
+          {/* v9.30: 예외 패턴 요약 KPI */}
+          {exceptionAlerts.length > 0 && (
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              {(() => {
+                const total = exceptionAlerts.length
+                const review = exceptionAlerts.filter(a => a.needs_review).length
+                const finalizedSum = exceptionAlerts.reduce((s, a) => s + a.finalized_count, 0)
+                return (
+                  <>
+                    <div className="border border-slate-200 rounded-md px-3 py-2 bg-slate-50">
+                      <p className="text-[10px] text-slate-500">전체 예외 패턴</p>
+                      <p className="text-xl font-bold text-slate-900">{total}<span className="text-xs text-slate-400 ml-1">건</span></p>
+                    </div>
+                    <div className="border border-amber-200 rounded-md px-3 py-2 bg-amber-50">
+                      <p className="text-[10px] text-amber-700">가이드 검토 필요 (≥3회)</p>
+                      <p className="text-xl font-bold text-amber-700">{review}<span className="text-xs text-amber-500 ml-1">건</span></p>
+                    </div>
+                    <div className="border border-emerald-200 rounded-md px-3 py-2 bg-emerald-50">
+                      <p className="text-[10px] text-emerald-700">완료 누계 (검증값)</p>
+                      <p className="text-xl font-bold text-emerald-700">{finalizedSum}<span className="text-xs text-emerald-500 ml-1">건</span></p>
+                    </div>
+                  </>
+                )
+              })()}
+            </div>
+          )}
           {exceptionLoading ? (
             <div className="flex items-center gap-2 text-slate-400 text-xs py-4 justify-center">
               <Loader2 className="w-4 h-4 animate-spin" /> 집계 중…
