@@ -232,7 +232,8 @@ export function LearningManagerClient({
   type SynonymSubKey = 'mapping' | 'category' | 'types'
   const [activeSection, setActiveSection] = useState<SectionKey>('overview')
   const [venueSubTab, setVenueSubTab] = useState<VenueSubKey>('add')
-  const [synonymSubTab, setSynonymSubTab] = useState<SynonymSubKey>('mapping')
+  // v9.34: 환경장식물 진입 시 기본 서브탭을 ′종류 관리′(types)로 — 사용자 명시 순서 첫 번째
+  const [synonymSubTab, setSynonymSubTab] = useState<SynonymSubKey>('types')
 
   // v9.31: 시설 가이드 서브탭(또는 예외 패턴 서브탭) 진입 시 예외 빈도 조회
   // 단일 venues 대섹션 안의 facility/exceptions 서브탭에서 사용
@@ -270,7 +271,7 @@ export function LearningManagerClient({
     // 4) 프로그램 파트 (v9.32 신규) — EZ 폴더링 40.04~40.20 12종 표시
     { key: 'program-parts', label: '프로그램 파트',     icon: Workflow,     desc: '파트 12종 (프로그램 8 / 참가자 응대 3 / 홍보 1) — 권장 환경장식물 매핑' },
     // 5) 환경장식물 (v9.32 — 구 ′동의어′ 명칭 변경, 내부 3 서브탭 그대로)
-    { key: 'synonyms',      label: '환경장식물',        icon: ImageIcon,    desc: '환경장식물 종류 관리 / 동의어 매핑 / 카테고리 권장' },
+    { key: 'synonyms',      label: '환경장식물',        icon: ImageIcon,    desc: '종류 관리 / 동의어 매핑 / 프로그램 파트' },
   ]
 
   // v9.31: 4 대섹션 내 서브탭 정의
@@ -282,10 +283,15 @@ export function LearningManagerClient({
     { key: 'exceptions',  label: '예외 패턴 모니터', icon: AlertTriangle },
     { key: 'corrections', label: '수정 요청',       icon: Flag },
   ]
+  // v9.34: 환경장식물 안 3 서브 순서/라벨 정정 (사용자 명시 2026-05-13)
+  //   1) 종류 관리(signage-types)  ─ 라벨 유지
+  //   2) 동의어 매핑(synonyms-mapping)  ─ 라벨 유지
+  //   3) 카테고리 권장 → 프로그램 파트 (라벨 변경, 데이터: 파트 12종 × 환경장식물 매트릭스)
+  // SynonymSubKey 값 'category'는 보존하여 분기 코드 영향 최소화. UI 라벨만 ′프로그램 파트′로 변경.
   const SYNONYM_SUBTABS: { key: SynonymSubKey; label: string; icon: typeof GraduationCap }[] = [
-    { key: 'mapping',  label: '비표준 → 표준 매핑',  icon: FileText },
-    { key: 'category', label: '카테고리 권장',       icon: MapPin },
-    { key: 'types',    label: '환경장식물 종류 관리', icon: Inbox },
+    { key: 'types',    label: '종류 관리',     icon: Inbox },
+    { key: 'mapping',  label: '동의어 매핑',   icon: FileText },
+    { key: 'category', label: '프로그램 파트', icon: Workflow },
   ]
 
   // ── 행사장 추가 폼 ───────────────────────────────────────
@@ -1342,33 +1348,69 @@ export function LearningManagerClient({
         </>}
 
         {synonymSubTab === 'category' && (
-        /* v9.31: 카테고리 권장 서브탭 — 행사 유형별 환경장식물 기본 세트 (명세 §2-5 ②) */
+        /* v9.34: ′카테고리 권장′ → ′프로그램 파트′ 라벨 변경.
+            데이터: 행사 유형 9종(잘못) → PROGRAM_PARTS 12종 × 환경장식물 매트릭스 (lib/programParts.ts SOT).
+            각 파트 카드에 PROGRAM_PART_SIGNAGE_HINTS 매핑 환경장식물 ID → SEED_SIGNAGE_TYPES.name 한글 라벨로 표시.
+            현재는 read-only UI 매트릭스 표시. CRUD 폼·DB 저장·로딩은 v9.35로 분리. */
         <section className="bg-white border border-slate-200 rounded-xl p-5">
-          <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-amber-500" />
-            카테고리 권장
-          </h2>
-          <div className="overflow-x-auto border border-slate-200 rounded">
-            <table className="w-full text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr className="text-slate-600 text-[11px]">
-                  <th className="px-2 py-1.5 text-left font-semibold">행사 유형 / 파트</th>
-                  <th className="px-2 py-1.5 text-left font-semibold">권장 환경장식물</th>
-                  <th className="px-2 py-1.5 text-left font-semibold">비고</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                <tr className="hover:bg-slate-50"><td className="px-2 py-1 text-slate-700">컨퍼런스 / 회의</td><td className="px-2 py-1 text-slate-600">X배너 · 포디움 · 폼보드 · A3 세로</td><td className="px-2 py-1 text-slate-500">입구·룸사인 위주</td></tr>
-                <tr className="hover:bg-slate-50"><td className="px-2 py-1 text-slate-700">전시회 / 전시</td><td className="px-2 py-1 text-slate-600">가로현수막 · 세로현수막 · 통천 · 폼보드</td><td className="px-2 py-1 text-slate-500">외부·내부 사인</td></tr>
-                <tr className="hover:bg-slate-50"><td className="px-2 py-1 text-slate-700">박람회</td><td className="px-2 py-1 text-slate-600">통천 · 세로현수막 · 가로등배너 · 폼보드</td><td className="px-2 py-1 text-slate-500">외부 동선 강화</td></tr>
-                <tr className="hover:bg-slate-50"><td className="px-2 py-1 text-slate-700">시상식 / 기념식</td><td className="px-2 py-1 text-slate-600">백월 · 포디움 · X배너 · 세로현수막</td><td className="px-2 py-1 text-slate-500">포토월·연단 강조</td></tr>
-                <tr className="hover:bg-slate-50"><td className="px-2 py-1 text-slate-700">포럼</td><td className="px-2 py-1 text-slate-600">X배너 · 포디움 · 폼보드 · A4 가로</td><td className="px-2 py-1 text-slate-500">좌석 명패 포함</td></tr>
-                <tr className="hover:bg-slate-50"><td className="px-2 py-1 text-slate-700">워크숍</td><td className="px-2 py-1 text-slate-600">폼보드 · A3 세로 · X배너</td><td className="px-2 py-1 text-slate-500">소량 운영</td></tr>
-                <tr className="hover:bg-slate-50"><td className="px-2 py-1 text-slate-700">체험행사</td><td className="px-2 py-1 text-slate-600">X배너 · 폼보드 · A3 세로</td><td className="px-2 py-1 text-slate-500">단계별 안내</td></tr>
-                <tr className="hover:bg-slate-50"><td className="px-2 py-1 text-slate-700">발표·런칭</td><td className="px-2 py-1 text-slate-600">X배너 · 가로현수막 · 포디움</td><td className="px-2 py-1 text-slate-500">메인 무대</td></tr>
-                <tr className="hover:bg-slate-50"><td className="px-2 py-1 text-slate-700">등록 / 영접영송 (파트)</td><td className="px-2 py-1 text-slate-600">X배너 · 폼보드 · pop_guide</td><td className="px-2 py-1 text-slate-500">데스크 사인·동선</td></tr>
-              </tbody>
-            </table>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-slate-900 font-semibold text-sm flex items-center gap-2">
+              <Workflow className="w-4 h-4 text-emerald-500" />
+              프로그램 파트 ({PROGRAM_PARTS.length}종) × 환경장식물 매트릭스
+            </h2>
+            <p className="text-[11px] text-slate-400">SOT: <code>lib/programParts.ts</code> · 편집 UI는 v9.35</p>
+          </div>
+
+          <div className="space-y-5">
+            {PROGRAM_PART_GROUPS.map(g => {
+              const parts = PROGRAM_PARTS.filter(p => p.group === g.group)
+              const groupColor = g.group === 'program'
+                ? { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500' }
+                : g.group === 'attendee'
+                ? { bg: 'bg-indigo-50',  border: 'border-indigo-200',  text: 'text-indigo-700',  dot: 'bg-indigo-500' }
+                : { bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-700',   dot: 'bg-amber-500' }
+              return (
+                <div key={g.group}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`w-2 h-2 rounded-full ${groupColor.dot}`} />
+                    <h3 className={`text-xs font-semibold ${groupColor.text}`}>{g.label}</h3>
+                    <span className="text-[10px] text-slate-400">{parts.length}종</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {parts.map(p => {
+                      const hintIds = PROGRAM_PART_SIGNAGE_HINTS[p.code] ?? []
+                      // 환경장식물 ID → 한글 라벨 매핑 (SEED_SIGNAGE_TYPES.name) 적용
+                      const hintLabels = hintIds.map(id => {
+                        const t = signageTypeList.find(s => s.id === id) ?? signageTypes.find(s => s.id === id)
+                        return { id, name: t?.name ?? id }
+                      })
+                      return (
+                        <div key={p.code} className={`${groupColor.bg} ${groupColor.border} border rounded-lg p-3`}>
+                          <div className="flex items-baseline gap-2 mb-1.5">
+                            <span className={`text-[10px] font-mono ${groupColor.text}`}>{p.code}</span>
+                            <span className="text-slate-900 font-semibold text-sm">{p.name}</span>
+                          </div>
+                          {p.hint && (
+                            <p className="text-[11px] text-slate-600 mb-2 leading-snug">{p.hint}</p>
+                          )}
+                          {hintLabels.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 pt-1.5 border-t border-white/60">
+                              {hintLabels.map(h => (
+                                <span key={h.id} className="text-[10px] px-1.5 py-0.5 rounded bg-white/80 text-slate-700 border border-slate-200">
+                                  {h.name}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-slate-400 italic pt-1.5 border-t border-white/60">권장 환경장식물 미매핑</p>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </section>
         )}

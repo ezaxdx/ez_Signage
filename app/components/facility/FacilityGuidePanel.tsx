@@ -6,10 +6,10 @@
 // v9+: 데이터 수집 현황 + 미확인 항목 섹션 추가
 // v9.15+: 하단 "데이터 수정 요청" — 값이 바뀌었을 때 localStorage 신고 루트
 
-import { useState, useEffect } from 'react'
-import { X, AlertCircle, Wrench, Anchor, Shield, Ban, Monitor, Calendar, Star, Database, CheckCircle2, XCircle, Loader2, ClipboardList, Flag, Send } from 'lucide-react'
+import { useState } from 'react'
+// v9.34: Database·CheckCircle2 (인라인 완료 메시지 외)·XCircle·Loader2 제거 — 데이터 수집 현황 섹션 삭제로 미사용
+import { X, AlertCircle, Wrench, Anchor, Shield, Ban, Monitor, Calendar, Star, CheckCircle2, ClipboardList, Flag, Send } from 'lucide-react'
 import { getFacilityGuide, findVenueKey } from '@/lib/data/venueFacilityGuide'
-import { createClient } from '@/lib/supabase/client'
 import { formatNoteText } from '@/lib/text/normalizeAiText'
 import type { VenueFacilityGuide } from '@/lib/types'
 
@@ -25,21 +25,7 @@ function StatusBadge({ status }: { status?: string }) {
   return <span className={`inline-block px-1.5 py-0.5 rounded border text-[10px] font-medium ${cfg.color}`}>{cfg.label}</span>
 }
 
-function CollectionRow({ label, status, note }: { label: string; status: 'ok' | 'missing' | 'loading'; note?: string }) {
-  return (
-    <div className="flex items-center justify-between gap-2">
-      <span className="text-slate-600 font-medium w-20 flex-shrink-0">{label}</span>
-      <div className="flex items-center gap-1.5 flex-1 min-w-0">
-        {status === 'loading' && <Loader2 className="w-3 h-3 text-slate-400 animate-spin flex-shrink-0" />}
-        {status === 'ok'      && <CheckCircle2 className="w-3 h-3 text-emerald-500 flex-shrink-0" />}
-        {status === 'missing' && <XCircle className="w-3 h-3 text-rose-400 flex-shrink-0" />}
-        <span className={`text-[11px] truncate ${status === 'ok' ? 'text-emerald-700' : status === 'missing' ? 'text-rose-600' : 'text-slate-400'}`}>
-          {status === 'loading' ? '조회 중…' : (note ?? '')}
-        </span>
-      </div>
-    </div>
-  )
-}
+// v9.34: CollectionRow 함수 삭제 (데이터 수집 현황 섹션 미사용)
 
 // v9.21 (2026-05-13): 회의 결정 ④⑤ — 미확인 항목 처리 정리
 // v9.31 (2026-05-13): 회의 결정 ⑤ 추가 강조 텍스트 제거 — 사용자 지적
@@ -79,31 +65,11 @@ interface Props {
 
 export function FacilityGuidePanel({ venueName, open, onClose, focusSection }: Props) {
   const guide: VenueFacilityGuide | null = getFacilityGuide(venueName)
-  const [dbData, setDbData] = useState<{ floor_plan_url: string | null; specs_text: string | null } | null>(null)
-  const [dbLoading, setDbLoading] = useState(false)
+  // v9.34: dbData·dbLoading state와 venues 조회 useEffect 삭제 (데이터 수집 현황 섹션 미사용).
+  // 어드민 학습 관리자(LearningManagerClient)에서 venues.floor_plan_url·specs_text를 별도 조회·표시.
   const [correctionOpen, setCorrectionOpen] = useState(false)
   const [correctionText, setCorrectionText] = useState('')
   const [correctionDone, setCorrectionDone] = useState(false)
-
-  useEffect(() => {
-    if (!open || !venueName?.trim()) return
-    setDbLoading(true)
-    const supabase = createClient()
-    const keyword = venueName.split(/[\s(]/)[0]
-    supabase
-      .from('venues')
-      .select('floor_plan_url, specs_text')
-      .ilike('name', `%${keyword}%`)
-      .limit(1)
-      .then(({ data, error }) => {
-        if (error) {
-          setDbData({ floor_plan_url: null, specs_text: null })
-        } else {
-          setDbData(data?.[0] ?? { floor_plan_url: null, specs_text: null })
-        }
-        setDbLoading(false)
-      })
-  }, [open, venueName])
 
   const submitCorrection = () => {
     if (!correctionText.trim()) return
@@ -167,24 +133,8 @@ export function FacilityGuidePanel({ venueName, open, onClose, focusSection }: P
 
         {!guide ? (
           <div className="px-5 py-4 space-y-4 text-xs">
-            {/* 데이터 수집 현황 — 가이드 없어도 표시 */}
-            <section className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 space-y-2">
-              <div className="flex items-center gap-1.5 text-slate-700 mb-1">
-                <Database className="w-3.5 h-3.5" />
-                <h3 className="font-semibold text-[12px]">데이터 수집 현황</h3>
-              </div>
-              <CollectionRow label="시설 가이드" status="missing" note="미학습 — 관리자에게 매뉴얼 등록 요청" />
-              <CollectionRow
-                label="도면 이미지"
-                status={dbLoading ? 'loading' : dbData?.floor_plan_url ? 'ok' : 'missing'}
-                note={dbData?.floor_plan_url ? '업로드됨' : dbLoading ? undefined : '미업로드'}
-              />
-              <CollectionRow
-                label="규격 분석"
-                status={dbLoading ? 'loading' : dbData?.specs_text ? 'ok' : 'missing'}
-                note={dbData?.specs_text ? '분석 완료' : dbLoading ? undefined : '미완료'}
-              />
-            </section>
+            {/* v9.34: 데이터 수집 현황 섹션 삭제 (FacilityGuidePanel — 일반 사용자 화면).
+                어드민 학습 관리자(LearningManagerClient)에는 보존. */}
             <div className="text-center py-6">
               <AlertCircle className="w-7 h-7 text-amber-400 mx-auto mb-2" />
               <p className="text-slate-600 text-sm font-medium">시설 가이드 없음</p>
@@ -196,24 +146,8 @@ export function FacilityGuidePanel({ venueName, open, onClose, focusSection }: P
           </div>
         ) : (
           <div className="px-5 py-4 space-y-5 text-xs">
-            {/* 0-A. 데이터 수집 현황 */}
-            <section className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 space-y-2">
-              <div className="flex items-center gap-1.5 text-slate-700 mb-1">
-                <Database className="w-3.5 h-3.5" />
-                <h3 className="font-semibold text-[12px]">데이터 수집 현황</h3>
-              </div>
-              <CollectionRow label="시설 가이드" status="ok" note="시드 데이터 있음" />
-              <CollectionRow
-                label="도면 이미지"
-                status={dbLoading ? 'loading' : dbData?.floor_plan_url ? 'ok' : 'missing'}
-                note={dbData?.floor_plan_url ? '업로드됨' : dbLoading ? undefined : '미업로드 — /admin/learning 에서 등록'}
-              />
-              <CollectionRow
-                label="규격 분석"
-                status={dbLoading ? 'loading' : dbData?.specs_text ? 'ok' : 'missing'}
-                note={dbData?.specs_text ? '분석 완료' : dbLoading ? undefined : '미완료 — 도면 Vision 분석 후 자동 생성'}
-              />
-            </section>
+            {/* v9.34: 데이터 수집 현황 섹션 삭제 (FacilityGuidePanel — 일반 사용자 화면).
+                어드민 학습 관리자(LearningManagerClient)에는 보존. */}
 
             {/* 0-B. 사전 협의 권장 항목 (v9.21: 회의 결정 ④ — 강조 라벨 톤다운)
                 이전 라벨: "미확인 항목 — 운영팀 직접 확인 필요" (강조 과다)

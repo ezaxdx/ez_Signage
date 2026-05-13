@@ -20,13 +20,20 @@ export interface SignageTypeSeed {
   note?: string
 }
 
+// v9.34: 영문 ID는 코드용 키로 보존, name(한글 라벨)을 사용자 명시 표기로 통일.
+// 사용자 명시 라벨 (2026-05-13, 조기흠 사원):
+//   x_banner → X-배너 / i_banner → I-배너 / streetlight_banner → 가로등 배너
+//   horizontal_banner → 가로 현수막 / vertical_banner → 세로 현수막
+//   chunchen_banner → 통천 / podium → 포디움 타이틀 / backwall → 백월
+//   a4_portrait → A4 세로 / a4_landscape → A4 가로 / a3_portrait → A3 세로 / a3_landscape → A3 가로
 export const SEED_SIGNAGE_TYPES: SignageTypeSeed[] = [
-  { id: 'x_banner',           name: 'X배너',          width_mm: 600,  height_mm: 1800, default_material: 'PET',     category: '입구·등록',  layout: '세로' },
-  { id: 'i_banner',           name: 'I배너',          width_mm: 600,  height_mm: 1600, default_material: 'PET',     category: '실내 안내',  layout: '세로' },
+  { id: 'x_banner',           name: 'X-배너',         width_mm: 600,  height_mm: 1800, default_material: 'PET',     category: '입구·등록',  layout: '세로' },
+  { id: 'i_banner',           name: 'I-배너',         width_mm: 600,  height_mm: 1600, default_material: 'PET',     category: '실내 안내',  layout: '세로' },
   { id: 'streetlight_banner', name: '가로등 배너',    width_mm: 600,  height_mm: 1800, default_material: '현수막',  category: '외부 동선',  layout: '세로' },
   { id: 'horizontal_banner',  name: '가로 현수막',    width_mm: 5000, height_mm: 900,  default_material: '현수막',  category: '메인·외벽',  layout: '가로' },
   { id: 'vertical_banner',    name: '세로 현수막',    width_mm: 900,  height_mm: 5000, default_material: '현수막',  category: '로비·천장',  layout: '세로' },
-  { id: 'chunchen_banner',    name: '통천 배너',      width_mm: 1000, height_mm: 5000, default_material: '현수막',  category: '천장 대형',  layout: '세로' },
+  { id: 'chunchen_banner',    name: '통천',           width_mm: 1000, height_mm: 5000, default_material: '현수막',  category: '천장 대형',  layout: '세로' },
+  { id: 'backwall',           name: '백월',           width_mm: 6000, height_mm: 3000, default_material: '현수막',  category: '무대 배경',  layout: '가로', note: '시상식·기념식·런칭 무대 뒤 배경' },
   { id: 'podium',             name: '포디움 타이틀',  width_mm: 600,  height_mm: 200,  default_material: '스티커',  category: '연단',       layout: '가로' },
   { id: 'a4_portrait',        name: 'A4 세로',        width_mm: 210,  height_mm: 297,  default_material: '인쇄',    category: '소형 안내',  layout: '세로' },
   { id: 'a4_landscape',       name: 'A4 가로',        width_mm: 297,  height_mm: 210,  default_material: '인쇄',    category: '소형 안내',  layout: '가로' },
@@ -45,15 +52,15 @@ export interface SynonymSeed {
 
 export const SEED_SYNONYMS: SynonymSeed[] = [
   // ── 명세 1번 명시 동의어 ──
-  { alias: '스프링배너',     canonical_name: 'X배너',        note: '명세 1번 명시 동의어' },
+  { alias: '스프링배너',     canonical_name: 'X-배너',        note: '명세 1번 명시 동의어' },
 
   // ── 거치대·재질 변형 (X배너) ──
-  { alias: '롤업배너',       canonical_name: 'X배너',        note: '입구 거치형' },
-  { alias: '배너스탠드',     canonical_name: 'X배너',        note: '거치대 일반화' },
-  { alias: '철재스프링배너', canonical_name: 'X배너',        note: '2021 평창평화포럼 시트' },
-  { alias: 'A배너',          canonical_name: 'X배너',        note: 'A형 거치대' },
-  { alias: '물통배너',       canonical_name: 'X배너',        note: '물통 무게추' },
-  { alias: '기타 배너',      canonical_name: 'X배너',        note: '기본 X배너 추정' },
+  { alias: '롤업배너',       canonical_name: 'X-배너',        note: '입구 거치형' },
+  { alias: '배너스탠드',     canonical_name: 'X-배너',        note: '거치대 일반화' },
+  { alias: '철재스프링배너', canonical_name: 'X-배너',        note: '2021 평창평화포럼 시트' },
+  { alias: 'A배너',          canonical_name: 'X-배너',        note: 'A형 거치대' },
+  { alias: '물통배너',       canonical_name: 'X-배너',        note: '물통 무게추' },
+  { alias: '기타 배너',      canonical_name: 'X-배너',        note: '기본 X배너 추정' },
 
   // ── 세로형 (세로 현수막) ──
   { alias: '드롭배너',       canonical_name: '세로 현수막',  note: '천장 매다는 형태' },
@@ -65,12 +72,12 @@ export const SEED_SYNONYMS: SynonymSeed[] = [
   { alias: '상단 배너',      canonical_name: '가로 현수막',  note: '상단 부착 가로형' },
 
   // ── 천장형 (통천 배너) — 신규 다수 발견 ──
-  { alias: '천장배너',       canonical_name: '통천 배너',    note: '천장 매다는 대형' },
-  { alias: '천정배너',       canonical_name: '통천 배너',    note: '천정 매다는 형태 (천장 동일)' },
-  { alias: '장폭_천정배너_단면', canonical_name: '통천 배너', note: '장폭 천정 단면 인쇄' },
-  { alias: '장폭_천정배너_양면', canonical_name: '통천 배너', note: '장폭 천정 양면 인쇄' },
-  { alias: '행잉 배너',      canonical_name: '통천 배너',    note: '천장 매달기 영문 표현' },
-  { alias: '출입구 천정 배너', canonical_name: '통천 배너',  note: '출입구 V자형 천장 배너' },
+  { alias: '천장배너',       canonical_name: '통천',    note: '천장 매다는 대형' },
+  { alias: '천정배너',       canonical_name: '통천',    note: '천정 매다는 형태 (천장 동일)' },
+  { alias: '장폭_천정배너_단면', canonical_name: '통천', note: '장폭 천정 단면 인쇄' },
+  { alias: '장폭_천정배너_양면', canonical_name: '통천', note: '장폭 천정 양면 인쇄' },
+  { alias: '행잉 배너',      canonical_name: '통천',    note: '천장 매달기 영문 표현' },
+  { alias: '출입구 천정 배너', canonical_name: '통천',  note: '출입구 V자형 천장 배너' },
 
   // ── 가로등 배너 ──
   { alias: '빵빠레배너',     canonical_name: '가로등 배너',  note: '외부 동선용' },
@@ -93,7 +100,7 @@ export const SEED_SYNONYMS: SynonymSeed[] = [
   { alias: 'A3안내POP',      canonical_name: 'A3 가로',      note: 'A3 POP 안내' },
 
   // ── 폼보드 변형 ──
-  { alias: '스탠드POP',      canonical_name: 'I배너',        note: '폼보드형 스탠드 POP' },
+  { alias: '스탠드POP',      canonical_name: 'I-배너',        note: '폼보드형 스탠드 POP' },
   { alias: '안내폼보드',     canonical_name: '폼보드',       note: 'L보드 통칭' },
   { alias: 'L보드',          canonical_name: '폼보드',       note: 'L자형 폼보드' },
   { alias: '큐방',           canonical_name: '폼보드',       note: '안내용 큐방' },
