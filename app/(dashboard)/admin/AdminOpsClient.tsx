@@ -122,13 +122,8 @@ export function AdminOpsClient({ kpi, projects, partStageBars, calendar }: Props
       {/* v9.33: 헤더 인라인 nav 제거 — 글로벌 좌측 사이드바(AdminSidebar)로 일원화 */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
 
-        {/* 페이지 헤더 */}
-        <div>
-          <h1 className="text-slate-900 text-xl font-bold">운영 대시보드</h1>
-          <p className="text-slate-500 text-sm mt-0.5">
-            운영 KPI · 전체 프로젝트 현황 · 파트별 분포 · 이번 달 일정 (사용자 피드백 ① 통합)
-          </p>
-        </div>
+        {/* v9.36 시안 매칭: 좌상단 페이지 타이틀만 유지, 부연 산문 제거 */}
+        <h1 className="text-slate-900 text-xl font-bold">운영 대시보드</h1>
 
         {/* ── 운영 KPI 6카드 ─────────────────────────────────── */}
         <section>

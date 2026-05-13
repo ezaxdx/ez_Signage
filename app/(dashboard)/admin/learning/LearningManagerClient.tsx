@@ -227,71 +227,64 @@ export function LearningManagerClient({
   //   - 4번 ′프로그램 파트′ 신규 (PROGRAM_PARTS 12종 표시)
   //   - 5번 ′환경장식물′ = 기존 ′동의어′ 메뉴 명칭 변경 (내부 3 서브탭 그대로:
   //     환경장식물 종류 관리 + 동의어 매핑 + 카테고리 권장)
-  type SectionKey = 'overview' | 'venue-status' | 'venues' | 'program-parts' | 'synonyms'
+  // v9.36: 시안 100% 매칭 IA — 6 평면 메뉴
+  //   1) 행사장 학습 현황 (venue-status)
+  //   2) 행사장 관리 (venues — 내부 venueSubTab으로 add/requests/queue 통합)
+  //   3) 환경장식물 종류 (signage-types)
+  //   4) 동의어 매핑 (synonyms-mapping)
+  //   5) 시설 가이드 (facility-guides — 내부 venueSubTab으로 facility/exceptions 통합)
+  //   6) 수정요청 (correction-requests)
+  // 개요·프로그램 파트 메뉴는 시안에 없어 제거. 부연 desc도 제거.
+  type SectionKey =
+    | 'venue-status'
+    | 'venues'
+    | 'signage-types'
+    | 'synonyms-mapping'
+    | 'facility-guides'
+    | 'correction-requests'
   type VenueSubKey = 'add' | 'requests' | 'queue' | 'facility' | 'exceptions' | 'corrections'
   type SynonymSubKey = 'mapping' | 'category' | 'types'
-  const [activeSection, setActiveSection] = useState<SectionKey>('overview')
+  const [activeSection, setActiveSection] = useState<SectionKey>('venue-status')
   const [venueSubTab, setVenueSubTab] = useState<VenueSubKey>('add')
-  // v9.34: 환경장식물 진입 시 기본 서브탭을 ′종류 관리′(types)로 — 사용자 명시 순서 첫 번째
   const [synonymSubTab, setSynonymSubTab] = useState<SynonymSubKey>('types')
 
-  // v9.31: 시설 가이드 서브탭(또는 예외 패턴 서브탭) 진입 시 예외 빈도 조회
-  // 단일 venues 대섹션 안의 facility/exceptions 서브탭에서 사용
+  // v9.36: 시설 가이드 / 예외 패턴 진입 시 예외 빈도 조회 (6 평면 메뉴 기준)
   useEffect(() => {
-    if (activeSection !== 'venues') return
-    if (venueSubTab !== 'facility' && venueSubTab !== 'exceptions') return
+    if (activeSection !== 'facility-guides') return
     setExceptionLoading(true)
     fetch('/api/admin/exception-monitor')
       .then(r => r.json())
       .then(d => setExceptionAlerts(d.alerts ?? []))
       .catch(() => setExceptionAlerts([]))
       .finally(() => setExceptionLoading(false))
-  }, [activeSection, venueSubTab])
+  }, [activeSection])
 
-  // v9.31: 수정 요청 서브탭 진입 시 API 조회
+  // v9.36: 수정요청 메뉴 진입 시 API 조회
   useEffect(() => {
-    if (activeSection !== 'venues' || venueSubTab !== 'corrections') return
+    if (activeSection !== 'correction-requests') return
     setCorrectionLoading(true)
     fetch('/api/correction-requests')
       .then(r => r.json())
       .then((data: CorrectionRequest[]) => { setCorrectionRequests(Array.isArray(data) ? data : []) })
       .catch(() => setCorrectionRequests([]))
       .finally(() => setCorrectionLoading(false))
-  }, [activeSection, venueSubTab])
+  }, [activeSection])
 
-  // v9.32: 사이드바 5 메뉴 (KPI 카드는 상시 상단 노출 → 사이드바 X)
-  //   1) 개요 / 2) 행사장별 학습 현황 / 3) 행사장 / 4) 프로그램 파트 (신규) / 5) 환경장식물 (구 ′동의어′ 명칭 변경)
-  const SECTIONS: { key: SectionKey; label: string; icon: typeof GraduationCap; desc: string }[] = [
-    // 1) 개요 — 학습 누적·정확도 추이
-    { key: 'overview',      label: '개요',              icon: BarChart3,    desc: '학습 누적 / 단계별 분포 / 정확도 추이' },
-    // 2) 행사장별 학습 현황 — venue별 학습 데이터
-    { key: 'venue-status',  label: '행사장별 학습 현황', icon: GraduationCap, desc: '행사장·프로젝트·항목·정확도, 40% 이하 강조' },
-    // 3) 행사장 (단일 대섹션) — 내부 6 서브: 추가/요청/큐/가이드/예외/수정 요청
-    { key: 'venues',        label: '행사장',            icon: Building2,    desc: '추가 / 신규 요청 대기 / 도면 학습 큐 / 시설 가이드 / 예외 패턴 / 수정 요청' },
-    // 4) 프로그램 파트 (v9.32 신규) — EZ 폴더링 40.04~40.20 12종 표시
-    { key: 'program-parts', label: '프로그램 파트',     icon: Workflow,     desc: '파트 12종 (프로그램 8 / 참가자 응대 3 / 홍보 1) — 권장 환경장식물 매핑' },
-    // 5) 환경장식물 (v9.32 — 구 ′동의어′ 명칭 변경, 내부 3 서브탭 그대로)
-    { key: 'synonyms',      label: '환경장식물',        icon: ImageIcon,    desc: '종류 관리 / 동의어 매핑 / 프로그램 파트' },
+  // v9.36: 사이드바 6 평면 메뉴 — 시안 PNG (데이터_학습_관리자.png) 매칭
+  const SECTIONS: { key: SectionKey; label: string; icon: typeof GraduationCap }[] = [
+    { key: 'venue-status',         label: '행사장 학습 현황',  icon: GraduationCap },
+    { key: 'venues',               label: '행사장 관리',       icon: Building2 },
+    { key: 'signage-types',        label: '환경장식물 종류',   icon: ImageIcon },
+    { key: 'synonyms-mapping',     label: '동의어 매핑',       icon: FileText },
+    { key: 'facility-guides',      label: '시설 가이드',       icon: AlertCircle },
+    { key: 'correction-requests',  label: '수정요청',          icon: Flag },
   ]
 
-  // v9.31: 4 대섹션 내 서브탭 정의
+  // v9.36: ′행사장 관리′ 내부 3 서브탭만 유지 (시설 가이드·예외·수정요청은 평면 메뉴로 분리됨)
   const VENUE_SUBTABS: { key: VenueSubKey; label: string; icon: typeof GraduationCap }[] = [
-    { key: 'add',         label: '행사장 추가',     icon: Building2 },
-    { key: 'requests',    label: '신규 요청 대기',  icon: Inbox },
-    { key: 'queue',       label: '도면 학습 큐',    icon: Loader2 },
-    { key: 'facility',    label: '시설 가이드',     icon: AlertCircle },
-    { key: 'exceptions',  label: '예외 패턴 모니터', icon: AlertTriangle },
-    { key: 'corrections', label: '수정 요청',       icon: Flag },
-  ]
-  // v9.34: 환경장식물 안 3 서브 순서/라벨 정정 (사용자 명시 2026-05-13)
-  //   1) 종류 관리(signage-types)  ─ 라벨 유지
-  //   2) 동의어 매핑(synonyms-mapping)  ─ 라벨 유지
-  //   3) 카테고리 권장 → 프로그램 파트 (라벨 변경, 데이터: 파트 12종 × 환경장식물 매트릭스)
-  // SynonymSubKey 값 'category'는 보존하여 분기 코드 영향 최소화. UI 라벨만 ′프로그램 파트′로 변경.
-  const SYNONYM_SUBTABS: { key: SynonymSubKey; label: string; icon: typeof GraduationCap }[] = [
-    { key: 'types',    label: '종류 관리',     icon: Inbox },
-    { key: 'mapping',  label: '동의어 매핑',   icon: FileText },
-    { key: 'category', label: '프로그램 파트', icon: Workflow },
+    { key: 'add',      label: '행사장 추가',    icon: Building2 },
+    { key: 'requests', label: '신규 요청 대기', icon: Inbox },
+    { key: 'queue',    label: '도면 학습 큐',   icon: Loader2 },
   ]
 
   // ── 행사장 추가 폼 ───────────────────────────────────────
@@ -436,40 +429,30 @@ export function LearningManagerClient({
   return (
     <div className="min-h-screen bg-white">
       {/* v9.33: 헤더 인라인 nav 제거 — 글로벌 좌측 사이드바(AdminSidebar)로 일원화 */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-        <div>
-          <div className="flex items-center gap-2">
-            <GraduationCap className="w-5 h-5 text-emerald-400" />
-            <h1 className="text-xl font-bold text-slate-900">데이터 학습 관리자</h1>
-          </div>
-        </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+        {/* v9.36 시안 매칭: 페이지 타이틀 좌상단 */}
+        <h1 className="text-xl font-bold text-slate-900">데이터 학습 관리자</h1>
 
-        {/* ── KPI 3카드 (§13-3 — 행사장/환경장식물/동의어) ───── */}
+        {/* v9.36 시안 매칭: 상단 KPI 3카드 — 누적 행사장 수 · 환경 장식물 종류 · 동의어 매핑 */}
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-white border border-slate-200 rounded-lg p-4">
-            <p className="text-[10px] text-slate-500">학습된 행사장</p>
+            <p className="text-[11px] text-slate-500">누적 행사장 수</p>
             <p className="text-2xl font-bold text-emerald-700 mt-0.5">{initialVenues.length}<span className="text-sm text-slate-400 ml-1">개</span></p>
           </div>
           <div className="bg-white border border-slate-200 rounded-lg p-4">
-            <p className="text-[10px] text-slate-500">환경장식물 종류</p>
+            <p className="text-[11px] text-slate-500">환경 장식물 종류</p>
             <p className="text-2xl font-bold text-indigo-700 mt-0.5">{signageTypeCount}<span className="text-sm text-slate-400 ml-1">종</span></p>
           </div>
           <div className="bg-white border border-slate-200 rounded-lg p-4">
-            <p className="text-[10px] text-slate-500">동의어 매핑</p>
+            <p className="text-[11px] text-slate-500">동의어 매핑</p>
             <p className="text-2xl font-bold text-amber-700 mt-0.5">{synonyms.length}<span className="text-sm text-slate-400 ml-1">건</span></p>
           </div>
         </div>
 
         <div className="flex gap-6">
-          {/* 좌측 사이드바 — 페이지 전환 (피그마: 각 박스 = 한 페이지) */}
+          {/* v9.36 시안 매칭: 좌측 자체 사이드바 — 6 평면 메뉴, 부연 desc 없음 */}
           <aside className="w-52 flex-shrink-0">
             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden sticky top-20">
-              <div className="px-3 py-2 bg-slate-50 border-b border-slate-200">
-                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">데이터 학습 관리자</p>
-              </div>
-              {/* v9.31: 명세 5 대섹션 평면 (KPI는 상시 상단 → 사이드바 4개)
-                  이전 v9.29 잘못된 댑스(7개 평면 + 그룹 라벨)에서 정정.
-                  4·5 대섹션은 내부 서브탭으로 통합 (사이드바에 노출 X) */}
               <nav className="p-1.5 space-y-0.5">
                 {SECTIONS.map(s => {
                   const Icon = s.icon
@@ -478,15 +461,12 @@ export function LearningManagerClient({
                     <button
                       key={s.key}
                       onClick={() => setActiveSection(s.key)}
-                      className={`w-full flex flex-col items-start gap-0.5 px-2.5 py-2 rounded-lg transition text-left ${
+                      className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg transition text-left text-xs font-medium ${
                         active ? 'bg-emerald-600 text-white' : 'text-slate-700 hover:bg-slate-50'
                       }`}
-                      title={s.desc}
                     >
-                      <span className="flex items-center gap-2 text-xs font-medium">
-                        <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                        {s.label}
-                      </span>
+                      <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                      {s.label}
                     </button>
                   )
                 })}
@@ -508,11 +488,10 @@ export function LearningManagerClient({
           </div>
         )}
 
-        {activeSection === 'overview' && <>
-        {/* ── v9.29: 개요 (명세 §2-2) — 학습 누적 / 단계별 분포 / 정확도 추이 ── */}
+        {/* v9.36: 시안에 ′개요′ 메뉴 없음 → 비활성화 (코드는 보존). */}
+        {false && <>
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-indigo-500" />
             개요
           </h2>
 
@@ -726,30 +705,8 @@ export function LearningManagerClient({
 
         </>}
         {activeSection === 'venues' && <>
-        {/* v9.31: 명세 §2-4 '행사장' 대섹션 내 6 서브탭 통합
-            (추가 / 신규 요청 대기 / 도면 학습 큐 / 시설 가이드 / 예외 패턴 / 수정 요청)
-            이전 v9.29 잘못된 댑스: 서브 항목을 사이드바 항목으로 끌어올림 — 사용자 강한 지적
-            "데이터 학습 관리자 ... 에 맞지 않는데? 너 댑스 이해 못해?" */}
-        <div className="bg-white border border-slate-200 rounded-xl p-1.5 flex flex-wrap gap-1">
-          {VENUE_SUBTABS.map(t => {
-            const Icon = t.icon
-            const active = venueSubTab === t.key
-            return (
-              <button
-                key={t.key}
-                onClick={() => setVenueSubTab(t.key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${
-                  active ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <Icon className="w-3 h-3" />
-                {t.label}
-              </button>
-            )
-          })}
-        </div>
-
-        {venueSubTab === 'add' && <>
+        {/* v9.36 시안 매칭: 가로 서브탭 바 제거. 행사장 관리 안의 3개 블록(추가·요청·큐)을 세로로 모두 표시. */}
+        {true && <>
         {/* ── 행사장 추가 (4-① 서브) ─────────────────────────── */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-4 flex items-center gap-2">
@@ -809,7 +766,7 @@ export function LearningManagerClient({
         </section>
 
         </>}
-        {venueSubTab === 'requests' && <>
+        {true && <>
         {/* ── 사용자 요청 대기 (4-② 서브) ───────────────────── */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-4 flex items-center gap-2">
@@ -855,7 +812,7 @@ export function LearningManagerClient({
         </section>
 
         </>}
-        {venueSubTab === 'queue' && <>
+        {true && <>
         {/* ── 도면 학습 큐 (4-③ 서브) — 미완료만 표시 ──────── */}
         {(() => {
           const pendingJobs = jobs.filter(j => j.status !== 'done' && j.status !== 'skipped')
@@ -1006,7 +963,7 @@ export function LearningManagerClient({
         </>}
         {/* v9.33: 환경장식물 종류 섹션은 SYNONYM_SUBTABS 버튼바 아래(동의어 블록 안)로 이동
             — 이전엔 이 위치에 렌더 → 버튼바가 종류 표 아래에 표시되는 버그 발생 */}
-        {false && activeSection === 'synonyms' && synonymSubTab === 'types' && (
+        {false && (
           <section className="bg-white border border-slate-200 rounded-xl p-5">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-slate-900 font-semibold text-sm flex items-center gap-2">
@@ -1116,31 +1073,8 @@ export function LearningManagerClient({
           </section>
         )}
 
-        {activeSection === 'synonyms' && <>
-        {/* v9.31: 명세 §2-5 '동의어' 대섹션 내 3 서브탭 통합
-            (비표준→표준 매핑 / 카테고리 권장 / 환경장식물 종류 관리)
-            이전 v9.29 잘못된 댑스: '동의어 매핑'과 '환경장식물 종류'를 사이드바 항목으로 분리 — 댑스 정정 */}
-        <div className="bg-white border border-slate-200 rounded-xl p-1.5 flex flex-wrap gap-1">
-          {SYNONYM_SUBTABS.map(t => {
-            const Icon = t.icon
-            const active = synonymSubTab === t.key
-            return (
-              <button
-                key={t.key}
-                onClick={() => setSynonymSubTab(t.key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${
-                  active ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <Icon className="w-3 h-3" />
-                {t.label}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* v9.33: 환경장식물 종류 섹션을 SYNONYM_SUBTABS 버튼바 뒤로 이동 (버튼바가 종류 표 아래에 보이는 버그 수정) */}
-        {synonymSubTab === 'types' && (
+        {/* v9.36 시안 매칭: 환경장식물 종류·동의어 매핑은 평면 메뉴로 분리 (서브탭 바 제거) */}
+        {activeSection === 'signage-types' && (
           <section className="bg-white border border-slate-200 rounded-xl p-5">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-slate-900 font-semibold text-sm flex items-center gap-2">
@@ -1250,8 +1184,8 @@ export function LearningManagerClient({
           </section>
         )}
 
-        {synonymSubTab === 'mapping' && <>
-        {/* ── 비표준 → 표준 매핑 (5-① 서브) ─────────────────── */}
+        {activeSection === 'synonyms-mapping' && <>
+        {/* v9.36: 평면 메뉴 ′동의어 매핑′ */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-slate-900 font-semibold text-sm flex items-center gap-2">
@@ -1347,11 +1281,8 @@ export function LearningManagerClient({
         </section>
         </>}
 
-        {synonymSubTab === 'category' && (
-        /* v9.34: ′카테고리 권장′ → ′프로그램 파트′ 라벨 변경.
-            데이터: 행사 유형 9종(잘못) → PROGRAM_PARTS 12종 × 환경장식물 매트릭스 (lib/programParts.ts SOT).
-            각 파트 카드에 PROGRAM_PART_SIGNAGE_HINTS 매핑 환경장식물 ID → SEED_SIGNAGE_TYPES.name 한글 라벨로 표시.
-            현재는 read-only UI 매트릭스 표시. CRUD 폼·DB 저장·로딩은 v9.35로 분리. */
+        {/* v9.36: 시안에 ′프로그램 파트′ 메뉴 없음 → 비활성화 (코드는 보존). */}
+        {false && (
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-slate-900 font-semibold text-sm flex items-center gap-2">
@@ -1415,10 +1346,9 @@ export function LearningManagerClient({
         </section>
         )}
 
-        </>}
-        {/* v9.31: facility-guides 사이드바 항목 제거 → 행사장 대섹션 내 ′시설 가이드′ + ′예외 패턴 모니터′ 서브탭으로 통합 */}
-        {activeSection === 'venues' && venueSubTab === 'facility' && <>
-        {/* ── v9.30: 시설 가이드 KPI 요약 (명세 §2-4) ───────────── */}
+        {/* v9.36: 평면 메뉴 ′시설 가이드′ — 가이드 + 예외 패턴 두 블록 묶음 */}
+        {activeSection === 'facility-guides' && <>
+        {/* ── 시설 가이드 KPI 요약 ───────────── */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
             <BarChart3 className="w-4 h-4 text-indigo-500" />
@@ -1545,7 +1475,7 @@ export function LearningManagerClient({
 
         </>}
         {/* v9.31: 예외 패턴 모니터 — 행사장 대섹션의 ′예외 패턴′ 서브탭 */}
-        {activeSection === 'venues' && venueSubTab === 'exceptions' && <>
+        {activeSection === 'facility-guides' && <>
         {/* ── 예외 빈도 모니터 — 제작 완료 데이터 > 가이드 규칙 (v9.16, v9.30 보강) ── */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
@@ -1630,7 +1560,7 @@ export function LearningManagerClient({
         </>}
 
         {/* v9.31: correction-requests 사이드바 항목 제거 → 행사장 대섹션의 ′수정 요청′ 서브탭 */}
-        {activeSection === 'venues' && venueSubTab === 'corrections' && (
+        {activeSection === 'correction-requests' && (
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
             <Flag className="w-4 h-4 text-rose-500" />
@@ -1715,7 +1645,7 @@ export function LearningManagerClient({
 
         {/* v9.32 신규 — 프로그램 파트 메뉴 (4번): PROGRAM_PARTS 12종을 그룹별 카드로 표시.
             편집·추가·삭제는 추후 사이클 (현재 read-only). NewProjectButton·case-a 위자드에서 사용. */}
-        {activeSection === 'program-parts' && (
+        {false && (
         <>
           <section className="bg-white border border-slate-200 rounded-xl p-5">
             <div className="flex items-center justify-between mb-3">
