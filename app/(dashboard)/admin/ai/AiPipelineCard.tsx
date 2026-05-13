@@ -45,7 +45,7 @@ const STEPS: PipelineStep[] = [
 
 export function AiPipelineCard() {
   return (
-    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+    <div className="bg-white border border-slate-200 rounded-xl p-4">
       <h2 className="text-slate-700 text-sm font-semibold mb-3">AI 추천 파이프라인</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         {STEPS.map(step => {
@@ -56,8 +56,8 @@ export function AiPipelineCard() {
               key={step.num}
               className={`relative border rounded-lg p-3 ${
                 isComing
-                  ? 'border-dashed border-slate-200 bg-slate-50 dark:bg-slate-900'
-                  : 'border-slate-200 bg-white dark:bg-slate-950'
+                  ? 'border-dashed border-slate-200 bg-slate-50'
+                  : 'border-slate-200 bg-white'
               }`}
             >
               <div className="flex items-center gap-1.5 mb-2">
