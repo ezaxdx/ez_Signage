@@ -6,6 +6,7 @@ import { findSimilarPastEvents, findCeilingBannerContext, getVenueSpecs, formatV
 import { findSimilarVenueSignage, formatVenueSignageContext } from '@/lib/data/venueSignageHelper'
 import { buildAccumulatedContext, formatAccumulatedContext } from '@/lib/ai/accumulatedContext'
 import { buildVenueProfile } from '@/lib/ai/venueProfile'
+import { buildAdminMasterContext } from '@/lib/ai/adminMasterContext'
 import { analyzeFloorPlan } from '@/lib/ai/visionFloorPlan'
 import {
   resolveCoverageForVenue,
@@ -233,6 +234,15 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
     }).join('\n') +
     '\n→ 위 파트별 권장 환경장식물을 1순위 후보로 사용. 각 추천 항목에 매칭된 파트 코드 1개를 program_part 필드에 명시.'
 
+  // v9.40: 어드민 마스터 데이터 자동 주입 (signage_types 추가 + signage_aliases manual + venues.facility_guide_json)
+  // 어드민이 학습 관리자에서 DB에 직접 적재한 추가 자료를 AI가 즉시 활용하도록 합침.
+  // (기존 시드 13종·47건·7개 행사장은 dashboardSeed·venueFacilityGuide 경유로 이미 반영)
+  let adminMasterBlock = ''
+  try {
+    const am = await buildAdminMasterContext(input.venue)
+    if (am.has_data) adminMasterBlock = am.text
+  } catch { /* silent */ }
+
   // v9.33: 행사장 배치도 Vision 분석 — 동선·설치 위치 컨텍스트 보강
   // 1순위(파트별 후보) 결과의 location 필드 정확도를 높이는 보조 컨텍스트.
   let floorPlanBlock = ''
@@ -267,7 +277,7 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
     `사용 목적: ${input.purposes.join(', ') || '미지정 — 행사 유형 기준 자동 판단'}`,
     selectedParts.length > 0 ? `프로그램 파트: ${selectedParts.map(c => `${c} ${PROGRAM_PART_BY_CODE.get(c)!.name}`).join(', ')}` : '',
     input.notes ? `추가 메모: ${input.notes}` : '',
-  ].filter(Boolean).join('\n') + similarEventsBlock + venueSignageBlock + accumulatedBlock + venueProfileBlock + ceilingBannerBlock + venueSpecsBlock + coverageBlock + programPartsBlock + floorPlanBlock
+  ].filter(Boolean).join('\n') + similarEventsBlock + venueSignageBlock + accumulatedBlock + venueProfileBlock + ceilingBannerBlock + venueSpecsBlock + coverageBlock + adminMasterBlock + programPartsBlock + floorPlanBlock
 
   const body = {
     systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
