@@ -1,5 +1,108 @@
 # 작업 이력
 
+## 2026-05-13 (v9.26~v9.30) — 관리자 페이지 + 데이터 학습 관리자 재설계 5사이클 통합
+
+### 사용자 요청
+조기흠 사원(AXDX팀, 2026-05-13): "관리자 페이지 피드백 사항대로 수정" + "암튼 수정 먼저 다해줘"
++ "커밋이래 배포 끄응..." → 5사이클 통합 브랜치에 누적 후 마지막에 한 번 머지·푸시·배포.
+
+명세: `docs/ADMIN_REDESIGN_260513.md` (5섹션 + 피드백 3건)
+노션 IA: `docs/NOTION_IA_EXTRACT_260513.json`
+
+### 사용자 피드백 3건 매핑
+| # | 피드백 | 처리 | 코드 위치 |
+|---|---|---|---|
+| ① | 운영 KPI ↔ 전체 프로젝트 현황 통합 | "운영 대시보드" 단일 화면 | `/admin/page.tsx` + `AdminOpsClient.tsx` (v9.26) |
+| ② | 유저 관리 접근 차단 (데이터허브 연동 결정 전) | "준비 중" 화면 + 헤더 disabled | `/admin/users/page.tsx` (v9.28) |
+| ③ | AI 환경 설정 가능 | 모델·프롬프트·임계값 폼 + 사용량/비용/이상 알림 | `/admin/ai/page.tsx` + `AdminAiClient.tsx` (v9.27) |
+
+### v9.26 — 어드민 운영 대시보드 (KPI + 프로젝트 현황 통합)
+- `/admin` 신설 — 라우트·page.tsx·AdminOpsClient.tsx
+- 운영 KPI 6카드: 진행 중 / 신규 / 발주 완료 / 완료율 / 전환율 / AI 정확도 신호등(70%/50% 기준)
+- 전체 프로젝트 현황 16컬럼 테이블 + 필터(파트·PM·행사장·기간·상태)
+- 파트별 상태 Stacked Bar (진행·완료·반려)
+- 이번 달 일정 D-14 ~ D+7 캘린더 카드 (D-day 컬러)
+- 헤더 "관리자 페이지" 링크 `/data` → `/admin` 변경
+- 기존 `/data` 13탭은 "분석 자료" 진입으로 보존
+- 변경 파일 (3): `app/(dashboard)/admin/page.tsx` + `AdminOpsClient.tsx` + `dashboard/page.tsx`
+
+### v9.27 — AI 관리 페이지 신설
+- `/admin/ai` 신설 — 라우트·page.tsx·AdminAiClient.tsx
+- Gemini API 사용량 4카드 (오늘/이번 달 호출·토큰)
+- 비용 추정 (USD + KRW, 단가 \$0.00015/1K 토큰)
+- 월 예산 한도 + 사용률 진행 바 + 80% 임계 경고
+- 최근 30일 호출 추이 (일자별 막대)
+- 이상 사용자 알림 (동일 프로젝트 5회 이상 재호출)
+- AI 환경 설정 폼: 모델·temperature·max_tokens·예산·임계값·시스템 프롬프트
+- 1차는 localStorage 저장, 다음 사이클 admin_ai_settings 테이블로 영구화
+- 변경 파일 (3): `app/(dashboard)/admin/ai/page.tsx` + `AdminAiClient.tsx` + `supabase/migration_v9_27_admin_ai_settings.sql`
+
+### v9.28 — 유저 관리 접근 차단 (RBAC)
+- `/admin/users` 라우트에 "준비 중" 화면 신설
+- 데이터허브 SSO 연동 결정 전까지 접근 차단
+- 예정 기능 목록 (사용자 퍼널 분석 영역) 설명 표기
+- 헤더 "유저 관리" 링크 disabled 상태 (운영/AI 양쪽 적용)
+- 기존 profiles·isAdmin 코드는 그대로 보존
+- 변경 파일 (1): `app/(dashboard)/admin/users/page.tsx`
+
+### v9.29 — /admin/learning 5개 섹션 재정렬
+- 사이드바를 그룹 라벨 3개(개요·행사장·동의어)로 분리 시각화
+- 명세 §2-2 '개요' 섹션 신설 (기본 진입점)
+  - 학습 누적 그래프 (행사장별 항목 수 TOP 10 막대)
+  - 단계별 분포 (입력 10% / 중간 30% / 컨펌 70% / 완료 100%) Stacked + 4카드
+  - AI 추천 정확도 추이 (행사장별, emerald/amber/rose 3색)
+- 명세 §2-3 '행사장별 학습 현황' — 기존 venue-status 유지
+- 명세 §2-4 '행사장 마스터' — venues + facility-guides + correction-requests 그룹
+- 명세 §2-5 '동의어' — synonyms + signage-types 그룹
+- 헤더 '관리자 페이지' 링크 /data → /admin 갱신 (v9.26 정합)
+- 변경 파일 (1): `app/(dashboard)/admin/learning/LearningManagerClient.tsx`
+
+### v9.30 — 시설 가이드·예외 패턴 모니터 보강
+- 시설 가이드 섹션에 요약 KPI 4카드: 등록 행사장 / 카테고리 제약 / 주의사항 / 평균 완성도
+- 가이드 예외 패턴 섹션에 요약 KPI 3카드: 전체 / 검토 필요(≥3회) / 완료 누계
+- 기존 표·플래그(venue+rule 3회 이상 = 가이드 검토 필요 배지) 유지
+- 변경 파일 (1): `app/(dashboard)/admin/learning/LearningManagerClient.tsx`
+
+### DB 마이그레이션 (PM 후속 액션)
+- `supabase/migration_v9_27_admin_ai_settings.sql` 실행 필요 (v9.27)
+  - admin_ai_settings 싱글톤 테이블 + RLS admin SELECT/UPDATE
+  - usage_logs.recommend 인덱스 추가
+- 미실행 상태에서도 클라이언트는 localStorage로 동작
+
+### 검증
+- TSC 0 에러 (각 사이클 사이 + 통합)
+- Next 빌드 25/25 라우트 PASS (v9.26 신규 `/admin`, v9.27 `/admin/ai`, v9.28 `/admin/users` 포함)
+- `/admin` 5.66 kB / `/admin/ai` 5.43 kB / `/admin/users` 179 B / `/admin/learning` 15.6 kB
+
+### 변경 파일 총괄 (사이클별)
+- v9.26: 3개 (admin/page.tsx + AdminOpsClient.tsx + dashboard/page.tsx 헤더)
+- v9.27: 3개 (admin/ai/page.tsx + AdminAiClient.tsx + migration SQL)
+- v9.28: 1개 (admin/users/page.tsx)
+- v9.29: 1개 (admin/learning/LearningManagerClient.tsx)
+- v9.30: 1개 (admin/learning/LearningManagerClient.tsx)
+- 합계 신규: 7개, 수정: 2개 (5사이클 누적)
+
+### 라이브 사이트 확인 체크리스트 (사용자 영역)
+- https://ez-signage2.vercel.app 로그인(admin) 후
+- 헤더 "관리자 페이지" 클릭 → `/admin` 운영 대시보드 진입 (이전엔 `/data`로 갔음)
+- `/admin/ai` 진입 → 사용량 카드·예산 바·이상 사용자·환경 설정 폼 동작 확인
+- `/admin/users` 진입 → "준비 중" 화면 표시 확인 (구현 코드는 보존)
+- `/admin/learning` 사이드바 그룹 3개(개요/행사장/동의어) 표시 + 개요 섹션이 기본 활성
+- `/data` 분석 자료 13탭이 여전히 접근 가능 (보존됨)
+
+### 다음 사이클 후보
+- admin_ai_settings 테이블 마이그레이션 실행 후 localStorage → DB 영구화
+- AI 환경 설정의 system_prompt를 실제 recommendSignage.ts에 주입
+- Stage 액션(편집·다운로드·승인·반려·보기) 활성화 (현재 보기·편집만)
+- 전체 프로젝트 현황 테이블에 정렬·페이지네이션
+- 사용자 퍼널 분석 (유저 관리 페이지 차단 해제 후)
+
+### 배포
+- 통합 브랜치: `auto/v9.26-v9.30-admin-redesign-260513`
+- 머지·푸시는 PROGRESS 갱신 후 마지막에 한 번에 진행 (사용자 사전 컨펌)
+
+---
+
 ## 2026-05-13 (v9.25) — 환경장식물 추가 보강: 발주엑셀 venue 라벨 노이즈 필터
 
 ### 사용자 요청
