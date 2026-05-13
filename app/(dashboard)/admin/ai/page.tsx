@@ -2,12 +2,14 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { isAdmin } from '@/lib/auth/role'
 import { AdminAiClient } from './AdminAiClient'
+import { STANDARD_CATEGORIES, computeVenueCategoryCoverage } from '@/lib/data/signageCategoryStandards'
+import type { AccuracyRow } from './AccuracyTable'
 
 export const metadata = { title: '관리자 페이지 — AI 관리 | 제작물 리스트 가이드' }
 
-// v9.27: AI 관리 페이지 신설 (사용자 피드백 ③ 반영)
-// — Gemini API 사용량 / 비용 추정 / 한도 알림 / 이상 사용자 / 환경 설정
+// v9.39: 명세 재구조화 — KPI 3 (호출·토큰·비용) + AI 파이프라인 4 step + 카테고리 정확도 테이블
 // 명세: docs/ADMIN_REDESIGN_260513.md §1-4
+//   기존 풍부한 사용량/예산/30일 추이/이상 사용자/환경 설정 폼은 하단에 그대로 보존
 export default async function AdminAiPage() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -89,8 +91,81 @@ export default async function AdminAiPage() {
   }
   abnormalUsers.sort((a, b) => b.count - a.count)
 
+  // ── v9.39: 카테고리별 정확도 테이블 데이터 ────────────────────
+  // 6대 표준 카테고리 × 학습 보유 행사장 수 + 평균 정확도
+  // 정확도는 design_items 단계별 가중치 평균 (해당 카테고리 항목만)
+  const itemsRes = await supabase
+    .from('design_items')
+    .select('category, confirmed, finalized_at, review_status')
+    .limit(20000)
+    .then(r => r, () => ({ data: [], error: null }))
+  type Item = {
+    category: string | null
+    confirmed: boolean | null
+    finalized_at: string | null
+    review_status: string | null
+  }
+  const items = (itemsRes.data ?? []) as Item[]
+
+  // 카테고리별 행사장 학습 보유 카운트 (시드 기반)
+  const venueCoverages = computeVenueCategoryCoverage()
+  const trainedByCat = new Map<string, number>()
+  for (const cov of venueCoverages) {
+    for (const k of Object.keys(cov.has_data) as Array<keyof typeof cov.has_data>) {
+      if (cov.has_data[k]) trainedByCat.set(k, (trainedByCat.get(k) ?? 0) + 1)
+    }
+  }
+
+  // 카테고리별 design_items 평균 정확도 (입력 10·중간 30·컨펌 70·완료 100)
+  // classifyCategory를 클라이언트가 알 수 없으므로 page에서 직접 fuzzy 분류
+  const accByCat = new Map<string, { sum: number; n: number }>()
+  for (const it of items) {
+    const cat = it.category ?? ''
+    // 자유 문자열 → 6대 키 매칭 (signageCategoryStandards.match_keywords 기반)
+    const matched = STANDARD_CATEGORIES.find(sc =>
+      sc.match_keywords.some(kw => cat.includes(kw))
+    )
+    if (!matched) continue
+    let w = 10
+    if (it.finalized_at) w = 100
+    else if (it.confirmed) w = 70
+    else if (it.review_status === '확인필요' || it.review_status === '수정요청') w = 30
+    const cur = accByCat.get(matched.key) ?? { sum: 0, n: 0 }
+    cur.sum += w
+    cur.n += 1
+    accByCat.set(matched.key, cur)
+  }
+
+  const accuracyRows: AccuracyRow[] = STANDARD_CATEGORIES.map(sc => {
+    const trained = trainedByCat.get(sc.key) ?? 0
+    const acc = accByCat.get(sc.key)
+    const avg = acc && acc.n > 0 ? Math.round(acc.sum / acc.n) : null
+    const isFloorPlanRelated = sc.key === 'gate' || sc.key === 'streetlight'
+    const comment = isFloorPlanRelated && trained === 0
+      ? '도면 학습 — 커밍순'
+      : trained === 0
+      ? '학습 데이터 부재'
+      : undefined
+    return {
+      category_key: sc.key,
+      category_label: sc.label,
+      trained_venues: trained,
+      avg_accuracy: avg,
+      comment,
+    }
+  })
+
+  // ── v9.39: KPI 3 카드 데이터 (호출·토큰·비용) ────────────────
+  const kpi3 = {
+    monthCalls: monthCalls > 0 ? monthCalls : null,
+    monthTokens: monthTokens > 0 ? monthTokens : null,
+    monthCostKrw: monthTokens > 0 ? Math.round(monthCostUsd * KRW_PER_USD) : null,
+  }
+
   return (
     <AdminAiClient
+      kpi3={kpi3}
+      accuracyRows={accuracyRows}
       stats={{
         todayCalls,
         monthCalls,
