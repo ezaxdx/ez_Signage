@@ -1,5 +1,86 @@
 # 작업 이력
 
+## 2026-05-13 (v9.39) — Admin IA 재구조화 (명세 v4.7 정확 적용)
+
+### 사용자 요청
+조기흠 사원(AXDX팀, 2026-05-13): 명세 docs/ADMIN_REDESIGN_260513.md (v4.7) 기준
+관리자 페이지 IA 재구조화 — 다른 Claude 진단 + 사용자 확정.
+
+핵심 결정 (이전 명세 v9.33·v9.36과 차이):
+- learning 하위 6 페이지 분리 X (LearningManagerClient.tsx 그대로 유지)
+- 헤더 4메뉴 → 3메뉴 ('데이터 학습 관리자' 링크 제거 — 사이드바에 이미 노출)
+- /admin/ai 재구조화 (AiPipelineCard + AccuracyTable 컴포넌트 분리)
+- /data 건드리지 X
+
+### 변경 1: /admin 운영 대시보드 (AdminOpsClient.tsx)
+- AI 정확도 신호등 카드 제거 (6번째 카드 JSX 블록)
+- grid-cols 6 → 5로 변경 (운영 KPI 5개만: 진행 중·이번 주 신규·발주 완료·완료율·전환율)
+- signalBg·signalLabel 변수 + Sparkles 아이콘 import 제거
+- KpiData 인터페이스 aiAccuracy·accuracySignal 필드는 server prop 호환 위해 유지
+
+### 변경 2: /admin/ai 재구조화 — KPI 3 + 파이프라인 + 정확도 테이블
+신규 컴포넌트 2개:
+- `AiPipelineCard.tsx` — 4 step 시각화:
+  1) 파트 후보 추출 / 2) 시설 가이드 제약 / 3) 표준 수량 산정 / 4) 도면 Vision 보강(커밍순 배지)
+  lucide 아이콘 Layers·ShieldAlert·Calculator·Camera. 도면 step은 dashed border + amber 배지.
+- `AccuracyTable.tsx` — 6대 표준 카테고리(외벽·게이트·가로등·X배너·천정·부속시설) × 학습 보유 행사장 / 평균 정확도 / 비고 4컬럼.
+  데이터 부재 시 `—` 표기 (정답지 노출 편향 방지 — learnings.md 2026-05-11).
+
+page.tsx 데이터 prep:
+- `computeVenueCategoryCoverage()` (인자 없음) → 7개 행사장 × 6대 카테고리 학습 보유 카운트
+- design_items 단계별 가중치(입력 10·중간 30·컨펌 70·완료 100%) 평균으로 카테고리별 정확도 산출
+- 카테고리 fuzzy 분류는 STANDARD_CATEGORIES.match_keywords 직접 사용
+- KPI 3 (이번 달 호출·토큰·비용 KRW) — 데이터 0건 시 null 반환 → 클라이언트 `—` 표기
+
+AdminAiClient.tsx:
+- 상단에 KPI 3 + AiPipelineCard + AccuracyTable 추가
+- v9.27의 풍부한 UI (예산·30일 추이·이상 사용자·환경 설정 폼)는 하단에 보존
+- Kpi3Card 헬퍼 함수 신규 추가 (Phone·Coins·Wallet 아이콘)
+
+### 변경 3: 헤더 4메뉴 → 3메뉴 (dashboard/page.tsx)
+- `<Link href="/admin/learning">데이터 학습 관리자</Link>` JSX 블록 제거
+- AdminSidebar(좌측)에 이미 노출되므로 헤더 인라인 nav에서 중복 제거
+- GraduationCap·Archive lucide 아이콘 import 제거 (미사용)
+- '관리자 페이지' Link title에 '운영 대시보드 / AI 관리 / 데이터 학습 관리자' 명시 — 사이드바 진입 안내
+
+### 손대지 않은 파일 (작업지시서 함정 ⑤)
+- AdminSidebar.tsx (이미 v9.36에서 3 메뉴 구조)
+- admin/layout.tsx (이미 v9.33에서 isAdmin 가드 + 사이드바 적용)
+- LearningManagerClient.tsx
+- data/ 페이지·layout
+- archive/ / dashboardSeed.ts / lib/auth/role.ts
+
+### 검증
+- TSC 0 에러
+- Next 빌드 25/25 라우트 PASS
+- `/admin` 4.71 → 4.24 kB (AI 카드 제거)
+- `/admin/ai` 4.38 → 6.22 kB (파이프라인+정확도 테이블 추가)
+- `/dashboard` 23.4 → 23.3 kB (헤더 링크 1개 제거)
+- harness 1 fail = .env.local 부재 (worktree 환경 이슈, 작업과 무관)
+
+### 변경 파일 (6개 = 신규 2 + 수정 4)
+- 신규: `app/(dashboard)/admin/ai/AiPipelineCard.tsx`
+- 신규: `app/(dashboard)/admin/ai/AccuracyTable.tsx`
+- 수정: `app/(dashboard)/admin/AdminOpsClient.tsx`
+- 수정: `app/(dashboard)/admin/ai/AdminAiClient.tsx`
+- 수정: `app/(dashboard)/admin/ai/page.tsx`
+- 수정: `app/(dashboard)/dashboard/page.tsx`
+
+### 커밋·머지·푸시
+- 의미 단위 3 커밋 (036ddd4·b12be0f·1d4302d) on `auto/admin-ia-restructure-260513`
+- main 머지 (`--no-ff`) → 5df90b0
+- v2/main push 완료 (196e7d1..5df90b0) — Vercel 자동 배포 트리거
+- origin/main push: 자동 모드 분류기 차단 → 사용자 수동 push 필요
+  - 명령: `cd "C:\Users\EZPMP\Desktop\클로드 코드 활동용\업무 자동화\제작물 디자인 의뢰 가이드\프로그렘\mice-design-guide" && git push origin main`
+
+### 라이브 사이트 확인 체크리스트 (사용자 영역)
+1. https://ez-signage2.vercel.app 로그인(admin) 후 헤더에 '프로젝트' + '관리자 페이지' 2 메뉴만 노출 확인 ('데이터 학습 관리자' 헤더에서 사라짐)
+2. /admin 진입 → 운영 KPI 카드 5개만 표시 (AI 정확도 신호등 사라짐)
+3. /admin/ai 진입 → 상단 KPI 3 (이번 달 호출·토큰·비용) → AI 추천 파이프라인 4 step (4번 카드에 '커밍순' 배지) → 카테고리 정확도 테이블 (6대 표준 카테고리)
+4. AdminSidebar 좌측 메뉴 3개 (운영 대시보드 / AI 관리 / 데이터 학습 관리자) — 활성 라우트 indigo 강조 확인
+
+---
+
 ## 2026-05-13 (v9.33) — 통합 핫픽스 6건: 글로벌 사이드바 + 3단계 SYSTEM_INSTRUCTION + UI 버그·PM 정정·부연 제거·도면 Vision
 
 ### 사용자 요청
