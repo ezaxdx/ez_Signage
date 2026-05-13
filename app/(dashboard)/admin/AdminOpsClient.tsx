@@ -8,6 +8,8 @@ import {
 } from 'lucide-react'
 
 // v9.26: 운영 KPI ↔ 전체 프로젝트 현황 통합 (사용자 피드백 ① 반영)
+// v9.45: AI 정확도 신호등 prop(aiAccuracy·accuracySignal)은 v9.39에서 /admin/ai로 이동했으므로
+//        KpiData에서도 제거 (page.tsx의 미사용 계산도 함께 제거)
 
 interface KpiData {
   inProgress: number
@@ -15,8 +17,6 @@ interface KpiData {
   thisWeekFinalized: number
   finalizedRate: number
   conversionRate: number
-  aiAccuracy: number
-  accuracySignal: 'green' | 'amber' | 'red'
 }
 
 interface ProjectRow {

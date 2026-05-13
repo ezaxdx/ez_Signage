@@ -93,23 +93,9 @@ export default async function AdminOpsPage() {
   const confirmedItems = items.filter(it => it.confirmed).length
   const conversionRate = confirmedItems === 0 ? 0 : Math.round((finalizedItems / confirmedItems) * 100)
 
-  // AI 추천 정확도 (rolling) — 단계별 가중치 평균
-  // input 10% / mid 30% / confirmed 70% / finalized 100%
-  let totalWeight = 0
-  let weighted = 0
-  for (const it of items) {
-    let w = 10
-    if (it.finalized_at) w = 100
-    else if (it.confirmed) w = 70
-    else if (it.review_status === '확인필요' || it.review_status === '수정요청') w = 30
-    weighted += w
-    totalWeight += 100
-  }
-  const aiAccuracy = totalWeight === 0 ? 0 : Math.round((weighted / totalWeight) * 100)
-
-  // 신호등 색상 (목표 70%)
-  const accuracySignal: 'green' | 'amber' | 'red' =
-    aiAccuracy >= 70 ? 'green' : aiAccuracy >= 50 ? 'amber' : 'red'
+  // v9.45: 전체 합산 AI 정확도(aiAccuracy·accuracySignal)는 v9.39에서 운영 대시보드 KPI에서 제거됨.
+  //        해당 신호등은 /admin/ai 정확도 테이블로 이관됨. 미사용 데이터 계산도 함께 제거.
+  //        프로젝트별 ai_accuracy(아래 projectsTable.map)는 표 컬럼에서 계속 사용됨.
 
   // ── 전체 프로젝트 현황 — 테이블 데이터 가공 ───────────────────────────
   const itemsByPid = new Map<string, Item[]>()
@@ -227,8 +213,6 @@ export default async function AdminOpsPage() {
         thisWeekFinalized,
         finalizedRate,
         conversionRate,
-        aiAccuracy,
-        accuracySignal,
       }}
       projects={projectsTable}
       partStageBars={partStageBars}
