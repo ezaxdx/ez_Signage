@@ -11,10 +11,31 @@
  *   4. VenueInfo.specialNotes → 현장 특이사항 (층 이동 화살표 필수 등)
  */
 
+/**
+ * 한국 행정구역 표준 라벨 (광역시 8 + 도 9 + 해외).
+ * 사용자 피드백(2026-05-13, 조기흠 사원): "지방"이라는 두루뭉술 표기를
+ * 정확한 도/광역시 이름으로 분류.
+ */
+export type VenueRegion =
+  | '서울특별시' | '부산광역시' | '인천광역시' | '대구광역시'
+  | '대전광역시' | '광주광역시' | '울산광역시' | '세종특별자치시'
+  | '경기도' | '강원특별자치도' | '충청북도' | '충청남도'
+  | '전북특별자치도' | '전라남도' | '경상북도' | '경상남도'
+  | '제주특별자치도' | '해외'
+
+/** optgroup·표 정렬용 순서 (광역시 → 도 → 해외, 행정 표준). */
+export const REGION_ORDER: VenueRegion[] = [
+  '서울특별시', '부산광역시', '인천광역시', '대구광역시',
+  '대전광역시', '광주광역시', '울산광역시', '세종특별자치시',
+  '경기도', '강원특별자치도', '충청북도', '충청남도',
+  '전북특별자치도', '전라남도', '경상북도', '경상남도',
+  '제주특별자치도', '해외',
+]
+
 export interface VenueInfo {
   key: string          // 매칭 키워드 (project.event_venue contains)
   displayName: string  // 표시명
-  region: '서울' | '수도권' | '지방' | '제주' | '해외'
+  region: VenueRegion
   type: '컨벤션' | '호텔' | '전시장' | '공공시설' | '야외' | '기타'
   hasSamples: boolean  // 행사별 폴더에 샘플 있음
   /** 향후 폴더 분석 시 채울 필드 */
@@ -27,29 +48,29 @@ export interface VenueInfo {
 // 컨벤션·전시장은 동선 복잡 → 평균 이상, 호텔·공공시설은 단일 공간 → 평균 이하 가정.
 export const VENUE_LIST: VenueInfo[] = [
   // 컨벤션센터 — 평균 이상
-  { key: '코엑스', displayName: '코엑스 (COEX)', region: '서울', type: '컨벤션', hasSamples: true, typicalItemCount: 45 },
-  { key: '킨텍스', displayName: '킨텍스 (KINTEX)', region: '수도권', type: '전시장', hasSamples: true, typicalItemCount: 50 },
-  { key: '송도컨벤시아', displayName: '송도컨벤시아', region: '수도권', type: '컨벤션', hasSamples: true, typicalItemCount: 40 },
-  { key: 'ICC JEJU', displayName: 'ICC JEJU', region: '제주', type: '컨벤션', hasSamples: true, typicalItemCount: 35 },
-  { key: '제주국제컨벤션', displayName: '제주국제컨벤션센터', region: '제주', type: '컨벤션', hasSamples: true, typicalItemCount: 35 },
-  { key: '광주 김대중', displayName: '광주 김대중컨벤션센터', region: '지방', type: '컨벤션', hasSamples: true, typicalItemCount: 30 },
-  { key: 'aT센터', displayName: 'aT센터', region: '서울', type: '컨벤션', hasSamples: true, typicalItemCount: 30 },
+  { key: '코엑스', displayName: '코엑스 (COEX)', region: '서울특별시', type: '컨벤션', hasSamples: true, typicalItemCount: 45 },
+  { key: '킨텍스', displayName: '킨텍스 (KINTEX)', region: '경기도', type: '전시장', hasSamples: true, typicalItemCount: 50 },
+  { key: '송도컨벤시아', displayName: '송도컨벤시아', region: '인천광역시', type: '컨벤션', hasSamples: true, typicalItemCount: 40 },
+  { key: 'ICC JEJU', displayName: 'ICC JEJU', region: '제주특별자치도', type: '컨벤션', hasSamples: true, typicalItemCount: 35 },
+  { key: '제주국제컨벤션', displayName: '제주국제컨벤션센터', region: '제주특별자치도', type: '컨벤션', hasSamples: true, typicalItemCount: 35 },
+  { key: '광주 김대중', displayName: '광주 김대중컨벤션센터', region: '광주광역시', type: '컨벤션', hasSamples: true, typicalItemCount: 30 },
+  { key: 'aT센터', displayName: 'aT센터', region: '서울특별시', type: '컨벤션', hasSamples: true, typicalItemCount: 30 },
   // 호텔 — 평균 이하
-  { key: '롯데호텔 서울', displayName: '롯데호텔 서울', region: '서울', type: '호텔', hasSamples: true, typicalItemCount: 20 },
-  { key: '그랜드하얏트', displayName: '그랜드하얏트 서울', region: '서울', type: '호텔', hasSamples: true, typicalItemCount: 25 },
-  { key: '더플라자', displayName: '더플라자 호텔 서울', region: '서울', type: '호텔', hasSamples: true, typicalItemCount: 20 },
-  { key: '웨스틴 조선', displayName: '웨스틴 조선 서울', region: '서울', type: '호텔', hasSamples: true, typicalItemCount: 20 },
+  { key: '롯데호텔 서울', displayName: '롯데호텔 서울', region: '서울특별시', type: '호텔', hasSamples: true, typicalItemCount: 20 },
+  { key: '그랜드하얏트', displayName: '그랜드하얏트 서울', region: '서울특별시', type: '호텔', hasSamples: true, typicalItemCount: 25 },
+  { key: '더플라자', displayName: '더플라자 호텔 서울', region: '서울특별시', type: '호텔', hasSamples: true, typicalItemCount: 20 },
+  { key: '웨스틴 조선', displayName: '웨스틴 조선 서울', region: '서울특별시', type: '호텔', hasSamples: true, typicalItemCount: 20 },
   // 공공시설
-  { key: '국립중앙박물관', displayName: '국립중앙박물관', region: '서울', type: '공공시설', hasSamples: true },
-  { key: '동대문디자인플라자', displayName: '동대문디자인플라자 (DDP)', region: '서울', type: '공공시설', hasSamples: true },
-  { key: 'DDP', displayName: '동대문디자인플라자 (DDP)', region: '서울', type: '공공시설', hasSamples: true },
-  { key: '광화문', displayName: '광화문 광장', region: '서울', type: '야외', hasSamples: true },
-  { key: '서울스퀘어', displayName: '서울스퀘어', region: '서울', type: '공공시설', hasSamples: true },
-  { key: '경남도청', displayName: '경남도청 대회의실', region: '지방', type: '공공시설', hasSamples: true },
-  { key: '경주', displayName: '경주', region: '지방', type: '기타', hasSamples: true },
-  { key: '광주비엔날레', displayName: '광주비엔날레전시관', region: '지방', type: '전시장', hasSamples: true },
-  { key: '평창', displayName: '평창올림픽스타디움', region: '지방', type: '야외', hasSamples: true },
-  { key: '오스코', displayName: '오스코 (OSCO)', region: '서울', type: '기타', hasSamples: true },
+  { key: '국립중앙박물관', displayName: '국립중앙박물관', region: '서울특별시', type: '공공시설', hasSamples: true },
+  { key: '동대문디자인플라자', displayName: '동대문디자인플라자 (DDP)', region: '서울특별시', type: '공공시설', hasSamples: true },
+  { key: 'DDP', displayName: '동대문디자인플라자 (DDP)', region: '서울특별시', type: '공공시설', hasSamples: true },
+  { key: '광화문', displayName: '광화문 광장', region: '서울특별시', type: '야외', hasSamples: true },
+  { key: '서울스퀘어', displayName: '서울스퀘어', region: '서울특별시', type: '공공시설', hasSamples: true },
+  { key: '경남도청', displayName: '경남도청 대회의실', region: '경상남도', type: '공공시설', hasSamples: true },
+  { key: '경주', displayName: '경주', region: '경상북도', type: '기타', hasSamples: true },
+  { key: '광주비엔날레', displayName: '광주비엔날레전시관', region: '광주광역시', type: '전시장', hasSamples: true },
+  { key: '평창', displayName: '평창올림픽스타디움', region: '강원특별자치도', type: '야외', hasSamples: true },
+  { key: '오스코', displayName: '오스코 (OSCO)', region: '서울특별시', type: '기타', hasSamples: true },
   // 해외
   { key: '벨렘', displayName: '브라질 벨렘', region: '해외', type: '기타', hasSamples: true },
   { key: '파리', displayName: '프랑스 파리', region: '해외', type: '기타', hasSamples: true },
@@ -81,7 +102,10 @@ export function getVenueCheckScore(_projectItemCount: number, _venueInfo: VenueI
   return -1
 }
 
-/** 지역별 그룹화 */
+/**
+ * 지역별 그룹화 — 광역시·도 행정 순서(REGION_ORDER) 유지.
+ * 결과 키는 정확한 도/광역시 이름(예: '광주광역시', '경상남도').
+ */
 export function groupVenuesByRegion(): Record<string, VenueInfo[]> {
   const seen = new Set<string>()
   const groups: Record<string, VenueInfo[]> = {}
@@ -90,5 +114,10 @@ export function groupVenuesByRegion(): Record<string, VenueInfo[]> {
     seen.add(v.displayName)
     ;(groups[v.region] ??= []).push(v)
   }
-  return groups
+  // REGION_ORDER 기준으로 키 정렬 (선언 순 보존을 위해 새 객체 생성)
+  const ordered: Record<string, VenueInfo[]> = {}
+  for (const r of REGION_ORDER) {
+    if (groups[r]) ordered[r] = groups[r]
+  }
+  return ordered
 }

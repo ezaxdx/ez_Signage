@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS public.venue_info (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name          text NOT NULL UNIQUE,
   alias         text[],           -- 별칭 배열 (킨텍스 = KINTEX 등)
-  region        text,             -- 서울/경기/지방
+  region        text,             -- 광역시·도 정식 명칭 (예: 서울특별시 / 경기도 / 광주광역시)
   venue_type    text CHECK (venue_type IN ('컨벤션','전시장','호텔','야외','기타')),
   typical_signage_types text[],  -- 주로 사용하는 환경장식물 목록
   notes         text,

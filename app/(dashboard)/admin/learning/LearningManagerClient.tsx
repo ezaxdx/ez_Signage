@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { explainStorageError } from '@/lib/services/storagePaths'
+import { REGION_ORDER } from '@/lib/venueIntel'
 
 // ── 타입 ──────────────────────────────────────────────────────
 interface Venue {
@@ -124,7 +125,8 @@ interface Props {
 }
 
 const VENUE_TYPES = ['컨벤션센터', '호텔', '전시장', '야외', '공공시설', '기타'] as const
-const REGIONS = ['서울', '수도권', '지방', '제주', '해외'] as const
+// 행정 표준: 광역시 8 + 도 9 + 해외 (사용자 피드백 2026-05-13 — "지방" → 정확한 도 이름)
+const REGIONS = REGION_ORDER
 
 export function LearningManagerClient({
   userId, initialVenues, initialRequests, initialJobs,

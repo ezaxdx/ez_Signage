@@ -153,7 +153,7 @@ export const SEED_EVENT_HISTORY: EventHistorySeed[] = [
   { project_name: '제17차 한-중앙아 협력 포럼',                   project_code: '241014',  year: 2024, venue: '롯데호텔 서울',                  category_tag: '일반', has_excel: true,  has_image: true  },
   { project_name: '환경 협력 네트워크 구축 주한공관장 초청 간담회', project_code: '252016',year: 2025, venue: '롯데호텔 서울',                  category_tag: '일반', has_excel: true,  has_image: true  },
   { project_name: '제16차 한·베트남 환경장관회의',                project_code: '241011',  year: 2024, venue: '웨스틴 조선 서울 라일락+튤립',   category_tag: '일반', has_excel: true,  has_image: true  },
-  // 광주·지방
+  // 광주광역시·경상남도·경상북도·강원특별자치도
   { project_name: 'BIXPO 2018 행사 (본계약)',                     project_code: '183300-1',year: 2018, venue: '광주 김대중컨벤션센터',          category_tag: '일반', has_excel: true,  has_image: true  },
   { project_name: '제13회 광주비엔날레',                          project_code: '201100',  year: 2020, venue: '광주비엔날레전시관',             category_tag: '일반', has_excel: true,  has_image: true  },
   { project_name: '중소기업 스마트 제조혁신 전략보고회',          project_code: '182120',  year: 2018, venue: '경남도청 대회의실',              category_tag: '일반', has_excel: true,  has_image: true  },
