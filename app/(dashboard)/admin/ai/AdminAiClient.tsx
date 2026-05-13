@@ -85,12 +85,8 @@ export function AdminAiClient({ stats, dailyTrend, abnormalUsers }: Props) {
     <div className="min-h-screen bg-slate-50">
       {/* v9.33: 헤더 인라인 nav 제거 — 글로벌 좌측 사이드바(AdminSidebar)로 일원화 */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-        <div>
-          <h1 className="text-slate-900 text-xl font-bold">AI 관리</h1>
-          <p className="text-slate-500 text-sm mt-0.5">
-            Gemini API 사용량·비용·이상 알림 + 모델·프롬프트·임계값 환경 설정
-          </p>
-        </div>
+        {/* v9.36 시안 매칭: 좌상단 페이지 타이틀만 유지, 부연 산문 제거 */}
+        <h1 className="text-slate-900 text-xl font-bold">AI 관리</h1>
 
         {/* ── 사용량 KPI 4카드 ──────────────────────────── */}
         <section>
