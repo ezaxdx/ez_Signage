@@ -16,14 +16,14 @@ interface Props {
 
 export function AccuracyTable({ rows }: Props) {
   return (
-    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+    <div className="bg-white border border-slate-200 rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-slate-700 text-sm font-semibold">카테고리별 추천 정확도</h2>
         <span className="text-[10px] text-slate-400">학습 데이터 단계별 가중치(10·30·70·100%) 기준</span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
-          <thead className="bg-slate-50 dark:bg-slate-900 text-slate-600">
+          <thead className="bg-slate-50 text-slate-600">
             <tr>
               <th className="px-3 py-2 text-left font-medium border-b border-slate-200">카테고리</th>
               <th className="px-3 py-2 text-left font-medium border-b border-slate-200">학습 보유 행사장</th>
@@ -51,7 +51,7 @@ export function AccuracyTable({ rows }: Props) {
               return (
                 <tr
                   key={r.category_key}
-                  className="hover:bg-slate-50 dark:hover:bg-slate-900 border-b border-slate-100"
+                  className="hover:bg-slate-50 border-b border-slate-100"
                 >
                   <td className="px-3 py-2 font-medium text-slate-900">{r.category_label}</td>
                   <td className="px-3 py-2 text-slate-700">
