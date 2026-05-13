@@ -32,6 +32,8 @@ export const SEED_SIGNAGE_TYPES: SignageTypeSeed[] = [
   { id: 'a4_landscape',       name: 'A4 가로',        width_mm: 297,  height_mm: 210,  default_material: '인쇄',    category: '소형 안내',  layout: '가로' },
   { id: 'a3_portrait',        name: 'A3 세로',        width_mm: 297,  height_mm: 420,  default_material: '인쇄',    category: '중형 안내',  layout: '세로' },
   { id: 'a3_landscape',       name: 'A3 가로',        width_mm: 420,  height_mm: 297,  default_material: '인쇄',    category: '중형 안내',  layout: '가로' },
+  { id: 'foamboard',          name: '폼보드',         width_mm: 600,  height_mm: 900,  default_material: '폼보드 5T', category: '실내 안내', layout: '세로', note: '스탠드POP·L보드·큐방 포함. 세션룸 입구·데스크 안내' },
+  { id: 'sheet',              name: '시트지',         width_mm: 1650, height_mm: 920,  default_material: '시트지',  category: '출입구·유리', layout: '가로', note: '출입구 유리창 부착. 바닥스티커·유도사인 포함' },
 ]
 
 // ── 2. 동의어 매핑 (명세 6.1.b.i) ─────────────────────────────
@@ -202,26 +204,7 @@ export const SEED_DESIGNERS: DesignerSeed[] = [
   { name: '미입력 업체 2',  delivery_compliance_rate: null, revision_rate: null, avg_revision_count: null, avg_confirm_days: null, note: '엑셀 파싱 후 자동 추가 예정' },
 ]
 
-// ── 5. 행사 분류 (명세 6.2.6) ────────────────────────────────
-export interface EventCategorySeed {
-  id: string
-  label: string
-  recommended_signage_keys: string[]   // SEED_SIGNAGE_TYPES.id
-  note: string
-}
-
-export const SEED_EVENT_CATEGORIES: EventCategorySeed[] = [
-  { id: 'conference', label: '컨퍼런스', recommended_signage_keys: ['x_banner', 'podium', 'a4_landscape'],                              note: '연단 강조 + 좌석 명패' },
-  { id: 'exhibition', label: '전시회',   recommended_signage_keys: ['horizontal_banner', 'vertical_banner', 'chunchen_banner', 'a3_portrait'], note: '대형 현수막 + 부스 안내' },
-  { id: 'awards',     label: '시상식',   recommended_signage_keys: ['podium', 'x_banner', 'vertical_banner'],                            note: '백월·연단 강조' },
-  { id: 'forum',      label: '포럼',     recommended_signage_keys: ['x_banner', 'podium', 'a4_landscape'],                              note: '컨퍼런스 유사' },
-  { id: 'fair',       label: '박람회',   recommended_signage_keys: ['chunchen_banner', 'vertical_banner', 'streetlight_banner', 'a3_portrait'], note: '외부 동선 + 대형 현수막' },
-  { id: 'experience', label: '체험행사', recommended_signage_keys: ['x_banner', 'a3_portrait', 'a4_portrait'],                          note: '단계별 안내 위주' },
-  { id: 'ceremony',   label: '기념식',   recommended_signage_keys: ['vertical_banner', 'podium', 'horizontal_banner'],                  note: '백월·연단 강조' },
-  { id: 'launching',  label: '발표·런칭', recommended_signage_keys: ['x_banner', 'horizontal_banner', 'podium'],                        note: '메인 비주얼 강조' },
-]
-
-// ── 6. 재질 기본값 매핑 (명세 6.1.b.iv) ───────────────────────
+// ── 5. 재질 기본값 매핑 (명세 6.1.b.iv) ───────────────────────
 export interface MaterialDefaultSeed {
   signage_type_id: string  // SEED_SIGNAGE_TYPES.id
   signage_name: string
@@ -755,62 +738,6 @@ export function computeClientStats(): ClientStat[] {
     c.projects.push(p.project_name)
   }
   return Array.from(map.values()).sort((a, b) => b.project_count - a.project_count || b.recent_year - a.recent_year)
-}
-
-export interface EventCategoryStat {
-  category: string
-  project_count: number
-  clients: string[]
-}
-
-export function computeEventCategoryStats(): EventCategoryStat[] {
-  const map = new Map<string, EventCategoryStat>()
-  for (const p of SEED_PERFLIST) {
-    for (const cat of p.event_category.split(',').map(s => s.trim()).filter(Boolean)) {
-      if (!map.has(cat)) map.set(cat, { category: cat, project_count: 0, clients: [] })
-      const c = map.get(cat)!
-      c.project_count += 1
-      if (!c.clients.includes(p.client)) c.clients.push(p.client)
-    }
-  }
-  return Array.from(map.values()).sort((a, b) => b.project_count - a.project_count)
-}
-
-// ── 행사분류 매핑: 실측 14종 ↔ 추천 8종 (명세 6.2.6 후속) ───
-// 수행실적 엑셀의 행사분류 (국제회의/전시/이벤트 등) → 추천 카테고리(conference/exhibition 등)
-const EVENT_CATEGORY_MAP: Record<string, string> = {
-  '국제회의':       'conference',
-  '국제이벤트':     'ceremony',
-  '비즈니스 행사':  'forum',
-  '기타회의':       'forum',
-  '전시':           'exhibition',
-  '전시홍보관':     'exhibition',
-  '박람회':         'fair',
-  '이벤트':         'ceremony',
-  '시상식':         'awards',
-  '컨퍼런스':       'conference',
-  '포럼':           'forum',
-  '워크숍':         'workshop',
-  '체험':           'experience',
-  '런칭':           'launching',
-  '발표':           'launching',
-  '기념식':         'ceremony',
-  '기타':           'other',
-}
-
-/** 실측 행사분류 문자열을 추천 카테고리 ID로 매핑 (콤마 구분 다중도 지원, 첫 매치 우선) */
-export function mapEventCategory(rawCategory: string): { recommendedId: string; matchedTerm: string } | null {
-  if (!rawCategory) return null
-  for (const term of rawCategory.split(',').map(s => s.trim())) {
-    if (EVENT_CATEGORY_MAP[term]) {
-      return { recommendedId: EVENT_CATEGORY_MAP[term], matchedTerm: term }
-    }
-    // 부분 매치 fallback
-    for (const [key, val] of Object.entries(EVENT_CATEGORY_MAP)) {
-      if (term.includes(key)) return { recommendedId: val, matchedTerm: key }
-    }
-  }
-  return null
 }
 
 /** 새 행사와 유사한 과거 행사 5건 추천 (AI 추천 컨텍스트 주입용) */

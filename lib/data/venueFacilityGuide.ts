@@ -45,12 +45,12 @@ export const VENUE_FACILITY_GUIDE_SEED: VenueFacilityGuide[] = [
         standard_width_mm: 600, standard_height_mm: 1800,
       },
       {
-        category: '통천현수막 (외벽 대형)',
+        category: '통천 배너 (외벽 대형)',
         status: 'allowed',
         note: '외벽 최대 24m×17m / 무대 내부 최대 10m×5m. 고정: 와이어 로프 + 전용 브래킷. 난연 원단 필수.',
       },
       {
-        category: '통천현수막 (내부 구름다리)',
+        category: '통천 배너 (내부 구름다리)',
         status: 'allowed',
         note: '5홀–4홀 연결 구름다리 양측. 규격: 약 3,000×1,500mm (현장 실측 후 제작). 로프 고정.',
       },
@@ -153,7 +153,7 @@ export const VENUE_FACILITY_GUIDE_SEED: VenueFacilityGuide[] = [
         max_width_mm: 8000, max_height_mm: 2000,
       },
       { category: '세로현수막 (가로등배너)', status: 'allowed', note: '600×1,800mm. 전용 클램프 포함 발주. D-30 이전 폴 예약 필수.', standard_width_mm: 600, standard_height_mm: 1800 },
-      { category: '통천현수막', status: 'allowed', note: '5홀 대비 규격 상이 — 해당 홀 외벽 실측 후 제작. 와이어 로프 고정.' },
+      { category: '통천 배너', status: 'allowed', note: '5홀 대비 규격 상이 — 해당 홀 외벽 실측 후 제작. 와이어 로프 고정.' },
       { category: '천정배너', status: 'conditional', note: '리깅 가능하나 그리드 위치·하중 한계는 킨텍스 운영팀(031-995-8300) 확인 필수.' },
       { category: '포디움 타이틀', status: 'allowed', note: '600×200mm 표준. 벨크로 부착.', standard_width_mm: 600, standard_height_mm: 200 },
       { category: 'A4·A3 POP', status: 'allowed', note: '아크릴 스탠드. 접착 금지.' },
@@ -200,7 +200,7 @@ export const VENUE_FACILITY_GUIDE_SEED: VenueFacilityGuide[] = [
         standard_width_mm: 8000, standard_height_mm: 5000,
       },
       { category: '세로현수막 (가로등배너)', status: 'allowed', note: '600×1,800mm. D-30 폴 예약.' },
-      { category: '통천현수막', status: 'allowed', note: '외벽 규격 실측 후 제작. 2전시장 운영실 별도 협의.' },
+      { category: '통천 배너', status: 'allowed', note: '외벽 규격 실측 후 제작. 2전시장 운영실 별도 협의.' },
       {
         category: '천정배너',
         status: 'conditional',
@@ -266,7 +266,7 @@ export const VENUE_FACILITY_GUIDE_SEED: VenueFacilityGuide[] = [
         note: '롤업 배너 형태(자립형 스탠드). 지면 접착·고정 불가.',
       },
       {
-        category: '통천현수막',
+        category: '통천 배너',
         status: 'conditional',
         note: '코엑스 지정 외벽 구역만 가능. 그랜드볼룸 측면·후면·D홀 외벽 각각 가능 구역 상이. 행사 2개월 전 코엑스 마케팅팀(02-6000-0152)에 외벽 광고 신청 필수.',
       },
@@ -353,7 +353,7 @@ export const VENUE_FACILITY_GUIDE_SEED: VenueFacilityGuide[] = [
       },
       { category: '세로현수막 (폴대배너)', status: 'allowed', note: '컨퍼런스 홀 복도 양측 폴대 설치 가능. 규격: 600×1,800mm. 전용 클램프 또는 물통 스탠드.', standard_width_mm: 600, standard_height_mm: 1800 },
       {
-        category: '통천현수막',
+        category: '통천 배너',
         status: 'conditional',
         note: '외부 구조물·외벽 부착. 사전 운영팀 협의 필수. 행사 D-45 이전 신청 권장.',
       },
@@ -424,7 +424,7 @@ export const VENUE_FACILITY_GUIDE_SEED: VenueFacilityGuide[] = [
         standard_width_mm: 600, standard_height_mm: 1800,
       },
       {
-        category: '통천현수막',
+        category: '통천 배너',
         status: 'conditional',
         note: '외부 지정 구역만 가능. D-45 이전 신청. 규격·부착 방법 운영팀 확인 필수.',
       },
@@ -476,7 +476,7 @@ export const VENUE_FACILITY_GUIDE_SEED: VenueFacilityGuide[] = [
         note: 'DDP 건축 특성상 일반 현수막 벽면 부착 전면 불가. 별도 사인 구조물(프레임) 제작 시 사전 DDP 승인 필요.',
       },
       {
-        category: '통천현수막',
+        category: '통천 배너',
         status: 'conditional',
         note: 'DDP 지정 외부 구역에만 허용. 외벽 곡면 부착 불가 — DDP 지정 구조물 사용 의무. D-60 이전 DDP 마케팅팀(02-2153-0000) 신청.',
       },

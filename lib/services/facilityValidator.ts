@@ -2,7 +2,9 @@
 // 사용자 입력 vs 매뉴얼 표준 비교 → 위반 항목 감지
 
 import type { DesignItem, VenueFacilityGuide } from '@/lib/types'
-import { getFacilityGuide } from '@/lib/data/venueFacilityGuide'
+
+// 공백·하이픈·괄호 제거 후 소문자 비교 (X-배너 = X배너, 통천배너 = 통천배너)
+const normCat = (s: string) => s.replace(/[\s\-_·\(\)\[\]]/g, '').toLowerCase()
 
 export interface ValidationIssue {
   itemId: string
@@ -16,21 +18,22 @@ export interface ValidationIssue {
 
 /**
  * 행사장 시설 가이드 기준으로 항목 검증.
- * 위반 항목 배열을 반환. 빈 배열이면 모든 입력 정상.
+ * guide는 EditorLayout에서 마운트 시 getFacilityGuideAsync()로 로드한 값을 넘김.
+ * null이면 (학습 데이터 없는 행사장) 검증 생략.
  */
 export function validateAgainstFacility(
   item: DesignItem,
-  venueName: string | null | undefined
+  guide: VenueFacilityGuide | null
 ): ValidationIssue[] {
-  const guide = getFacilityGuide(venueName)
-  if (!guide) return []  // 학습 데이터 없는 행사장은 검증 안 함
+  if (!guide) return []
 
   const issues: ValidationIssue[] = []
 
   // 1. 카테고리 설치 가능 여부 검증
   if (item.category) {
+    const itemCatNorm = normCat(item.category)
     const allowed = guide.install_allowed.find(a =>
-      a.category === item.category || item.category!.includes(a.category)
+      normCat(a.category) === itemCatNorm || itemCatNorm.includes(normCat(a.category))
     )
     if (allowed && allowed.status === 'denied') {
       issues.push({
@@ -72,8 +75,9 @@ export function validateAgainstFacility(
 
   // 3. 규격 초과 검증 (max_width_mm / max_height_mm)
   if (item.category) {
+    const catNorm = normCat(item.category)
     const sizeRule = guide.install_allowed.find(a =>
-      a.category === item.category || item.category!.includes(a.category)
+      normCat(a.category) === catNorm || catNorm.includes(normCat(a.category))
     )
     if (sizeRule) {
       if (sizeRule.max_width_mm != null && item.width_mm != null && item.width_mm > sizeRule.max_width_mm) {
@@ -107,7 +111,7 @@ export function validateAgainstFacility(
       ) {
         const wDiff = item.width_mm != null ? Math.abs(item.width_mm - sizeRule.standard_width_mm) : 0
         const hDiff = item.height_mm != null ? Math.abs(item.height_mm - sizeRule.standard_height_mm) : 0
-        const tolerance = 100 // 100mm 이내 오차는 허용
+        const tolerance = 100
         if (wDiff > tolerance || hDiff > tolerance) {
           issues.push({
             itemId: item.id,
@@ -129,9 +133,9 @@ export function validateAgainstFacility(
 /** 전체 items에서 위반 항목 카운트 (다운로드 직전 일괄 요약용) */
 export function countViolations(
   items: DesignItem[],
-  venueName: string | null | undefined
+  guide: VenueFacilityGuide | null
 ): { warn: number; info: number; total: number; issues: ValidationIssue[] } {
-  const all = items.flatMap(it => validateAgainstFacility(it, venueName))
+  const all = items.flatMap(it => validateAgainstFacility(it, guide))
   const warn = all.filter(i => i.severity === 'warn').length
   const info = all.filter(i => i.severity === 'info').length
   return { warn, info, total: all.length, issues: all }
@@ -140,11 +144,11 @@ export function countViolations(
 /** 항목별 위반 맵 (그리드 ⚠️ 아이콘 표시용) */
 export function buildIssueMap(
   items: DesignItem[],
-  venueName: string | null | undefined
+  guide: VenueFacilityGuide | null
 ): Record<string, ValidationIssue[]> {
   const map: Record<string, ValidationIssue[]> = {}
   for (const item of items) {
-    const issues = validateAgainstFacility(item, venueName)
+    const issues = validateAgainstFacility(item, guide)
     if (issues.length > 0) map[item.id] = issues
   }
   return map

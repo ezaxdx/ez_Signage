@@ -15,7 +15,7 @@ interface Props {
 const GROUPS = [
   { label: '배너류', ids: ['x_banner', 'i_banner', 'streetlight_banner'] },
   { label: '현수막 / 통천', ids: ['horizontal_banner', 'vertical_banner', 'chunchen_banner'] },
-  { label: '기타 제작물', ids: ['podium', 'a4_portrait', 'a4_landscape', 'a3_portrait', 'a3_landscape'] },
+  { label: '기타 제작물', ids: ['podium', 'foamboard', 'sheet', 'a4_portrait', 'a4_landscape', 'a3_portrait', 'a3_landscape'] },
 ]
 
 export function FormatSelector({ item, onItemUpdate }: Props) {

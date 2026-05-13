@@ -2,9 +2,10 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { isAdmin } from '@/lib/auth/role'
 import { LearningManagerClient } from './LearningManagerClient'
-import { SEED_SIGNAGE_TYPES, SEED_SYNONYMS, SEED_EVENT_HISTORY } from '@/lib/data/dashboardSeed'
+import { SEED_SYNONYMS, SEED_EVENT_HISTORY } from '@/lib/data/dashboardSeed'
 import { VENUE_FACILITY_GUIDE_SEED } from '@/lib/data/venueFacilityGuide'
 import { PROGRAM_PART_BY_CODE } from '@/lib/programParts'
+import { loadSignageTypes } from '@/lib/data/signageTypeLoader'
 
 export const metadata = { title: '데이터 학습 관리자 | 제작물 리스트 가이드' }
 
@@ -15,13 +16,14 @@ export default async function LearningManagerPage() {
   if (!(await isAdmin(supabase))) redirect('/dashboard')
 
   // 초기 데이터 (병렬). v6 마이그레이션 미적용이면 빈 배열로 폴백.
-  const [venuesRes, requestsRes, jobsRes, projectsRes, itemsRes, aliasesRes] = await Promise.all([
+  const [venuesRes, requestsRes, jobsRes, projectsRes, itemsRes, aliasesRes, loadedSignageTypes] = await Promise.all([
     supabase.from('venues').select('*').order('created_at', { ascending: false }).then(r => r, () => ({ data: [], error: null })),
     supabase.from('venue_requests').select('*').order('requested_at', { ascending: false }).then(r => r, () => ({ data: [], error: null })),
     supabase.from('learning_jobs').select('*').order('triggered_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [], error: null })),
     supabase.from('projects').select('id, event_venue, program_parts').limit(500).then(r => r, () => ({ data: [], error: null })),
     supabase.from('design_items').select('project_id, category, confirmed, finalized_at, location, purpose').limit(5000).then(r => r, () => ({ data: [], error: null })),
     supabase.from('signage_aliases').select('id, alias_name, canonical_name, note').order('alias_name').then(r => r, () => ({ data: [], error: null })),
+    loadSignageTypes(supabase),
   ])
 
   // venue별 단계 집계 (점진적 정확도 가시화)
@@ -111,6 +113,11 @@ export default async function LearningManagerPage() {
     }
   })
 
+  const signageTypesForClient = loadedSignageTypes.map(t => ({
+    id: t.id, name: t.name, width_mm: t.width_mm, height_mm: t.height_mm,
+    default_material: t.default_material, category: t.category, layout: t.layout,
+  }))
+
   return (
     <LearningManagerClient
       userId={user.id}
@@ -118,11 +125,12 @@ export default async function LearningManagerPage() {
       initialRequests={(requestsRes.data ?? []) as never[]}
       initialJobs={(jobsRes.data ?? []) as never[]}
       venueLearningStatus={venueLearningStatus}
-      signageTypeCount={SEED_SIGNAGE_TYPES.length}
+      signageTypeCount={signageTypesForClient.length}
       synonyms={SEED_SYNONYMS}
       dbAliases={((aliasesRes.data ?? []) as Array<{ id: string; alias_name: string; canonical_name: string; note: string | null }>)}
       facilityGuideStatus={facilityGuideStatus}
-      signageTypes={SEED_SIGNAGE_TYPES.map(t => ({ id: t.id, name: t.name, width_mm: t.width_mm, height_mm: t.height_mm, default_material: t.default_material, category: t.category, layout: t.layout }))}
+      signageTypes={signageTypesForClient}
+      isAdmin={true}
     />
   )
 }

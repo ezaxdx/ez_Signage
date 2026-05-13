@@ -114,6 +114,7 @@ interface Props {
   dbAliases?: DbAlias[]
   facilityGuideStatus?: FacilityGuideRow[]
   signageTypes?: SignageTypeRow[]
+  isAdmin?: boolean
 }
 
 const VENUE_TYPES = ['컨벤션센터', '호텔', '전시장', '야외', '공공시설', '기타'] as const
@@ -127,6 +128,7 @@ export function LearningManagerClient({
   dbAliases = [],
   facilityGuideStatus = [],
   signageTypes = [],
+  isAdmin = false,
 }: Props) {
   // ── 시설 가이드 AI 추출 상태 ────────────────────────────────
   const [extractingVenueId, setExtractingVenueId] = useState<string | null>(null)
@@ -150,6 +152,53 @@ export function LearningManagerClient({
   const [newAlias, setNewAlias] = useState('')
   const [newCanon, setNewCanon] = useState('')
   const [aliasSaving, setAliasSaving] = useState(false)
+
+  // ── 환경장식물 종류 ───────────────────────────────────────────
+  const [signageTypeList, setSignageTypeList] = useState<SignageTypeRow[]>(signageTypes)
+  const [stName, setStName] = useState('')
+  const [stWidth, setStWidth] = useState('')
+  const [stHeight, setStHeight] = useState('')
+  const [stMaterial, setStMaterial] = useState('인쇄')
+  const [stCategory, setStCategory] = useState('기타')
+  const [stLayout, setStLayout] = useState<'세로' | '가로' | '정사각'>('세로')
+  const [stSaving, setStSaving] = useState(false)
+  const [stError, setStError] = useState<string | null>(null)
+  const [stShowForm, setStShowForm] = useState(false)
+
+  const addSignageType = async () => {
+    if (!stName.trim() || !stWidth || !stHeight) { setStError('종류명·너비·높이는 필수입니다.'); return }
+    setStSaving(true); setStError(null)
+    try {
+      const res = await fetch('/api/admin/signage-types', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: stName.trim(), width_mm: stWidth, height_mm: stHeight, default_material: stMaterial, category: stCategory, layout: stLayout }),
+      })
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || res.statusText) }
+      const newRow: SignageTypeRow = {
+        id: stName.trim().toLowerCase().replace(/[\s\-]/g, '_'),
+        name: stName.trim(), width_mm: Number(stWidth), height_mm: Number(stHeight),
+        default_material: stMaterial, category: stCategory, layout: stLayout,
+      }
+      setSignageTypeList(prev => [...prev, newRow])
+      setStName(''); setStWidth(''); setStHeight(''); setStMaterial('인쇄'); setStCategory('기타'); setStLayout('세로')
+      setStShowForm(false)
+    } catch (e) { setStError(e instanceof Error ? e.message : '오류') }
+    finally { setStSaving(false) }
+  }
+
+  const deleteSignageType = async (name: string) => {
+    if (!confirm(`'${name}' 종류를 삭제하시겠습니까?`)) return
+    try {
+      const res = await fetch('/api/admin/signage-types', {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || res.statusText) }
+      setSignageTypeList(prev => prev.filter(t => t.name !== name))
+    } catch (e) { alert(e instanceof Error ? e.message : '삭제 실패') }
+  }
   const [venues, setVenues] = useState<Venue[]>(initialVenues)
   const [requests, setRequests] = useState<VenueRequest[]>(initialRequests)
   const [jobs, setJobs] = useState<LearningJob[]>(initialJobs)
@@ -741,10 +790,75 @@ export function LearningManagerClient({
         </>}
         {activeSection === 'signage-types' && (
           <section className="bg-white border border-slate-200 rounded-xl p-5">
-            <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
-              <Inbox className="w-4 h-4 text-indigo-500" />
-              환경장식물 종류 ({signageTypes.length})
-            </h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-slate-900 font-semibold text-sm flex items-center gap-2">
+                <Inbox className="w-4 h-4 text-indigo-500" />
+                환경장식물 종류 ({signageTypeList.length})
+              </h2>
+              {isAdmin && (
+                <button
+                  onClick={() => { setStShowForm(v => !v); setStError(null) }}
+                  className="flex items-center gap-1 text-[11px] bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded font-medium"
+                >
+                  <Plus className="w-3 h-3" />
+                  종류 추가
+                </button>
+              )}
+            </div>
+
+            {isAdmin && stShowForm && (
+              <div className="mb-3 bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-0.5">종류명 *</label>
+                    <input value={stName} onChange={e => setStName(e.target.value)} placeholder="예: 물통배너"
+                      className="w-full border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-0.5">분류</label>
+                    <select value={stCategory} onChange={e => setStCategory(e.target.value)}
+                      className="w-full border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                      <option>배너</option><option>현수막</option><option>기타</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-0.5">너비 mm *</label>
+                    <input type="number" value={stWidth} onChange={e => setStWidth(e.target.value)} placeholder="600"
+                      className="w-full border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-0.5">높이 mm *</label>
+                    <input type="number" value={stHeight} onChange={e => setStHeight(e.target.value)} placeholder="1800"
+                      className="w-full border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-0.5">레이아웃</label>
+                    <select value={stLayout} onChange={e => setStLayout(e.target.value as '세로' | '가로' | '정사각')}
+                      className="w-full border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                      <option>세로</option><option>가로</option><option>정사각</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-500 block mb-0.5">기본 재질</label>
+                  <input value={stMaterial} onChange={e => setStMaterial(e.target.value)} placeholder="예: PET, 현수막, 인쇄"
+                    className="w-full border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                </div>
+                {stError && <p className="text-[11px] text-red-600">{stError}</p>}
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => { setStShowForm(false); setStError(null) }}
+                    className="text-[11px] text-slate-500 hover:text-slate-700 px-2 py-1">취소</button>
+                  <button onClick={addSignageType} disabled={stSaving}
+                    className="flex items-center gap-1 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded disabled:opacity-50">
+                    {stSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                    추가
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="overflow-x-auto border border-slate-200 rounded">
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200">
@@ -755,10 +869,11 @@ export function LearningManagerClient({
                     <th className="px-2 py-1.5 text-right font-semibold">높이 (mm)</th>
                     <th className="px-2 py-1.5 text-left font-semibold">기본 재질</th>
                     <th className="px-2 py-1.5 text-left font-semibold">분류</th>
+                    {isAdmin && <th className="px-2 py-1.5 text-center font-semibold w-8"></th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {signageTypes.map(t => (
+                  {signageTypeList.map(t => (
                     <tr key={t.id} className="hover:bg-slate-50">
                       <td className="px-2 py-1 text-slate-800 font-medium">{t.name}</td>
                       <td className="px-2 py-1">
@@ -768,12 +883,19 @@ export function LearningManagerClient({
                       <td className="px-2 py-1 text-right text-slate-700 font-mono text-[11px]">{t.height_mm.toLocaleString()}</td>
                       <td className="px-2 py-1 text-slate-600 text-[11px]">{t.default_material}</td>
                       <td className="px-2 py-1 text-slate-500 text-[11px]">{t.category}</td>
+                      {isAdmin && (
+                        <td className="px-2 py-1 text-center">
+                          <button onClick={() => deleteSignageType(t.name)}
+                            title="삭제 (표준 시드는 삭제 불가)"
+                            className="text-slate-300 hover:text-red-500 text-[11px] leading-none">✕</button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <p className="text-[10px] text-slate-400 mt-2">표준 시드 데이터 — 편집·추가는 추후 사이클에서 인라인 지원</p>
+            <p className="text-[10px] text-slate-400 mt-2">표준 시드 13종은 DB에서도 is_standard=true 로 보호됩니다. 추가한 커스텀 종류만 삭제 가능합니다.</p>
           </section>
         )}
 

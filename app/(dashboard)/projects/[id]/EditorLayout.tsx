@@ -9,6 +9,8 @@ import { PreflightModal } from './components/PreflightModal'
 import { FacilityGuidePanel } from '@/app/components/facility/FacilityGuidePanel'
 import { FacilityGuideAlert } from '@/app/components/facility/FacilityGuideAlert'
 import { validateAgainstFacility, buildIssueMap, countViolations, type ValidationIssue } from '@/lib/services/facilityValidator'
+import { getFacilityGuideAsync } from '@/lib/data/venueFacilityGuide'
+import type { VenueFacilityGuide } from '@/lib/types'
 import { DEFAULT_SLOTS } from '@/lib/types'
 import type { Project, DesignItem, SlotContent, ContentsMap, SlotStylesMap } from '@/lib/types'
 
@@ -57,6 +59,12 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
   const [slotPanelOpen, setSlotPanelOpen] = useState(false)
   const [selectedSlotKey, setSelectedSlotKey] = useState<string | null>(null)
   const [showPreflight, setShowPreflight] = useState(false)
+  // 시설 가이드 — 마운트 시 DB 우선 조회, 없으면 시드 폴백
+  const [facilityGuide, setFacilityGuide] = useState<VenueFacilityGuide | null>(null)
+  useEffect(() => {
+    getFacilityGuideAsync(project.event_venue, supabase).then(setFacilityGuide)
+  }, [project.event_venue, supabase])
+
   // v8: 시설 가이드 (§11-6)
   const [facilityGuideOpen, setFacilityGuideOpen] = useState(false)
   const [facilityCheckMode, setFacilityCheckMode] = useState<'verbose'|'silent_icon'|'off'>('verbose')
@@ -308,7 +316,7 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
 
       // v8: 시설 가이드 검증 — 첫 위반 시 알랏 (verbose 모드만)
       if (next && facilityCheckMode === 'verbose' && !alertedItemsRef.current.has(id)) {
-        const issues = validateAgainstFacility(next as DesignItem, project.event_venue)
+        const issues = validateAgainstFacility(next as DesignItem, facilityGuide)
         const warnIssue = issues.find(i => i.severity === 'warn')
         if (warnIssue) {
           alertedItemsRef.current.add(id)
@@ -558,8 +566,8 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
   const contents = allContents[selectedItemId] ?? {}
 
   // v8: 시설 가이드 위반 항목 카운트 (다운로드 직전 일괄 요약 — §11-6 안전망)
-  const facilityIssueMap = useMemo(() => buildIssueMap(items, project.event_venue), [items, project.event_venue])
-  const facilityViolationSummary = useMemo(() => countViolations(items, project.event_venue), [items, project.event_venue])
+  const facilityIssueMap = useMemo(() => buildIssueMap(items, facilityGuide), [items, facilityGuide])
+  const facilityViolationSummary = useMemo(() => countViolations(items, facilityGuide), [items, facilityGuide])
 
   // 다운로드 직전 일괄 요약 확인 (어떤 모드든 안전망)
   const confirmFacilityBeforeExport = useCallback((): boolean => {

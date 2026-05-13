@@ -72,4 +72,3 @@
 
 - Supabase 프로젝트 설정 변경
 - `.env.local` 수정 또는 노출
-- GitHub main 브랜치 직접 푸시
