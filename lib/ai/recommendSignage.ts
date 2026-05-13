@@ -15,6 +15,7 @@ import {
   type StandardCategoryKey,
 } from '@/lib/data/signageCategoryStandards'
 import { PROGRAM_PART_BY_CODE, PROGRAM_PART_SIGNAGE_HINTS, partsForFormat, programPartName } from '@/lib/programParts'
+import { buildPipelineLogicSection } from '@/lib/ai/agentPipeline'
 
 export type EventType =
   | 'conference' | 'exhibition' | 'awards' | 'forum' | 'workshop'
@@ -105,19 +106,13 @@ function inferScale(attendees?: number): EventScale {
   return 'mega'
 }
 
-// v9.33 — SYSTEM_INSTRUCTION 3단계 우선순위 재작성
-// 사용자 명세: 프로그램 파트 → 시설 가이드 제약 → 표준 수량 순서로 처리.
-// Vision 도면 분석 결과는 1순위 결과의 동선·설치 위치 보강으로만 사용.
+// v9.42 — SYSTEM_INSTRUCTION을 4 step 블록 상수(lib/ai/agentPipeline.ts) 조립으로 생성
+// 사용자 인용(2026-05-13): "매번 바뀌는 부분은 블록 느낌으로 제공 향후 쉽게 편집하기 위함"
+// 4 step body(파트 후보 → 시설 제약 → 표준 수량 → 도면 Vision 보강)는 PIPELINE_BLOCKS에서 import.
+// 응답 형식·표준 12종 목록은 본 파일에서 유지 (Gemini 출력 스키마 — 자주 변경 안 됨).
 const SYSTEM_INSTRUCTION = `당신은 MICE 환경장식물 발주 전문가입니다.
 
-[추천 로직 — 3단계 우선순위]
-1순위: 프로그램 파트별 환경장식물 후보 추출
-       (입력: 선택된 파트 다중)
-2순위: 행사장 시설 가이드 제약 — 못 설치 카테고리 후보 제외
-       (입력: 행사 장소)
-3순위: 행사장 시설 가이드 표준 수량 — 각 후보 quantity 지정
-       (입력: 행사 장소)
-[보강] 행사장 배치도 Vision 분석 → 동선·설치 위치 컨텍스트
+${buildPipelineLogicSection()}
 
 [응답]
 각 항목 program_part · standard_category 명시
