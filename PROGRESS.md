@@ -1,5 +1,66 @@
 # 작업 이력
 
+## 2026-05-13 (v9.24) — 행사 장소 라벨 "지방" → 정확한 도/광역시 이름
+
+### 사용자 요청
+조기흠 사원(AXDX팀, 2026-05-13): "새 프로젝트 만들기에서 행사 장소를 지방이라고
+하지 말고 도 이름으로 수정해줬으면 합니다"
+
+### 핵심 변경
+- `lib/venueIntel.ts`:
+  - `VenueRegion` union 신설 — 광역시 8(서울특별시·부산광역시·인천광역시·
+    대구광역시·대전광역시·광주광역시·울산광역시·세종특별자치시) + 도 9(경기도·
+    강원특별자치도·충청북도·충청남도·전북특별자치도·전라남도·경상북도·경상남도·
+    제주특별자치도) + 해외 = 18종
+  - `REGION_ORDER` 행정 표준 순서 상수 export
+  - `groupVenuesByRegion()` 결과 키도 REGION_ORDER 순서로 정렬 (광역시 → 도 → 해외)
+- VENUE_LIST 22개 베뉴 region 재할당:
+  - 광주 김대중컨벤션센터·광주비엔날레전시관: "지방" → **광주광역시**
+  - 경남도청 대회의실: "지방" → **경상남도**
+  - 경주: "지방" → **경상북도**
+  - 평창올림픽스타디움: "지방" → **강원특별자치도**
+  - 킨텍스(고양시): "수도권" → **경기도**
+  - 송도컨벤시아(인천 송도): "수도권" → **인천광역시**
+  - 코엑스·롯데호텔·DDP 등 서울 12개: "서울" → **서울특별시**
+  - ICC JEJU·제주국제컨벤션: "제주" → **제주특별자치도**
+- `VenueRequestModal.tsx` (신규 행사장 등록 요청 폼): REGIONS 상수가
+  REGION_ORDER 사용 → 사용자가 광역시·도 18개 중 정확히 선택
+- `LearningManagerClient.tsx` (학습 관리자 행사장 추가 폼): 동일 적용
+- `lib/data/dashboardSeed.ts`: "// 광주·지방" 주석 → 정확한 도 이름 표기
+- `supabase/migration_v5_data_tables.sql`: venue_info.region 코멘트 정확화
+  ("서울/경기/지방" → "광역시·도 정식 명칭")
+
+### 변경 파일 (5개)
+- `lib/venueIntel.ts` (코어 — type·상수·VENUE_LIST·groupVenuesByRegion)
+- `app/(dashboard)/dashboard/components/VenueRequestModal.tsx`
+- `app/(dashboard)/admin/learning/LearningManagerClient.tsx`
+- `lib/data/dashboardSeed.ts`
+- `supabase/migration_v5_data_tables.sql`
+
+### 검증
+- TSC 0 에러
+- Next 빌드 22/22 라우트 통과 (case-a·dashboard·admin/learning 모두 PASS)
+
+### 영향
+- 신규 프로젝트 만들기에서 행사장 드롭다운 optgroup 라벨이 "지방" 대신
+  "광주광역시"·"경상남도"·"경상북도"·"강원특별자치도"로 정확하게 표시
+- DB region 컬럼 값은 자동 변경 안 됨 (코드 라벨만 변경). 향후 등록되는
+  베뉴는 새 라벨로 저장됨. 기존 DB 데이터 마이그레이션은 별도 결정 사항.
+
+### 배포
+- 브랜치: `auto/region-label-fix-260513`
+- 커밋: `3c0112c` (feat) → `7de39d3` (merge --no-ff)
+- v2/main 푸시 완료 (1860832 → 7de39d3) — Vercel 자동 배포 트리거
+- origin/main 푸시 완료 (7b4f221 → 7de39d3)
+
+### 후속 사용자 확인 사항
+- 라이브 사이트(https://ez-signage2.vercel.app)에서 새 프로젝트 만들기 진입 →
+  행사 장소 드롭다운에서 "광주광역시"·"경상남도" 등 정확한 도 이름 노출 확인
+- 신규 행사장 등록 요청 모달의 권역 선택 옵션이 18개로 확장된 것 확인
+- /admin/learning 행사장 추가 폼도 동일 권역 옵션 노출 확인
+
+---
+
 ## 2026-05-13 (v9.23) — v9.22 후속 갭 7건 점검 + 5건 보강 + UI 시각화 적용
 
 ### 배경 — 사용자 요청

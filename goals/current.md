@@ -34,6 +34,7 @@
 - [x] PROGRESS / decisions / goals 갱신
 - [x] v9.18: 행사장 규모 스펙 AI 주입 (getVenueSpecs → recommendSignage)
 - [x] v9.19: 엑셀/PPT/PDF 헤더 21컬럼 개편 + 동적 컬럼 + 날짜 연결
+- [x] v9.24: 행사 장소 권역 라벨 "지방" → 정확한 도/광역시 이름 (광역시 8 + 도 9 + 해외 = 18종, 사용자 피드백 2026-05-13)
 
 ## v4.1 클로징 — PM 직접 처리 필요
 
