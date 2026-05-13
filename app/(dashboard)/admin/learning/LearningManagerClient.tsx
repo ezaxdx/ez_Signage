@@ -260,12 +260,15 @@ export function LearningManagerClient({
   }, [activeSection])
 
   // v9.36: 수정요청 메뉴 진입 시 API 조회
+  // v9.37: admin 통합 API(/api/admin/correction-requests) 사용 + ′all′ 상태 조회
   useEffect(() => {
     if (activeSection !== 'correction-requests') return
     setCorrectionLoading(true)
-    fetch('/api/correction-requests')
+    fetch('/api/admin/correction-requests?status=all')
       .then(r => r.json())
-      .then((data: CorrectionRequest[]) => { setCorrectionRequests(Array.isArray(data) ? data : []) })
+      .then((data: { items?: CorrectionRequest[] }) => {
+        setCorrectionRequests(Array.isArray(data?.items) ? data.items : [])
+      })
       .catch(() => setCorrectionRequests([]))
       .finally(() => setCorrectionLoading(false))
   }, [activeSection])
@@ -1606,11 +1609,12 @@ export function LearningManagerClient({
                           body: JSON.stringify({ venueId: venueRow.id, action: 'extract' }),
                         })
                         if (res.ok) {
-                          // 상태 업데이트
-                          await supabase
-                            .from('venue_correction_requests')
-                            .update({ status: 'reviewed', review_note: 'AI 재추출 완료', reviewed_at: new Date().toISOString() })
-                            .eq('id', req.id)
+                          // v9.37: admin API로 status 표준화 — resolved
+                          await fetch(`/api/admin/correction-requests/${req.id}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ status: 'resolved', review_note: 'AI 재추출 완료' }),
+                          })
                           setCorrectionRequests(prev => prev.filter(r => r.id !== req.id))
                           alert('AI 재추출 완료')
                         } else {
@@ -1622,18 +1626,46 @@ export function LearningManagerClient({
                     >
                       <Sparkles className="w-2.5 h-2.5" /> AI 재추출
                     </button>
+                    {/* v9.37 — 표준 워크플로 3버튼(승인·반려·해결) */}
                     <button
                       onClick={async () => {
-                        const supabase = createClient()
-                        await supabase
-                          .from('venue_correction_requests')
-                          .update({ status: 'ignored', reviewed_at: new Date().toISOString() })
-                          .eq('id', req.id)
-                        setCorrectionRequests(prev => prev.filter(r => r.id !== req.id))
+                        const res = await fetch(`/api/admin/correction-requests/${req.id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ status: 'approved' }),
+                        })
+                        if (res.ok) setCorrectionRequests(prev => prev.filter(r => r.id !== req.id))
+                      }}
+                      className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white transition"
+                    >
+                      승인
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const note = prompt('반려 사유(선택)') ?? ''
+                        const res = await fetch(`/api/admin/correction-requests/${req.id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ status: 'rejected', review_note: note }),
+                        })
+                        if (res.ok) setCorrectionRequests(prev => prev.filter(r => r.id !== req.id))
+                      }}
+                      className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-rose-500 hover:bg-rose-400 text-white transition"
+                    >
+                      반려
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const res = await fetch(`/api/admin/correction-requests/${req.id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ status: 'resolved' }),
+                        })
+                        if (res.ok) setCorrectionRequests(prev => prev.filter(r => r.id !== req.id))
                       }}
                       className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-slate-200 hover:bg-slate-300 text-slate-600 transition"
                     >
-                      무시
+                      해결
                     </button>
                   </div>
                 </div>
