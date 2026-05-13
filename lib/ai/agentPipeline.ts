@@ -4,13 +4,13 @@
 //
 // SOT: 이 파일이 4 step 정의의 단일 진실 소스(SSOT).
 // 사용처:
-//   1) lib/ai/recommendSignage.ts — SYSTEM_INSTRUCTION 조립 시 4 블록을 순서대로 합쳐 사용
-//   2) app/(dashboard)/admin/ai/AiPipelineCard.tsx — 어드민 시각화 카드 데이터 소스
+//   1) lib/ai/recommendSignage.ts — SYSTEM_INSTRUCTION 조립 시 4 블록을 순서대로 합쳐 사용 (현재 유일 활성 사용처)
+//   2) app/(dashboard)/admin/ai/AiPipelineCard.tsx — v9.43에서 어드민 화면에선 제거됨 (파일은 보존, 사용 안 함)
 //
 // 편집 가이드:
-//   - title 변경: 어드민 카드 + 프롬프트 양쪽에 즉시 반영됨
-//   - body 변경: AI 프롬프트의 해당 step 내용만 변경 (어드민 카드 desc는 별도)
+//   - title·body 변경 시 recommendSignage SYSTEM_INSTRUCTION에 즉시 반영
 //   - 향후 admin_ai_pipeline_blocks 테이블로 이관 시 이 파일을 fallback으로 유지
+//   - v9.44 정밀 점검: AiPipelineCard는 import 끊긴 dead component이지만 파일 보존 (사용자 명시)
 //
 // 표시명·desc는 어드민 시각화 카드용. body는 Gemini SYSTEM_INSTRUCTION 본문용.
 

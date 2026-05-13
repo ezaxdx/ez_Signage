@@ -1,8 +1,13 @@
 // 시설 가이드 예외 빈도 모니터 (§v9.16)
 // venue + rule 기준 3회 이상 예외 집계 → 가이드 데이터 검토 필요 flag
+//
+// v9.44 (2026-05-13): isAdmin 헬퍼 사용으로 통일 — 다른 admin route들과 가드 일관성 유지.
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { isAdmin } from '@/lib/auth/role'
+
+export const runtime = 'nodejs'
 
 export interface ExceptionAlert {
   venue: string
@@ -18,16 +23,8 @@ export interface ExceptionAlert {
 export async function GET() {
   try {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-    if (!profile || profile.role !== 'admin') {
-      return NextResponse.json({ error: 'Admin only' }, { status: 403 })
+    if (!(await isAdmin(supabase))) {
+      return NextResponse.json({ error: '관리자 권한 필요' }, { status: 403 })
     }
 
     // facility_exception_log 전체 집계 (admin만 접근)
