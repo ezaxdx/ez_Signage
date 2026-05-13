@@ -14,6 +14,75 @@
 **되돌릴 수 있는가**: <쉬운가, 어려운가>
 ```
 
+## 2026-05-13 — 학습 관리자 사이드바 4 대섹션 + 내부 서브탭 통합 (v9.31)
+
+**컨텍스트**: 사용자 강한 지적 — "데이터 학습 관리자 ... 에 맞지 않는데? 너 댑스 이해 못해?". v9.29의 7개 평면 사이드바가 명세 §2 5 대섹션 IA(KPI + 개요 + 행사장별 학습 현황 + 행사장(5서브) + 동의어(3서브))와 불일치.
+
+**선택**:
+  1. 사이드바 = 4 대섹션 (KPI 카드는 상시 상단 노출 → 사이드바 X)
+  2. ′행사장′ 대섹션 클릭 시 상단 6 서브탭 네비 (추가/요청대기/큐/시설가이드/예외패턴/수정요청)
+  3. ′동의어′ 대섹션 클릭 시 상단 3 서브탭 네비 (매핑/카테고리권장/환경장식물종류)
+  4. 기존 facility-guides·correction-requests·signage-types 블록은 venues/synonyms 서브탭 조건으로 흡수 — 코드 재작성 최소화
+  5. 사이드바 4개 버튼은 desc 부제(예: "추가 / 신규 요청 대기 / 도면 학습 큐 / 시설 가이드 / 예외 패턴")로 서브탭 내용 미리보기
+
+**대안**:
+  - v9.29 평면 유지 (사용자 거부)
+  - 5 대섹션 모두 사이드바 (KPI도 사이드바 → 명세 §2-1과 모순 — KPI는 상시 노출이라 사이드바 항목 X)
+  - 사이드바 + 우측 사이드바 2단계 (UI 복잡도 증가, 명세 단순 IA 의도와 불일치)
+
+**이유**: 명세 IA는 "대섹션 안에 서브"가 자연 멘탈 모델. 사이드바 평탄화는 ′행사장′ 안 5개와 ′동의어′ 안 3개를 사용자가 같은 댑스로 인식하게 만들어 학습 부담 증가. 서브탭 패턴은 venues·synonyms 진입 후 컨텍스트 유지하면서 미세 분리 가능.
+
+**되돌릴 수 있는가**: 쉬움 — SECTIONS 배열을 7개로 다시 풀어쓰고 venueSubTab·synonymSubTab 분기 제거하면 v9.29 동작.
+
+**상세**: PROGRESS.md 2026-05-13 (v9.31)
+
+## 2026-05-13 — 파트 → 환경장식물 자동 매칭 흐름 작동 (v9.31)
+
+**컨텍스트**: 사용자 강한 지적 — "행사 만들 때 파트 자동 적히는 거 그 파트별로 적용되는 사항 왜 적용 안 됨?". 진단 결과:
+  - NewProjectButton: programParts 다중선택은 UI formats[fid].selected만 갱신. design_items INSERT에 part·program_part 미주입.
+  - recommendSignage.ts: RecommendInput에 programParts 필드 자체가 없음 → Gemini 프롬프트에 파트 컨텍스트 주입 안 됨.
+  - case-a: 파트 선택 UI 없음. 엑셀 ′파트′ 컬럼 빈값.
+
+**선택**:
+  1. lib/programParts.ts 헬퍼 3종 신설 — pickPartForFormat (FORMAT_PRESETS id 기반) / partsForFormat (역방향) / programPartName (코드→한글)
+  2. recommendSignage.ts:
+     - RecommendInput에 programParts?: string[] 필드 추가
+     - RecommendItem에 program_part·program_part_name 추가
+     - SYSTEM_INSTRUCTION에 "각 항목에 매칭된 파트 1개 명시" 지시
+     - userText에 [프로그램 파트 매핑] 블록 자동 주입 (선택 파트별 권장 환경장식물 ID 표시)
+     - 응답 후처리: AI program_part 검증 → 실패 시 partsForFormat ∩ selectedParts 첫 매치로 자동 채움
+  3. case-a 페이지에 프로그램 파트 다중선택 UI (PROGRAM_PARTS 12종 그룹별 체크박스, emerald 강조)
+  4. case-a·NewProjectButton 양쪽에서 design_items INSERT 시 part: program_part_name, program_part: code 채움
+  5. DB 컬럼 호환성: program_part 컬럼 없을 경우 재시도 (마이그레이션 미적용 환경 보호)
+  6. UI 시각화: case-a review에 emerald 파트 배지 + 엑셀 ′파트′ 컬럼 자동 채움
+
+**대안**:
+  - AI 응답에만 의존 (Gemini가 약속 안 지킬 위험 — JSON 누락·잘못된 코드)
+  - 사용자 수동 입력 컬럼만 유지 (사용자 검토 부담 ↑, 자동화 4필터 ④ 위반)
+  - PROGRAM_PART_SIGNAGE_HINTS만 사용 + EVENT_TYPE_RECOMMEND 통합 (goals/current.md에서 사용자가 추진 안 함으로 표시)
+
+**이유**: 사용자 명시 회의 컨셉(1차 파트별 + 2차 행사장별) 구현. 자동화 4필터 ④ — 파트 한 번 선택하면 추천 결과 + 엑셀까지 일관 적용. AI 응답이 약속 안 지킬 때 후처리로 안전망. 단계별 fallback으로 마이그레이션 미적용 환경에서도 동작.
+
+**되돌릴 수 있는가**: 쉬움 — recommendSignage.ts 후처리 program_part 블록 + NewProjectButton matchedPartCode 라인 + case-a programParts state 제거하면 원복. lib/programParts.ts 헬퍼는 그대로 두어도 부작용 없음.
+
+**상세**: PROGRESS.md 2026-05-13 (v9.31)
+
+## 2026-05-13 — 시설 가이드 미확인 항목 추가 강조 텍스트 제거 (v9.31)
+
+**컨텍스트**: 사용자 지적 — 천정배너(행잉)에 "사전 협의 후 발주 권장" 잔존. 회의 결정 ⑤ "추가 강조 텍스트 X" 위반.
+
+**선택**: `getGuideUnknowns()`에서 `items.push(\`${category} — 사전 협의 후 발주 권장\`)` → `items.push(category)` 단순화. 카테고리명만 노출.
+
+**대안**:
+  - 강조 라벨을 다른 톤으로 변경 (회의 ⑤ 완전 부합 안 됨)
+  - 미확인 항목 섹션 자체 제거 (구체화 가능한 정보는 유지하는 게 사용자 도움)
+
+**이유**: 회의 결정 ⑤ + v9.21 강조 라벨 톤다운 원칙과 일치. 추가 안내는 install_allowed의 note에서 이미 노출되므로 중복.
+
+**되돌릴 수 있는가**: 매우 쉬움 — 한 줄 원복.
+
+**상세**: PROGRESS.md 2026-05-13 (v9.31)
+
 ## 2026-05-07 — v4.1 대전환: "디자인 의뢰" → "리스트 가이드"
 
 **컨텍스트**: 회의(260507) — "디자인 자체는 걷어내고 학습 + 추천부터" 전면 방향 전환

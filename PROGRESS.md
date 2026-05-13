@@ -1,5 +1,88 @@
 # 작업 이력
 
+## 2026-05-13 (v9.31) — 통합 핫픽스: 학습 관리자 댑스 정정 + 천정배너 잔존 제거 + 파트 매칭 작동
+
+### 사용자 요청 (강한 지적 — 시급)
+조기흠 사원(AXDX팀, 2026-05-13): 3가지 통합 처리
+1. "데이터 학습 관리자 ... 에 맞지 않는데? 너 댑스 이해 못해?" — v9.29의 7개 평면 사이드바가 명세 IA(5 대섹션)와 불일치
+2. 천정배너(행잉) "사전 협의 후 발주 권장" 잔존 — 회의 결정 ⑤(추가 강조 텍스트 X)에 반함
+3. "행사 만들 때 파트 자동 적히는 거 그 파트별로 적용되는 사항 왜 적용 안 됨?" — 파트 선택 → 환경장식물 자동 매칭 흐름 미작동
+
+### 문제 ① — 학습 관리자 사이드바 댑스 정정 (5 대섹션 IA)
+**이전 v9.29 (잘못)**: 사이드바 7개 평면 + 그룹 라벨 (개요·행사장 학습 현황 / 행사장 관리·시설 가이드·수정 요청 / 동의어 매핑·환경장식물 종류)
+→ 명세 §2-4 ′행사장′ 안 5 서브와 §2-5 ′동의어′ 안 3 서브를 사이드바 항목으로 평탄화 = 댑스 잘못
+
+**v9.31 (정정)**: 명세 5 대섹션 (KPI는 상시 상단 → 사이드바 4개)
+- 1) 상단 KPI 3카드 (상시 노출 — 사이드바 X)
+- 2) 사이드바 ′개요′ — 학습 누적 / 단계별 분포 / 정확도 추이
+- 3) 사이드바 ′행사장별 학습 현황′ — venue별 학습 데이터
+- 4) 사이드바 ′행사장′ (단일 대섹션) — 내부 6 서브탭:
+  - 행사장 추가 / 신규 요청 대기 / 도면 학습 큐 / 시설 가이드 / 예외 패턴 모니터 / 수정 요청
+- 5) 사이드바 ′동의어′ (단일 대섹션) — 내부 3 서브탭:
+  - 비표준 → 표준 매핑 / 카테고리 권장 / 환경장식물 종류 관리
+
+**코드 변경**: `app/(dashboard)/admin/learning/LearningManagerClient.tsx`
+- `SectionKey` 7개 → 4개로 축소 (overview/venue-status/venues/synonyms)
+- `VenueSubKey` 6개 + `SynonymSubKey` 3개 신설
+- 사이드바 그룹 라벨 제거 + 평면 4개로 단순화 (각 섹션에 desc 부제)
+- venues·synonyms 대섹션 진입 시 상단 서브탭 네비 노출
+- 기존 facility-guides·correction-requests·signage-types 블록 조건을 venueSubTab/synonymSubTab 매핑으로 변경
+- '카테고리 권장' 서브탭 신규 작성 (행사 유형 9종 × 권장 환경장식물 표)
+
+### 문제 ② — 천정배너 잔존 제거
+**위치**: `app/components/facility/FacilityGuidePanel.tsx:65` `getGuideUnknowns()`
+**이전**: `items.push(\`${category} — 사전 협의 후 발주 권장\`)`
+**변경**: `items.push(category)` — 카테고리명만. 회의 결정 ⑤(추가 강조 텍스트 X) + 강조 라벨 톤다운 원칙 정합.
+
+### 문제 ③ — 파트 → 환경장식물 자동 매칭 흐름 복구
+**회의 컨셉**: 파트 선택(회의·전시·등록 등) → 1차(파트별 환경장식물 매핑) → 2차(행사장별 보강)
+
+**진단**:
+- NewProjectButton: step 2 파트 다중선택 → UI 체크박스만 갱신 (`formats[fid].selected=true`). DB design_items INSERT에는 part·program_part 미주입.
+- recommendSignage.ts: RecommendInput에 programParts 필드 없음. Gemini 프롬프트에 파트 매핑 컨텍스트 미주입.
+- case-a: 파트 선택 UI 자체 없음. 엑셀 '파트' 컬럼 빈값.
+
+**v9.31 수정**:
+- `lib/programParts.ts`: `pickPartForFormat()` · `partsForFormat()` · `programPartName()` 3개 함수 신설 (이미 작업 중이던 변경 — 정식화)
+- `lib/ai/recommendSignage.ts`:
+  - RecommendInput에 `programParts?: string[]` 필드 추가
+  - RecommendItem에 `program_part` · `program_part_name` 필드 추가
+  - SYSTEM_INSTRUCTION에 "각 항목에 매칭된 파트 1개 명시" 지시 추가
+  - userText에 [프로그램 파트 매핑] 블록 자동 주입 (선택 파트별 권장 환경장식물 ID 표시)
+  - 응답 후처리: AI 응답 검증 → 미검증 시 partsForFormat ∩ selectedParts 첫 매치로 자동 채움 + program_part_name 한글명 부착
+- `app/(dashboard)/projects/new/case-a/page.tsx`:
+  - 프로그램 파트 다중선택 UI 추가 (PROGRAM_PARTS 12종 그룹별 체크박스, emerald 강조)
+  - API body에 programParts 전달
+  - design_items INSERT 시 part: program_part_name, program_part: code 채움
+  - 엑셀 '파트' 컬럼에 program_part_name 노출
+  - review 화면 추천 항목에 emerald 파트 배지 표시
+- `app/(dashboard)/dashboard/components/NewProjectButton.tsx`:
+  - selectedList에 presetId 보존
+  - design_items INSERT 시 pickPartForFormat(presetId, programPartsArr) → matchedPartCode, programPartName → matchedPartName
+  - 파트 매칭 성공 시 part: program_part_name, program_part: code 채움 (실패 시 멤버 part_name fallback)
+  - DB 컬럼 없을 경우 program_part 제거 후 재시도 (마이그레이션 호환성)
+
+### 변경 파일 (5개)
+- `app/(dashboard)/admin/learning/LearningManagerClient.tsx` — 사이드바 4 대섹션 + 6+3 서브탭 통합
+- `app/components/facility/FacilityGuidePanel.tsx` — 천정배너 잔존 제거
+- `lib/programParts.ts` — 파트 매칭 헬퍼 3종 (pickPartForFormat·partsForFormat·programPartName)
+- `lib/ai/recommendSignage.ts` — programParts 입력 + Gemini 프롬프트 주입 + 후처리 program_part 자동 채움
+- `app/(dashboard)/projects/new/case-a/page.tsx` — 파트 다중선택 UI + 엑셀 파트 컬럼
+- `app/(dashboard)/dashboard/components/NewProjectButton.tsx` — design_items INSERT 시 part·program_part 자동 채움
+
+### 검증
+- TSC 0 에러
+- Next 빌드 25/25 라우트 PASS
+- `/admin/learning` 15.6kB → 16.8kB (서브탭 + 카테고리 권장 표 추가)
+- `/projects/new/case-a` 9.42kB → 11.1kB (프로그램 파트 UI 추가)
+
+### 라이브 사이트 확인 체크리스트 (사용자 영역)
+1. `/admin/learning` 사이드바 4개 (개요 / 행사장별 학습 현황 / 행사장 / 동의어)만 노출. 행사장 클릭 시 6개 서브탭 가로 네비. 동의어 클릭 시 3개 서브탭.
+2. 시설 가이드 패널(행사장 가이드 보기) 호버 → 미확인 항목 리스트가 "카테고리명만" 노출. "사전 협의 후 발주 권장" 문구 사라짐.
+3. case-a에서 프로그램 파트 다중 체크 → AI 추천 후 각 항목에 emerald 파트 배지 표시. 엑셀 다운로드 시 '파트' 컬럼 채워짐.
+
+---
+
 ## 2026-05-13 (v9.26~v9.30) — 관리자 페이지 + 데이터 학습 관리자 재설계 5사이클 통합
 
 ### 사용자 요청

@@ -13,6 +13,7 @@ import type { RecommendItem, EventType, EventLanguage } from '@/lib/ai/recommend
 import { SEED_PERFLIST } from '@/lib/data/dashboardSeed'
 import { formatNoteText } from '@/lib/text/normalizeAiText'
 import { STANDARD_CATEGORY_BY_KEY, type StandardCategoryKey } from '@/lib/data/signageCategoryStandards'
+import { PROGRAM_PARTS, PROGRAM_PART_GROUPS } from '@/lib/programParts'
 
 // 과거 수행실적에서 발주처·주관기관 후보 추출 (자동완성용)
 const KNOWN_CLIENTS = Array.from(new Set(SEED_PERFLIST.map(p => p.client))).sort()
@@ -81,6 +82,8 @@ export default function CaseAPage() {
   const [keySpaces, setKeySpaces] = useState('')
   const [mainEntrance, setMainEntrance] = useState('')
   const [purposes, setPurposes] = useState<Set<string>>(new Set())
+  // v9.31: 프로그램 파트 다중선택 (회의·등록 등) — recommendSignage에 1차 매칭 기준 주입
+  const [programParts, setProgramParts] = useState<Set<string>>(new Set())
   const [budgetConstrained, setBudgetConstrained] = useState(false)
   const [outdoorPortion, setOutdoorPortion] = useState(false)
   const [hasVip, setHasVip] = useState(false)
@@ -131,6 +134,8 @@ export default function CaseAPage() {
           keySpaces: keySpaces.trim() || undefined,
           mainEntrance: mainEntrance.trim() || undefined,
           purposes: Array.from(purposes),
+          // v9.31: 파트 매칭 입력 — Gemini 프롬프트와 후처리에서 1차 매칭 기준
+          programParts: Array.from(programParts),
           budgetConstrained,
           outdoorPortion,
           hasVip,
@@ -169,7 +174,10 @@ export default function CaseAPage() {
     const dateStr = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`
     const headers = ['NO.', '파트', '구분', '장소', '사용목적', '품목', '언어', '규격(mm)', '재질', '수량', '내용', '비고', '담당자', '디자인업체', '출력업체', '설치시간', '철거시간']
     const rows = items.map(it => [
-      it.no, '', it.category_label, it.location, it.purpose, it.category_label,
+      it.no,
+      // v9.31: 파트 컬럼에 program_part_name 자동 채움 (recommendSignage.ts 후처리 결과)
+      it.program_part_name ?? '',
+      it.category_label, it.location, it.purpose, it.category_label,
       language || 'KOR',
       `${it.width_mm}×${it.height_mm}`,
       it.material, it.quantity, it.rationale, '', '', '', '', '', ''
@@ -225,6 +233,10 @@ export default function CaseAPage() {
         material: it.material,
         width_mm: it.width_mm,
         height_mm: it.height_mm,
+        // v9.31: 파트 매칭 자동 채움 (사용자 강한 지적: "파트별로 적용되는 사항 왜 적용 안 됨?")
+        // recommendSignage.ts 후처리에서 program_part·program_part_name 채워줌. 엑셀 '파트' 컬럼에 노출.
+        part: it.program_part_name ?? null,
+        program_part: it.program_part ?? null,
       }))
       const { error: iErr } = await supabase.from('design_items').insert(rows)
       if (iErr) { setError(iErr.message); setStage('review'); return }
@@ -350,6 +362,46 @@ export default function CaseAPage() {
                   })}
                 </div>
               </Field>
+
+              {/* v9.31: 프로그램 파트 다중선택 — 파트별 매칭 결과를 추천 항목에 자동 첨부
+                  사용자 강한 지적: "파트 자동 적히는 거 그 파트별로 적용되는 사항 왜 적용 안 됨?" */}
+              <Field label="프로그램 파트 (다중 선택 가능) — 파트별 권장 환경장식물을 1차 기준으로 매핑">
+                <div className="space-y-2">
+                  {PROGRAM_PART_GROUPS.map(g => {
+                    const list = PROGRAM_PARTS.filter(p => p.group === g.group)
+                    return (
+                      <div key={g.group}>
+                        <p className="text-[10px] text-slate-500 mb-1 uppercase tracking-wide">{g.label}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {list.map(p => {
+                            const on = programParts.has(p.code)
+                            return (
+                              <button
+                                key={p.code}
+                                type="button"
+                                onClick={() => setProgramParts(prev => {
+                                  const next = new Set(prev)
+                                  if (next.has(p.code)) next.delete(p.code); else next.add(p.code)
+                                  return next
+                                })}
+                                title={p.hint}
+                                className={`px-2.5 py-1 rounded border text-[11px] transition ${
+                                  on ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'
+                                }`}
+                              >
+                                {p.name}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {programParts.size > 0 && (
+                    <p className="text-[10px] text-emerald-600">선택 {programParts.size}개 — 각 추천 항목에 매칭된 파트 명시</p>
+                  )}
+                </div>
+              </Field>
             </div>
 
             {/* ── 3. 추가 정보 (접힘) ─────── */}
@@ -460,6 +512,12 @@ export default function CaseAPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className={`font-medium ${isUnknown ? 'text-amber-900' : 'text-slate-900'}`}>{it.category_label}</span>
+                        {/* v9.31: 매칭된 파트 배지 — recommendSignage.ts 후처리 결과 (사용자 강한 지적 반영) */}
+                        {it.program_part_name && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-semibold border border-emerald-200" title={`파트 코드 ${it.program_part}`}>
+                            {it.program_part_name}
+                          </span>
+                        )}
                         <span className="text-xs text-slate-500">{it.width_mm}×{it.height_mm}mm · {it.material}</span>
                         {isUnknown && (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-semibold">
