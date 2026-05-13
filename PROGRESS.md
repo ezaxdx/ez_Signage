@@ -1,5 +1,62 @@
 # 작업 이력
 
+## 2026-05-13 (v9.32) — 학습 관리자 사이드바 5 메뉴 정정 (프로그램 파트 신규 + 동의어 → 환경장식물)
+
+### 사용자 요청
+조기흠 사원(AXDX팀, 2026-05-13): "개요·행사장별 학습 현황·행사장·프로그램 파트·환경장식물" 5 메뉴.
+옵션 A — "환경장식물 메뉴 클릭 → 종류 관리 + 동의어 매핑 + 카테고리 권장".
+
+### 변경 — v9.31 사이드바 4 메뉴 → v9.32 사이드바 5 메뉴
+| 위치 | v9.31 | v9.32 |
+|---|---|---|
+| 1번 | 개요 | 개요 (그대로) |
+| 2번 | 행사장별 학습 현황 | 행사장별 학습 현황 (그대로) |
+| 3번 | 행사장 (6 서브) | 행사장 (6 서브) (그대로) |
+| 4번 | 동의어 (3 서브) | **프로그램 파트 (신규)** |
+| 5번 | — | **환경장식물 (3 서브)** ← 기존 ′동의어′ 메뉴 명칭 변경 + 내부 서브 그대로 |
+
+### 코드 변경 — `app/(dashboard)/admin/learning/LearningManagerClient.tsx`
+- `SectionKey` union: `'overview' | 'venue-status' | 'venues' | 'synonyms'` → `+ 'program-parts'` 추가
+- SECTIONS 배열 4 → 5 항목, 사용자 명시 순서대로:
+  - 1) overview (BarChart3) — 개요
+  - 2) venue-status (GraduationCap) — 행사장별 학습 현황
+  - 3) venues (Building2) — 행사장
+  - 4) **program-parts** (Workflow) — 프로그램 파트 (신규)
+  - 5) **synonyms** (ImageIcon) — **환경장식물** (라벨 변경, 서브탭 키는 ′synonyms′ 유지)
+- `lib/programParts.ts` import 추가: `PROGRAM_PARTS`, `PROGRAM_PART_GROUPS`, `PROGRAM_PART_SIGNAGE_HINTS`
+- lucide-react import에 `Workflow`, `Image as ImageIcon` 추가
+
+### 프로그램 파트 섹션 신규 (4번)
+- 12종 파트를 3 그룹별 카드 그리드 (md:2열 / lg:3열):
+  - **프로그램** 8종 (emerald): 회의·전시·비즈니스 매칭·비즈니스 프로그램·공식행사·공모전형·체험형·투어형
+  - **참가자 응대** 3종 (indigo): 의전·등록·영접영송
+  - **홍보** 1종 (amber): 홍보
+- 각 카드: 코드(40.04~) · 한글명 · hint 한 줄 · 매핑된 환경장식물 ID 배지(PROGRAM_PART_SIGNAGE_HINTS)
+- 현재 사이클은 read-only 표시 (편집·추가·삭제는 추후 사이클)
+- 소스 SOT: `lib/programParts.ts` (PROGRAM_PARTS + PROGRAM_PART_SIGNAGE_HINTS)
+
+### 환경장식물 메뉴 (5번) — 명칭 변경
+- 사이드바 라벨: ′동의어′ → ′환경장식물′ (ImageIcon)
+- desc 부제: ′환경장식물 종류 관리 / 동의어 매핑 / 카테고리 권장′
+- 내부 서브탭(synonymSubTab) 키는 그대로 유지 (mapping / category / types)
+- 사용자 옵션 A — 환경장식물 클릭 시 종류 관리 + 동의어 매핑 + 카테고리 권장 3개 진입
+
+### 변경 파일 (2개)
+- `app/(dashboard)/admin/learning/LearningManagerClient.tsx` (사이드바 5 메뉴 + program-parts 섹션 추가)
+- `docs/ADMIN_REDESIGN_260513.md` (5 메뉴 매트릭스 갱신)
+
+### 검증
+- TSC 0 에러
+- Next 빌드 25/25 라우트 PASS
+- `/admin/learning` 16.8 kB → 18.5 kB (program-parts 섹션 +1.7 kB)
+
+### 라이브 사이트 확인 체크리스트 (사용자 영역)
+1. https://ez-signage2.vercel.app 로그인(admin) 후 `/admin/learning` 진입 → 사이드바 5 메뉴 (개요 / 행사장별 학습 현황 / 행사장 / 프로그램 파트 / 환경장식물)
+2. 프로그램 파트 클릭 → 3 그룹별 12종 카드 표시 (코드·이름·hint·환경장식물 ID 배지)
+3. 환경장식물 클릭 → 상단 서브탭 3개 (비표준 → 표준 매핑 / 카테고리 권장 / 환경장식물 종류 관리)
+
+---
+
 ## 2026-05-13 (v9.31) — 통합 핫픽스: 학습 관리자 댑스 정정 + 천정배너 잔존 제거 + 파트 매칭 작동
 
 ### 사용자 요청 (강한 지적 — 시급)
