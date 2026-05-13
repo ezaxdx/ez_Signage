@@ -5,11 +5,12 @@ import Link from 'next/link'
 import {
   LayoutGrid, ArrowLeft, GraduationCap, MapPin, Plus, Loader2,
   CheckCircle2, XCircle, AlertCircle, Clock, FileText, Inbox, Building2,
-  Sparkles, Flag, BarChart3, TrendingUp, AlertTriangle,
+  Sparkles, Flag, BarChart3, TrendingUp, AlertTriangle, Workflow, Image as ImageIcon,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { explainStorageError } from '@/lib/services/storagePaths'
 import { REGION_ORDER } from '@/lib/venueIntel'
+import { PROGRAM_PARTS, PROGRAM_PART_GROUPS, PROGRAM_PART_SIGNAGE_HINTS } from '@/lib/programParts'
 
 // ── 타입 ──────────────────────────────────────────────────────
 interface Venue {
@@ -221,7 +222,13 @@ export function LearningManagerClient({
   //
   // 이전 v9.29 잘못된 댑스: 7개 평면 평탄화 (행사장 5서브 + 동의어 3서브를 사이드바 항목으로 끌어올림)
   // v9.31 정정: 사이드바 = 4 대섹션 (개요 / 행사장 학습 현황 / 행사장 / 동의어), 4·5 대섹션 안은 탭으로 서브 항목 통합
-  type SectionKey = 'overview' | 'venue-status' | 'venues' | 'synonyms'
+  //
+  // v9.32 갱신 — 사용자 명시 (조기흠 사원, 2026-05-13):
+  //   사이드바 5 메뉴: 개요·행사장별 학습 현황·행사장·프로그램 파트·환경장식물
+  //   - 4번 ′프로그램 파트′ 신규 (PROGRAM_PARTS 12종 표시)
+  //   - 5번 ′환경장식물′ = 기존 ′동의어′ 메뉴 명칭 변경 (내부 3 서브탭 그대로:
+  //     환경장식물 종류 관리 + 동의어 매핑 + 카테고리 권장)
+  type SectionKey = 'overview' | 'venue-status' | 'venues' | 'program-parts' | 'synonyms'
   type VenueSubKey = 'add' | 'requests' | 'queue' | 'facility' | 'exceptions' | 'corrections'
   type SynonymSubKey = 'mapping' | 'category' | 'types'
   const [activeSection, setActiveSection] = useState<SectionKey>('overview')
@@ -252,17 +259,19 @@ export function LearningManagerClient({
       .finally(() => setCorrectionLoading(false))
   }, [activeSection, venueSubTab])
 
-  // v9.31: 명세 5 대섹션 IA (KPI 카드는 상시 노출이라 사이드바 X → 사이드바 4개)
-  // 4·5 대섹션은 내부 서브탭으로 통합 (행사장 5서브, 동의어 3서브)
+  // v9.32: 사이드바 5 메뉴 (KPI 카드는 상시 상단 노출 → 사이드바 X)
+  //   1) 개요 / 2) 행사장별 학습 현황 / 3) 행사장 / 4) 프로그램 파트 (신규) / 5) 환경장식물 (구 ′동의어′ 명칭 변경)
   const SECTIONS: { key: SectionKey; label: string; icon: typeof GraduationCap; desc: string }[] = [
-    // 2) 개요 — 학습 누적·정확도 추이
-    { key: 'overview',     label: '개요',              icon: BarChart3,    desc: '학습 누적 / 단계별 분포 / 정확도 추이' },
-    // 3) 행사장별 학습 현황 — venue별 학습 데이터
-    { key: 'venue-status', label: '행사장별 학습 현황', icon: GraduationCap, desc: '행사장·프로젝트·항목·정확도, 40% 이하 강조' },
-    // 4) 행사장 (단일 대섹션) — 내부 5 서브: 추가/요청/큐/가이드/예외
-    { key: 'venues',       label: '행사장',            icon: Building2,    desc: '추가 / 신규 요청 대기 / 도면 학습 큐 / 시설 가이드 / 예외 패턴' },
-    // 5) 동의어 (단일 대섹션) — 내부 3 서브: 매핑/카테고리/종류
-    { key: 'synonyms',     label: '동의어',            icon: FileText,     desc: '비표준→표준 매핑 / 카테고리 권장 / 환경장식물 종류 관리' },
+    // 1) 개요 — 학습 누적·정확도 추이
+    { key: 'overview',      label: '개요',              icon: BarChart3,    desc: '학습 누적 / 단계별 분포 / 정확도 추이' },
+    // 2) 행사장별 학습 현황 — venue별 학습 데이터
+    { key: 'venue-status',  label: '행사장별 학습 현황', icon: GraduationCap, desc: '행사장·프로젝트·항목·정확도, 40% 이하 강조' },
+    // 3) 행사장 (단일 대섹션) — 내부 6 서브: 추가/요청/큐/가이드/예외/수정 요청
+    { key: 'venues',        label: '행사장',            icon: Building2,    desc: '추가 / 신규 요청 대기 / 도면 학습 큐 / 시설 가이드 / 예외 패턴 / 수정 요청' },
+    // 4) 프로그램 파트 (v9.32 신규) — EZ 폴더링 40.04~40.20 12종 표시
+    { key: 'program-parts', label: '프로그램 파트',     icon: Workflow,     desc: '파트 12종 (프로그램 8 / 참가자 응대 3 / 홍보 1) — 권장 환경장식물 매핑' },
+    // 5) 환경장식물 (v9.32 — 구 ′동의어′ 명칭 변경, 내부 3 서브탭 그대로)
+    { key: 'synonyms',      label: '환경장식물',        icon: ImageIcon,    desc: '환경장식물 종류 관리 / 동의어 매핑 / 카테고리 권장' },
   ]
 
   // v9.31: 4 대섹션 내 서브탭 정의
@@ -449,9 +458,6 @@ export function LearningManagerClient({
             <GraduationCap className="w-5 h-5 text-emerald-400" />
             <h1 className="text-xl font-bold text-slate-900">데이터 학습 관리자</h1>
           </div>
-          <p className="text-slate-500 text-sm mt-1">
-            행사장과 도면을 등록·관리합니다.
-          </p>
         </div>
 
         {/* ── KPI 3카드 (§13-3 — 행사장/환경장식물/동의어) ───── */}
@@ -459,17 +465,14 @@ export function LearningManagerClient({
           <div className="bg-white border border-slate-200 rounded-lg p-4">
             <p className="text-[10px] text-slate-500">학습된 행사장</p>
             <p className="text-2xl font-bold text-emerald-700 mt-0.5">{initialVenues.length}<span className="text-sm text-slate-400 ml-1">개</span></p>
-            <p className="text-[10px] text-slate-400 mt-1">신규 요청 대기 {initialRequests.filter(r => r.status === 'pending').length}건</p>
           </div>
           <div className="bg-white border border-slate-200 rounded-lg p-4">
             <p className="text-[10px] text-slate-500">환경장식물 종류</p>
             <p className="text-2xl font-bold text-indigo-700 mt-0.5">{signageTypeCount}<span className="text-sm text-slate-400 ml-1">종</span></p>
-            <p className="text-[10px] text-slate-400 mt-1">기본 표준 (편집·삭제는 시드 데이터)</p>
           </div>
           <div className="bg-white border border-slate-200 rounded-lg p-4">
             <p className="text-[10px] text-slate-500">동의어 매핑</p>
             <p className="text-2xl font-bold text-amber-700 mt-0.5">{synonyms.length}<span className="text-sm text-slate-400 ml-1">건</span></p>
-            <p className="text-[10px] text-slate-400 mt-1">비표준명 → 표준명 자동 변환</p>
           </div>
         </div>
 
@@ -500,9 +503,6 @@ export function LearningManagerClient({
                         <Icon className="w-3.5 h-3.5 flex-shrink-0" />
                         {s.label}
                       </span>
-                      <span className={`text-[9px] leading-tight pl-5 ${active ? 'text-emerald-100' : 'text-slate-400'}`}>
-                        {s.desc}
-                      </span>
                     </button>
                   )
                 })}
@@ -531,9 +531,6 @@ export function LearningManagerClient({
             <BarChart3 className="w-4 h-4 text-indigo-500" />
             개요
           </h2>
-          <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">
-            전체 학습 누적 그래프 · 단계별 분포(입력 10% / 중간 30% / 컨펌 70% / 완료 100%) · AI 추천 정확도 추이.
-          </p>
 
           {/* 학습 행사장 TOP 10 누적 그래프 */}
           <div className="space-y-5">
@@ -646,9 +643,6 @@ export function LearningManagerClient({
                   </table>
                 </div>
               )}
-              <p className="text-[10px] text-slate-400 mt-2">
-                ※ 행사장 정확도 = (입력×10 + 중간×30 + 컨펌×70 + 완료×100) / 전체. 누적 데이터 증가에 따라 자동 갱신됩니다.
-              </p>
             </div>
           </div>
         </section>
@@ -660,9 +654,6 @@ export function LearningManagerClient({
             <GraduationCap className="w-4 h-4 text-emerald-500" />
             행사장별 학습 현황
           </h2>
-          <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">
-            행사장별 누적 데이터. 카테고리 학습 컬럼은 시설 가이드 시드 + 천정배너 실측 패턴 기준으로 6대 표준 카테고리(외벽·게이트·가로등·X배너·천정·부속시설) 학습 현황을 표시합니다. 빨간색(!) 라벨은 우선순위 1 (외벽·천정) 누락 표시입니다.
-          </p>
           {venueLearningStatus.length === 0 ? (
             <p className="text-slate-400 text-xs italic py-4 text-center">아직 누적된 프로젝트가 없습니다. 신규 프로젝트가 생성되면 5분 이내 반영됩니다.</p>
           ) : (
@@ -819,7 +810,7 @@ export function LearningManagerClient({
             <div className="sm:col-span-2">
               <label className="block text-slate-500 text-[11px] mb-1">도면 첨부 (PDF/이미지)</label>
               <input type="file" accept=".pdf,image/*" onChange={e => setFloorPlan(e.target.files?.[0] ?? null)} className="block w-full text-slate-400 text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-slate-50 file:text-slate-400 file:cursor-pointer" />
-              {floorPlan && <p className="text-slate-500 text-[10px] mt-1">{floorPlan.name} — 등록 시 자동으로 학습 큐에 추가됩니다 (Vision 호출은 다음 사이클).</p>}
+              {floorPlan && <p className="text-slate-500 text-[10px] mt-1">{floorPlan.name}</p>}
             </div>
           </div>
           {addError && (
@@ -890,7 +881,6 @@ export function LearningManagerClient({
             <Clock className="w-4 h-4 text-violet-400" />
             도면 학습 큐 ({pendingJobs.length})
           </h2>
-          <p className="text-[11px] text-slate-400 mb-3">학습 완료된 도면은 아래 행사장 목록에서 확인하세요.</p>
           {pendingJobs.length === 0 ? (
             <p className="text-slate-400 text-xs italic">대기 중인 학습 큐가 없습니다.</p>
           ) : (
@@ -1138,7 +1128,6 @@ export function LearningManagerClient({
                 </tbody>
               </table>
             </div>
-            <p className="text-[10px] text-slate-400 mt-2">표준 시드 13종은 DB에서도 is_standard=true 로 보호됩니다. 추가한 커스텀 종류만 삭제 가능합니다.</p>
           </section>
         )}
 
@@ -1181,7 +1170,6 @@ export function LearningManagerClient({
               className="bg-slate-50 border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-44"
             />
           </div>
-          <p className="text-[11px] text-slate-500 mb-3">비표준 입력을 표준명으로 자동 변환합니다.</p>
 
           {/* 동의어 추가 폼 */}
           <div className="flex gap-2 mb-3">
@@ -1270,9 +1258,6 @@ export function LearningManagerClient({
             <MapPin className="w-4 h-4 text-amber-500" />
             카테고리 권장
           </h2>
-          <p className="text-[11px] text-slate-500 mb-3">
-            행사 유형별 권장 환경장식물 기본 세트입니다. NewProjectButton 위자드에서 파트 선택 시 자동 체크 기준이 됩니다.
-          </p>
           <div className="overflow-x-auto border border-slate-200 rounded">
             <table className="w-full text-xs">
               <thead className="bg-slate-50 border-b border-slate-200">
@@ -1295,7 +1280,6 @@ export function LearningManagerClient({
               </tbody>
             </table>
           </div>
-          <p className="text-[10px] text-slate-400 mt-2">소스: lib/programParts.ts PROGRAM_PART_SIGNAGE_HINTS + NewProjectButton EVENT_TYPE_RECOMMEND</p>
         </section>
         )}
 
@@ -1348,7 +1332,6 @@ export function LearningManagerClient({
             <AlertCircle className="w-4 h-4 text-rose-500" />
             시설 가이드 학습 현황
           </h2>
-          <p className="text-[11px] text-slate-500 mb-3">행사장별 시설 가이드 6종 정보 등록 상태. AI 자동 추출 버튼은 specs_text(Vision 분석 완료)가 있는 경우만 활성화됩니다.</p>
           {facilityGuideStatus.length === 0 ? (
             <p className="text-slate-400 text-xs italic py-3 text-center">시설 가이드 시드 데이터가 비어있습니다.</p>
           ) : (
@@ -1435,13 +1418,8 @@ export function LearningManagerClient({
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-amber-500" />
-            가이드 예외 패턴 — 제작 완료 기반 검토 신호
+            가이드 예외 패턴
           </h2>
-          <p className="text-[11px] text-slate-500 mb-3">
-            시설 가이드 경고를 무시하고 실제 발주·완료된 케이스 집계입니다.
-            <strong className="text-amber-700"> 3회 이상</strong>이면 가이드 데이터 자체가 오래됐거나 틀렸을 가능성이 높습니다.
-            완료 데이터가 가이드보다 신뢰도가 높습니다.
-          </p>
 
           {/* v9.30: 예외 패턴 요약 KPI */}
           {exceptionAlerts.length > 0 && (
@@ -1526,7 +1504,6 @@ export function LearningManagerClient({
             <Flag className="w-4 h-4 text-rose-500" />
             수정 요청 대기
           </h2>
-          <p className="text-[11px] text-slate-500 mb-3">FacilityGuidePanel에서 사용자가 제출한 시설 정보 수정 요청입니다.</p>
           {correctionLoading ? (
             <div className="flex items-center gap-2 text-slate-400 text-xs py-4 justify-center">
               <Loader2 className="w-4 h-4 animate-spin" /> 불러오는 중…
@@ -1602,6 +1579,67 @@ export function LearningManagerClient({
             </div>
           )}
         </section>
+        )}
+
+        {/* v9.32 신규 — 프로그램 파트 메뉴 (4번): PROGRAM_PARTS 12종을 그룹별 카드로 표시.
+            편집·추가·삭제는 추후 사이클 (현재 read-only). NewProjectButton·case-a 위자드에서 사용. */}
+        {activeSection === 'program-parts' && (
+        <>
+          <section className="bg-white border border-slate-200 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-slate-900 font-semibold text-sm flex items-center gap-2">
+                <Workflow className="w-4 h-4 text-emerald-500" />
+                프로그램 파트 ({PROGRAM_PARTS.length}종)
+              </h2>
+            </div>
+
+            <div className="space-y-5">
+              {PROGRAM_PART_GROUPS.map(g => {
+                const parts = PROGRAM_PARTS.filter(p => p.group === g.group)
+                const groupColor = g.group === 'program'
+                  ? { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500' }
+                  : g.group === 'attendee'
+                  ? { bg: 'bg-indigo-50',  border: 'border-indigo-200',  text: 'text-indigo-700',  dot: 'bg-indigo-500' }
+                  : { bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-700',   dot: 'bg-amber-500' }
+                return (
+                  <div key={g.group}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`w-2 h-2 rounded-full ${groupColor.dot}`} />
+                      <h3 className={`text-xs font-semibold ${groupColor.text}`}>{g.label}</h3>
+                      <span className="text-[10px] text-slate-400">{parts.length}종</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {parts.map(p => {
+                        const hints = PROGRAM_PART_SIGNAGE_HINTS[p.code] ?? []
+                        return (
+                          <div key={p.code} className={`${groupColor.bg} ${groupColor.border} border rounded-lg p-3`}>
+                            <div className="flex items-baseline gap-2 mb-1">
+                              <span className={`text-[10px] font-mono ${groupColor.text}`}>{p.code}</span>
+                              <span className="text-slate-900 font-semibold text-sm">{p.name}</span>
+                            </div>
+                            {p.hint && (
+                              <p className="text-[11px] text-slate-600 mb-1.5 leading-snug">{p.hint}</p>
+                            )}
+                            {hints.length > 0 && (
+                              <div className="flex flex-wrap gap-1 pt-1 border-t border-white/60">
+                                {hints.map(h => (
+                                  <span key={h} className="text-[10px] px-1.5 py-0.5 rounded bg-white/70 text-slate-600 border border-slate-200 font-mono">
+                                    {h}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+          </section>
+        </>
         )}
 
           </div>
