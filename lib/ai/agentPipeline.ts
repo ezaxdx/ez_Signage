@@ -139,12 +139,32 @@ export interface PipelineCard {
   steps: Array<keyof typeof PIPELINE_BLOCKS>
   /** 항상 호출 / 첨부 시만 호출 */
   trigger: 'always' | 'on_attachment'
+  /**
+   * v9.53 (2026-05-14) — 페르소나 textarea 비웠을 때 실제 적용되는 기본 동작 본문.
+   * PIPELINE_BLOCKS의 묶인 step body를 그대로 join한 텍스트.
+   * 어드민 화면에서 textarea placeholder로 노출 → "비우면 기본값 사용"의 실체 시각화.
+   * SOT: PIPELINE_BLOCKS[stepKey].body. 이 필드를 직접 편집하지 말고 PIPELINE_BLOCKS만 수정하면
+   *      buildDefaultPersonaForCard 헬퍼가 자동으로 동기화한 텍스트를 가짐.
+   */
+  default_persona: string
+}
+
+// v9.53 (2026-05-14): 카드별 default_persona 자동 산출 — PIPELINE_BLOCKS의 step body를 그대로 join.
+//   사용자(조기흠 사원, AXDX팀, 2026-05-14) 명시: ′비워두면 기본 동작 그대로′의 ′기본 동작′이 무엇인지
+//   placeholder에 명확히 노출. 가짜 예시 ′당신은 [card.title] 전문가입니다 ...′ → 실제 step body로 교체.
+//   ′3번 AI 투입 = 3순위 표준 수량 산정′ 의미가 placeholder 본문에 그대로 노출되어 시각 강조 박스 없이도 의미 전달.
+function buildDefaultPersonaForCard(stepKeys: Array<keyof typeof PIPELINE_BLOCKS>): string {
+  return stepKeys
+    .map(k => PIPELINE_BLOCKS[k].body.trim())
+    .filter(b => b.length > 0)
+    .join('\n')
 }
 
 // v9.52 (2026-05-14): 카드 부연·강조 텍스트 삭제 + 헤더 부연 단순화 (조기흠 사원 명시)
 //   recommend 카드: notice 비움 + title ′추천 (항상 호출)′ → ′추천′ (배지가 이미 ′항상 호출′ 표시)
 //   floor_plan_vision 카드: notice 비움 + title ′도면 분석 보강 (도면 첨부 시만)′ → ′도면 분석 보강′ (배지로 충분)
 //   ′응? 금지′ + ′편집 도구 자체에 집중′ 룰 — 헤더 title과 배지가 같은 정보를 두 번 노출하던 중복 제거.
+// v9.53 (2026-05-14): 각 카드에 default_persona 추가 — 어드민 placeholder가 실제 step body 노출.
 export const PIPELINE_CARDS: Record<CardKey, PipelineCard> = {
   recommend: {
     key: 'recommend',
@@ -153,6 +173,7 @@ export const PIPELINE_CARDS: Record<CardKey, PipelineCard> = {
     notice: '',
     steps: ['step1', 'step2', 'step3'],
     trigger: 'always',
+    default_persona: buildDefaultPersonaForCard(['step1', 'step2', 'step3']),
   },
   floor_plan_vision: {
     key: 'floor_plan_vision',
@@ -161,6 +182,7 @@ export const PIPELINE_CARDS: Record<CardKey, PipelineCard> = {
     notice: '',
     steps: ['step4'],
     trigger: 'on_attachment',
+    default_persona: buildDefaultPersonaForCard(['step4']),
   },
 }
 

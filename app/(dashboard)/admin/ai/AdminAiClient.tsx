@@ -47,6 +47,14 @@ import {
 //   fallback: recommendSignage.ts에서 step별 오버라이드 비면 PIPELINE_BLOCKS 기본 동작으로 자동 fallback.
 // v9.48-C (2026-05-14): step별 페르소나 안내 박스 한 줄로 단순화 — MapPin 1줄 박스
 //   v9.51에서 카드 단위로 통합되며 박스도 1줄 형태(′적용 위치: 새 프로젝트 만들기 → AI 추천 받기′)로 보존.
+// v9.53 (2026-05-14): 페르소나 textarea placeholder를 가짜 예시 → 실제 PIPELINE_BLOCKS 기본 동작 본문으로 교체 (조기흠 사원 명시)
+//   사용자(조기흠 사원, AXDX팀, 2026-05-14): "비워두면 기본 동작 그대로 — ′기본 동작′이 무엇인지 placeholder에 명확히 노출".
+//   이전 placeholder = `예시:\n당신은 ${card.title} 전문가입니다.\n행사 장소 {{venue}}, 선택 파트 {{parts}}를 기반으로 ...`
+//     → ′예시′라는 단어가 들어가 있어 ′비웠을 때 실제 적용되는 본문′과 무관한 가짜 안내였음 (가독성·일관성 모두 위반).
+//   변경 후 placeholder = card.default_persona (PIPELINE_BLOCKS의 묶인 step body 그대로 join한 텍스트)
+//     → 어드민이 비웠을 때 실제 사용되는 step body가 그대로 안내됨. 편집 의도(기본값 위에 무엇을 더할지)를 즉시 파악.
+//   ′3번 AI 투입 = 3순위 표준 수량 산정′ 의미가 placeholder 본문에서 그대로 노출되어 별도 시각 강조 박스 없이도 의미 전달.
+//   SOT는 lib/ai/agentPipeline.ts의 PIPELINE_BLOCKS — 본 파일은 card.default_persona 참조만.
 // v9.52 (2026-05-14): 카드 안 부연·강조 텍스트 5건 삭제 (조기흠 사원 명시 — ′응? 금지′ + ′내부 경로 금지′ 룰)
 //   ① 카드 1 안 indigo highlight 박스 (★ 표준 수량 산정 = 김연아 대리님 명시 ′3번 AI 투입′) 전체 삭제
 //   ② 카드 1 안 안내 ′이 카드 안의 페르소나가 ... 표준 수량 산정에도 동일 적용′ 삭제 (① 박스에 포함되어 함께 제거)
@@ -422,11 +430,13 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
                     </div>
                   </div>
 
+                  {/* v9.53: placeholder = 가짜 예시('당신은 ... 전문가입니다') → 실제 PIPELINE_BLOCKS 기본 동작 본문.
+                      비우면 자동 적용되는 step body 그대로 노출 → ′비우면 기본값 사용′의 실체 시각화. */}
                   <Field label="페르소나" hint="비우면 기본값 사용">
                     <textarea
                       ref={el => { textareaRefs.current[card.key] = el }}
                       rows={6}
-                      placeholder={`예시:\n당신은 ${card.title} 전문가입니다.\n행사 장소 {{venue}}, 선택 파트 {{parts}}를 기반으로 추천을 작성하세요.`}
+                      placeholder={card.default_persona}
                       value={cur.system_prompt}
                       onChange={e => updateCard(card.key, { system_prompt: e.target.value })}
                       className="w-full text-xs border border-slate-200 rounded-md px-2 py-1.5 font-mono leading-relaxed"

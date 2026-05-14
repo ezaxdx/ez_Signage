@@ -1,5 +1,53 @@
 # 작업 이력
 
+## 2026-05-14 (v9.53) — 페르소나 textarea placeholder를 가짜 예시 → 실제 PIPELINE_BLOCKS 기본 동작 본문으로 교체
+
+### 사용자 요청
+조기흠 사원(AXDX팀, 2026-05-14): "/admin/ai 페이지의 페르소나 textarea placeholder를 ′예시 본문′이 아닌 **실제 적용된 PIPELINE_BLOCKS 기본 동작 본문**으로 변경".
+배경: hint = ′비우면 기본값 사용′인데 placeholder는 가짜 예시(′당신은 [card.title] 전문가입니다 ...′) → ′기본 동작′이 무엇인지 화면 어디에도 안 보임. 사용자가 비웠을 때 실제 적용되는 본문을 placeholder에서 즉시 확인할 수 있어야 편집 의도(기본값 위에 무엇을 더할지)가 명확해짐.
+
+### Step A — `lib/ai/agentPipeline.ts` PIPELINE_CARDS에 default_persona 필드 추가
+- `PipelineCard` interface에 `default_persona: string` 필드 추가 (JSDoc — SOT는 PIPELINE_BLOCKS, 직접 편집 금지)
+- 신규 헬퍼 `buildDefaultPersonaForCard(stepKeys)` — 묶인 step body들을 trim 후 `\n` join한 텍스트 반환
+- `PIPELINE_CARDS.recommend.default_persona` = step1·2·3 body join (파트 후보 추출 → 시설 가이드 제약 → 표준 수량 산정 본문이 그대로 노출 — ′3번 AI 투입′ 의미 시각 강조 박스 없이도 placeholder에 자연 노출)
+- `PIPELINE_CARDS.floor_plan_vision.default_persona` = step4 body 단독 (도면 Vision 보강 본문)
+
+### Step B — `app/(dashboard)/admin/ai/AdminAiClient.tsx` placeholder 교체
+- 이전: `placeholder={`예시:\n당신은 ${card.title} 전문가입니다.\n행사 장소 {{venue}}, 선택 파트 {{parts}}를 기반으로 추천을 작성하세요.`}`
+- 변경: `placeholder={card.default_persona}`
+- 헤더 사이클 코멘트(v9.53) 추가 — 변경 사유·SOT(PIPELINE_BLOCKS)·′3번 AI 투입′ 의미 노출 명시
+
+### 보존
+- 모든 이전 사이클 그대로 (v9.46 페르소나 본체 + v9.51 cardOverrides 흐름 + v9.52 부연 정리)
+- AiPipelineCard.tsx 미삭제 (v9.45 사용자 명시 보존 조건)
+- DB 스키마 변경 0건 / 의존성 추가 0건 / recommendSignage.ts·case-a 영향 0건
+- localStorage `admin_ai_settings_v3` 동작 그대로 (placeholder만 변경, 키·값 영향 0건)
+- ′📍 적용 위치: 새 프로젝트 만들기 → AI 추천 받기′ 박스가 v9.52 추가 정리에서 이미 삭제된 상태 그대로 유지 (관련 무관)
+
+### 변경 파일 (2개)
+- `lib/ai/agentPipeline.ts` (PipelineCard.default_persona 필드 + buildDefaultPersonaForCard 헬퍼 + PIPELINE_CARDS 두 카드에 default_persona 산출)
+- `app/(dashboard)/admin/ai/AdminAiClient.tsx` (textarea placeholder = card.default_persona + v9.53 사이클 코멘트)
+
+### 검증
+- TSC 0 에러
+- Next 빌드 36/36 라우트 PASS
+- harness 70/72 통과 (0 fail, 2 warn = dev 미실행 + Supabase 401 — 작업 무관)
+- 라우트 크기:
+  - `/admin/ai` 7.23 → 7.47 kB (+0.24 kB — placeholder 문자열이 가짜 예시 1줄 → 실제 step body 다중 줄로 길어진 영향)
+
+### 효과
+- /admin/ai 진입 → 페르소나 textarea 빈 상태에서 placeholder가 실제 step body 노출
+- 카드 1 (추천): "1순위: 프로그램 파트별 환경장식물 후보 추출 ... / 2순위: 행사장 시설 가이드 제약 ... / 3순위: 행사장 시설 가이드 표준 수량 ..."
+- 카드 2 (도면 분석 보강): "[보강] 행사장 배치도 Vision 분석 → 동선·설치 위치 컨텍스트"
+- ′3번 AI 투입 = 3순위 표준 수량 산정′ 의미가 placeholder 본문에서 자연 노출 → 김연아 대리님 명시 영역 의미 전달 보장
+- PIPELINE_BLOCKS 본문이 SOT — 향후 step body 변경 시 default_persona 자동 동기화 (헬퍼 함수 통해)
+
+### 배포
+- 브랜치: `auto/v9.53-persona-placeholder-real-default-260514` (v9.52 위에서 분기)
+- main 머지·push는 사용자 결정 (작업 지시: 보고만, push 자동 X)
+
+---
+
 ## 2026-05-14 (v9.52 추가) — 카드 안내 박스·헤더 부연·hint 단순화 (편집 도구 본질 집중)
 
 ### 사용자 추가 지적 (5/14)
