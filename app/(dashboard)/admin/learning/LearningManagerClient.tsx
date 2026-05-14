@@ -229,12 +229,14 @@ export function LearningManagerClient({
   //     환경장식물 종류 관리 + 동의어 매핑 + 카테고리 권장)
   // v9.36: 시안 100% 매칭 IA — 6 평면 메뉴
   //   1) 행사장 학습 현황 (venue-status)
-  //   2) 행사장 관리 (venues — 내부 venueSubTab으로 add/requests/queue 통합)
+  //   2) 행사장 관리 (venues — 가로 서브탭 제거, 추가/요청/큐 블록 세로 동시 표시)
   //   3) 환경장식물 종류 (signage-types)
   //   4) 동의어 매핑 (synonyms-mapping)
-  //   5) 시설 가이드 (facility-guides — 내부 venueSubTab으로 facility/exceptions 통합)
+  //   5) 시설 가이드 (facility-guides — 가로 서브탭 제거, 가이드/예외 동시 표시)
   //   6) 수정요청 (correction-requests)
   // 개요·프로그램 파트 메뉴는 시안에 없어 제거. 부연 desc도 제거.
+  // v9.47 (2026-05-14): IA SOT(김연아 대리님 노션) 정렬 검증 완료 — v9.36 6 평면 메뉴와 100% 일치.
+  //   사이드바 추가 변경 없음. dead state(venueSubTab·synonymSubTab) 단순화만 진행.
   type SectionKey =
     | 'venue-status'
     | 'venues'
@@ -242,11 +244,9 @@ export function LearningManagerClient({
     | 'synonyms-mapping'
     | 'facility-guides'
     | 'correction-requests'
-  type VenueSubKey = 'add' | 'requests' | 'queue' | 'facility' | 'exceptions' | 'corrections'
-  type SynonymSubKey = 'mapping' | 'category' | 'types'
   const [activeSection, setActiveSection] = useState<SectionKey>('venue-status')
-  const [venueSubTab, setVenueSubTab] = useState<VenueSubKey>('add')
-  const [synonymSubTab, setSynonymSubTab] = useState<SynonymSubKey>('types')
+  // v9.47: VenueSubKey/SynonymSubKey 타입과 venueSubTab/synonymSubTab state는 dead code (v9.36에서
+  //   섹션 내 서브탭 가로바 제거 후 사용처 0건). VENUE_SUBTABS 상수도 동일 — 타입 단순화 위해 모두 제거.
 
   // v9.36: 시설 가이드 / 예외 패턴 진입 시 예외 빈도 조회 (6 평면 메뉴 기준)
   useEffect(() => {
@@ -283,12 +283,8 @@ export function LearningManagerClient({
     { key: 'correction-requests',  label: '수정요청',          icon: Flag },
   ]
 
-  // v9.36: ′행사장 관리′ 내부 3 서브탭만 유지 (시설 가이드·예외·수정요청은 평면 메뉴로 분리됨)
-  const VENUE_SUBTABS: { key: VenueSubKey; label: string; icon: typeof GraduationCap }[] = [
-    { key: 'add',      label: '행사장 추가',    icon: Building2 },
-    { key: 'requests', label: '신규 요청 대기', icon: Inbox },
-    { key: 'queue',    label: '도면 학습 큐',   icon: Loader2 },
-  ]
+  // v9.47: VENUE_SUBTABS 상수 제거 — v9.36에서 가로 서브탭 바를 제거하고 블록을 세로 동시 표시로
+  //   변경했지만 상수만 잔존하던 dead code. IA SOT(6 평면 메뉴)와 정합.
 
   // ── 행사장 추가 폼 ───────────────────────────────────────
   const [name, setName] = useState('')

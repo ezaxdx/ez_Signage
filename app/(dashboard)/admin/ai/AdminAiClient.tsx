@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import {
   DollarSign, AlertTriangle, Save, RefreshCw,
-  Phone, Coins, Wallet, Layers, ShieldAlert, Calculator, Camera, Bot,
+  Phone, Layers, ShieldAlert, Calculator, Camera, Bot, Target, Bell,
 } from 'lucide-react'
 import { AccuracyTable, type AccuracyRow } from './AccuracyTable'
 import { PIPELINE_BLOCKS, type AiModelKey, type StepOverridesMap } from '@/lib/ai/agentPipeline'
@@ -13,7 +13,15 @@ import { PIPELINE_BLOCKS, type AiModelKey, type StepOverridesMap } from '@/lib/a
 //   투입되는 AI를 설정하고 페르소나를 수정할 수 있는 기능을 추가". step별 모델·temperature·페르소나 입력.
 // v9.43: AI 추천 파이프라인 카드는 화면에서 제거 (프롬프트 SYSTEM_INSTRUCTION 조립에만 사용)
 // v9.39: KPI 3 + 카테고리 정확도 테이블 (명세 ADMIN_REDESIGN_260513.md §1-4)
-// — 사용량/비용/예산/이상 사용자/환경 설정 폼은 하단에 보존 (v9.27 동작 그대로)
+// v9.47 (2026-05-14): IA SOT(김연아 대리님 노션) 정렬 — KPI 3종 라벨 변경
+//   IA 목표: ① ai 추천 정확도(행사장/파트별/도면 커밍순) ② 총 API 호출 수 ③ 이상 사용자 알림
+//   변경:
+//     - 토큰·비용 카드 제거 → AccuracyTable의 카테고리별 평균을 ′ai 추천 정확도′ 단일 카드로 통합 (3 sub-label)
+//     - ′이번 달 호출′ → ′총 API 호출 수′ 라벨 정리
+//     - ′이상 사용자 알림′ 카드 신설 (admin_ai_settings의 abnormal_repeat_threshold 활용)
+//   보존:
+//     - 토큰·비용 상세 통계는 하단 ′상세 사용량′ + ′예산 사용률′ 영역으로 이동 (예산 임계 경고 연계 유지)
+//     - AccuracyTable 본체는 KPI 카드 아래에 그대로 노출 (카테고리별 상세)
 
 interface Stats {
   todayCalls: number
@@ -28,14 +36,16 @@ interface Stats {
 interface DailyTrend { date: string; count: number }
 interface AbnormalUser { user_id: string; project_id: string; count: number }
 
-interface Kpi3 {
-  monthCalls: number | null
-  monthTokens: number | null
-  monthCostKrw: number | null
+// v9.47: KPI 카드용 정확도 요약 (행사장 평균·파트별 평균은 동일 데이터에서 추출)
+interface AccuracySummary {
+  venue_avg: number | null      // 행사장(외벽·천정·게이트·가로등 등 6대 카테고리 평균)
+  part_avg: number | null       // 파트별 평균 (현 사이클은 venue와 동일 데이터, 향후 분리 예정)
+  floor_plan_status: string     // ′커밍순′ 고정 — 도면 Vision 학습 미가동
 }
 
 interface Props {
-  kpi3: Kpi3
+  accuracySummary: AccuracySummary
+  totalApiCalls: number
   accuracyRows: AccuracyRow[]
   stats: Stats
   dailyTrend: DailyTrend[]
@@ -104,7 +114,7 @@ const DEFAULT_STEP_SETTINGS: StepSettingsForm = {
   step4: { model: 'gemini-2.5-flash', temperature: 0.4, system_prompt: '' },
 }
 
-export function AdminAiClient({ kpi3, accuracyRows, stats, dailyTrend, abnormalUsers }: Props) {
+export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, stats, dailyTrend, abnormalUsers }: Props) {
   const [settings, setSettings] = useState<AiSettings>(DEFAULT_SETTINGS)
   const [savedMsg, setSavedMsg] = useState('')
   // v9.46 — step별 페르소나 설정 (4 step: 파트 후보 / 시설 제약 / 표준 수량 / 도면 Vision)
@@ -187,26 +197,37 @@ export function AdminAiClient({ kpi3, accuracyRows, stats, dailyTrend, abnormalU
         {/* v9.39 명세 매칭: 좌상단 페이지 타이틀 */}
         <h1 className="text-slate-900 text-xl font-bold">AI 관리</h1>
 
-        {/* ── v9.39: KPI 3카드 (이번 달 호출·토큰·비용) ── 데이터 부재 시 — 표기 ── */}
+        {/* ── v9.47: IA SOT 정렬 — KPI 3카드 ─────────────────────────── */}
+        {/* IA 목표: ai 추천 정확도(행사장/파트별/도면 커밍순) / 총 API 호출 수 / 이상 사용자 알림 */}
         <section>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* ① ai 추천 정확도 — 3 sub-label (행사장 / 파트별 / 도면) */}
+            <div className="bg-white border border-slate-200 rounded-xl px-4 py-4 shadow-sm">
+              <div className="flex items-center gap-1.5 text-slate-500 text-xs mb-2">
+                <Target className="w-4 h-4" />
+                <span>ai 추천 정확도</span>
+              </div>
+              <div className="space-y-1.5">
+                <AccuracyRowMini label="행사장" value={accuracySummary.venue_avg} />
+                <AccuracyRowMini label="파트별" value={accuracySummary.part_avg} />
+                <AccuracyRowMini label="도면" value={null} note={accuracySummary.floor_plan_status} />
+              </div>
+            </div>
+
+            {/* ② 총 API 호출 수 — 누적 카운트 */}
             <Kpi3Card
               icon={<Phone className="w-4 h-4" />}
-              label="이번 달 호출"
-              value={kpi3.monthCalls !== null ? `${kpi3.monthCalls.toLocaleString()}회` : '—'}
+              label="총 API 호출 수"
+              value={totalApiCalls > 0 ? `${totalApiCalls.toLocaleString()}회` : '—'}
               color="text-indigo-600"
             />
+
+            {/* ③ 이상 사용자 알림 — 임계값 초과 사용자 카운트 */}
             <Kpi3Card
-              icon={<Coins className="w-4 h-4" />}
-              label="이번 달 토큰"
-              value={kpi3.monthTokens !== null ? kpi3.monthTokens.toLocaleString() : '—'}
-              color="text-blue-600"
-            />
-            <Kpi3Card
-              icon={<Wallet className="w-4 h-4" />}
-              label="이번 달 비용 (KRW)"
-              value={kpi3.monthCostKrw !== null ? `₩${kpi3.monthCostKrw.toLocaleString()}` : '—'}
-              color="text-emerald-600"
+              icon={<Bell className={`w-4 h-4 ${abnormalUsers.length > 0 ? 'text-rose-600' : ''}`} />}
+              label="이상 사용자 알림"
+              value={abnormalUsers.length > 0 ? `${abnormalUsers.length}명` : '0명'}
+              color={abnormalUsers.length > 0 ? 'text-rose-600' : 'text-slate-700'}
             />
           </div>
         </section>
@@ -499,6 +520,23 @@ function Kpi3Card({ icon, label, value, color }: { icon: React.ReactNode; label:
         <span>{label}</span>
       </div>
       <p className={`text-2xl font-bold ${color}`}>{value}</p>
+    </div>
+  )
+}
+
+// v9.47: ai 추천 정확도 카드 내부 행 (3 sub-label용)
+function AccuracyRowMini({ label, value, note }: { label: string; value: number | null; note?: string }) {
+  const color =
+    value === null ? 'text-slate-400'
+    : value >= 70 ? 'text-emerald-600'
+    : value >= 50 ? 'text-amber-600'
+    : 'text-rose-600'
+  return (
+    <div className="flex items-center justify-between text-xs">
+      <span className="text-slate-600">{label}</span>
+      <span className={`font-semibold ${color}`}>
+        {value === null ? (note ?? '—') : `${value}%`}
+      </span>
     </div>
   )
 }

@@ -66,36 +66,32 @@ export default async function AdminOpsPage() {
   const weekStart = new Date(today)
   weekStart.setDate(today.getDate() - today.getDay()) // 이번 주 일요일
 
-  // 진행 중 프로젝트
+  // 진행 프로젝트
   const inProgressCount = projects.filter(p =>
     p.stage && ['발주완료', '시안검수', '수정중', '확정'].includes(p.stage)
   ).length
 
-  // 이번 주 신규 프로젝트
+  // 신규 프로젝트 (최근 일주일 = 7일 전부터 today)
+  // v9.47: IA SOT 명시 ′최근 일주일′ — weekStart(이번 주 일요일) 대신 7일 전 기준으로 변경
+  const sevenDaysAgo = new Date(today)
+  sevenDaysAgo.setDate(today.getDate() - 7)
   const thisWeekNew = projects.filter(p => {
     const c = new Date(p.created_at)
-    return c >= weekStart
+    return c >= sevenDaysAgo
   }).length
 
-  // 이번 주 발주 완료 (finalized_at 기준)
-  const thisWeekFinalized = items.filter(it => {
-    if (!it.finalized_at) return false
-    const f = new Date(it.finalized_at)
-    return f >= weekStart
-  }).length
+  // 전체 프로젝트 수 (v9.47 신규 — 누적 카운트)
+  const totalProjects = projects.length
 
   // 발주서 완료율 — finalized_items / total_items
+  // v9.47: IA의 ′완료 프로젝트 수(완료율)′ 의미 — 발주 단계 완료 비율로 매핑
   const totalItems = items.length
   const finalizedItems = items.filter(it => !!it.finalized_at).length
   const finalizedRate = totalItems === 0 ? 0 : Math.round((finalizedItems / totalItems) * 100)
 
-  // 추천 다운로드 전환율 — confirmed → finalized 비율
-  const confirmedItems = items.filter(it => it.confirmed).length
-  const conversionRate = confirmedItems === 0 ? 0 : Math.round((finalizedItems / confirmedItems) * 100)
-
-  // v9.45: 전체 합산 AI 정확도(aiAccuracy·accuracySignal)는 v9.39에서 운영 대시보드 KPI에서 제거됨.
-  //        해당 신호등은 /admin/ai 정확도 테이블로 이관됨. 미사용 데이터 계산도 함께 제거.
-  //        프로젝트별 ai_accuracy(아래 projectsTable.map)는 표 컬럼에서 계속 사용됨.
+  // v9.47: ′이번 주 발주 완료(thisWeekFinalized)′·′추천 전환율(conversionRate)′ 카드는 IA에서 제외 → 계산 제거
+  // weekStart 변수도 미사용으로 전환됐으나 제거하면 노이즈 — 보존 (KPI 외 영역에서 향후 사용 가능)
+  void weekStart
 
   // ── 전체 프로젝트 현황 — 테이블 데이터 가공 ───────────────────────────
   const itemsByPid = new Map<string, Item[]>()
@@ -210,9 +206,8 @@ export default async function AdminOpsPage() {
       kpi={{
         inProgress: inProgressCount,
         thisWeekNew,
-        thisWeekFinalized,
+        totalProjects,
         finalizedRate,
-        conversionRate,
       }}
       projects={projectsTable}
       partStageBars={partStageBars}

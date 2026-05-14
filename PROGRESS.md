@@ -1,5 +1,99 @@
 # 작업 이력
 
+## 2026-05-14 (v9.47) — IA SOT(김연아 대리님 노션 스크린샷) 정렬 — 운영/AI/학습 3영역
+
+### 사용자 요청
+조기흠 사원(AXDX팀, 2026-05-14): "코드를 IA에 맞춰서 커밋"
+IA SOT = https://www.notion.so/35f485898ea180919bc8ca6ef9a53967 (김연아 대리님 스크린샷 3장)
+v9.46(`auto/v9.46-ai-persona-per-step-260514`) 위에서 새 브랜치 `auto/v9.47-align-to-ia-260514` 분기.
+
+### 영역 1 — 운영 대시보드 KPI 5종 → 4종 (`/admin`)
+**AdminOpsClient.tsx + page.tsx**
+
+| 위치 | v9.46 (5종) | v9.47 IA 목표 (4종) |
+|---|---|---|
+| 1번 | 진행 중 프로젝트 | 진행 프로젝트 (라벨 정리) |
+| 2번 | 이번 주 신규 | 신규 프로젝트 (최근 일주일) — 7일 전 기준 (이전 weekStart 일요일 기준에서 변경) |
+| 3번 | 이번 주 발주 완료 | **전체 프로젝트 (신규 — 누적 카운트)** |
+| 4번 | 발주서 완료율 | 완료 프로젝트 (% — 발주서 완료율 매핑) |
+| 5번 | 추천 전환율 | **삭제** (IA 미포함 sales funnel 지표) |
+
+코드 변경:
+  - `KpiData` 인터페이스: thisWeekFinalized·conversionRate 제거 + totalProjects 신규
+  - grid-cols-5 → grid-cols-4
+  - lucide import 정리: TrendingUp·BarChart3 제거 + Layers 추가
+  - page.tsx: thisWeekFinalized·conversionRate·confirmedItems 계산 제거. sevenDaysAgo·totalProjects 신규.
+  - weekStart 변수는 향후 사용 가능성 보존(`void weekStart`)
+
+### 영역 2 — AI 관리 KPI 3종 라벨 변경 (`/admin/ai`)
+**AdminAiClient.tsx + page.tsx**
+
+| 위치 | v9.46 (3종) | v9.47 IA 목표 (3종) |
+|---|---|---|
+| 1번 | 이번 달 호출 | **ai 추천 정확도** (행사장 / 파트별 / 도면(커밍순)) — 3 sub-label 단일 카드 |
+| 2번 | 이번 달 토큰 | **총 API 호출 수** (이전 월 호출 → 누적 카운트) |
+| 3번 | 이번 달 비용 (KRW) | **이상 사용자 알림** (신규 — abnormal_repeat_threshold 활용) |
+
+코드 변경:
+  - `Kpi3` 인터페이스 → `AccuracySummary` + `totalApiCalls` + `abnormalUsers.length`로 분기
+  - 신규 보조 컴포넌트 `AccuracyRowMini` (정확도 카드 내부 3 sub-label)
+  - lucide import 정리: Coins·Wallet 제거 + Target·Bell 추가
+  - page.tsx: AccuracyTable 행 평균을 venue_avg/part_avg로 통합, floor_plan_status='커밍순' 명시
+  - 토큰·비용 통계는 하단 ′상세 사용량′ + ′예산 사용률′ 영역에 그대로 보존 (예산 임계 경고 연계 유지)
+
+### 영역 3 — 데이터 학습 관리자 좌측 사이드바 검증 + dead state 정리 (`/admin/learning`)
+**LearningManagerClient.tsx**
+
+IA 목표(6 평탄)와 v9.36 코드 비교 결과:
+
+| IA 목표 (6 평탄) | v9.36 코드 SECTIONS | 일치 |
+|---|---|---|
+| 행사장 학습 현황 | venue-status | ✅ |
+| 행사장 관리 | venues | ✅ |
+| 환경장식물 종류 | signage-types | ✅ |
+| 동의어 매핑 | synonyms-mapping | ✅ |
+| 시설 가이드 | facility-guides | ✅ |
+| 수정요청 | correction-requests | ✅ |
+
+→ **사이드바는 이미 IA와 100% 일치**. 추가 변경 없음.
+
+′개요′·′프로그램 파트′ 메뉴는 v9.36에서 이미 시안에 없어 제거됨 (`false &&` 가드로 코드는 보존).
+PROGRAM_PARTS·case-a·NewProjectButton 사용처는 모두 그대로 유지 (사용자 명시 보존 조건).
+
+dead state 단순화:
+  - `VenueSubKey` / `SynonymSubKey` 타입 제거 (사용처 0건)
+  - `venueSubTab` / `setVenueSubTab` state 제거
+  - `synonymSubTab` / `setSynonymSubTab` state 제거
+  - `VENUE_SUBTABS` 상수 제거 (v9.36에서 가로 서브탭 바 제거 후 잔존하던 dead 상수)
+
+### 보존 (사용자 명시)
+- AiPipelineCard.tsx 미삭제 (v9.45 사용자 명시 보존 조건)
+- v9.46 AI 페르소나 per step 기능 그대로 (lib/ai/agentPipeline.ts + STEP_SETTINGS_KEY localStorage)
+- DB 스키마 변경 0건 / 의존성 추가 0건
+- ′프로그램 파트′ 코드는 메뉴에서만 빼고 lib/programParts.ts·case-a·NewProjectButton 사용처 그대로
+
+### 변경 파일 (5개)
+- `app/(dashboard)/admin/AdminOpsClient.tsx` (KPI 5→4 + 인터페이스 정리)
+- `app/(dashboard)/admin/page.tsx` (KPI 데이터 계산 — totalProjects 신규)
+- `app/(dashboard)/admin/ai/AdminAiClient.tsx` (KPI 3 IA 정렬 + AccuracyRowMini 신설)
+- `app/(dashboard)/admin/ai/page.tsx` (accuracySummary·totalApiCalls 계산)
+- `app/(dashboard)/admin/learning/LearningManagerClient.tsx` (dead state·VENUE_SUBTABS 정리 + 주석 갱신)
+
+### 검증
+- TSC 0 에러
+- Next 빌드 29/29 라우트 PASS
+- harness 70/72 통과 (0 fail, 2 warn = dev 미실행 + Supabase 401 — 작업 무관)
+- 라우트 크기 비교:
+  - `/admin` 4.24 → 4.18 kB (KPI 5→4 슬림)
+  - `/admin/ai` 7.34 → 7.5 kB (정확도 평균 카드 추가)
+  - `/admin/learning` 18.5 → 14.5 kB (dead state·상수·미사용 컴포넌트 정리)
+
+### 배포
+- 브랜치: `auto/v9.47-align-to-ia-260514` (auto/v9.46-ai-persona-per-step-260514 위에서 분기)
+- main 머지·push는 사용자 결정 (이번 사이클은 브랜치만 준비)
+
+---
+
 ## 2026-05-14 (v9.46) — AI 추천 파이프라인 step별 페르소나·모델 설정 (어드민)
 
 ### 사용자 요청

@@ -3,20 +3,23 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import {
-  Activity, TrendingUp, CheckCircle, BarChart3, Plus, Calendar,
-  ExternalLink, Filter,
+  Activity, CheckCircle, Plus, Calendar,
+  ExternalLink, Filter, Layers,
 } from 'lucide-react'
 
 // v9.26: 운영 KPI ↔ 전체 프로젝트 현황 통합 (사용자 피드백 ① 반영)
-// v9.45: AI 정확도 신호등 prop(aiAccuracy·accuracySignal)은 v9.39에서 /admin/ai로 이동했으므로
-//        KpiData에서도 제거 (page.tsx의 미사용 계산도 함께 제거)
+// v9.45: AI 정확도 신호등 prop(aiAccuracy·accuracySignal)은 v9.39에서 /admin/ai로 이동
+// v9.47 (2026-05-14): IA SOT(김연아 대리님 노션 스크린샷) 정렬 — KPI 5종 → 4종
+//   IA 목표: 진행 프로젝트 수 / 신규 프로젝트 수(최근 일주일) / 전체 프로젝트 수 / 완료 프로젝트 수(완료율)
+//   삭제: ′추천 다운로드 전환율′ (sales funnel 지표 — IA 미포함)
+//   변경: ′이번 주 발주 완료′ → ′전체 프로젝트 수′ (의미 변경, 누적 카운트)
+//   유지: ′발주서 완료율′ — IA의 ′완료 프로젝트 수(완료율)′ 의미와 매핑
 
 interface KpiData {
-  inProgress: number
-  thisWeekNew: number
-  thisWeekFinalized: number
-  finalizedRate: number
-  conversionRate: number
+  inProgress: number      // 진행 프로젝트 수
+  thisWeekNew: number     // 신규 프로젝트 수 (최근 일주일)
+  totalProjects: number   // v9.47: 전체 프로젝트 수 (신규)
+  finalizedRate: number   // 완료율
 }
 
 interface ProjectRow {
@@ -116,45 +119,41 @@ export function AdminOpsClient({ kpi, projects, partStageBars, calendar }: Props
         {/* v9.36 시안 매칭: 좌상단 페이지 타이틀만 유지, 부연 산문 제거 */}
         <h1 className="text-slate-900 text-xl font-bold">운영 대시보드</h1>
 
-        {/* ── 운영 KPI 5카드 (v9.39: AI 정확도 카드는 /admin/ai로 이동) ─────── */}
+        {/* ── 운영 KPI 4카드 (v9.47: IA SOT 정렬 — 5종 → 4종) ─────────────── */}
+        {/* IA 목표: 진행 프로젝트 / 신규 프로젝트(최근 일주일) / 전체 프로젝트 / 완료 프로젝트(완료율) */}
         <section>
           <h2 className="text-slate-700 text-sm font-semibold mb-3">운영 KPI</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <KpiCard
               icon={<Activity className="w-4 h-4" />}
-              label="진행 중 프로젝트"
+              label="진행 프로젝트"
               value={kpi.inProgress}
               unit="개"
               color="text-indigo-600"
             />
             <KpiCard
               icon={<Plus className="w-4 h-4" />}
-              label="이번 주 신규"
+              label="신규 프로젝트"
               value={kpi.thisWeekNew}
               unit="개"
               color="text-blue-600"
+              note="최근 일주일"
+            />
+            <KpiCard
+              icon={<Layers className="w-4 h-4" />}
+              label="전체 프로젝트"
+              value={kpi.totalProjects}
+              unit="개"
+              color="text-slate-700"
+              note="누적"
             />
             <KpiCard
               icon={<CheckCircle className="w-4 h-4" />}
-              label="이번 주 발주 완료"
-              value={kpi.thisWeekFinalized}
-              unit="건"
-              color="text-emerald-600"
-            />
-            <KpiCard
-              icon={<BarChart3 className="w-4 h-4" />}
-              label="발주서 완료율"
+              label="완료 프로젝트"
               value={kpi.finalizedRate}
               unit="%"
-              color="text-amber-600"
-            />
-            <KpiCard
-              icon={<TrendingUp className="w-4 h-4" />}
-              label="추천 전환율"
-              value={kpi.conversionRate}
-              unit="%"
-              color="text-violet-600"
-              note="컨펌 → 완료"
+              color="text-emerald-600"
+              note="발주서 완료율"
             />
           </div>
         </section>
