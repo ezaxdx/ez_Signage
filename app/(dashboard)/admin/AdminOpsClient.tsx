@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import {
-  Activity, CheckCircle, Plus, Calendar,
+  Activity, CheckCircle, Plus,
   ExternalLink, Filter, Layers,
 } from 'lucide-react'
 
@@ -14,6 +14,12 @@ import {
 //   삭제: ′추천 다운로드 전환율′ (sales funnel 지표 — IA 미포함)
 //   변경: ′이번 주 발주 완료′ → ′전체 프로젝트 수′ (의미 변경, 누적 카운트)
 //   유지: ′발주서 완료율′ — IA의 ′완료 프로젝트 수(완료율)′ 의미와 매핑
+// v9.49 (2026-05-14): IA SOT 외 영역 2개 삭제
+//   - ′파트별 상태 분포 (Stacked Bar)′ — 미분류·부대행사·회의·공식행사·홍보 등 라벨 + 진행/완료/반려 범례
+//   - ′이번 달 일정 (D-14 ~ D+7) 캘린더′ — 프로젝트명 / D-N / event_date / venue D-day 카드
+//   사용자(조기흠 사원) IA SOT (김연아 대리님 스크린샷) = 운영 대시보드에 ′KPI 4 + 프로젝트 등록 현황′만 존재
+//   PartBar·CalendarItem 인터페이스 + partStageBars·calendar prop + Calendar 아이콘 import 제거
+//   섹션 라벨 ′전체 프로젝트 현황′ → ′프로젝트 등록 현황′ (IA SOT 라벨 정합)
 
 interface KpiData {
   inProgress: number      // 진행 프로젝트 수
@@ -39,30 +45,12 @@ interface ProjectRow {
   event_date: string | null
 }
 
-interface PartBar {
-  part: string
-  progress: number
-  done: number
-  rejected: number
-  total: number
-}
-
-interface CalendarItem {
-  id: string
-  name: string
-  event_date: string
-  dday: number
-  venue: string | null
-}
-
 interface Props {
   kpi: KpiData
   projects: ProjectRow[]
-  partStageBars: PartBar[]
-  calendar: CalendarItem[]
 }
 
-export function AdminOpsClient({ kpi, projects, partStageBars, calendar }: Props) {
+export function AdminOpsClient({ kpi, projects }: Props) {
   // ── 필터 상태 ──────────────────────────────────────────────
   const [filterPart, setFilterPart] = useState<string>('')
   const [filterPm, setFilterPm] = useState<string>('')
@@ -158,10 +146,10 @@ export function AdminOpsClient({ kpi, projects, partStageBars, calendar }: Props
           </div>
         </section>
 
-        {/* ── 전체 프로젝트 현황 (운영 KPI와 통합) ──────────── */}
+        {/* ── 프로젝트 등록 현황 (v9.49: IA SOT 라벨 ′프로젝트 등록 현황′) ──────────── */}
         <section>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-slate-700 text-sm font-semibold">전체 프로젝트 현황</h2>
+            <h2 className="text-slate-700 text-sm font-semibold">프로젝트 등록 현황</h2>
             <span className="text-slate-500 text-xs">{filtered.length} / {projects.length}건</span>
           </div>
 
@@ -252,82 +240,9 @@ export function AdminOpsClient({ kpi, projects, partStageBars, calendar }: Props
           </p>
         </section>
 
-        {/* ── 파트별 상태 Stacked Bar ──────────────────────── */}
-        <section>
-          <h2 className="text-slate-700 text-sm font-semibold mb-3">파트별 상태 분포 (Stacked)</h2>
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
-            {partStageBars.length === 0 ? (
-              <p className="text-slate-400 text-sm text-center py-4">데이터가 없습니다.</p>
-            ) : (
-              <div className="space-y-2">
-                {partStageBars.map(b => {
-                  const total = Math.max(1, b.total)
-                  return (
-                    <div key={b.part}>
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-slate-700 font-medium">{b.part}</span>
-                        <span className="text-slate-500">{b.total}건</span>
-                      </div>
-                      <div className="flex h-5 rounded-md overflow-hidden bg-slate-100">
-                        {b.progress > 0 && (
-                          <div className="bg-indigo-500" style={{ width: `${(b.progress / total) * 100}%` }} title={`진행 ${b.progress}건`} />
-                        )}
-                        {b.done > 0 && (
-                          <div className="bg-emerald-500" style={{ width: `${(b.done / total) * 100}%` }} title={`완료 ${b.done}건`} />
-                        )}
-                        {b.rejected > 0 && (
-                          <div className="bg-rose-500" style={{ width: `${(b.rejected / total) * 100}%` }} title={`반려 ${b.rejected}건`} />
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-                <div className="flex items-center gap-4 pt-3 border-t border-slate-100 text-[10px] text-slate-500 mt-3">
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 bg-indigo-500 rounded-sm" /> 진행</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 bg-emerald-500 rounded-sm" /> 완료</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 bg-rose-500 rounded-sm" /> 반려</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* ── 이번 달 일정 (D-14 ~ D+7) ───────────────────── */}
-        <section>
-          <div className="flex items-center gap-2 mb-3">
-            <Calendar className="w-4 h-4 text-slate-700" />
-            <h2 className="text-slate-700 text-sm font-semibold">이번 달 일정 (D-14 ~ D+7)</h2>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
-            {calendar.length === 0 ? (
-              <p className="text-slate-400 text-sm text-center py-4">해당 기간 일정이 없습니다.</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {calendar.map(c => {
-                  const ddayColor =
-                    c.dday < 0 ? 'bg-slate-100 text-slate-500' :
-                    c.dday === 0 ? 'bg-rose-100 text-rose-700' :
-                    c.dday <= 3 ? 'bg-amber-100 text-amber-700' :
-                    'bg-emerald-100 text-emerald-700'
-                  const ddayLabel =
-                    c.dday < 0 ? `D+${Math.abs(c.dday)}` :
-                    c.dday === 0 ? 'D-DAY' :
-                    `D-${c.dday}`
-                  return (
-                    <Link key={c.id} href={`/projects/${c.id}`} className="border border-slate-200 rounded-lg p-3 hover:border-indigo-300 transition block">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <span className="text-slate-900 font-medium text-sm truncate" title={c.name}>{c.name}</span>
-                        <span className={`inline-flex items-center text-[10px] px-1.5 py-0.5 rounded font-mono ${ddayColor}`}>{ddayLabel}</span>
-                      </div>
-                      <p className="text-[10px] text-slate-500">{c.event_date}</p>
-                      {c.venue && <p className="text-[10px] text-slate-400 truncate">{c.venue}</p>}
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </section>
+        {/* v9.49 (2026-05-14): IA SOT 외 영역 2개 삭제 완료 — 아래 두 섹션 제거됨 */}
+        {/*   - ′파트별 상태 분포 (Stacked Bar)′ */}
+        {/*   - ′이번 달 일정 (D-14 ~ D+7) 캘린더′ */}
 
       </main>
     </div>

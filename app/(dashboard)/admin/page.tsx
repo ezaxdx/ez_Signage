@@ -8,6 +8,9 @@ export const metadata = { title: '관리자 페이지 — 운영 대시보드 | 
 
 // v9.26: 운영 KPI ↔ 전체 프로젝트 현황 통합 (사용자 피드백 ① 반영)
 // 명세: docs/ADMIN_REDESIGN_260513.md
+// v9.49 (2026-05-14): IA SOT 외 영역 2개 삭제 — partStageBars(파트별 Stacked Bar) + calendarItems(D-14~D+7 캘린더)
+//   사용자(조기흠 사원) IA SOT (김연아 대리님 스크린샷) = 운영 대시보드에 ′KPI 4 + 프로젝트 등록 현황′만 존재
+//   → partStageMap·calStart·calEnd·calendarItems 계산 로직 일괄 제거 + AdminOpsClient prop에서 제외
 export default async function AdminOpsPage() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -63,8 +66,6 @@ export default async function AdminOpsPage() {
   // ── KPI 계산 ───────────────────────────────────────────────────────────
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const weekStart = new Date(today)
-  weekStart.setDate(today.getDate() - today.getDay()) // 이번 주 일요일
 
   // 진행 프로젝트
   const inProgressCount = projects.filter(p =>
@@ -90,10 +91,9 @@ export default async function AdminOpsPage() {
   const finalizedRate = totalItems === 0 ? 0 : Math.round((finalizedItems / totalItems) * 100)
 
   // v9.47: ′이번 주 발주 완료(thisWeekFinalized)′·′추천 전환율(conversionRate)′ 카드는 IA에서 제외 → 계산 제거
-  // weekStart 변수도 미사용으로 전환됐으나 제거하면 노이즈 — 보존 (KPI 외 영역에서 향후 사용 가능)
-  void weekStart
+  // v9.49: weekStart 변수도 더 이상 필요 없음 (이전 보존 사유 사라짐) — 함께 제거
 
-  // ── 전체 프로젝트 현황 — 테이블 데이터 가공 ───────────────────────────
+  // ── 프로젝트 등록 현황 — 테이블 데이터 가공 ───────────────────────────
   const itemsByPid = new Map<string, Item[]>()
   for (const it of items) {
     if (!itemsByPid.has(it.project_id)) itemsByPid.set(it.project_id, [])
@@ -158,48 +158,10 @@ export default async function AdminOpsPage() {
     }
   })
 
-  // ── 파트별 stage 분포 (Stacked Bar 데이터) ─────────────────────────────
-  const partStageMap = new Map<string, { progress: number; done: number; rejected: number }>()
-  for (const p of projects) {
-    const partNames = (p.program_parts ?? []).length === 0
-      ? ['미분류']
-      : p.program_parts!.map(c => PROGRAM_PART_BY_CODE.get(c)?.name ?? c)
-    for (const pn of partNames) {
-      if (!partStageMap.has(pn)) partStageMap.set(pn, { progress: 0, done: 0, rejected: 0 })
-      const s = partStageMap.get(pn)!
-      const stage = p.stage ?? p.status
-      if (stage === '납품완료' || stage === '완료') s.done++
-      else if (stage === '수정요청') s.rejected++
-      else s.progress++
-    }
-  }
-  const partStageBars = Array.from(partStageMap.entries())
-    .map(([part, v]) => ({ part, ...v, total: v.progress + v.done + v.rejected }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 10)
-
-  // ── 이번 달 일정 (D-14 ~ D+7) ─────────────────────────────────────────
-  const calStart = new Date(today); calStart.setDate(today.getDate() - 14)
-  const calEnd = new Date(today); calEnd.setDate(today.getDate() + 7)
-  const calendarItems = projects
-    .filter(p => {
-      if (!p.event_date) return false
-      const e = new Date(p.event_date)
-      return e >= calStart && e <= calEnd
-    })
-    .map(p => {
-      const e = new Date(p.event_date!)
-      const diffMs = e.getTime() - today.getTime()
-      const dday = Math.round(diffMs / (1000 * 60 * 60 * 24))
-      return {
-        id: p.id,
-        name: p.name,
-        event_date: p.event_date!,
-        dday,
-        venue: p.event_venue,
-      }
-    })
-    .sort((a, b) => a.event_date.localeCompare(b.event_date))
+  // v9.49 (2026-05-14): IA SOT 외 영역 2개 계산 로직 삭제
+  //   ① ′파트별 상태 분포 (Stacked Bar)′ — partStageMap·partStageBars 산출 제거
+  //   ② ′이번 달 일정 (D-14 ~ D+7)′ — calStart·calEnd·calendarItems 산출 제거
+  //   사용자 IA SOT 명시: 운영 대시보드 = KPI 4 + 프로젝트 등록 현황만
 
   return (
     <AdminOpsClient
@@ -210,8 +172,6 @@ export default async function AdminOpsPage() {
         finalizedRate,
       }}
       projects={projectsTable}
-      partStageBars={partStageBars}
-      calendar={calendarItems}
     />
   )
 }
