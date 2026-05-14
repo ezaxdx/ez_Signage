@@ -19,31 +19,63 @@ import { PROGRAM_PARTS, PROGRAM_PART_GROUPS } from '@/lib/programParts'
 const KNOWN_CLIENTS = Array.from(new Set(SEED_PERFLIST.map(p => p.client))).sort()
 const KNOWN_VENUES = Array.from(new Set(SEED_PERFLIST.map(p => p.venue))).sort()
 
-// v9.46 — 어드민 화면(/admin/ai)에서 저장한 step별 페르소나·모델·온도 오버라이드를 읽어 API에 전달.
-// 비어있는 step은 자동 제외 → 기본 PIPELINE_BLOCKS 동작 유지.
-type StepKey = 'step1' | 'step2' | 'step3' | 'step4'
-function loadStepOverrides(): Record<string, { model?: string; temperature?: number; system_prompt?: string }> | undefined {
+// v9.51 — 어드민 화면(/admin/ai)에서 저장한 카드별 페르소나·모델·온도 오버라이드를 읽어 API에 전달.
+// 비어있는 카드는 자동 제외 → 기본 PIPELINE_BLOCKS 동작 유지.
+// v9.46 step 단위(v2) 호환: v3가 없으면 v2를 읽어 카드 단위로 변환.
+type CardKeyClient = 'recommend' | 'floor_plan_vision'
+type CardForm = { model?: string; temperature?: number; system_prompt?: string }
+type StepForm = CardForm
+function loadCardOverrides(): Record<string, CardForm> | undefined {
   if (typeof window === 'undefined') return undefined
   try {
-    const raw = window.localStorage.getItem('admin_ai_settings_v2')
-    if (!raw) return undefined
-    const parsed = JSON.parse(raw) as Partial<Record<StepKey, { model?: string; temperature?: number; system_prompt?: string }>>
-    const out: Record<string, { model?: string; temperature?: number; system_prompt?: string }> = {}
-    for (const k of ['step1', 'step2', 'step3', 'step4'] as const) {
-      const s = parsed[k]
-      if (!s) continue
-      const prompt = (s.system_prompt ?? '').trim()
-      const tempProvided = typeof s.temperature === 'number'
-      const modelProvided = !!s.model
-      // 비어있는 step은 전송 X (서버에서 PIPELINE_BLOCKS 기본 사용)
-      if (prompt.length === 0 && !tempProvided && !modelProvided) continue
-      out[k] = {
-        ...(modelProvided ? { model: s.model } : {}),
-        ...(tempProvided ? { temperature: s.temperature } : {}),
-        ...(prompt.length > 0 ? { system_prompt: prompt } : {}),
+    // v9.51 — 카드 단위(v3) 우선
+    const raw3 = window.localStorage.getItem('admin_ai_settings_v3')
+    if (raw3) {
+      const parsed = JSON.parse(raw3) as Partial<Record<CardKeyClient, CardForm>>
+      const out: Record<string, CardForm> = {}
+      for (const k of ['recommend', 'floor_plan_vision'] as const) {
+        const s = parsed[k]
+        if (!s) continue
+        const prompt = (s.system_prompt ?? '').trim()
+        const tempProvided = typeof s.temperature === 'number'
+        const modelProvided = !!s.model
+        if (prompt.length === 0 && !tempProvided && !modelProvided) continue
+        out[k] = {
+          ...(modelProvided ? { model: s.model } : {}),
+          ...(tempProvided ? { temperature: s.temperature } : {}),
+          ...(prompt.length > 0 ? { system_prompt: prompt } : {}),
+        }
       }
+      return Object.keys(out).length > 0 ? out : undefined
     }
-    return Object.keys(out).length > 0 ? out : undefined
+    // v9.46 호환: v2 step 설정을 카드로 마이그레이션 (step1·2·3 중 가장 긴 페르소나 → recommend, step4 → floor_plan_vision)
+    const raw2 = window.localStorage.getItem('admin_ai_settings_v2')
+    if (raw2) {
+      const parsed = JSON.parse(raw2) as Partial<Record<'step1' | 'step2' | 'step3' | 'step4', StepForm>>
+      const candidates = (['step1', 'step2', 'step3'] as const)
+        .map(k => parsed[k])
+        .filter((s): s is StepForm => !!s && (s.system_prompt ?? '').trim().length > 0)
+        .sort((a, b) => (b.system_prompt ?? '').length - (a.system_prompt ?? '').length)
+      const recommendSeed = candidates[0]
+      const visionSeed = parsed.step4
+      const out: Record<string, CardForm> = {}
+      if (recommendSeed) {
+        out.recommend = {
+          ...(recommendSeed.model ? { model: recommendSeed.model } : {}),
+          ...(typeof recommendSeed.temperature === 'number' ? { temperature: recommendSeed.temperature } : {}),
+          ...((recommendSeed.system_prompt ?? '').trim().length > 0 ? { system_prompt: (recommendSeed.system_prompt ?? '').trim() } : {}),
+        }
+      }
+      if (visionSeed && ((visionSeed.system_prompt ?? '').trim().length > 0 || typeof visionSeed.temperature === 'number' || visionSeed.model)) {
+        out.floor_plan_vision = {
+          ...(visionSeed.model ? { model: visionSeed.model } : {}),
+          ...(typeof visionSeed.temperature === 'number' ? { temperature: visionSeed.temperature } : {}),
+          ...((visionSeed.system_prompt ?? '').trim().length > 0 ? { system_prompt: (visionSeed.system_prompt ?? '').trim() } : {}),
+        }
+      }
+      return Object.keys(out).length > 0 ? out : undefined
+    }
+    return undefined
   } catch {
     return undefined
   }
@@ -171,8 +203,9 @@ export default function CaseAPage() {
         } catch { /* silent — Vision 보강 실패해도 추천 진행 */ }
       }
 
-      // v9.46: 어드민이 /admin/ai 에서 설정한 step별 페르소나·모델·온도 (없으면 undefined → 기본 동작)
-      const stepOverrides = loadStepOverrides()
+      // v9.51: 어드민이 /admin/ai 에서 설정한 카드별 페르소나·모델·온도 (없으면 undefined → 기본 동작)
+      // v9.46 step 단위(v2)는 loadCardOverrides가 자동 마이그레이션하여 카드 형태로 반환.
+      const cardOverrides = loadCardOverrides()
 
       const res = await fetch('/api/recommend', {
         method: 'POST',
@@ -200,8 +233,8 @@ export default function CaseAPage() {
           notes: notes.trim() || undefined,
           // v9.33: 행사장 배치도 (선택) — Vision 분석으로 동선·설치 위치 보강
           floorPlanImageUrl,
-          // v9.46: step별 페르소나 오버라이드 (어드민 설정)
-          stepOverrides,
+          // v9.51: 카드별 페르소나 오버라이드 (어드민 설정 — v3 우선, v2 자동 마이그레이션)
+          cardOverrides,
         }),
       })
       const data = await res.json()
