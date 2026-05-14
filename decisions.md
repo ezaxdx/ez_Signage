@@ -14,6 +14,43 @@
 **되돌릴 수 있는가**: <쉬운가, 어려운가>
 ```
 
+## 2026-05-14 — AI 환경 설정 ↔ step별 페르소나 중복 제거 (v9.48)
+
+**컨텍스트**: 사용자(조기흠 사원, AXDX팀, 2026-05-14) 지적 — `/admin/ai` 화면에 ′AI 환경 설정′(전역 폼, v9.27) + ′AI 추천 파이프라인 — step별 페르소나 설정′(v9.46) 두 영역이 모델·Temperature·system_prompt를 중복 노출. "이게 뭐가 다른데?" 의문. 또한 amber 안내·footer가 코드 메타(`lib/ai/agentPipeline.ts`·`localStorage(admin_ai_settings_v2)`·`admin_ai_settings 테이블`·`/projects/new/case-a` 등)를 그대로 노출 → 사용자 ′응?′ 룰(코드 표현이 보고/UI에 노출되면 안 됨) 위반.
+
+**선택**:
+  1. **두 안내 문구 완전 삭제** — step별 폼 위 amber 박스(′현재 사이클은 Gemini 2.5 Flash/Pro만 실제 호출... 후속 사이클에서 어댑터 도입... 기본 파이프라인 본문(`lib/ai/agentPipeline.ts`)이 그대로 사용...′) + AI 환경 설정 아래 footer(′localStorage(`admin_ai_settings_v2`) 저장... admin_ai_settings 테이블로 영구화 예정...′) 제거. 사용자에게 의미 없는 코드 메타 정보.
+  2. **전역 ′AI 환경 설정′ 폼 슬림화** — 6개 입력칸(모델·Temperature·최대 출력 토큰·월 예산·이상 사용자 임계값·시스템 프롬프트) → 3개(최대 출력 토큰·월 예산·이상 사용자 임계값) 만 유지. 모델·Temperature·system_prompt는 step별 폼으로 일원화. 제목 ′AI 환경 설정′ → ′운영 설정 — 호출 한도·예산′으로 변경(의미 명확화). `AiSettings` 인터페이스에서도 model/temperature/system_prompt 필드 제거.
+  3. **step별 폼 라벨 친절화** — ′현 사이클은 Gemini만 활성′ → ′현재 Gemini 사용 중′ / ′페르소나 (system_prompt)′ → ′페르소나′ / ′기본 본문:′ → ′기본 동작:′ / ′비우면 기본 본문 사용′ → ′비워두면 기본 동작 그대로′. 보고자 친화 표현으로 일관 정리.
+  4. **(추가, 사용자 명시) step별 페르소나 영역 ′어디서 쓰이는지′ 안내 박스** — blue 박스 1줄 ′적용 위치: 새 프로젝트 만들기 → AI 추천 받기′. 사용자가 step 카드를 보고 "그래서 저게 어디서 쓰이는데?" 의문 즉시 해소.
+
+**대안**:
+  - 전역 폼을 그대로 유지 + amber 안내만 부드럽게 변경 (중복 의문 해소 안 됨)
+  - 전역 폼은 ′default fallback′ 라벨로 명시 + step별 폼은 ′override′ 라벨로 명시 (UI 복잡도 증가, 사용자 ′응?′ 추가 발생 위험)
+  - `AiSettings` 인터페이스의 model/temperature/system_prompt 필드를 코드에 보존하되 UI에서만 제거 (dead 코드 누적 — recommendSignage.ts에서 전혀 참조하지 않음)
+
+**이유**:
+  - **단일 진실 소스**: 모델·Temperature·system_prompt 설정은 step별 폼만 있어야 사용자 멘탈 모델 단순. 전역 폼은 ′운영 정책′(호출 한도·예산·알림)에만 집중.
+  - **fallback 동작 보존**: recommendSignage.ts에서 step별 오버라이드(`stepOverrides`)가 비어 있으면 PIPELINE_BLOCKS의 기본 body로 자동 fallback (이미 `applyPersonaOverrides`·`buildPipelineLogicSectionWith` 구현 완료). 따라서 전역 폼에서 모델·Temperature·system_prompt 입력칸을 제거해도 추천 호출은 정상 동작.
+  - **코드 메타 노출 = 사용자 ′응?′ 룰 위반**: `lib/ai/agentPipeline.ts`·`localStorage`·`admin_ai_settings 테이블`·`/projects/new/case-a` 같은 코드 표현은 보고/UI에 부적합. 사용자(조기흠 사원, 비개발자) 입장에서 의미 없는 정보.
+  - **친절화 라벨**: ′system_prompt′·′기본 본문′ 같은 코드 표현 → ′페르소나′·′기본 동작′ 같은 보고자 친화 표현. 입력 필드 hint·placeholder도 동일 정신.
+
+**보존**:
+  - AiPipelineCard.tsx 미삭제 (v9.45 사용자 명시 보존 조건)
+  - v9.46 step별 페르소나 기능 본체 그대로 (lib/ai/agentPipeline.ts + STEP_SETTINGS_KEY localStorage)
+  - DB 스키마 변경 0건 / 의존성 추가 0건
+  - recommendSignage.ts의 step별 + 전역 fallback 동작 유지 — step에서 비어있으면 PIPELINE_BLOCKS 기본 동작 자동 적용
+  - 토큰·비용 통계(상세 사용량 4카드 + 예산 사용률 + 30일 추이 + 이상 사용자 알림 표) 모두 그대로 보존
+
+**되돌릴 수 있는가**:
+  - 안내 문구 1·2: 매우 쉬움 — Edit 1회로 amber 박스/footer 복원
+  - 전역 폼 슬림화: 쉬움 — `AiSettings` 인터페이스에 model/temperature/system_prompt 필드 + DEFAULT_SETTINGS의 기본값 + UI 입력칸 4개(모델·Temperature·system_prompt textarea) 복원
+  - 라벨 친절화: 매우 쉬움 — 라벨 문자열 4개만 환원
+
+**상세**: PROGRESS.md 2026-05-14 (v9.48)
+
+---
+
 ## 2026-05-14 — IA SOT(김연아 대리님 노션 스크린샷) 정렬 — 운영/AI/학습 3영역 (v9.47)
 
 **컨텍스트**: 사용자(조기흠 사원, AXDX팀, 2026-05-14) 명시 — "코드를 IA에 맞춰서 커밋". IA SOT = 김연아 대리님이 노션(https://www.notion.so/35f485898ea180919bc8ca6ef9a53967)에 올린 스크린샷 3장. v9.46에서 AI 페르소나 per step 기능을 추가한 직후, v9.39~v9.46 동안 누적된 KPI 카드들이 IA와 미세 차이가 있어 일괄 정렬.
