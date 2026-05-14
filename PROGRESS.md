@@ -1,5 +1,69 @@
 # 작업 이력
 
+## 2026-05-14 (v9.49) — 운영 대시보드 IA SOT 외 영역 2개 삭제 (Stacked Bar + 캘린더)
+
+### 사용자 요청
+조기흠 사원(AXDX팀, 2026-05-14): "/admin 운영 대시보드에서 IA SOT 외 추가 영역 2개 삭제".
+IA SOT = 김연아 대리님 스크린샷 = 운영 대시보드에 ′KPI 4 + 프로젝트 등록 현황′만 존재.
+v9.47 정렬 후에도 코드에 IA에 없는 ′파트별 상태 분포 (Stacked Bar)′ + ′이번 달 일정 (D-14~D+7) 캘린더′ 두 영역이 잔존 → 삭제.
+v9.48 AdminAiClient WIP는 별도 브랜치(`auto/v9.48-admin-ai-cleanup-260514`)에서 진행 — 파일 겹침 0건.
+
+### 영역 1 — 파트별 상태 분포 (Stacked Bar) 삭제
+**AdminOpsClient.tsx + page.tsx**
+
+| 위치 | v9.47 | v9.49 |
+|---|---|---|
+| 라벨 | "파트별 상태 분포 (Stacked)" — ′미분류 16건 / 부대행사 - 투어형 8건 / 회의 8건 / 공식행사 7건 / 홍보 7건 / ...′ | **삭제** |
+| 범례 | 진행 / 완료 / 반려 (indigo·emerald·rose) | **삭제** |
+
+코드 변경:
+  - AdminOpsClient.tsx: `PartBar` 인터페이스 + `partStageBars` prop + 섹션 JSX 블록 제거
+  - page.tsx: `partStageMap` Map + 집계 루프 + `partStageBars` 산출 로직 제거 (~16줄)
+  - props 전달부에서 partStageBars 키 제거
+
+### 영역 2 — 이번 달 일정 (D-14 ~ D+7) 캘린더 삭제
+**AdminOpsClient.tsx + page.tsx**
+
+| 위치 | v9.47 | v9.49 |
+|---|---|---|
+| 라벨 | "이번 달 일정 (D-14 ~ D+7)" — 프로젝트명 / D+14 / 2026-04-30 / 코엑스 카드 + ′정상회의 / D+7 / 2026-05-07 / 롯데호텔 서울′ 등 D-day 카드 | **삭제** |
+| 컴포넌트 | Calendar 아이콘 + D-day 컬러 코딩(rose/amber/emerald/slate) + grid 1/2/3컬럼 카드 | **삭제** |
+
+코드 변경:
+  - AdminOpsClient.tsx: `CalendarItem` 인터페이스 + `calendar` prop + 섹션 JSX 블록 + `Calendar` lucide import 제거
+  - page.tsx: `calStart` / `calEnd` Date 변수 + `calendarItems` 산출 로직 제거 (~22줄)
+  - props 전달부에서 calendar 키 제거
+
+### 추가 정리 (의미 단위 같이 처리)
+- 섹션 라벨 ′전체 프로젝트 현황′ → ′프로젝트 등록 현황′ (IA SOT 라벨 정합 — 사용자 명시 보존 영역 명칭)
+- v9.47에서 보존했던 `void weekStart` 및 weekStart 변수 자체 제거 (v9.49에선 불필요)
+- 변경 사유 코멘트 갱신 (v9.49 블록 추가)
+
+### 보존 (사용자 명시 IA SOT)
+- ✅ KPI 4종 (진행 / 신규(최근 일주일) / 전체 / 완료율) — v9.47 그대로
+- ✅ 프로젝트 등록 현황 (16컬럼 테이블 + 6필터 + 액션 컬럼) — v9.47 그대로
+- ✅ AdminSidebar 글로벌 좌측 사이드바 (v9.33 그대로)
+- ✅ /admin/ai 페이지 (v9.46 페르소나 + v9.48 별도 브랜치)
+- ✅ /admin/learning 페이지 (v9.47 dead state 정리 그대로)
+- ✅ AiPipelineCard.tsx 미삭제 (v9.45 보존 조건)
+- ✅ DB 스키마 변경 0건 / 의존성 추가 0건
+
+### 변경 파일 (2개)
+- `app/(dashboard)/admin/AdminOpsClient.tsx` (PartBar·CalendarItem 인터페이스 + 두 섹션 JSX + Calendar 아이콘 import 제거 + 라벨 정합 + 코멘트 갱신) — 22 insertions / 111 deletions
+- `app/(dashboard)/admin/page.tsx` (partStageBars·calendarItems 계산 로직 제거 + AdminOpsClient prop 슬림화 + 코멘트 갱신)
+
+### 검증
+- TSC 0 에러
+- Next 빌드: ✓ Compiled successfully + Linting/Type validation PASS (Collecting page data 단계의 build-manifest ENOENT는 환경(긴 한글 경로) 이슈 — 코드 무관)
+- harness 70/72 통과 (0 fail, 2 warn = dev 미실행 + Supabase 401 — 작업 무관)
+
+### 배포
+- 브랜치: `auto/v9.49-admin-ops-strip-260514` (main HEAD에서 분기 — v9.48 ai 작업과 충돌 없음)
+- 커밋: 7063288 (feat) + 다음 커밋 (docs)
+- main 머지·push는 사용자 결정 (작업 지시: 보고만, push 자동 X)
+
+---
+
 ## 2026-05-14 (v9.47) — IA SOT(김연아 대리님 노션 스크린샷) 정렬 — 운영/AI/학습 3영역
 
 ### 사용자 요청
