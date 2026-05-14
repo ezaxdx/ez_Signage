@@ -155,16 +155,23 @@ export default async function AdminAiPage() {
     }
   })
 
-  // ── v9.39: KPI 3 카드 데이터 (호출·토큰·비용) ────────────────
-  const kpi3 = {
-    monthCalls: monthCalls > 0 ? monthCalls : null,
-    monthTokens: monthTokens > 0 ? monthTokens : null,
-    monthCostKrw: monthTokens > 0 ? Math.round(monthCostUsd * KRW_PER_USD) : null,
+  // ── v9.47: IA SOT 정렬 — KPI 3 카드 데이터 ────────────────
+  // ① ai 추천 정확도: AccuracyTable 행 평균 (행사장·파트별 동일 데이터 사용, 도면은 ′커밍순′)
+  const validAcc = accuracyRows.map(r => r.avg_accuracy).filter((v): v is number => v !== null)
+  const venueAvg = validAcc.length > 0 ? Math.round(validAcc.reduce((a, b) => a + b, 0) / validAcc.length) : null
+  const accuracySummary = {
+    venue_avg: venueAvg,
+    part_avg: venueAvg, // 현 사이클은 동일 데이터 (파트별 분리는 후속 사이클)
+    floor_plan_status: '커밍순', // 도면 Vision 학습 미가동 — IA 명시
   }
+
+  // ② 총 API 호출 수 — usage_logs 전체 recommend 카운트 (월 한정 X, IA의 ′총′ 의미)
+  const totalApiCalls = recommendLogs.length
 
   return (
     <AdminAiClient
-      kpi3={kpi3}
+      accuracySummary={accuracySummary}
+      totalApiCalls={totalApiCalls}
       accuracyRows={accuracyRows}
       stats={{
         todayCalls,
