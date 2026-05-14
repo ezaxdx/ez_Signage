@@ -19,6 +19,36 @@ import { PROGRAM_PARTS, PROGRAM_PART_GROUPS } from '@/lib/programParts'
 const KNOWN_CLIENTS = Array.from(new Set(SEED_PERFLIST.map(p => p.client))).sort()
 const KNOWN_VENUES = Array.from(new Set(SEED_PERFLIST.map(p => p.venue))).sort()
 
+// v9.46 — 어드민 화면(/admin/ai)에서 저장한 step별 페르소나·모델·온도 오버라이드를 읽어 API에 전달.
+// 비어있는 step은 자동 제외 → 기본 PIPELINE_BLOCKS 동작 유지.
+type StepKey = 'step1' | 'step2' | 'step3' | 'step4'
+function loadStepOverrides(): Record<string, { model?: string; temperature?: number; system_prompt?: string }> | undefined {
+  if (typeof window === 'undefined') return undefined
+  try {
+    const raw = window.localStorage.getItem('admin_ai_settings_v2')
+    if (!raw) return undefined
+    const parsed = JSON.parse(raw) as Partial<Record<StepKey, { model?: string; temperature?: number; system_prompt?: string }>>
+    const out: Record<string, { model?: string; temperature?: number; system_prompt?: string }> = {}
+    for (const k of ['step1', 'step2', 'step3', 'step4'] as const) {
+      const s = parsed[k]
+      if (!s) continue
+      const prompt = (s.system_prompt ?? '').trim()
+      const tempProvided = typeof s.temperature === 'number'
+      const modelProvided = !!s.model
+      // 비어있는 step은 전송 X (서버에서 PIPELINE_BLOCKS 기본 사용)
+      if (prompt.length === 0 && !tempProvided && !modelProvided) continue
+      out[k] = {
+        ...(modelProvided ? { model: s.model } : {}),
+        ...(tempProvided ? { temperature: s.temperature } : {}),
+        ...(prompt.length > 0 ? { system_prompt: prompt } : {}),
+      }
+    }
+    return Object.keys(out).length > 0 ? out : undefined
+  } catch {
+    return undefined
+  }
+}
+
 // 명세 6.2.4 — 행사 장소별 역대 사용 환경장식물 매칭
 function matchVenueHistory(venueInput: string) {
   if (!venueInput.trim()) return null
@@ -141,6 +171,9 @@ export default function CaseAPage() {
         } catch { /* silent — Vision 보강 실패해도 추천 진행 */ }
       }
 
+      // v9.46: 어드민이 /admin/ai 에서 설정한 step별 페르소나·모델·온도 (없으면 undefined → 기본 동작)
+      const stepOverrides = loadStepOverrides()
+
       const res = await fetch('/api/recommend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -167,6 +200,8 @@ export default function CaseAPage() {
           notes: notes.trim() || undefined,
           // v9.33: 행사장 배치도 (선택) — Vision 분석으로 동선·설치 위치 보강
           floorPlanImageUrl,
+          // v9.46: step별 페르소나 오버라이드 (어드민 설정)
+          stepOverrides,
         }),
       })
       const data = await res.json()

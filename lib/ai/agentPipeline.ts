@@ -78,3 +78,77 @@ export function buildPipelineLogicSection(): string {
     PIPELINE_BLOCKS.step4.body,
   ].join('\n')
 }
+
+// ── v9.46 (2026-05-14): step별 페르소나·모델·온도 오버라이드 ───────────────
+// 사용자(김연아 대리님 카톡, 조기흠 사원 전달): "관리자페이지 AI 관리에 3번 AI 투입되는 부분에서
+//   투입되는 AI를 설정하고 페르소나를 수정할 수 있는 기능을 추가"
+//
+// SOT: 어드민 화면(/admin/ai)에서 step별 모델·temperature·system_prompt를 입력 → localStorage
+//   admin_ai_settings_v2 에 저장 → case-a에서 추천 호출 시 본 모듈을 통해 SYSTEM_INSTRUCTION에 주입.
+//
+// 적용 규칙:
+//   - persona(system_prompt) 비어있지 않으면 해당 step body를 persona 텍스트로 치환
+//   - 비어있으면 PIPELINE_BLOCKS의 기본 body 유지 (step별 비활성 = 전역 fallback)
+//   - model·temperature 값은 본 모듈에선 메타정보로만 보관 (실제 호출 분기는 recommendSignage가 수행)
+//
+// v9.46 1차: Gemini 단일 호출 유지 + 모델 select는 정보성. 후속 사이클에서 GPT/Claude 어댑터 도입 시
+//   모델별 라우팅을 활성화. (현 시점 의존성 추가 금지)
+
+export type AiModelKey =
+  | 'gemini-2.5-flash'
+  | 'gemini-2.5-pro'
+  | 'gpt-4o'
+  | 'gpt-4o-mini'
+  | 'claude-3-5-sonnet'
+  | 'claude-3-7-sonnet'
+
+export interface StepPersonaOverride {
+  /** 호출 모델 키 (현 사이클은 Gemini만 실제 호출. 그 외는 메타정보로 저장.) */
+  model?: AiModelKey
+  /** 0.0 ~ 1.0 — 비어있으면 전역 temperature 사용 */
+  temperature?: number
+  /** step body를 이 텍스트로 치환. 비어있으면 PIPELINE_BLOCKS 기본 body 유지. */
+  system_prompt?: string
+}
+
+export type StepOverridesMap = Partial<Record<'step1' | 'step2' | 'step3' | 'step4', StepPersonaOverride>>
+
+/** PIPELINE_BLOCKS에 step별 persona override를 적용한 새 블록 맵 반환 (원본 불변) */
+export function applyPersonaOverrides(overrides?: StepOverridesMap): typeof PIPELINE_BLOCKS {
+  if (!overrides) return PIPELINE_BLOCKS
+  const next = { ...PIPELINE_BLOCKS }
+  for (const k of ['step1', 'step2', 'step3', 'step4'] as const) {
+    const ov = overrides[k]
+    if (!ov) continue
+    const prompt = (ov.system_prompt ?? '').trim()
+    if (prompt.length > 0) {
+      next[k] = { ...PIPELINE_BLOCKS[k], body: prompt }
+    }
+  }
+  return next
+}
+
+/** persona override를 반영해 [추천 로직] 절 빌드 (overrides 없으면 buildPipelineLogicSection과 동일) */
+export function buildPipelineLogicSectionWith(overrides?: StepOverridesMap): string {
+  const blocks = applyPersonaOverrides(overrides)
+  return [
+    '[추천 로직 — 3단계 우선순위]',
+    blocks.step1.body,
+    blocks.step2.body,
+    blocks.step3.body,
+    blocks.step4.body,
+  ].join('\n')
+}
+
+/** step별 temperature 오버라이드 중 최댓값을 반환 (비면 null). 단일 Gemini 호출 한도 내에서 보수적으로 적용. */
+export function pickEffectiveTemperature(overrides?: StepOverridesMap, fallback = 0.4): number {
+  if (!overrides) return fallback
+  const vals: number[] = []
+  for (const k of ['step1', 'step2', 'step3', 'step4'] as const) {
+    const t = overrides[k]?.temperature
+    if (typeof t === 'number' && t >= 0 && t <= 1) vals.push(t)
+  }
+  if (vals.length === 0) return fallback
+  // 평균 (한 호출에 합치기 때문에 보수적으로 평균값)
+  return vals.reduce((a, b) => a + b, 0) / vals.length
+}

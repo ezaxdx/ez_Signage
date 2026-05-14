@@ -4,10 +4,13 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import {
   DollarSign, AlertTriangle, Save, RefreshCw,
-  Phone, Coins, Wallet,
+  Phone, Coins, Wallet, Layers, ShieldAlert, Calculator, Camera, Bot,
 } from 'lucide-react'
 import { AccuracyTable, type AccuracyRow } from './AccuracyTable'
+import { PIPELINE_BLOCKS, type AiModelKey, type StepOverridesMap } from '@/lib/ai/agentPipeline'
 
+// v9.46 (2026-05-14): 김연아 대리님 카톡 — "관리자페이지 AI 관리에 3번 AI 투입되는 부분에서
+//   투입되는 AI를 설정하고 페르소나를 수정할 수 있는 기능을 추가". step별 모델·temperature·페르소나 입력.
 // v9.43: AI 추천 파이프라인 카드는 화면에서 제거 (프롬프트 SYSTEM_INSTRUCTION 조립에만 사용)
 // v9.39: KPI 3 + 카테고리 정확도 테이블 (명세 ADMIN_REDESIGN_260513.md §1-4)
 // — 사용량/비용/예산/이상 사용자/환경 설정 폼은 하단에 보존 (v9.27 동작 그대로)
@@ -40,6 +43,8 @@ interface Props {
 }
 
 const SETTINGS_KEY = 'admin_ai_settings_v1'
+// v9.46 — step별 페르소나 설정 (v1과 호환: v1은 전역 fallback으로 보존)
+const STEP_SETTINGS_KEY = 'admin_ai_settings_v2'
 
 interface AiSettings {
   model: 'gemini-2.5-flash' | 'gemini-2.5-pro'
@@ -62,14 +67,66 @@ const DEFAULT_SETTINGS: AiSettings = {
 학습 데이터에 없는 카테고리는 "[추천 없음 — 학습 데이터 부재]"로 명시.`,
 }
 
+// ── v9.46: step별 페르소나 설정 ──────────────────────────────
+// 김연아 대리님 카톡 명시: "3번 AI 투입되는 부분" — Step 3(표준 수량 산정)이 핵심.
+// 4 step 모두 동일 구조 + 모델 select 6종 (Gemini Flash/Pro · GPT-4o/4o-mini · Claude Sonnet 2종).
+// 현 사이클은 Gemini만 실제 호출 (의존성 추가 금지). 그 외 모델은 메타정보로 저장 → 후속 사이클 어댑터 도입 시 활성.
+
+type StepKey = 'step1' | 'step2' | 'step3' | 'step4'
+
+interface StepPersonaForm {
+  model: AiModelKey
+  temperature: number
+  system_prompt: string
+}
+type StepSettingsForm = Record<StepKey, StepPersonaForm>
+
+const MODEL_OPTIONS: Array<{ value: AiModelKey; label: string; available: boolean }> = [
+  { value: 'gemini-2.5-flash',     label: 'Gemini 2.5 Flash (현재 기본)', available: true },
+  { value: 'gemini-2.5-pro',       label: 'Gemini 2.5 Pro (정확)',         available: true },
+  { value: 'gpt-4o',               label: 'GPT-4o (후속 사이클 활성 예정)', available: false },
+  { value: 'gpt-4o-mini',          label: 'GPT-4o mini (후속 사이클)',      available: false },
+  { value: 'claude-3-5-sonnet',    label: 'Claude 3.5 Sonnet (후속 사이클)', available: false },
+  { value: 'claude-3-7-sonnet',    label: 'Claude 3.7 Sonnet (후속 사이클)', available: false },
+]
+
+const STEP_ICONS: Record<StepKey, React.ComponentType<{ className?: string }>> = {
+  step1: Layers,
+  step2: ShieldAlert,
+  step3: Calculator,
+  step4: Camera,
+}
+
+const DEFAULT_STEP_SETTINGS: StepSettingsForm = {
+  step1: { model: 'gemini-2.5-flash', temperature: 0.4, system_prompt: '' },
+  step2: { model: 'gemini-2.5-flash', temperature: 0.4, system_prompt: '' },
+  step3: { model: 'gemini-2.5-flash', temperature: 0.4, system_prompt: '' },
+  step4: { model: 'gemini-2.5-flash', temperature: 0.4, system_prompt: '' },
+}
+
 export function AdminAiClient({ kpi3, accuracyRows, stats, dailyTrend, abnormalUsers }: Props) {
   const [settings, setSettings] = useState<AiSettings>(DEFAULT_SETTINGS)
   const [savedMsg, setSavedMsg] = useState('')
+  // v9.46 — step별 페르소나 설정 (4 step: 파트 후보 / 시설 제약 / 표준 수량 / 도면 Vision)
+  const [stepSettings, setStepSettings] = useState<StepSettingsForm>(DEFAULT_STEP_SETTINGS)
+  const [stepSavedMsg, setStepSavedMsg] = useState('')
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY)
       if (raw) setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(raw) })
+    } catch { /* ignore */ }
+    // v9.46: step별 설정 (v2)
+    try {
+      const raw2 = localStorage.getItem(STEP_SETTINGS_KEY)
+      if (raw2) {
+        const parsed = JSON.parse(raw2) as Partial<StepSettingsForm>
+        const merged: StepSettingsForm = { ...DEFAULT_STEP_SETTINGS }
+        for (const k of ['step1', 'step2', 'step3', 'step4'] as const) {
+          if (parsed[k]) merged[k] = { ...DEFAULT_STEP_SETTINGS[k], ...parsed[k] }
+        }
+        setStepSettings(merged)
+      }
     } catch { /* ignore */ }
   }, [])
 
@@ -84,6 +141,38 @@ export function AdminAiClient({ kpi3, accuracyRows, stats, dailyTrend, abnormalU
     setSettings(DEFAULT_SETTINGS)
     localStorage.removeItem(SETTINGS_KEY)
   }
+
+  const updateStep = (k: StepKey, patch: Partial<StepPersonaForm>) => {
+    setStepSettings(prev => ({ ...prev, [k]: { ...prev[k], ...patch } }))
+  }
+
+  const saveStepSettings = () => {
+    localStorage.setItem(STEP_SETTINGS_KEY, JSON.stringify(stepSettings))
+    // 추천 호출 시 case-a가 직접 읽어 stepOverrides로 전달함 (lib/ai/agentPipeline.ts StepOverridesMap)
+    setStepSavedMsg('저장됨 — 다음 추천부터 적용')
+    setTimeout(() => setStepSavedMsg(''), 3000)
+  }
+
+  const resetStepSettings = () => {
+    if (!confirm('step별 페르소나 설정을 모두 비웁니까? (기본 파이프라인 동작으로 복귀)')) return
+    setStepSettings(DEFAULT_STEP_SETTINGS)
+    localStorage.removeItem(STEP_SETTINGS_KEY)
+  }
+
+  // 변환: 화면 stepSettings → API 전달용 StepOverridesMap (참고용 — case-a에서 동일 변환)
+  const _previewOverrides: StepOverridesMap = {}
+  for (const k of ['step1', 'step2', 'step3', 'step4'] as const) {
+    const s = stepSettings[k]
+    const prompt = (s.system_prompt ?? '').trim()
+    if (prompt.length > 0 || s.temperature !== 0.4 || s.model !== 'gemini-2.5-flash') {
+      _previewOverrides[k] = {
+        model: s.model,
+        temperature: s.temperature,
+        system_prompt: prompt || undefined,
+      }
+    }
+  }
+  void _previewOverrides // 미사용 경고 회피 (디버그용 보존)
 
   // 예산 사용률
   const budgetUsage = settings.budget_monthly_usd === 0 ? 0
@@ -126,6 +215,97 @@ export function AdminAiClient({ kpi3, accuracyRows, stats, dailyTrend, abnormalU
 
         {/* ── v9.39: 카테고리별 정확도 테이블 (도면 학습 = 커밍순) ── */}
         <AccuracyTable rows={accuracyRows} />
+
+        {/* ── v9.46: AI 추천 파이프라인 step별 페르소나 설정 ──────── */}
+        {/* 김연아 대리님 카톡 명시: "3번 AI 투입되는 부분에서 투입되는 AI를 설정하고 페르소나를 수정"
+            4 step 모두 모델·temperature·페르소나(system_prompt) 입력. 비워두면 기본 파이프라인 사용. */}
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Bot className="w-4 h-4 text-indigo-700" />
+              <h2 className="text-slate-700 text-sm font-semibold">AI 추천 파이프라인 — step별 페르소나 설정</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              {stepSavedMsg && <span className="text-emerald-600 text-xs">{stepSavedMsg}</span>}
+              <button onClick={resetStepSettings} className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1">
+                <RefreshCw className="w-3 h-3" /> 비우기
+              </button>
+              <button onClick={saveStepSettings} className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded-md flex items-center gap-1">
+                <Save className="w-3 h-3" /> step 설정 저장
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-3 text-[11px] text-amber-800">
+            현재 사이클은 <b>Gemini 2.5 Flash/Pro</b>만 실제 호출됩니다. GPT·Claude 옵션은 메타 정보로만 저장되며 후속 사이클에서 어댑터 도입 시 활성화됩니다.
+            페르소나(system_prompt)를 비워두면 기본 파이프라인 본문(`lib/ai/agentPipeline.ts`)이 그대로 사용됩니다.
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {(['step1', 'step2', 'step3', 'step4'] as const).map((k, idx) => {
+              const block = PIPELINE_BLOCKS[k]
+              const Icon = STEP_ICONS[k]
+              const cur = stepSettings[k]
+              const isStep3 = idx === 2 // 김연아 대리님 명시 "3번 AI 투입"
+              return (
+                <div
+                  key={k}
+                  className={`bg-white border rounded-xl p-4 ${isStep3 ? 'border-indigo-300 ring-1 ring-indigo-100' : 'border-slate-200'}`}
+                >
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold ${isStep3 ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                      {block.num}
+                    </span>
+                    <Icon className={`w-3.5 h-3.5 ${isStep3 ? 'text-indigo-600' : 'text-slate-600'}`} />
+                    <span className="text-sm font-semibold text-slate-900">{block.title}</span>
+                    {isStep3 && (
+                      <span className="text-[9px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded">현장 우선</span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 mb-3">{block.desc}</p>
+
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    <Field label="모델" hint="현 사이클은 Gemini만 활성">
+                      <select
+                        value={cur.model}
+                        onChange={e => updateStep(k, { model: e.target.value as AiModelKey })}
+                        className="w-full text-xs border border-slate-200 rounded-md px-2 py-1.5"
+                      >
+                        {MODEL_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}{!opt.available ? ' ⚠' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Temperature" hint="0.0~1.0 (낮을수록 일관)">
+                      <input
+                        type="number" min={0} max={1} step={0.05}
+                        value={cur.temperature}
+                        onChange={e => updateStep(k, { temperature: parseFloat(e.target.value) || 0 })}
+                        className="w-full text-xs border border-slate-200 rounded-md px-2 py-1.5"
+                      />
+                    </Field>
+                  </div>
+
+                  <Field label="페르소나 (system_prompt)" hint="비우면 기본 본문 사용">
+                    <textarea
+                      rows={5}
+                      placeholder={`기본 본문:\n${block.body}`}
+                      value={cur.system_prompt}
+                      onChange={e => updateStep(k, { system_prompt: e.target.value })}
+                      className="w-full text-xs border border-slate-200 rounded-md px-2 py-1.5 font-mono"
+                    />
+                  </Field>
+                </div>
+              )
+            })}
+          </div>
+
+          <p className="text-[10px] text-slate-400 mt-3">
+            ※ 저장 후 새 추천 호출(/projects/new/case-a)부터 적용됩니다. 브라우저 localStorage(<code className="font-mono">admin_ai_settings_v2</code>) 저장이며, 다음 사이클에서 admin_ai_settings 테이블로 영구화 예정.
+          </p>
+        </section>
 
         {/* ── v9.27 보존: 일별 상세 사용량 4카드 (오늘/이번 달 호출·비용) ── */}
         <section>

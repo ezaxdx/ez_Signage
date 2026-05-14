@@ -15,7 +15,12 @@ import {
   type StandardCategoryKey,
 } from '@/lib/data/signageCategoryStandards'
 import { PROGRAM_PART_BY_CODE, PROGRAM_PART_SIGNAGE_HINTS, partsForFormat, programPartName } from '@/lib/programParts'
-import { buildPipelineLogicSection } from '@/lib/ai/agentPipeline'
+import {
+  buildPipelineLogicSection,
+  buildPipelineLogicSectionWith,
+  pickEffectiveTemperature,
+  type StepOverridesMap,
+} from '@/lib/ai/agentPipeline'
 
 export type EventType =
   | 'conference' | 'exhibition' | 'awards' | 'forum' | 'workshop'
@@ -49,6 +54,10 @@ export interface RecommendInput {
   /** v9.33: 행사장 배치도(평면도) 이미지 URL — Gemini Vision으로 분석해 동선·설치 위치 컨텍스트로 1순위 보강 */
   floorPlanImageUrl?: string
   notes?: string
+  /** v9.46 (2026-05-14): 어드민 화면(/admin/ai)에서 설정한 step별 모델·temperature·페르소나 오버라이드.
+   *  제공 시 SYSTEM_INSTRUCTION의 4 step body가 페르소나 텍스트로 치환됨. 비어있으면 기본 PIPELINE_BLOCKS 사용.
+   *  현 사이클은 클라이언트 localStorage(admin_ai_settings_v2)에서 읽어 API에 전달. 서버 영구화는 후속 사이클. */
+  stepOverrides?: StepOverridesMap
 }
 
 export interface RecommendItem {
@@ -110,9 +119,14 @@ function inferScale(attendees?: number): EventScale {
 // 사용자 인용(2026-05-13): "매번 바뀌는 부분은 블록 느낌으로 제공 향후 쉽게 편집하기 위함"
 // 4 step body(파트 후보 → 시설 제약 → 표준 수량 → 도면 Vision 보강)는 PIPELINE_BLOCKS에서 import.
 // 응답 형식·표준 12종 목록은 본 파일에서 유지 (Gemini 출력 스키마 — 자주 변경 안 됨).
-const SYSTEM_INSTRUCTION = `당신은 MICE 환경장식물 발주 전문가입니다.
+// v9.46 (2026-05-14) — buildSystemInstruction(stepOverrides)로 함수화. step별 페르소나 치환 지원.
+function buildSystemInstruction(stepOverrides?: StepOverridesMap): string {
+  const logic = stepOverrides
+    ? buildPipelineLogicSectionWith(stepOverrides)
+    : buildPipelineLogicSection()
+  return `당신은 MICE 환경장식물 발주 전문가입니다.
 
-${buildPipelineLogicSection()}
+${logic}
 
 [응답]
 각 항목 program_part · standard_category 명시
@@ -142,6 +156,7 @@ ${buildPipelineLogicSection()}
   "summary": "추천 의도 1~2문장 (행사 규모·유형·핵심 포인트 명시)",
   "inferredScale": "medium"
 }`
+}
 
 const GEMINI_ENDPOINT =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
@@ -274,11 +289,15 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
     input.notes ? `추가 메모: ${input.notes}` : '',
   ].filter(Boolean).join('\n') + similarEventsBlock + venueSignageBlock + accumulatedBlock + venueProfileBlock + ceilingBannerBlock + venueSpecsBlock + coverageBlock + adminMasterBlock + programPartsBlock + floorPlanBlock
 
+  // v9.46 — step별 페르소나 오버라이드 적용 (어드민 /admin/ai 화면에서 설정 → 클라이언트가 stepOverrides 전달)
+  const sysInstruction = buildSystemInstruction(input.stepOverrides)
+  const effectiveTemp = pickEffectiveTemperature(input.stepOverrides, 0.4)
+
   const body = {
-    systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+    systemInstruction: { parts: [{ text: sysInstruction }] },
     contents: [{ role: 'user', parts: [{ text: userText }] }],
     generationConfig: {
-      temperature: 0.4,
+      temperature: effectiveTemp,
       maxOutputTokens: 8000,  // 추천 항목 30~80건 + summary + rationale → 3000은 부족
       responseMimeType: 'application/json',
     },
