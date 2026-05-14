@@ -1,5 +1,76 @@
 # 작업 이력
 
+## 2026-05-14 (v9.46) — AI 추천 파이프라인 step별 페르소나·모델 설정 (어드민)
+
+### 사용자 요청
+조기흠 사원(AXDX팀, 2026-05-14) — 김연아 대리님 카톡:
+"관리자페이지 AI 관리에 3번 AI 투입되는 부분에서 투입되는 AI를 설정하고 페르소나를 수정할 수 있는 기능을 추가"
+
+### A안 (반나절 분량) 적용 범위
+- 4 step(파트 후보·시설 제약·표준 수량·도면 Vision) 각각 모델·temperature·system_prompt 분리 입력
+- 김연아 대리님 명시 "3번 AI 투입" = Step 3(표준 수량 산정) 카드에 indigo ring 강조 + "현장 우선" 배지
+- 저장: localStorage `admin_ai_settings_v2` (v1 전역 설정은 fallback으로 보존)
+- 반영: case-a 추천 호출 시 stepOverrides로 API에 전달 → SYSTEM_INSTRUCTION의 4 step body가 페르소나 텍스트로 치환
+
+### 변경 파일 (4개)
+
+#### `lib/ai/agentPipeline.ts` — SOT 확장
+- `AiModelKey` union 6종 (Gemini Flash/Pro · GPT-4o/4o-mini · Claude 3.5/3.7 Sonnet)
+- `StepPersonaOverride` / `StepOverridesMap` 타입 신설
+- `applyPersonaOverrides(overrides)` — persona 비어있지 않은 step body만 치환 (원본 PIPELINE_BLOCKS 불변)
+- `buildPipelineLogicSectionWith(overrides)` — 동적 [추천 로직] 절 빌드
+- `pickEffectiveTemperature(overrides, fallback=0.4)` — step별 temperature 평균 (단일 Gemini 호출이라 보수적)
+
+#### `lib/ai/recommendSignage.ts` — SYSTEM_INSTRUCTION 함수화
+- `RecommendInput.stepOverrides?: StepOverridesMap` 필드 추가
+- `SYSTEM_INSTRUCTION` 상수 → `buildSystemInstruction(stepOverrides)` 함수로 변환
+- 호출 시 `buildPipelineLogicSectionWith` + `pickEffectiveTemperature` 적용
+- generationConfig.temperature 0.4 → effectiveTemp (오버라이드 평균)
+- 응답 형식·표준 12종 목록은 본 파일 유지 (Gemini 출력 스키마 — 변경 X)
+
+#### `app/(dashboard)/admin/ai/AdminAiClient.tsx` — UI 신설
+- AccuracyTable 아래에 "AI 추천 파이프라인 — step별 페르소나 설정" 섹션 추가
+- 4 step 카드 grid (1 col / lg:2 col): 모델 select(6종) + temperature 입력 + persona textarea (placeholder=기본 본문)
+- Step 3 카드는 indigo ring + "현장 우선" 배지 (김연아 대리님 명시)
+- amber 안내: 현 사이클은 Gemini만 실제 호출, GPT/Claude는 메타 정보로만 저장 → 후속 사이클 활성
+- 저장/비우기 버튼 + "다음 추천부터 적용" 토스트
+- 기존 v9.27 단일 폼(전역 fallback)은 하단에 그대로 보존
+- import 추가: PIPELINE_BLOCKS, AiModelKey, StepOverridesMap, lucide(Layers/ShieldAlert/Calculator/Camera/Bot)
+
+#### `app/(dashboard)/projects/new/case-a/page.tsx` — 클라이언트 주입
+- `loadStepOverrides()` 헬퍼 신설 — localStorage `admin_ai_settings_v2` 읽어 비어있는 step은 자동 제외
+- `handleRecommend` fetch body에 `stepOverrides` 필드 추가
+
+### 보존
+- AiPipelineCard.tsx 미사용 (사용자 명시 보존)
+- v9.27 전역 AI 환경 설정 폼 그대로 (전역 fallback 역할)
+- 기본 PIPELINE_BLOCKS body 불변 — 페르소나 비우면 기존 동작 100% 유지
+- DB 마이그레이션 미실행 (admin_ai_settings 테이블 영구화는 후속 사이클)
+- 의존성 추가 0건
+
+### 검증
+- TSC 0 에러
+- Next 빌드 29/29 라우트 PASS
+- `/admin/ai` 6.22 → 7.34 kB (step 폼 +1.12 kB)
+- `/projects/new/case-a` 11.7 → 11.9 kB (loadStepOverrides 헬퍼 +0.2 kB)
+
+### 후속 사이클 후보
+- admin_ai_settings 테이블 마이그레이션 실행 + 서버 측 영구 저장 (현 시점 클라이언트 localStorage 한계: 사용자 브라우저별로 분리됨)
+- GPT/Claude 어댑터 도입 (의존성 추가 결정 + 모델별 라우팅)
+- step별 effective_model로 실제 모델 분기 (현 사이클은 Gemini 단일 호출 + temperature 평균)
+
+### 라이브 사이트 확인 체크리스트 (사용자 영역)
+1. https://ez-signage2.vercel.app 로그인(admin) → /admin/ai 진입
+2. AccuracyTable 아래에 4 step 카드 (Step 3 = 현장 우선 배지) 노출
+3. Step 3에 페르소나 입력 → 저장 → /projects/new/case-a 에서 추천 받아 응답에 반영 확인
+4. 페르소나 비우고 저장 → 기본 PIPELINE_BLOCKS 동작 복귀 확인
+
+### 배포
+- 브랜치: `auto/v9.46-ai-persona-per-step-260514`
+- main 머지·push는 사용자 결정 (작업지시서: PR 만들지 말고 브랜치만 push 준비)
+
+---
+
 ## 2026-05-14 (v9.45) — 잔존 오류·문제 일괄 점검 + AdminOps KPI 데드 prop 정리
 
 ### 사용자 요청
