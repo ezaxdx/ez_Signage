@@ -14,6 +14,47 @@
 **되돌릴 수 있는가**: <쉬운가, 어려운가>
 ```
 
+## 2026-05-14 — AI 추천 파이프라인 4 step → 2 카드 통합 + 페르소나 인라인 변수 chip 도입 (v9.51)
+
+**컨텍스트**: 사용자(조기흠 사원, AXDX팀, 2026-05-14) 명시 — "AI 추천 파이프라인을 4 step → 2 카드로 통합 + 페르소나 textarea에 인라인 변수 chip(드래그·이동 가능) 기능 추가". 김연아 대리님 카톡 원문 보존: "관리자페이지 -AI 관리에 3번 AI 투입되는 부분에서 투입되는 AI를 설정하고 페르소나를 수정". v9.46에서 4 step 카드를 도입했지만 — (1) ′파트 후보 추출 → 시설 제약 → 표준 수량 산정′은 한 호출(Gemini 단일)에 합쳐지는데 별 카드로 보여 사용자가 ′3개 모델 호출′로 오해 / (2) 각 step에 페르소나를 따로 입력해야 해 ′3번 AI 투입′ 영역만 핀포인트로 수정하기 어려움 / (3) 어드민이 변수(`{{venue}}`·`{{parts}}` 등)를 페르소나에 끼워 넣을 방법 없음 — 매번 ′행사장에 따라′·′파트에 따라′ 하드코딩 필요.
+
+**선택**:
+  1. **4 step → 2 카드 통합** — 카드 1(recommend, 항상 호출) = step1·2·3 합본, 카드 2(floor_plan_vision, 도면 첨부 시만) = step4 단독. 카드 1 안에 ′★ 표준 수량 산정 = 김연아 대리님 명시 ′3번 AI 투입′ 영역′ indigo highlight 박스로 시각 강조 유지.
+  2. **CardOverridesMap 신규 + StepOverridesMap 호환 보존** — `expandCardOverrides()` 어댑터로 카드 페르소나를 step1·2·3에 일괄 적용. `recommendSignage.ts`는 cardOverrides 우선 → stepOverrides → PIPELINE_BLOCKS 기본 순.
+  3. **인라인 변수 chip — D-1 단순 적용** — 5종 변수 토큰(`{{venue}}`·`{{parts}}`·`{{floor_plan}}`·`{{past_events}}`·`{{facility_guide}}`) 패널. 클릭 시 textarea 커서 위치에 토큰 삽입. recommendSignage 호출 시점에 `substitutePersonaVariables()`로 실제 데이터 치환.
+  4. **localStorage 마이그레이션 — v2(step) → v3(card) 자동** — `admin_ai_settings_v3` 신규 키, `admin_ai_settings_v2` 미존재 시 step1·2·3 중 가장 긴 페르소나를 카드 1으로, step4를 카드 2로 자동 마이그레이션. v2 키는 호환 위해 보존(reset 시에만 함께 비움).
+  5. **D-2 풀 Tiptap chip 드래그는 v9.52 분리** — 의존성 추가(@tiptap/react·MIT) 부담 + 작업량 ~6시간 → 단계별 진행. v9.51은 ~2시간 D-1로 시작.
+
+**대안**:
+  - 4 step 그대로 유지 + 변수 chip만 추가 (사용자 명시 ′통합′ 의도 미충족, 페르소나 4개 중복 입력 부담 잔존)
+  - 카드 통합 + 변수 chip 둘 다 v9.52로 미루고 v9.51은 chip만 (사용자 명시 ′4 step → 2 카드 통합′ 우선순위 위반)
+  - D-2 풀 Tiptap을 v9.51에 같이 (의존성 추가 + 6시간 + 시각 검증 필요 — 사이클이 너무 큼)
+  - localStorage v2 즉시 폐기 (사용자가 v9.46에서 입력한 페르소나 손실 위험 — 마이그레이션이 안전)
+
+**이유**:
+  - **사용자 명시 SOT**: ′4 step → 2 카드′가 사용자 명시 결정이고, 김연아 대리님 ′3번 AI 투입′은 카드 안 highlight로 보존 가능 — 양쪽 명시 모두 충족.
+  - **호출 실태와 정합**: Gemini는 단일 호출(시스템 인스트럭션 1개)이므로 4 step으로 분리한 카드 UI는 실제 호출 구조와 불일치였음. 2 카드(추천 1회 + 도면 1회)가 실제 호출 횟수와 일치 → 사용자가 비용·성능을 정확히 이해.
+  - **변수 chip 가치**: 어드민이 ′행사장 {{venue}}, 파트 {{parts}} 기반으로 발주 가이드를 작성하라′ 같은 메타 페르소나를 한 번 작성하면 모든 행사에 자동 치환 — 메모리 [[feedback-incremental-accuracy]] 점진 정확도 향상 원칙 정합.
+  - **D-1 단순 우선**: 의존성 0건 + 즉시 동작 + 사용자 검증 가능. D-2 풀 Tiptap은 시각 검증(드래그 시각 확인) 후 도입이 안전.
+  - **마이그레이션 안전**: v9.46에서 사용자가 입력했을 step 페르소나가 v9.51 카드로 자연 이행 — 데이터 손실 0건.
+
+**보존**:
+  - AiPipelineCard.tsx 미삭제 (v9.45 사용자 명시 보존 조건)
+  - v9.46 페르소나 본체 그대로 (구조만 변경 — 4 step body·기본 PIPELINE_BLOCKS 불변)
+  - v9.47 IA SOT KPI 정렬 그대로 (3 카드)
+  - v9.48 admin AI 정리 그대로 (전역 설정 폼 = 운영 설정만, 하단 보존)
+  - v9.49 운영 대시보드 정리 그대로
+  - DB 스키마 변경 0건 / 의존성 추가 0건
+  - 김연아 대리님 ′3번 AI 투입′ 영역 시각 강조 (카드 1 안 indigo highlight 박스) 유지
+  - localStorage `admin_ai_settings_v2` 키 (호환 위해)
+
+**되돌릴 수 있는가**:
+  - 매우 쉬움 — `loadCardOverrides()` 호출을 다시 `loadStepOverrides()`로 되돌리고 AdminAiClient 4 step grid를 복원하면 v9.46 동작. agentPipeline.ts의 신규 export(CardKey·PIPELINE_CARDS 등)는 그대로 두어도 부작용 없음.
+
+**상세**: PROGRESS.md 2026-05-14 (v9.51)
+
+---
+
 ## 2026-05-14 — 운영 대시보드 IA 외 영역 정리 (v9.49)
 
 **컨텍스트**: 사용자(조기흠 사원, AXDX팀, 2026-05-14) 명시 — "/admin 운영 대시보드에서 IA SOT 외 추가 영역 2개 삭제". IA SOT = 김연아 대리님 스크린샷 = ′KPI 4 + 프로젝트 등록 현황′만 존재. v9.47 KPI 정렬(5종 → 4종) 후에도 그 아래 잔존하던 ′파트별 상태 분포 (Stacked Bar)′ + ′이번 달 일정 (D-14 ~ D+7) 캘린더′ 두 영역이 IA에 없음 → 정리.
