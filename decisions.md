@@ -14,6 +14,47 @@
 **되돌릴 수 있는가**: <쉬운가, 어려운가>
 ```
 
+## 2026-05-14 — 어드민 카드 부연·강조 정리 (5건) (v9.52)
+
+**컨텍스트**: 사용자(조기흠 사원, AXDX팀, 2026-05-14) 명시 — `/admin/ai` 페이지 추천 카드·도면 분석 카드 안 ′부연·강조 5건 삭제′. 모든 부연·강조 텍스트 = ′응? 금지′ + ′내부 경로 금지′ 룰 위반. 사용자(비개발자) 입장에서 의미 없는 코드·내부 경로 메타. v9.51에서 카드 1 안에 indigo highlight 박스(★ 표준 수량 산정 = 김연아 대리님 명시 ′3번 AI 투입′ 영역) 시각 강조 보존했지만, 사용자 5/14 명시 = 박스 자체 삭제 우선.
+
+**선택**:
+  1. **카드 1 indigo highlight 박스 전체 삭제** — `<div className="bg-indigo-50 border border-indigo-200 ...">` 14줄 JSX 블록 통째 제거. 김연아 대리님 카톡 주석은 PROGRESS.md·decisions.md에 영구 보존.
+  2. **카드 1 안내 ′이 페르소나는 추천 흐름 1번의 Gemini 호출에 사용됩니다 ...′ 삭제** — `agentPipeline.ts` `PIPELINE_CARDS.recommend.notice` = `''`. 인터페이스(string)는 호환 유지.
+  3. **카드 2 안내 ′분석 결과는 추천 호출의 [보강] 절로 자동 합쳐져 location 필드 정확도를 올립니다.′ 삭제** — `agentPipeline.ts` `PIPELINE_CARDS.floor_plan_vision.notice` = `''`.
+  4. **AdminAiClient에서 notice 빈 문자열 시 `<p>` 자체 렌더 스킵** — `card.notice && (<p>...</p>)` 조건부 렌더. DOM 깔끔 + 빈 노드 mb-3 공백 방지.
+
+**대안**:
+  - 카드 1 indigo highlight 박스 ′3번 AI 투입′ 라벨만 유지 + 안내문 2줄만 삭제 (사용자 5/14 명시 ′박스 자체 삭제′ 위반)
+  - notice 텍스트를 짧게 단축 (예: ′3 step 합본′ 1줄) — ′응? 금지′ 룰 부분 위반 + 의미 모호
+  - notice 필드 자체를 `PipelineCard` 인터페이스에서 제거 (호환 깨짐 — 향후 다른 사용처 추가 시 인터페이스 재확장 부담)
+
+**이유**:
+  - **사용자 명시 SOT**: 작업 지시 명시 ′박스 전체 삭제′ + ′부연·강조 텍스트 5건 삭제′. 한국어 ′응? 금지′ 룰 + ′내부 경로 금지′(코드 경로·메타 노출 금지) 룰 일관 적용.
+  - **′3번 AI 투입′ 의미 보존**: 페르소나 textarea 안 ′기본 동작:′ 본문에서 ′3순위: 행사장 시설 가이드 표준 수량′ 텍스트 노출 → 박스 없어도 의미 전달 가능 (사용자 모호 X). 김연아 대리님 카톡은 PROGRESS.md·decisions.md에 영구 기록 — 향후 의사결정 추적 가능.
+  - **인터페이스 호환**: `notice: string` 유지 + 빈 문자열 허용. AdminAiClient에서 조건부 렌더 1줄로 처리 → 향후 다른 카드 notice 재도입 시 즉시 활성 가능.
+  - **DOM 깔끔**: `<p>` 빈 노드 렌더 시 `mb-3` 공백이 카드 안에 잔존 → 시각 부유 발생. 조건부 렌더로 깔끔하게 정리.
+
+**보존**:
+  - 카드 1 = ′추천 (항상 호출)′ 헤더 + 페르소나 textarea + 변수 chip 패널 (5종 토큰)
+  - 카드 2 = ′도면 분석 보강 (도면 첨부 시만)′ 헤더 + 페르소나 textarea + 변수 chip 패널
+  - ′항상 호출 / 도면 첨부 시만′ 배지 (indigo / amber)
+  - 모델 select / Temperature / placeholder ′기본 동작:′ + 본문
+  - 안내 박스 1줄 ′📍 적용 위치: 새 프로젝트 만들기 → AI 추천 받기′ (v9.48-C)
+  - v9.46 페르소나 본체 + v9.51 cardOverrides 흐름 그대로 (`recommendSignage.ts` 영향 0건)
+  - AiPipelineCard.tsx 미삭제 (v9.45 사용자 명시 보존 조건)
+  - DB 스키마 변경 0건 / 의존성 추가 0건
+
+**되돌릴 수 있는가**:
+  - **매우 쉬움** — 모두 코드 표현만 변경:
+    - notice 복원: `agentPipeline.ts` 두 카드 notice 문자열 원래대로
+    - 박스 복원: `AdminAiClient.tsx`에 indigo highlight JSX 14줄 재삽입 (PROGRESS.md v9.51 본문에 원본 보존)
+    - 조건부 렌더 복원: `card.notice && (<p>...</p>)` → `<p>{card.notice}</p>` 1줄 변경
+
+**상세**: PROGRESS.md 2026-05-14 (v9.52)
+
+---
+
 ## 2026-05-14 — AI 환경 설정 ↔ step별 페르소나 중복 제거 (v9.48)
 
 **컨텍스트**: 사용자(조기흠 사원, AXDX팀, 2026-05-14) 지적 — `/admin/ai` 화면에 ′AI 환경 설정′(전역 폼, v9.27) + ′AI 추천 파이프라인 — step별 페르소나 설정′(v9.46) 두 영역이 모델·Temperature·system_prompt를 중복 노출. "이게 뭐가 다른데?" 의문. 또한 amber 안내·footer가 코드 메타(`lib/ai/agentPipeline.ts`·`localStorage(admin_ai_settings_v2)`·`admin_ai_settings 테이블`·`/projects/new/case-a` 등)를 그대로 노출 → 사용자 ′응?′ 룰(코드 표현이 보고/UI에 노출되면 안 됨) 위반.
