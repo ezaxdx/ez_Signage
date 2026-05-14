@@ -19,7 +19,10 @@ import {
   buildPipelineLogicSection,
   buildPipelineLogicSectionWith,
   pickEffectiveTemperature,
+  expandCardOverrides,
+  substitutePersonaVariables,
   type StepOverridesMap,
+  type CardOverridesMap,
 } from '@/lib/ai/agentPipeline'
 
 export type EventType =
@@ -56,8 +59,14 @@ export interface RecommendInput {
   notes?: string
   /** v9.46 (2026-05-14): 어드민 화면(/admin/ai)에서 설정한 step별 모델·temperature·페르소나 오버라이드.
    *  제공 시 SYSTEM_INSTRUCTION의 4 step body가 페르소나 텍스트로 치환됨. 비어있으면 기본 PIPELINE_BLOCKS 사용.
-   *  현 사이클은 클라이언트 localStorage(admin_ai_settings_v2)에서 읽어 API에 전달. 서버 영구화는 후속 사이클. */
+   *  현 사이클은 클라이언트 localStorage(admin_ai_settings_v2)에서 읽어 API에 전달. 서버 영구화는 후속 사이클.
+   *  v9.51 (2026-05-14): cardOverrides가 우선. stepOverrides는 v9.46 호환 위해 보존. */
   stepOverrides?: StepOverridesMap
+  /** v9.51 (2026-05-14): 4 step → 2 카드 통합 후 신규 키.
+   *  카드 1 (recommend) = step1·2·3 합본 / 카드 2 (floor_plan_vision) = step4 단독.
+   *  어드민 /admin/ai 화면에서 카드별 페르소나·모델·온도 입력. 페르소나 textarea는 {{venue}} 등 변수 토큰을
+   *  포함할 수 있으며 본 함수가 호출 시점에 실제 데이터로 치환. */
+  cardOverrides?: CardOverridesMap
 }
 
 export interface RecommendItem {
@@ -255,13 +264,29 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
 
   // v9.33: 행사장 배치도 Vision 분석 — 동선·설치 위치 컨텍스트 보강
   // 1순위(파트별 후보) 결과의 location 필드 정확도를 높이는 보조 컨텍스트.
+  // v9.51: 도면 카드(floor_plan_vision)에 페르소나가 있으면 Vision 호출 후 페르소나에 {{floor_plan}} 토큰 치환하여 보강 절 작성
   let floorPlanBlock = ''
+  let floorPlanRawText = ''
   if (input.floorPlanImageUrl) {
     try {
       const vision = await analyzeFloorPlan(input.floorPlanImageUrl)
       if (vision.text && !vision.error) {
-        floorPlanBlock = '\n\n[보강 — 행사장 배치도 Vision 분석]\n' + vision.text.trim() +
-          '\n→ 위 배치도 분석 결과를 각 항목 location 필드에 반영하여 동선·설치 위치를 구체화하세요.'
+        floorPlanRawText = vision.text.trim()
+        const cardOv = input.cardOverrides?.floor_plan_vision
+        const cardPrompt = (cardOv?.system_prompt ?? '').trim()
+        if (cardPrompt.length > 0) {
+          // 카드 페르소나에 {{floor_plan}} 토큰 치환 (다른 변수도 포함 가능)
+          const persona = substitutePersonaVariables(cardPrompt, {
+            floor_plan: floorPlanRawText,
+            venue: input.venue,
+            parts: (input.programParts ?? []).join(', '),
+          })
+          floorPlanBlock = '\n\n[보강 — 행사장 배치도 Vision 분석]\n' + persona +
+            '\n\n[Vision 원문]\n' + floorPlanRawText
+        } else {
+          floorPlanBlock = '\n\n[보강 — 행사장 배치도 Vision 분석]\n' + floorPlanRawText +
+            '\n→ 위 배치도 분석 결과를 각 항목 location 필드에 반영하여 동선·설치 위치를 구체화하세요.'
+        }
       }
     } catch { /* silent — Vision 실패해도 추천 진행 */ }
   }
@@ -289,9 +314,31 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
     input.notes ? `추가 메모: ${input.notes}` : '',
   ].filter(Boolean).join('\n') + similarEventsBlock + venueSignageBlock + accumulatedBlock + venueProfileBlock + ceilingBannerBlock + venueSpecsBlock + coverageBlock + adminMasterBlock + programPartsBlock + floorPlanBlock
 
-  // v9.46 — step별 페르소나 오버라이드 적용 (어드민 /admin/ai 화면에서 설정 → 클라이언트가 stepOverrides 전달)
-  const sysInstruction = buildSystemInstruction(input.stepOverrides)
-  const effectiveTemp = pickEffectiveTemperature(input.stepOverrides, 0.4)
+  // v9.51 — 카드 오버라이드(우선) → step 오버라이드(레거시 호환) → PIPELINE_BLOCKS 기본 순.
+  // 추천 카드 페르소나는 변수 토큰 치환을 한 번 거친 뒤 step1·2·3에 일괄 적용.
+  let effectiveCardOverrides: CardOverridesMap | undefined = input.cardOverrides
+  if (effectiveCardOverrides?.recommend?.system_prompt) {
+    const personaWithVars = substitutePersonaVariables(effectiveCardOverrides.recommend.system_prompt, {
+      venue: input.venue,
+      parts: selectedParts.length > 0
+        ? selectedParts.map(c => `${c} ${PROGRAM_PART_BY_CODE.get(c)?.name ?? ''}`.trim()).join(', ')
+        : '',
+      // floor_plan은 추천 카드에선 비어있을 수 있음 (보강 절은 별도)
+      floor_plan: floorPlanRawText || '',
+      past_events: similarEvents.map(e => `${e.project_name} (${e.year})`).join(', '),
+      facility_guide: venueProfileBlock || '',
+    })
+    effectiveCardOverrides = {
+      ...effectiveCardOverrides,
+      recommend: {
+        ...effectiveCardOverrides.recommend,
+        system_prompt: personaWithVars,
+      },
+    }
+  }
+  const expandedStepOverrides = expandCardOverrides(effectiveCardOverrides, input.stepOverrides)
+  const sysInstruction = buildSystemInstruction(expandedStepOverrides)
+  const effectiveTemp = pickEffectiveTemperature(expandedStepOverrides, 0.4)
 
   const body = {
     systemInstruction: { parts: [{ text: sysInstruction }] },
