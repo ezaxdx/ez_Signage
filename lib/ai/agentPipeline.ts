@@ -141,12 +141,17 @@ export interface PipelineCard {
   trigger: 'always' | 'on_attachment'
 }
 
+// v9.52 (2026-05-14): 카드 부연·강조 텍스트 삭제 (조기흠 사원 명시 — ′응? 금지′ + ′내부 경로 금지′ 룰)
+//   recommend 카드: ′이 페르소나는 추천 흐름 1번의 Gemini 호출에 사용됩니다. 파트 후보 추출 → 시설 제약 → 표준 수량 산정 — 3 step이 단일 프롬프트로 합쳐집니다.′ 삭제
+//   floor_plan_vision 카드: ′분석 결과는 추천 호출의 [보강] 절로 자동 합쳐져 location 필드 정확도를 올립니다.′ 삭제
+//   notice는 빈 문자열로 유지 (인터페이스 호환). AdminAiClient는 notice가 비어 있으면 <p> 렌더링 자체를 skip.
+//   카드 헤더 title + 항상 호출 / 도면 첨부 시만 배지 + 페르소나 textarea + 변수 chip 패널만 남김.
 export const PIPELINE_CARDS: Record<CardKey, PipelineCard> = {
   recommend: {
     key: 'recommend',
     title: '추천 (항상 호출)',
     desc: '파트 후보 추출 → 시설 제약 → 표준 수량 산정',
-    notice: '이 페르소나는 추천 흐름 1번의 Gemini 호출에 사용됩니다.\n파트 후보 추출 → 시설 제약 → 표준 수량 산정 — 3 step이 단일 프롬프트로 합쳐집니다.',
+    notice: '',
     steps: ['step1', 'step2', 'step3'],
     trigger: 'always',
   },
@@ -154,7 +159,7 @@ export const PIPELINE_CARDS: Record<CardKey, PipelineCard> = {
     key: 'floor_plan_vision',
     title: '도면 분석 보강 (도면 첨부 시만)',
     desc: '행사장 배치도 Vision 분석 → 동선·설치 위치 컨텍스트',
-    notice: '도면 첨부 시에만 별도 Gemini Vision 호출됩니다.\n분석 결과는 추천 호출의 [보강] 절로 자동 합쳐져 location 필드 정확도를 올립니다.',
+    notice: '',
     steps: ['step4'],
     trigger: 'on_attachment',
   },
