@@ -1,5 +1,83 @@
 # 작업 이력
 
+## 2026-05-14 (v9.48-C) — step별 페르소나 안내 박스 한 줄로 단순화
+
+### 사용자 요청
+조기흠 사원(AXDX팀, 2026-05-14, 회의 14:00 임박):
+- "박스 안내는 간단하게 사용되는 부분만"
+- 4 step 상세 설명은 step 카드별 desc로 이미 노출되므로 박스에서는 ′어디서 쓰이는지′만 1줄.
+
+### 변경
+- `app/(dashboard)/admin/ai/AdminAiClient.tsx`:
+  - v9.48-B에서 추가한 multi-line 박스(제목 ′이 설정이 적용되는 곳′ + 본문 2문단 + Step 1~4 리스트)를 한 줄로 축약.
+  - 새 박스 한 줄: "📍 적용 위치: 새 프로젝트 만들기 → AI 추천 받기"
+  - 스타일 유지: blue 계열 배경(`bg-blue-50 border border-blue-200`) + lucide `MapPin` 아이콘 + small text.
+  - import는 그대로 유지 (`MapPin`).
+
+### 보존
+- AiPipelineCard.tsx 미삭제 (v9.45 사용자 명시 보존 조건)
+- v9.46 step 페르소나 본체 그대로
+- v9.48 1차(UI 중복·코드 메타 정리) 작업 그대로 — 전역 폼 슬림화·step별 라벨 친절화 모두 유지
+- DB 스키마 변경 0건 / 의존성 추가 0건
+
+### 검증
+- TSC 0 에러
+- Next 빌드 29/29 라우트 PASS
+- `/admin/ai` 7.5(v9.48-B) → 6.95 kB (박스 축약으로 -0.55 kB)
+
+### 배포
+- 브랜치: `auto/v9.48-admin-ai-cleanup-260514`
+- main 머지·push는 사용자 결정
+
+---
+
+## 2026-05-14 (v9.48) — AI 관리 화면 UI 중복·코드 메타 정리 + step별 페르소나 영역 안내 박스 추가
+
+### 사용자 요청
+조기흠 사원(AXDX팀, 2026-05-14):
+1. ′AI 환경 설정′(전역 폼) + ′AI 추천 파이프라인 step별 페르소나 설정′ 두 영역이 모델·Temperature·system_prompt를 중복 노출 → "이게 뭐가 다른데?" 의문 + 코드 메타(`agentPipeline.ts`·`localStorage(admin_ai_settings_v2)`·`admin_ai_settings 테이블`·`/projects/new/case-a` 등) UI 노출 = ′응?′ 룰 위반.
+2. (추가) "step별 페르소나 설정 = 그래서 저걸 어디서 쓰는데?" 의문 해소 — 어디서 적용되는지 친절한 안내 박스 추가.
+
+### v9.48 본 작업 (1차) — AdminAiClient.tsx UI 중복·코드 메타 정리
+- step별 폼 위 amber 안내 + AI 환경 설정 아래 footer 삭제 (코드 메타 제거)
+- 전역 폼 슬림화: 모델·Temperature·시스템 프롬프트 입력칸 제거 → step별 폼으로 일원화.
+  제목 ′AI 환경 설정′ → ′운영 설정 — 호출 한도·예산′. 최대 출력 토큰·월 예산·이상 사용자 임계값 3개만 유지.
+- step별 폼 라벨 친절화: ′현 사이클은 Gemini만 활성′ → ′현재 Gemini 사용 중′,
+  ′기본 본문:′ → ′기본 동작:′, ′비우면 기본 본문 사용′ → ′비워두면 기본 동작 그대로′
+- AiSettings 인터페이스 슬림화: model·temperature·system_prompt 필드 제거
+- recommendSignage.ts는 step별 오버라이드가 비면 PIPELINE_BLOCKS 기본 동작으로 자동 fallback (영향 없음)
+
+### v9.48 추가 작업 (2차) — step별 페르소나 영역 ′어디서 쓰이나요?′ 안내 박스 추가
+- AdminAiClient.tsx: step별 페르소나 설정 영역 헤더 직후(grid 위)에 blue/indigo 톤 안내 박스 삽입
+- 박스 구성:
+  - 아이콘: lucide-react `MapPin` (indigo-700)
+  - 제목: bold + indigo "이 설정이 적용되는 곳"
+  - 본문: ′새 프로젝트 만들기 → AI 추천 받기′ 화면에서 AI가 환경장식물을 추천할 때 사용 + 4단계 흐름 설명
+  - 4 step 리스트: Step 1 파트 후보 추출 / Step 2 시설 가이드 제약 / Step 3 표준 수량 산정 / Step 4 도면 Vision 보강
+- 스타일: `bg-blue-50 border border-blue-200 rounded-md p-3 text-sm mb-4`
+- import 추가: lucide-react `MapPin`
+
+### 변경 파일 (1개)
+- `app/(dashboard)/admin/ai/AdminAiClient.tsx` (UI 중복·코드 메타 정리 + ′어디서 쓰이나요?′ 안내 박스 추가)
+
+### 보존
+- AiPipelineCard.tsx 미삭제 (v9.45 사용자 명시 보존 조건)
+- v9.46 step 페르소나 본체 그대로 (lib/ai/agentPipeline.ts + STEP_SETTINGS_KEY localStorage)
+- DB 스키마 변경 0건 / 의존성 추가 0건
+- v9.47 IA SOT 정렬 작업 그대로 (KPI 카드·AccuracyTable 본체)
+
+### 검증
+- TSC 0 에러
+- Next 빌드 36/36 라우트 PASS
+- `/admin/ai` 7.34 (v9.47) → 6.95 kB (v9.48 — 전역 폼 슬림화로 -0.39 kB. 안내 박스(+) 와 모델/Temperature/system_prompt 입력칸 제거(-)의 순감)
+- `/admin` 4.18 (v9.47) → 3.46 kB (page.tsx의 partStageBars·calendarItems 잔존 정리 = -0.72 kB)
+
+### 배포
+- 브랜치: `auto/v9.48-admin-ai-cleanup-260514` (auto/v9.47-align-to-ia-260514 위에서 분기)
+- main 머지·push는 사용자 결정
+
+---
+
 ## 2026-05-14 (v9.47) — IA SOT(김연아 대리님 노션 스크린샷) 정렬 — 운영/AI/학습 3영역
 
 ### 사용자 요청

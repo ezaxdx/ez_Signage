@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import {
   DollarSign, AlertTriangle, Save, RefreshCw,
-  Phone, Layers, ShieldAlert, Calculator, Camera, Bot, Target, Bell,
+  Phone, Layers, ShieldAlert, Calculator, Camera, Bot, Target, Bell, MapPin,
 } from 'lucide-react'
 import { AccuracyTable, type AccuracyRow } from './AccuracyTable'
 import { PIPELINE_BLOCKS, type AiModelKey, type StepOverridesMap } from '@/lib/ai/agentPipeline'
@@ -22,6 +22,18 @@ import { PIPELINE_BLOCKS, type AiModelKey, type StepOverridesMap } from '@/lib/a
 //   보존:
 //     - 토큰·비용 상세 통계는 하단 ′상세 사용량′ + ′예산 사용률′ 영역으로 이동 (예산 임계 경고 연계 유지)
 //     - AccuracyTable 본체는 KPI 카드 아래에 그대로 노출 (카테고리별 상세)
+// v9.48 (2026-05-14): UI 중복·코드 메타 노출 정리 (사용자 명시 — 조기흠 사원, AXDX팀)
+//   문제: ′AI 환경 설정′(전역 폼) + ′AI 추천 파이프라인 step별 페르소나 설정′이 모델·Temperature·system_prompt를
+//        중복 노출 → "이게 뭐가 다른데?" 의문 + 코드 메타(`agentPipeline.ts`·`localStorage(admin_ai_settings_v2)`·
+//        `admin_ai_settings 테이블`·`/projects/new/case-a` 등) UI 노출 = ′응?′ 룰 위반.
+//   변경:
+//     1) step별 폼 위 amber 안내 + AI 환경 설정 아래 footer 삭제 (코드 메타 제거)
+//     2) 전역 폼 슬림화: 모델·Temperature·시스템 프롬프트 입력칸 제거 → step별 폼으로 일원화.
+//        제목 ′AI 환경 설정′ → ′운영 설정 — 호출 한도·예산′. 최대 출력 토큰·월 예산·이상 사용자 임계값 3개만 유지.
+//     3) step별 폼 라벨 친절화: ′현 사이클은 Gemini만 활성′ → ′현재 Gemini 사용 중′,
+//        ′기본 본문:′ → ′기본 동작:′, ′비우면 기본 본문 사용′ → ′비워두면 기본 동작 그대로′
+//   보존: AiPipelineCard.tsx · v9.46 step 페르소나 본체 · DB 스키마 0건 · 의존성 0건.
+//   fallback: recommendSignage.ts에서 step별 오버라이드 비면 PIPELINE_BLOCKS 기본 동작으로 자동 fallback.
 
 interface Stats {
   todayCalls: number
@@ -56,25 +68,19 @@ const SETTINGS_KEY = 'admin_ai_settings_v1'
 // v9.46 — step별 페르소나 설정 (v1과 호환: v1은 전역 fallback으로 보존)
 const STEP_SETTINGS_KEY = 'admin_ai_settings_v2'
 
+// v9.48 (2026-05-14): 운영 설정으로 슬림화 — 모델·Temperature·시스템 프롬프트는
+//   step별 페르소나 설정(STEP_SETTINGS_KEY)으로 일원화. 전역 폼은 호출 한도·예산·알림 임계값만 관리.
+//   recommendSignage.ts는 step별 오버라이드가 비면 PIPELINE_BLOCKS의 기본 동작으로 자동 fallback.
 interface AiSettings {
-  model: 'gemini-2.5-flash' | 'gemini-2.5-pro'
-  temperature: number
   max_output_tokens: number
   budget_monthly_usd: number          // 월 예산 한도 ($)
   abnormal_repeat_threshold: number   // 이상 사용자 알림 임계값 (회)
-  system_prompt: string
 }
 
 const DEFAULT_SETTINGS: AiSettings = {
-  model: 'gemini-2.5-flash',
-  temperature: 0.4,
   max_output_tokens: 8000,
   budget_monthly_usd: 50,
   abnormal_repeat_threshold: 5,
-  system_prompt: `당신은 MICE 환경장식물 발주 전문가입니다.
-주어진 행사 정보 + 학습 데이터 + 시설 가이드를 기반으로
-표준 카테고리(외벽·게이트·가로등·X배너·천정·부속시설)별 추천 리스트를 JSON으로 응답하세요.
-학습 데이터에 없는 카테고리는 "[추천 없음 — 학습 데이터 부재]"로 명시.`,
 }
 
 // ── v9.46: step별 페르소나 설정 ──────────────────────────────
@@ -257,9 +263,11 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
             </div>
           </div>
 
-          <div className="bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-3 text-[11px] text-amber-800">
-            현재 사이클은 <b>Gemini 2.5 Flash/Pro</b>만 실제 호출됩니다. GPT·Claude 옵션은 메타 정보로만 저장되며 후속 사이클에서 어댑터 도입 시 활성화됩니다.
-            페르소나(system_prompt)를 비워두면 기본 파이프라인 본문(`lib/ai/agentPipeline.ts`)이 그대로 사용됩니다.
+          {/* v9.48-C 단순화: 조기흠 사원 명시 — "박스 안내는 간단하게 사용되는 부분만".
+              4 step 상세 설명은 step 카드별 desc로 이미 노출되므로 박스에서는 ′어디서 쓰이는지′만 1줄. */}
+          <div className="bg-blue-50 border border-blue-200 rounded-md px-3 py-2 mb-4 text-sm text-slate-700 flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-indigo-700 shrink-0" />
+            <span><span className="font-semibold text-indigo-700">적용 위치:</span> 새 프로젝트 만들기 → AI 추천 받기</span>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -286,7 +294,7 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
                   <p className="text-[11px] text-slate-500 mb-3">{block.desc}</p>
 
                   <div className="grid grid-cols-2 gap-2 mb-3">
-                    <Field label="모델" hint="현 사이클은 Gemini만 활성">
+                    <Field label="모델" hint="현재 Gemini 사용 중">
                       <select
                         value={cur.model}
                         onChange={e => updateStep(k, { model: e.target.value as AiModelKey })}
@@ -309,10 +317,10 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
                     </Field>
                   </div>
 
-                  <Field label="페르소나 (system_prompt)" hint="비우면 기본 본문 사용">
+                  <Field label="페르소나" hint="비워두면 기본 동작 그대로">
                     <textarea
                       rows={5}
-                      placeholder={`기본 본문:\n${block.body}`}
+                      placeholder={`기본 동작:\n${block.body}`}
                       value={cur.system_prompt}
                       onChange={e => updateStep(k, { system_prompt: e.target.value })}
                       className="w-full text-xs border border-slate-200 rounded-md px-2 py-1.5 font-mono"
@@ -323,9 +331,6 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
             })}
           </div>
 
-          <p className="text-[10px] text-slate-400 mt-3">
-            ※ 저장 후 새 추천 호출(/projects/new/case-a)부터 적용됩니다. 브라우저 localStorage(<code className="font-mono">admin_ai_settings_v2</code>) 저장이며, 다음 사이클에서 admin_ai_settings 테이블로 영구화 예정.
-          </p>
         </section>
 
         {/* ── v9.27 보존: 일별 상세 사용량 4카드 (오늘/이번 달 호출·비용) ── */}
@@ -427,10 +432,11 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
           </div>
         </section>
 
-        {/* ── AI 환경 설정 (관리자 직접 수정) ────────── */}
+        {/* ── 운영 설정 — 호출 한도·예산·알림 (v9.48 슬림화) ────────── */}
+        {/* 모델·Temperature·시스템 프롬프트는 위의 step별 페르소나 설정으로 일원화. */}
         <section>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-slate-700 text-sm font-semibold">AI 환경 설정</h2>
+            <h2 className="text-slate-700 text-sm font-semibold">운영 설정 — 호출 한도·예산</h2>
             <div className="flex items-center gap-2">
               {savedMsg && <span className="text-emerald-600 text-xs">{savedMsg}</span>}
               <button onClick={resetSettings} className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1">
@@ -443,27 +449,7 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
           </div>
 
           <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="모델" hint="추론 정확도·속도 트레이드오프">
-                <select
-                  value={settings.model}
-                  onChange={e => setSettings(s => ({ ...s, model: e.target.value as AiSettings['model'] }))}
-                  className="w-full text-sm border border-slate-200 rounded-md px-2 py-1.5"
-                >
-                  <option value="gemini-2.5-flash">gemini-2.5-flash (빠름, 권장)</option>
-                  <option value="gemini-2.5-pro">gemini-2.5-pro (정확)</option>
-                </select>
-              </Field>
-
-              <Field label="Temperature" hint="0.0 ~ 1.0 (낮을수록 일관성)">
-                <input
-                  type="number" min={0} max={1} step={0.05}
-                  value={settings.temperature}
-                  onChange={e => setSettings(s => ({ ...s, temperature: parseFloat(e.target.value) || 0 }))}
-                  className="w-full text-sm border border-slate-200 rounded-md px-2 py-1.5"
-                />
-              </Field>
-
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Field label="최대 출력 토큰" hint="응답 길이 상한">
                 <input
                   type="number" min={1000} max={32000} step={1000}
@@ -491,19 +477,6 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
                 />
               </Field>
             </div>
-
-            <Field label="시스템 프롬프트" hint="추천 모듈에 항상 prepend 되는 베이스 지시문">
-              <textarea
-                rows={6}
-                value={settings.system_prompt}
-                onChange={e => setSettings(s => ({ ...s, system_prompt: e.target.value }))}
-                className="w-full text-xs border border-slate-200 rounded-md px-2 py-1.5 font-mono"
-              />
-            </Field>
-
-            <p className="text-[10px] text-slate-400">
-              ※ 현재 설정은 브라우저(localStorage)에 저장됩니다. 다음 사이클에서 admin_ai_settings 테이블로 영구화 예정.
-            </p>
           </div>
         </section>
 
