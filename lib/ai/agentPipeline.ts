@@ -93,6 +93,13 @@ export function buildPipelineLogicSection(): string {
 //
 // v9.46 1차: Gemini 단일 호출 유지 + 모델 select는 정보성. 후속 사이클에서 GPT/Claude 어댑터 도입 시
 //   모델별 라우팅을 활성화. (현 시점 의존성 추가 금지)
+//
+// v9.51 (2026-05-14) — 4 step → 2 카드 통합 + 카드별 페르소나 오버라이드 추가:
+//   - 카드 1 (recommend): step1·2·3 통합 — 항상 호출되는 추천 흐름 (파트 후보 → 시설 제약 → 표준 수량)
+//     ★ "표준 수량 산정" = 김연아 대리님 명시 ′3번 AI 투입′ 영역 (카드 안에서 시각 강조)
+//   - 카드 2 (floor_plan_vision): step4 단독 — 도면 첨부 시에만 별도 Gemini Vision 호출
+//   - StepOverridesMap (step1~4)도 v9.46 호환 위해 보존. CardOverridesMap은 신규 키.
+//   - 적용 우선순위: cardOverrides → stepOverrides(레거시) → 기본 PIPELINE_BLOCKS.
 
 export type AiModelKey =
   | 'gemini-2.5-flash'
@@ -113,6 +120,91 @@ export interface StepPersonaOverride {
 
 export type StepOverridesMap = Partial<Record<'step1' | 'step2' | 'step3' | 'step4', StepPersonaOverride>>
 
+/** v9.51 — 카드 단위 키. recommend = step1+2+3 통합, floor_plan_vision = step4 단독 */
+export type CardKey = 'recommend' | 'floor_plan_vision'
+
+export type CardPersonaOverride = StepPersonaOverride
+export type CardOverridesMap = Partial<Record<CardKey, CardPersonaOverride>>
+
+/** v9.51 — 카드 메타 (어드민 시각화 용) */
+export interface PipelineCard {
+  key: CardKey
+  /** 카드 헤더 표시명 */
+  title: string
+  /** 카드 한 줄 설명 (시각화 전용) */
+  desc: string
+  /** 카드 안내 메시지 (Gemini 호출 시점·역할) */
+  notice: string
+  /** 이 카드가 묶는 step 키들 (recommend = step1·2·3 / floor_plan_vision = step4) */
+  steps: Array<keyof typeof PIPELINE_BLOCKS>
+  /** 항상 호출 / 첨부 시만 호출 */
+  trigger: 'always' | 'on_attachment'
+}
+
+export const PIPELINE_CARDS: Record<CardKey, PipelineCard> = {
+  recommend: {
+    key: 'recommend',
+    title: '추천 (항상 호출)',
+    desc: '파트 후보 추출 → 시설 제약 → 표준 수량 산정',
+    notice: '이 페르소나는 추천 흐름 1번의 Gemini 호출에 사용됩니다.\n파트 후보 추출 → 시설 제약 → 표준 수량 산정 — 3 step이 단일 프롬프트로 합쳐집니다.',
+    steps: ['step1', 'step2', 'step3'],
+    trigger: 'always',
+  },
+  floor_plan_vision: {
+    key: 'floor_plan_vision',
+    title: '도면 분석 보강 (도면 첨부 시만)',
+    desc: '행사장 배치도 Vision 분석 → 동선·설치 위치 컨텍스트',
+    notice: '도면 첨부 시에만 별도 Gemini Vision 호출됩니다.\n분석 결과는 추천 호출의 [보강] 절로 자동 합쳐져 location 필드 정확도를 올립니다.',
+    steps: ['step4'],
+    trigger: 'on_attachment',
+  },
+}
+
+export const PIPELINE_CARD_LIST: PipelineCard[] = [
+  PIPELINE_CARDS.recommend,
+  PIPELINE_CARDS.floor_plan_vision,
+]
+
+/**
+ * v9.51 — 카드 오버라이드를 step 오버라이드로 펼침 (recommend → step1·2·3 일괄 적용)
+ * 카드 페르소나 1개가 묶인 step body 전체를 치환합니다 (3 step 합쳐서 1 prompt).
+ * 호환: stepOverrides (레거시 v9.46)도 그대로 받음. cardOverrides가 우선.
+ */
+export function expandCardOverrides(cardOverrides?: CardOverridesMap, legacyStepOverrides?: StepOverridesMap): StepOverridesMap {
+  const merged: StepOverridesMap = { ...(legacyStepOverrides ?? {}) }
+  if (cardOverrides) {
+    for (const cardKey of ['recommend', 'floor_plan_vision'] as const) {
+      const ov = cardOverrides[cardKey]
+      if (!ov) continue
+      const card = PIPELINE_CARDS[cardKey]
+      const promptText = (ov.system_prompt ?? '').trim()
+      // recommend 카드는 step1·2·3 모두 동일 페르소나로 치환 (3 step 합쳐서 1 prompt)
+      // floor_plan_vision 카드는 step4만 치환
+      // body 치환은 첫 step에만 페르소나 본문을 두고, 나머지는 빈 body로 두어 중복 방지
+      // (buildPipelineLogicSectionWith가 본문을 join하므로 빈 step은 join 시 빈 줄 → SYSTEM_INSTRUCTION 무영향)
+      if (card.steps.length === 1) {
+        merged[card.steps[0]] = {
+          model: ov.model,
+          temperature: ov.temperature,
+          system_prompt: promptText.length > 0 ? promptText : undefined,
+        }
+      } else {
+        // 다중 step 묶음 — 첫 step에 페르소나 전체, 나머지는 빈 본문(공백 유지로 join 시 영향 X)
+        card.steps.forEach((stepKey, idx) => {
+          merged[stepKey] = {
+            model: ov.model,
+            temperature: ov.temperature,
+            system_prompt: idx === 0 && promptText.length > 0
+              ? promptText
+              : (idx === 0 ? undefined : ''),
+          }
+        })
+      }
+    }
+  }
+  return merged
+}
+
 /** PIPELINE_BLOCKS에 step별 persona override를 적용한 새 블록 맵 반환 (원본 불변) */
 export function applyPersonaOverrides(overrides?: StepOverridesMap): typeof PIPELINE_BLOCKS {
   if (!overrides) return PIPELINE_BLOCKS
@@ -120,9 +212,14 @@ export function applyPersonaOverrides(overrides?: StepOverridesMap): typeof PIPE
   for (const k of ['step1', 'step2', 'step3', 'step4'] as const) {
     const ov = overrides[k]
     if (!ov) continue
-    const prompt = (ov.system_prompt ?? '').trim()
+    if (typeof ov.system_prompt !== 'string') continue
+    const prompt = ov.system_prompt.trim()
     if (prompt.length > 0) {
       next[k] = { ...PIPELINE_BLOCKS[k], body: prompt }
+    } else if (ov.system_prompt === '') {
+      // v9.51: expandCardOverrides가 다중 step 묶음의 비-첫 step에 빈 문자열을 넣어 본문 제거 신호
+      // → 빈 step은 join 시 빈 줄로 노출되지 않도록 body를 비움
+      next[k] = { ...PIPELINE_BLOCKS[k], body: '' }
     }
   }
   return next
@@ -131,16 +228,14 @@ export function applyPersonaOverrides(overrides?: StepOverridesMap): typeof PIPE
 /** persona override를 반영해 [추천 로직] 절 빌드 (overrides 없으면 buildPipelineLogicSection과 동일) */
 export function buildPipelineLogicSectionWith(overrides?: StepOverridesMap): string {
   const blocks = applyPersonaOverrides(overrides)
-  return [
-    '[추천 로직 — 3단계 우선순위]',
-    blocks.step1.body,
-    blocks.step2.body,
-    blocks.step3.body,
-    blocks.step4.body,
-  ].join('\n')
+  // v9.51: 빈 body step은 join에서 제외하여 SYSTEM_INSTRUCTION 깔끔하게 유지
+  const bodies = [blocks.step1.body, blocks.step2.body, blocks.step3.body, blocks.step4.body]
+    .map(b => b.trim())
+    .filter(b => b.length > 0)
+  return ['[추천 로직 — 3단계 우선순위]', ...bodies].join('\n')
 }
 
-/** step별 temperature 오버라이드 중 최댓값을 반환 (비면 null). 단일 Gemini 호출 한도 내에서 보수적으로 적용. */
+/** step별 temperature 오버라이드 중 평균을 반환. 단일 Gemini 호출 한도 내에서 보수적으로 적용. */
 export function pickEffectiveTemperature(overrides?: StepOverridesMap, fallback = 0.4): number {
   if (!overrides) return fallback
   const vals: number[] = []
@@ -151,4 +246,44 @@ export function pickEffectiveTemperature(overrides?: StepOverridesMap, fallback 
   if (vals.length === 0) return fallback
   // 평균 (한 호출에 합치기 때문에 보수적으로 평균값)
   return vals.reduce((a, b) => a + b, 0) / vals.length
+}
+
+// ── v9.51 변수 토큰 — 페르소나에 인라인 삽입용 ─────────────────────────
+// 사용자가 페르소나 textarea에 변수 chip을 끼워 넣으면 토큰(`{{venue}}` 등)으로 직렬화.
+// recommendSignage.ts가 호출 시점에 실제 데이터로 치환.
+//
+// D-1 단순 적용 (v9.51): textarea + ′변수 삽입′ 드롭다운 (드래그 X, 커서 위치에 삽입).
+// D-2 풀 Tiptap chip 드래그 (v9.52 후속): 의존성 추가(@tiptap/react MIT) + 시각 chip + 드래그.
+
+export interface PersonaVariable {
+  /** {{token}} 형식의 토큰 (recommendSignage가 치환) */
+  token: string
+  /** UI 표시 라벨 */
+  label: string
+  /** chip 색상 힌트 (Tailwind 클래스 prefix — bg-emerald, bg-indigo 등) */
+  color: string
+  /** 카드 제한 (이 카드에서만 사용 가능) — null이면 전체 */
+  cardScope?: CardKey | null
+  /** 도움말 (호버 시 노출) */
+  hint: string
+}
+
+export const PERSONA_VARIABLES: PersonaVariable[] = [
+  { token: '{{venue}}',          label: '행사 장소',         color: 'bg-indigo-100 text-indigo-800 border-indigo-200', cardScope: null,                hint: '입력된 행사 장소 (예: 코엑스 그랜드볼룸)' },
+  { token: '{{parts}}',          label: '선택 파트',         color: 'bg-emerald-100 text-emerald-800 border-emerald-200', cardScope: null,             hint: '선택된 프로그램 파트 다중 (예: 회의·등록)' },
+  { token: '{{floor_plan}}',     label: '도면 분석 결과',    color: 'bg-amber-100 text-amber-800 border-amber-200',     cardScope: 'floor_plan_vision', hint: '도면 첨부 시 Vision 분석 텍스트 (도면 카드 전용)' },
+  { token: '{{past_events}}',    label: '과거 사례',         color: 'bg-violet-100 text-violet-800 border-violet-200',  cardScope: null,                hint: 'findSimilarPastEvents 결과 5건 요약' },
+  { token: '{{facility_guide}}', label: '시설 가이드',       color: 'bg-sky-100 text-sky-800 border-sky-200',           cardScope: null,                hint: 'venueFacilityGuide 시드 + 어드민 마스터 합본' },
+]
+
+/**
+ * 페르소나 텍스트의 {{token}} 토큰을 실제 데이터로 치환 (recommendSignage가 호출).
+ * data 인자는 부분적으로만 채워질 수 있음 — 미주어진 토큰은 빈 문자열로 치환.
+ */
+export function substitutePersonaVariables(personaText: string, data: Partial<Record<string, string>>): string {
+  if (!personaText) return personaText
+  return personaText.replace(/\{\{(\w+)\}\}/g, (_, key) => {
+    const v = data[key]
+    return typeof v === 'string' && v.length > 0 ? v : ''
+  })
 }

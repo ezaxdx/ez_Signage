@@ -1,5 +1,98 @@
 # 작업 이력
 
+## 2026-05-14 (v9.51) — AI 추천 파이프라인 4 step → 2 카드 통합 + 페르소나 인라인 변수 chip (D-1)
+
+### 사용자 요청
+조기흠 사원(AXDX팀, 2026-05-14): "v9.51 사이클 — AI 추천 파이프라인을 4 step → 2 카드로 통합 + 페르소나 textarea에 인라인 변수 chip(드래그·이동 가능) 기능 추가".
+김연아 대리님 카톡 원문 보존: "관리자페이지 -AI 관리에 3번 AI 투입되는 부분에서 투입되는 AI를 설정하고 페르소나를 수정할 수 있는 기능을 추가"
+→ ′3번 AI 투입′ = 통합 후에도 카드 1(추천) 안에 indigo highlight 박스로 ′표준 수량 산정′ 영역 시각 강조 유지.
+
+### Step A — 4 step → 2 카드 통합 (UI + 데이터 구조)
+
+#### 카드 1 — 추천 (항상 호출)
+- 통합 step: step1(파트 후보 추출) + step2(시설 가이드 제약) + step3(표준 수량 산정)
+- 1 페르소나 textarea (3 step 합쳐서 1 prompt로 묶임 — Gemini 단일 호출 1회)
+- 카드 안내: "이 페르소나는 추천 흐름 1번의 Gemini 호출에 사용됩니다. 파트 후보 추출 → 시설 제약 → 표준 수량 산정"
+- ★ ′3번 AI 투입′ indigo highlight 박스 (카드 내부) — 김연아 대리님 명시 영역 시각 강조 유지
+
+#### 카드 2 — 도면 분석 보강 (도면 첨부 시만)
+- step4(도면 Vision 보강) 단독
+- 1 페르소나 textarea
+- 카드 안내: "도면 첨부 시에만 별도 Gemini Vision 호출됩니다."
+- amber `도면 첨부 시만` 배지 (카드 1은 indigo `항상 호출`)
+
+### Step B — 코드 변경
+
+#### `lib/ai/agentPipeline.ts` (SOT 확장)
+- `CardKey` union 신설 (`recommend` | `floor_plan_vision`)
+- `CardOverridesMap`·`PIPELINE_CARDS`·`PIPELINE_CARD_LIST` 신규 export — 카드 단위 메타·페르소나 입력 구조
+- `expandCardOverrides(cardOverrides, legacyStepOverrides)` — 카드 페르소나를 step1·2·3(또는 step4) 단위 StepOverridesMap으로 펼치는 어댑터. v9.46 stepOverrides도 호환 위해 함께 받음.
+- `applyPersonaOverrides` — 빈 문자열 신호 처리 추가 (다중 step 묶음의 비-첫 step body 비움)
+- `buildPipelineLogicSectionWith` — 빈 body step은 join에서 제외 (SYSTEM_INSTRUCTION 깔끔)
+- `PERSONA_VARIABLES` (5종 변수 토큰) + `substitutePersonaVariables()` — 변수 chip 토큰 치환
+  - `{{venue}}` 행사 장소 / `{{parts}}` 선택 파트 / `{{floor_plan}}` 도면 분석 결과(도면 카드 전용) / `{{past_events}}` 과거 사례 / `{{facility_guide}}` 시설 가이드
+
+#### `lib/ai/recommendSignage.ts` (cardOverrides 우선 적용)
+- `RecommendInput.cardOverrides?: CardOverridesMap` 신규 (stepOverrides는 호환 위해 보존)
+- 추천 카드 페르소나는 `substitutePersonaVariables`로 변수 토큰 치환 후 `expandCardOverrides`로 step1·2·3에 일괄 적용
+- 도면 카드 페르소나는 Vision 호출 후 결과 텍스트를 `{{floor_plan}}` 토큰에 치환하여 [보강] 절 작성
+- `effectiveTemp`·`sysInstruction` 모두 expandedStepOverrides 기반
+
+#### `app/(dashboard)/admin/ai/AdminAiClient.tsx` (UI 전면 개편)
+- `STEP_SETTINGS_KEY` (v2) → `CARD_SETTINGS_KEY` (v3) — 카드 단위 신규 키, v2는 호환 위해 보존
+- 첫 진입 시 v3 미존재면 v2 자동 마이그레이션 (step1·2·3 중 가장 긴 페르소나 → recommend 카드, step4 → floor_plan_vision 카드)
+- 4 step grid → 2 카드 vertical stack
+- 변수 chip 패널 (D-1 단순 — 클릭 시 textarea 커서 위치에 토큰 삽입). `insertVariable()` 헬퍼 + `textareaRefs` ref 관리
+- 각 카드 사용 가능 변수 자동 필터 (`cardScope` 기반 — 도면 분석 결과는 floor_plan_vision 카드에만)
+- 카드 1 안에 indigo highlight 박스 ′★ 표준 수량 산정 = 김연아 대리님 명시 ′3번 AI 투입′ 영역′ 시각 강조 유지
+- 안내 박스에 ′적용 위치: 새 프로젝트 만들기 → AI 추천 받기′ 명시 (그대로 보존)
+- 의존성 0건 추가 (D-1 단순 적용 — 풀 Tiptap chip 드래그는 v9.52 후속)
+
+#### `app/(dashboard)/projects/new/case-a/page.tsx` (loadCardOverrides + cardOverrides body)
+- `loadStepOverrides()` → `loadCardOverrides()` — v3 우선, v2 자동 마이그레이션
+- API body에 `cardOverrides` 전달 (stepOverrides 자리 대체)
+
+### Step C — 페르소나 textarea 인라인 변수 chip (D-1 단순 적용)
+사용자 명시 ′움직여서 넣을 수 있게′ — D-2 풀 Tiptap chip 드래그는 ~6시간 작업으로 v9.52 분리.
+v9.51은 D-1 단순 (textarea + 변수 삽입 패널, 커서 위치 삽입) ~2시간 적용.
+- 변수 패널 5종 chip 색상 코딩 (indigo/emerald/amber/violet/sky)
+- 클릭 시 텍스트 영역 커서 위치에 `{{token}}` 삽입 + 커서 자동 이동
+- `requestAnimationFrame` 후 selectionRange 재설정 (React state 업데이트 후 DOM 반영 보장)
+- 도면 분석 결과 chip은 도면 카드에만 노출 (cardScope='floor_plan_vision')
+
+### 보존 (사용자 명시)
+- ✅ AiPipelineCard.tsx 미삭제 (v9.45 사용자 명시 보존 조건)
+- ✅ v9.46 페르소나 본체 그대로 (구조만 4 step → 2 카드로 변경, localStorage v2는 자동 마이그레이션)
+- ✅ v9.47 IA SOT KPI 정렬 그대로 (3 카드)
+- ✅ v9.48 admin AI 정리 그대로 (전역 설정 폼 = 운영 설정만, 하단 보존)
+- ✅ v9.49 운영 대시보드 정리 그대로
+- ✅ DB 스키마 변경 0건 / 의존성 추가 0건
+- ✅ 김연아 대리님 ′3번 AI 투입′ 명시 영역 시각 강조 유지 (indigo highlight 박스)
+
+### 변경 파일 (4개)
+- `lib/ai/agentPipeline.ts` (CardKey·CardOverridesMap·PIPELINE_CARDS·expandCardOverrides·PERSONA_VARIABLES·substitutePersonaVariables 신설)
+- `lib/ai/recommendSignage.ts` (cardOverrides 우선 처리 + 변수 토큰 치환 + 도면 카드 페르소나 보강 절 결합)
+- `app/(dashboard)/admin/ai/AdminAiClient.tsx` (4 step grid → 2 카드 + 변수 chip 패널 + v2→v3 마이그레이션 + 3번 AI 투입 highlight 보존)
+- `app/(dashboard)/projects/new/case-a/page.tsx` (loadCardOverrides + body cardOverrides 전달)
+
+### 검증
+- TSC 0 에러
+- Next 빌드 29/29 라우트 PASS
+- harness 70/72 통과 (0 fail, 2 warn = dev 미실행 + Supabase 401 — 작업 무관)
+- 라우트 크기 변화:
+  - `/admin/ai` 7.5 → 8.68 kB (+1.18 kB — 변수 chip 패널 추가)
+  - `/projects/new/case-a` 11.9 → 12.1 kB (+0.2 kB — loadCardOverrides 마이그레이션 헬퍼)
+
+### 후속 (v9.52 분리)
+- D-2 풀 Tiptap chip 드래그 (의존성 추가: @tiptap/react @tiptap/starter-kit @tiptap/extension-mention — 모두 MIT 라이선스 → CLAUDE.md §자율 작업 가이드 ③ 룰 부합)
+- 시각 chip + 드래그로 위치 이동 + 클릭 삭제 + HTML/JSON 직렬화 시 토큰화
+
+### 배포
+- 브랜치: `auto/v9.51-ai-pipeline-2cards-260514` (auto/v9.49-admin-ops-strip-260514 위에서 분기)
+- main 머지·push는 사용자 결정 (작업 지시: 보고만, push 자동 X)
+
+---
+
 ## 2026-05-14 (v9.48-C) — step별 페르소나 안내 박스 한 줄로 단순화
 
 ### 사용자 요청
