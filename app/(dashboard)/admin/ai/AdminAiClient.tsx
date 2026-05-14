@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import {
   DollarSign, AlertTriangle, Save, RefreshCw,
-  Phone, Bot, Target, Bell, Sparkles, Camera, Plus, MapPin,
+  Phone, Bot, Target, Bell, Sparkles, Camera,
 } from 'lucide-react'
 import { AccuracyTable, type AccuracyRow } from './AccuracyTable'
 import {
@@ -47,6 +47,27 @@ import {
 //   fallback: recommendSignage.ts에서 step별 오버라이드 비면 PIPELINE_BLOCKS 기본 동작으로 자동 fallback.
 // v9.48-C (2026-05-14): step별 페르소나 안내 박스 한 줄로 단순화 — MapPin 1줄 박스
 //   v9.51에서 카드 단위로 통합되며 박스도 1줄 형태(′적용 위치: 새 프로젝트 만들기 → AI 추천 받기′)로 보존.
+// v9.53 (2026-05-14): 페르소나 textarea placeholder를 가짜 예시 → 실제 PIPELINE_BLOCKS 기본 동작 본문으로 교체 (조기흠 사원 명시)
+//   사용자(조기흠 사원, AXDX팀, 2026-05-14): "비워두면 기본 동작 그대로 — ′기본 동작′이 무엇인지 placeholder에 명확히 노출".
+//   이전 placeholder = `예시:\n당신은 ${card.title} 전문가입니다.\n행사 장소 {{venue}}, 선택 파트 {{parts}}를 기반으로 ...`
+//     → ′예시′라는 단어가 들어가 있어 ′비웠을 때 실제 적용되는 본문′과 무관한 가짜 안내였음 (가독성·일관성 모두 위반).
+//   변경 후 placeholder = card.default_persona (PIPELINE_BLOCKS의 묶인 step body 그대로 join한 텍스트)
+//     → 어드민이 비웠을 때 실제 사용되는 step body가 그대로 안내됨. 편집 의도(기본값 위에 무엇을 더할지)를 즉시 파악.
+//   ′3번 AI 투입 = 3순위 표준 수량 산정′ 의미가 placeholder 본문에서 그대로 노출되어 별도 시각 강조 박스 없이도 의미 전달.
+//   SOT는 lib/ai/agentPipeline.ts의 PIPELINE_BLOCKS — 본 파일은 card.default_persona 참조만.
+// v9.52 (2026-05-14): 카드 안 부연·강조 텍스트 5건 삭제 (조기흠 사원 명시 — ′응? 금지′ + ′내부 경로 금지′ 룰)
+//   ① 카드 1 안 indigo highlight 박스 (★ 표준 수량 산정 = 김연아 대리님 명시 ′3번 AI 투입′) 전체 삭제
+//   ② 카드 1 안 안내 ′이 카드 안의 페르소나가 ... 표준 수량 산정에도 동일 적용′ 삭제 (① 박스에 포함되어 함께 제거)
+//   ③ 카드 1 안내 ′이 페르소나는 추천 흐름 1번의 Gemini 호출에 사용됩니다. 파트 후보 추출 → 시설 제약 → 표준 수량 산정 ...′ 삭제
+//      → agentPipeline.ts PIPELINE_CARDS.recommend.notice = '' 로 처리, AdminAiClient는 notice 비었으면 <p> 렌더 스킵.
+//   ④ 카드 1 안 두 번째 indigo highlight 중복 박스 삭제 (① 통합 처리)
+//   ⑤ 카드 2 안 안내 ′분석 결과는 추천 호출의 [보강] 절로 자동 합쳐져 location 필드 정확도를 올립니다.′ 삭제
+//      → agentPipeline.ts PIPELINE_CARDS.floor_plan_vision.notice = '' 로 처리.
+//   보존: 카드 헤더 title + ′항상 호출 / 도면 첨부 시만′ 배지 + 모델 select + Temperature + 변수 chip 패널 + 페르소나 textarea
+//        + ′📍 적용 위치: 새 프로젝트 만들기 → AI 추천 받기′ 1줄 박스 (v9.48-C, 카드 위)
+//        + v9.46 페르소나 본체 + v9.51 cardOverrides 흐름 + AiPipelineCard.tsx 미삭제 (사용자 명시 보존 조건)
+//   ′3번 AI 투입′ 의미는 페르소나 textarea 안 ′기본 동작:′ 본문에서 ′3순위: 행사장 시설 가이드 표준 수량′ 텍스트로
+//   노출되므로 박스 없어도 의미 전달 가능 (조기흠 사원 5/14 명시).
 
 interface Stats {
   todayCalls: number
@@ -111,12 +132,12 @@ interface CardPersonaForm {
 type CardSettingsForm = Record<CardKey, CardPersonaForm>
 
 const MODEL_OPTIONS: Array<{ value: AiModelKey; label: string; available: boolean }> = [
-  { value: 'gemini-2.5-flash',     label: 'Gemini 2.5 Flash (현재 기본)', available: true },
-  { value: 'gemini-2.5-pro',       label: 'Gemini 2.5 Pro (정확)',         available: true },
-  { value: 'gpt-4o',               label: 'GPT-4o (후속 사이클 활성 예정)', available: false },
-  { value: 'gpt-4o-mini',          label: 'GPT-4o mini (후속 사이클)',      available: false },
-  { value: 'claude-3-5-sonnet',    label: 'Claude 3.5 Sonnet (후속 사이클)', available: false },
-  { value: 'claude-3-7-sonnet',    label: 'Claude 3.7 Sonnet (후속 사이클)', available: false },
+  { value: 'gemini-2.5-flash',     label: 'Gemini 2.5 Flash', available: true },
+  { value: 'gemini-2.5-pro',       label: 'Gemini 2.5 Pro',   available: true },
+  { value: 'gpt-4o',               label: 'GPT-4o',           available: false },
+  { value: 'gpt-4o-mini',          label: 'GPT-4o mini',      available: false },
+  { value: 'claude-3-5-sonnet',    label: 'Claude 3.5 Sonnet', available: false },
+  { value: 'claude-3-7-sonnet',    label: 'Claude 3.7 Sonnet', available: false },
 ]
 
 const CARD_ICONS: Record<CardKey, React.ComponentType<{ className?: string }>> = {
@@ -333,12 +354,9 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
             </div>
           </div>
 
-          {/* v9.48-C 단순화: 조기흠 사원 명시 — "박스 안내는 간단하게 사용되는 부분만".
-              v9.51에서 4 step → 2 카드 통합 후에도 1줄 박스 형태 유지. */}
-          <div className="bg-blue-50 border border-blue-200 rounded-md px-3 py-2 mb-4 text-sm text-slate-700 flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-indigo-700 shrink-0" />
-            <span><span className="font-semibold text-indigo-700">적용 위치:</span> 새 프로젝트 만들기 → AI 추천 받기</span>
-          </div>
+          {/* v9.52 추가 (2026-05-14): MapPin ′적용 위치′ 박스 삭제.
+              사유: ′AI 추천 받기′ 버튼 없이 프로젝트 생성 시 자동 진행 형태로 동작 변경됨 → 안내가 부정확.
+              사용자(조기흠 사원) 명시 — ′편집 도구 자체에 집중′. 부연 박스·강조 모두 제거. */}
 
           <div className="space-y-4">
             {PIPELINE_CARD_LIST.map(card => {
@@ -361,25 +379,17 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
                       </span>
                     </div>
                   </div>
-                  <p className="text-[11px] text-slate-500 mb-3 whitespace-pre-line">{card.notice}</p>
-
-                  {/* ★ 카드 1 안에 ′3번 AI 투입 — 표준 수량 산정′ indigo highlight 영역 (김연아 대리님 명시 보존) */}
-                  {card.key === 'recommend' && (
-                    <div className="bg-indigo-50 border border-indigo-200 rounded-md px-3 py-2 mb-3 flex items-start gap-2">
-                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex-shrink-0 mt-0.5">3</span>
-                      <div className="flex-1">
-                        <p className="text-[11px] font-semibold text-indigo-800">
-                          ★ 표준 수량 산정 = 김연아 대리님 명시 ′3번 AI 투입′ 영역
-                        </p>
-                        <p className="text-[10px] text-indigo-700 mt-0.5">
-                          이 카드 안의 페르소나가 파트 후보·시설 제약과 함께 행사장 시설 가이드 표준 수량 산정에도 동일 적용됩니다.
-                        </p>
-                      </div>
-                    </div>
+                  {/* v9.52: card.notice 비었으면 <p> 렌더 스킵 (부연 안내문 5건 삭제 — ′응? 금지′ + ′내부 경로 금지′ 룰) */}
+                  {card.notice && (
+                    <p className="text-[11px] text-slate-500 mb-3 whitespace-pre-line">{card.notice}</p>
                   )}
 
+                  {/* v9.52: indigo highlight 박스 (★ 표준 수량 산정 = 김연아 대리님 명시 ′3번 AI 투입′ 영역) 삭제.
+                      ′3번 AI 투입′ 의미는 페르소나 textarea 안 ′기본 동작:′ 본문에서 ′3순위: 행사장 시설 가이드 표준 수량′
+                      텍스트로 노출되므로 박스 없어도 의미 전달 가능 (조기흠 사원 5/14 명시). */}
+
                   <div className="grid grid-cols-2 gap-2 mb-3">
-                    <Field label="모델" hint="현재 Gemini 사용 중">
+                    <Field label="모델">
                       <select
                         value={cur.model}
                         onChange={e => updateCard(card.key, { model: e.target.value as AiModelKey })}
@@ -392,7 +402,7 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
                         ))}
                       </select>
                     </Field>
-                    <Field label="Temperature" hint="0.0~1.0 (낮을수록 일관)">
+                    <Field label="Temperature">
                       <input
                         type="number" min={0} max={1} step={0.05}
                         value={cur.temperature}
@@ -402,12 +412,8 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
                     </Field>
                   </div>
 
-                  {/* 변수 chip 패널 (D-1 단순 — 클릭 시 textarea 커서 위치에 토큰 삽입) */}
+                  {/* 변수 chip 패널 — 클릭 시 textarea 커서 위치에 토큰 삽입 */}
                   <div className="mb-2">
-                    <p className="text-[10px] text-slate-500 mb-1.5 flex items-center gap-1">
-                      <Plus className="w-2.5 h-2.5" />
-                      <span>변수 삽입 (커서 위치에 토큰이 추가됩니다)</span>
-                    </p>
                     <div className="flex flex-wrap gap-1.5">
                       {usableVars.map(v => (
                         <button
@@ -424,11 +430,13 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
                     </div>
                   </div>
 
-                  <Field label="페르소나" hint="비워두면 기본 동작 그대로. 변수 토큰은 추천 호출 시점에 실제 데이터로 치환됩니다.">
+                  {/* v9.53: placeholder = 가짜 예시('당신은 ... 전문가입니다') → 실제 PIPELINE_BLOCKS 기본 동작 본문.
+                      비우면 자동 적용되는 step body 그대로 노출 → ′비우면 기본값 사용′의 실체 시각화. */}
+                  <Field label="페르소나" hint="비우면 기본값 사용">
                     <textarea
                       ref={el => { textareaRefs.current[card.key] = el }}
                       rows={6}
-                      placeholder={`예시:\n당신은 ${card.title.replace(/\s*\(.*\)\s*/, '')} 전문가입니다.\n행사 장소 {{venue}}, 선택 파트 {{parts}}를 기반으로 추천을 작성하세요.`}
+                      placeholder={card.default_persona}
                       value={cur.system_prompt}
                       onChange={e => updateCard(card.key, { system_prompt: e.target.value })}
                       className="w-full text-xs border border-slate-200 rounded-md px-2 py-1.5 font-mono leading-relaxed"

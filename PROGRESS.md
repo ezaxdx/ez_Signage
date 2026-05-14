@@ -1,5 +1,193 @@
 # 작업 이력
 
+## 2026-05-14 (v9.53) — 페르소나 textarea placeholder를 가짜 예시 → 실제 PIPELINE_BLOCKS 기본 동작 본문으로 교체
+
+### 사용자 요청
+조기흠 사원(AXDX팀, 2026-05-14): "/admin/ai 페이지의 페르소나 textarea placeholder를 ′예시 본문′이 아닌 **실제 적용된 PIPELINE_BLOCKS 기본 동작 본문**으로 변경".
+배경: hint = ′비우면 기본값 사용′인데 placeholder는 가짜 예시(′당신은 [card.title] 전문가입니다 ...′) → ′기본 동작′이 무엇인지 화면 어디에도 안 보임. 사용자가 비웠을 때 실제 적용되는 본문을 placeholder에서 즉시 확인할 수 있어야 편집 의도(기본값 위에 무엇을 더할지)가 명확해짐.
+
+### Step A — `lib/ai/agentPipeline.ts` PIPELINE_CARDS에 default_persona 필드 추가
+- `PipelineCard` interface에 `default_persona: string` 필드 추가 (JSDoc — SOT는 PIPELINE_BLOCKS, 직접 편집 금지)
+- 신규 헬퍼 `buildDefaultPersonaForCard(stepKeys)` — 묶인 step body들을 trim 후 `\n` join한 텍스트 반환
+- `PIPELINE_CARDS.recommend.default_persona` = step1·2·3 body join (파트 후보 추출 → 시설 가이드 제약 → 표준 수량 산정 본문이 그대로 노출 — ′3번 AI 투입′ 의미 시각 강조 박스 없이도 placeholder에 자연 노출)
+- `PIPELINE_CARDS.floor_plan_vision.default_persona` = step4 body 단독 (도면 Vision 보강 본문)
+
+### Step B — `app/(dashboard)/admin/ai/AdminAiClient.tsx` placeholder 교체
+- 이전: `placeholder={`예시:\n당신은 ${card.title} 전문가입니다.\n행사 장소 {{venue}}, 선택 파트 {{parts}}를 기반으로 추천을 작성하세요.`}`
+- 변경: `placeholder={card.default_persona}`
+- 헤더 사이클 코멘트(v9.53) 추가 — 변경 사유·SOT(PIPELINE_BLOCKS)·′3번 AI 투입′ 의미 노출 명시
+
+### 보존
+- 모든 이전 사이클 그대로 (v9.46 페르소나 본체 + v9.51 cardOverrides 흐름 + v9.52 부연 정리)
+- AiPipelineCard.tsx 미삭제 (v9.45 사용자 명시 보존 조건)
+- DB 스키마 변경 0건 / 의존성 추가 0건 / recommendSignage.ts·case-a 영향 0건
+- localStorage `admin_ai_settings_v3` 동작 그대로 (placeholder만 변경, 키·값 영향 0건)
+- ′📍 적용 위치: 새 프로젝트 만들기 → AI 추천 받기′ 박스가 v9.52 추가 정리에서 이미 삭제된 상태 그대로 유지 (관련 무관)
+
+### 변경 파일 (2개)
+- `lib/ai/agentPipeline.ts` (PipelineCard.default_persona 필드 + buildDefaultPersonaForCard 헬퍼 + PIPELINE_CARDS 두 카드에 default_persona 산출)
+- `app/(dashboard)/admin/ai/AdminAiClient.tsx` (textarea placeholder = card.default_persona + v9.53 사이클 코멘트)
+
+### 검증
+- TSC 0 에러
+- Next 빌드 36/36 라우트 PASS
+- harness 70/72 통과 (0 fail, 2 warn = dev 미실행 + Supabase 401 — 작업 무관)
+- 라우트 크기:
+  - `/admin/ai` 7.23 → 7.47 kB (+0.24 kB — placeholder 문자열이 가짜 예시 1줄 → 실제 step body 다중 줄로 길어진 영향)
+
+### 효과
+- /admin/ai 진입 → 페르소나 textarea 빈 상태에서 placeholder가 실제 step body 노출
+- 카드 1 (추천): "1순위: 프로그램 파트별 환경장식물 후보 추출 ... / 2순위: 행사장 시설 가이드 제약 ... / 3순위: 행사장 시설 가이드 표준 수량 ..."
+- 카드 2 (도면 분석 보강): "[보강] 행사장 배치도 Vision 분석 → 동선·설치 위치 컨텍스트"
+- ′3번 AI 투입 = 3순위 표준 수량 산정′ 의미가 placeholder 본문에서 자연 노출 → 김연아 대리님 명시 영역 의미 전달 보장
+- PIPELINE_BLOCKS 본문이 SOT — 향후 step body 변경 시 default_persona 자동 동기화 (헬퍼 함수 통해)
+
+### 배포
+- 브랜치: `auto/v9.53-persona-placeholder-real-default-260514` (v9.52 위에서 분기)
+- main 머지·push는 사용자 결정 (작업 지시: 보고만, push 자동 X)
+
+---
+
+## 2026-05-14 (v9.52 추가) — 카드 안내 박스·헤더 부연·hint 단순화 (편집 도구 본질 집중)
+
+### 사용자 추가 지적 (5/14)
+조기흠 사원(AXDX팀, 2026-05-14): 1차 v9.52에 이어 4가지 추가 지시.
+1. ′적용 위치: 새 프로젝트 만들기 → AI 추천 받기′ MapPin blue 박스 삭제
+   - 사유: ′AI 추천 받기′ 버튼 없이 프로젝트 생성 시 자동 진행 형태로 동작 변경됨 → 안내가 부정확
+2. 카드 헤더 부연 ′(항상 호출)′ ′(도면 첨부 시만)′ 단순화 → 배지가 이미 같은 정보 표시
+3. 모든 안내 문구 정리 (′응?′ 금지 룰)
+   - ′(현재 기본)′ 모델 select 옵션 텍스트 / hint ′현재 Gemini 사용 중′ / ′0.0~1.0 (낮을수록 일관)′ 등
+   - 페르소나 hint ′비워두면 기본 동작 그대로. 변수 토큰은 ...′ → ′비우면 기본값 사용′
+   - 변수 chip 패널 안내문 ′변수 삽입 (커서 위치에 토큰이 추가됩니다)′ 삭제
+4. ′백단 로직 편집 가능′ 본질 = 편집 도구 자체에 집중. 부연·중복 모두 제거.
+
+### 코드 변경
+
+#### `lib/ai/agentPipeline.ts`
+- `PIPELINE_CARDS.recommend.title`: ′추천 (항상 호출)′ → ′추천′
+- `PIPELINE_CARDS.floor_plan_vision.title`: ′도면 분석 보강 (도면 첨부 시만)′ → ′도면 분석 보강′
+- 사유: 카드 헤더 옆 배지(indigo ′항상 호출′ / amber ′도면 첨부 시만′)가 같은 정보를 노출 — title 괄호 부연은 중복
+- v9.52 헤더 단순화 사유 주석 1블록 갱신
+
+#### `app/(dashboard)/admin/ai/AdminAiClient.tsx`
+- lucide import에서 `MapPin`, `Plus` 제거 (사용처 삭제됨)
+- MapPin 안내 박스 JSX 4줄 삭제 + v9.52 추가 사유 주석 1블록
+- MODEL_OPTIONS 6종 라벨에서 부연 텍스트 일괄 제거
+  - ′Gemini 2.5 Flash (현재 기본)′ → ′Gemini 2.5 Flash′
+  - ′Gemini 2.5 Pro (정확)′ → ′Gemini 2.5 Pro′
+  - ′GPT-4o (후속 사이클 활성 예정)′ → ′GPT-4o′
+  - ′GPT-4o mini (후속 사이클)′ → ′GPT-4o mini′
+  - ′Claude 3.5 Sonnet (후속 사이클)′ → ′Claude 3.5 Sonnet′
+  - ′Claude 3.7 Sonnet (후속 사이클)′ → ′Claude 3.7 Sonnet′
+- Field hint 정리:
+  - 모델 ′hint="현재 Gemini 사용 중"′ 제거
+  - Temperature ′hint="0.0~1.0 (낮을수록 일관)"′ 제거
+  - 페르소나 ′hint="비워두면 기본 동작 그대로. 변수 토큰은 추천 호출 시점에 실제 데이터로 치환됩니다."′ → ′hint="비우면 기본값 사용"′
+- 변수 chip 패널 안내문 `<p className="text-[10px] ...">변수 삽입 ...</p>` 1블록 삭제 (chip 자체로 의미 명확)
+- placeholder의 `card.title.replace(/\s*\(.*\)\s*/, '')`에서 정규식 제거 (title에 이미 괄호 부연 없음)
+
+### 보존
+- 카드 본체 = 헤더 (title + 배지) + 모델 select + Temperature + 변수 chip 패널 + 페르소나 textarea
+- v9.52 1차 작업 (notice·indigo highlight 박스 5건 삭제) 그대로
+- v9.46 페르소나 본체 + v9.51 cardOverrides 흐름 + AiPipelineCard.tsx 미삭제 (사용자 명시 보존 조건)
+- localStorage admin_ai_settings_v3 동작 그대로 (placeholder만 단순화, 키·구조 영향 0건)
+- DB·의존성·recommendSignage.ts 영향 0건
+
+### 변경 파일 (2개)
+- `lib/ai/agentPipeline.ts` (PIPELINE_CARDS.title 2건 단순화 + v9.52 헤더 사유 주석 갱신)
+- `app/(dashboard)/admin/ai/AdminAiClient.tsx` (MapPin 박스 삭제 + lucide import 정리 + 모델 라벨·Field hint·변수 chip 안내문·placeholder 정규식 일괄 단순화)
+
+### 검증
+- TSC 0 에러
+- Next 빌드 36/36 라우트 PASS (admin/ai 라우트 신호 양호)
+- harness 70/72 통과 (0 fail, 2 warn = dev 미실행 + Supabase env — 작업 무관)
+- 라우트 크기:
+  - `/admin/ai` 7.71 → 7.23 kB (-0.48 kB — 박스 4줄 + hint 3건 + 안내문 1블록 + 모델 라벨 부연 정리)
+  - 작업 지시 예상 6~7 kB 적중
+
+### 최종 카드 UI 구조 (남은 것 / 빠진 것)
+**남은 것 (각 카드)**
+- 카드 헤더: title (′추천′ / ′도면 분석 보강′) + lucide 아이콘 + indigo/amber 배지 (′항상 호출′ / ′도면 첨부 시만′)
+- 모델 select (단순 라벨, hint 없음)
+- Temperature 입력 (단순)
+- 변수 chip 패널 (5종 토큰, 안내문 없음 — chip 자체로 의미 전달)
+- 페르소나 textarea (placeholder = 예시 본문, hint = ′비우면 기본값 사용′)
+
+**빠진 것**
+- MapPin ′적용 위치′ blue 안내 박스 (1줄)
+- indigo highlight ★ 표준 수량 산정 박스 (v9.52 1차에서 삭제됨)
+- card.notice 안내문 5건 (v9.52 1차에서 빈 문자열 처리됨 → 조건부 렌더 스킵)
+- 카드 헤더 title 괄호 부연 ′(항상 호출)′ / ′(도면 첨부 시만)′
+- 모델 select 옵션 부연 ′(현재 기본)′·′(정확)′·′(후속 사이클)′ 등
+- Field hint ′현재 Gemini 사용 중′ / ′0.0~1.0 (낮을수록 일관)′ / 페르소나 부연 한 줄
+- 변수 chip 패널 ′변수 삽입 (커서 위치에 토큰이 추가됩니다)′ 안내문
+
+### 배포
+- 브랜치: `auto/v9.52-admin-ai-card-cleanup-260514` (1차 v9.52 위에 누적 — 동일 브랜치)
+- main 머지·push는 사용자 결정 (작업 지시: 보고만, push 자동 X)
+
+---
+
+## 2026-05-14 (v9.52) — 어드민 AI 카드 안 부연·강조 텍스트 5건 삭제
+
+### 사용자 요청
+조기흠 사원(AXDX팀, 2026-05-14): "/admin/ai 페이지의 추천 카드·도면 분석 카드 안 부연·강조 5건 삭제".
+이유: 모든 부연·강조 텍스트 = ′응? 금지′ + ′내부 경로 금지′ 룰 위반. 사용자(비개발자) 입장에서 의미 없는 코드·내부 경로 메타.
+
+### 삭제 대상 5건 (모두 처리 완료)
+| # | 위치 | 내용 | 처리 |
+|---|------|------|------|
+| 1 | 카드 1 indigo highlight 박스 | ′★ 표준 수량 산정 = 김연아 대리님 명시 ′3번 AI 투입′ 영역′ | **박스 전체 삭제** (사용자 명시) |
+| 2 | 카드 1 안내 | ′이 카드 안의 페르소나가 파트 후보·시설 제약과 함께 행사장 시설 가이드 표준 수량 산정에도 동일 적용됩니다.′ | 삭제 (① 박스에 포함되어 함께 제거) |
+| 3 | 카드 1 안내 | ′이 페르소나는 추천 흐름 1번의 Gemini 호출에 사용됩니다. 파트 후보 추출 → 시설 제약 → 표준 수량 산정 — 3 step이 단일 프롬프트로 합쳐집니다.′ | agentPipeline.ts notice = '' / AdminAiClient `<p>` 렌더 스킵 |
+| 4 | 카드 1 두 번째 indigo highlight 중복 박스 | (1번과 동일 박스) | ① 통합 처리 |
+| 5 | 카드 2 안내 | ′분석 결과는 추천 호출의 [보강] 절로 자동 합쳐져 location 필드 정확도를 올립니다.′ | agentPipeline.ts notice = '' / AdminAiClient `<p>` 렌더 스킵 |
+
+### 코드 변경
+
+#### `lib/ai/agentPipeline.ts`
+- `PIPELINE_CARDS.recommend.notice` = `''` (이전: ′이 페르소나는 추천 흐름 1번의 Gemini 호출에 사용됩니다 ...′)
+- `PIPELINE_CARDS.floor_plan_vision.notice` = `''` (이전: ′도면 첨부 시에만 별도 Gemini Vision 호출됩니다. 분석 결과는 추천 호출의 [보강] 절로 자동 합쳐져 ...′)
+- 인터페이스(`PipelineCard.notice: string`)는 호환 유지 — 빈 문자열 허용
+- v9.52 삭제 사유 주석 1블록 추가
+
+#### `app/(dashboard)/admin/ai/AdminAiClient.tsx`
+- 카드 1 안 indigo highlight 박스 JSX 블록 14줄 통째 삭제 (366~379줄 — `card.key === 'recommend' && (...)` 조건 + ★ 표준 수량 산정 라벨 + 본문 안내문)
+- card.notice `<p>` 렌더링을 `card.notice && (<p>...</p>)` 조건부로 변경 (notice 빈 문자열이면 `<p>` 자체 렌더 스킵 — DOM 깔끔)
+- 삭제 사유 주석 1블록 (v9.52) + 인라인 코멘트로 박스 삭제 위치 마킹
+
+### 보존 (사용자 명시)
+- ✅ 카드 1 = ′추천 (항상 호출)′ 헤더 + 페르소나 textarea + 변수 chip 패널
+- ✅ 카드 2 = ′도면 분석 보강 (도면 첨부 시만)′ 헤더 + 페르소나 textarea + 변수 chip 패널
+- ✅ ′항상 호출 / 도면 첨부 시만′ 배지 (indigo / amber)
+- ✅ 모델 select / Temperature / placeholder ′기본 동작:′ + 본문
+- ✅ 안내 박스 1줄 ′📍 적용 위치: 새 프로젝트 만들기 → AI 추천 받기′ (v9.48-C, 카드 위)
+- ✅ v9.46 페르소나 본체 + v9.51 cardOverrides 흐름 그대로
+- ✅ AiPipelineCard.tsx 미삭제 (v9.45 사용자 명시 보존 조건)
+- ✅ DB 스키마 변경 0건 / 의존성 추가 0건 / recommendSignage.ts·case-a 영향 0건
+
+### 추가 고려 (사용자 5/14 명시 보존 결정)
+- ′3번 AI 투입′ 강조 박스 삭제 시 김연아 대리님 카톡(′3번 AI 투입 부분에서 AI 설정 + 페르소나 수정′) 시각 강조 약해질 가능성 검토. 그러나 사용자 5/14 명시 = 박스 자체 삭제 우선.
+- ′3번 AI 투입′ 의미는 페르소나 textarea 안 ′기본 동작:′ 본문에서 ′3순위: 행사장 시설 가이드 표준 수량′ 텍스트로 노출 → 박스 없어도 의미 전달 가능 (사용자 모호 X).
+
+### 변경 파일 (2개)
+- `lib/ai/agentPipeline.ts` (PIPELINE_CARDS.recommend.notice + floor_plan_vision.notice → '' + v9.52 주석)
+- `app/(dashboard)/admin/ai/AdminAiClient.tsx` (indigo highlight 박스 통째 삭제 + notice 조건부 렌더 + v9.52 주석)
+
+### 검증
+- TSC 0 에러
+- Next 빌드 29/29 라우트 PASS
+- harness 70/72 통과 (0 fail, 2 warn = dev 미실행 + Supabase env — 작업 무관)
+- 라우트 크기 변화:
+  - `/admin/ai` 8.68 → 7.71 kB (-0.97 kB — 박스 JSX 14줄 + notice `<p>` 5건 정리)
+  - 작업 지시 예상 7.x kB 적중
+
+### 배포
+- 브랜치: `auto/v9.52-admin-ai-card-cleanup-260514` (main HEAD에서 분기 — v9.51 위)
+- main 머지·push는 사용자 결정 (작업 지시: 보고만, push 자동 X)
+
+---
+
 ## 2026-05-14 (v9.51) — AI 추천 파이프라인 4 step → 2 카드 통합 + 페르소나 인라인 변수 chip (D-1)
 
 ### 사용자 요청
