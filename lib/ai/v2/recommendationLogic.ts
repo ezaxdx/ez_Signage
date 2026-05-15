@@ -265,6 +265,32 @@ export function calculateQuantity(
       return { quantity: 0, formula: '회의 참석자 수' }
     case 'pop_special':
       return { quantity: 0, formula: '특수 안내 포인트 수 (수동 입력)' }
+    // 5/16 데이터허브 발견 11종 (pending — 이사님 결정 후 활성화)
+    case 'ceiling_banner_oversized':
+      return {
+        quantity: venue_specs?.ceiling_height_m && (typeof venue_specs.ceiling_height_m === 'number' ? venue_specs.ceiling_height_m >= 8 : false) ? 2 : 0,
+        formula: '천장고 8m 이상 시 메인 홀 × 2',
+      }
+    case 'truss':
+      return { quantity: 1, formula: '메인 무대 × 1 (무대 폭 ÷ 4m 기본)' }
+    case 'bridge':
+      return { quantity: 1, formula: '메인 무대 × 1' }
+    case 'podium_extended':
+      return { quantity: sessions * 4, formula: `세션 수 × 4 (직급별 분리) = ${sessions * 4}` }
+    case 'seating_chart_board':
+      return { quantity: 2, formula: '주출입구 × 1 (기본 2)' }
+    case 'operation_guide':
+      return { quantity: 2, formula: '인포데스크 × 1 (기본 2)' }
+    case 'award_board_extended':
+      return { quantity: 0, formula: '시상 카테고리 × 1 (행사 유형에 따라)' }
+    case 'welcome_board':
+      return { quantity: event.has_vip ? 1 : 0, formula: 'VIP·해외 의전 행사 시 × 1' }
+    case 'mou_banner':
+      return { quantity: 0, formula: '협약 건수 × 1 (수동 입력)' }
+    case 'newsroom_backboard':
+      return { quantity: 1, formula: '기자회견 × 1' }
+    case 'ambassador_curtain':
+      return { quantity: event.is_international ? 1 : 0, formula: '국제 행사 + 홍보대사 활용 시 × 1' }
     default:
       return { quantity: 0, formula: '기본 공식 미정' }
   }
