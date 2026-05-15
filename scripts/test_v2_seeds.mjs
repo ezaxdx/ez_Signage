@@ -52,7 +52,7 @@ console.log('='.repeat(70))
 // ============================================================
 console.log('\n[1] signageCategoriesSeed.ts — 24 카테고리')
 
-check('카테고리 총 24종', SIGNAGE_CATEGORIES_V2.length === 24, `현재 ${SIGNAGE_CATEGORIES_V2.length}`)
+check('카테고리 총 35종 (15 확정 + 9 v1 pending + 11 v2 pending)', SIGNAGE_CATEGORIES_V2.length === 35, `현재 ${SIGNAGE_CATEGORIES_V2.length}`)
 
 const keySet = new Set()
 const duplicates = []
@@ -65,7 +65,7 @@ check('카테고리 key unique', duplicates.length === 0, duplicates.join(', '))
 const confirmed = SIGNAGE_CATEGORIES_V2.filter((c) => !c.is_pending)
 const pending = SIGNAGE_CATEGORIES_V2.filter((c) => c.is_pending)
 check('확정 15종', confirmed.length === 15, `현재 ${confirmed.length}`)
-check('pending 9종', pending.length === 9, `현재 ${pending.length}`)
+check('pending 20종 (v1 9 + v2 5/16 11)', pending.length === 20, `현재 ${pending.length}`)
 
 for (const c of SIGNAGE_CATEGORIES_V2) {
   check(

@@ -36,6 +36,18 @@ export type SignageCategoryKey =
   | 'name_plate'           // 네임 플레이트
   | 'triangle_nameplate'   // 삼각 명패
   | 'pop_special'          // POP 특수 (A3 QR·드로잉 등)
+  // 신규 11종 후보 (5/16 데이터허브 학습 발견 — 28종 마스터 옵션 시 추가)
+  | 'ceiling_banner_oversized'  // 천정배너 (대형, ceiling_hanging 외 별도 카테고리)
+  | 'truss'                     // 트러스
+  | 'bridge'                    // 브릿지
+  | 'podium_extended'           // 포디움 확장 (보강)
+  | 'seating_chart_board'       // 좌석배치도 폼보드
+  | 'operation_guide'           // 운영안내
+  | 'award_board_extended'      // 시상보드 확장 (BIXPO 등)
+  | 'welcome_board'             // 웰컴보드
+  | 'mou_banner'                // MOU 현수막
+  | 'newsroom_backboard'        // 뉴스룸 백월
+  | 'ambassador_curtain'        // 홍보대사 통천
 
 export interface SignageCategoryV2 {
   key: SignageCategoryKey
@@ -324,6 +336,136 @@ export const SIGNAGE_CATEGORIES_V2: SignageCategoryV2[] = [
     source_keywords: ['SPP A3 POP QR·드로잉·매칭 (3건)', 'SPP A4 POP 7건'],
     default_quantity_formula: '특수 안내 포인트 수 × 1',
     parent_category: 'form_board_pop',  // 통합 검토 후보
+  },
+
+  // ========== 신규 11종 후보 (5/16 데이터허브 발견 — pending) ==========
+  // 옵션 A 17종 외 추가 검토. 이사님 결정 후 도입 폭 확정 (최대 28종 마스터 가능)
+  {
+    key: 'ceiling_banner_oversized',
+    label: '천정배너 (대형, 별도 카테고리)',
+    description: '천장 매다는 대형 배너. ceiling_hanging보다 더 큰 사이즈·다른 운영 패턴',
+    is_pending: true,
+    priority: 1,
+    typical_size_mm: { min_width: 8000, max_width: 24000, min_height: 4000, max_height: 10000 },
+    match_keywords: ['천정배너', '대형 천정', 'oversized ceiling'],
+    source_keywords: ['데이터허브 시안 다수'],
+    default_quantity_formula: '메인 홀 천장 × 1~2',
+    parent_category: 'ceiling_hanging',
+  },
+  {
+    key: 'truss',
+    label: '트러스',
+    description: '무대·전시 구조물. LED·조명·음향 거치대. 환경장식물과 연계',
+    is_pending: true,
+    priority: 2,
+    typical_size_mm: { min_width: 3000, max_width: 12000, min_height: 3000, max_height: 8000 },
+    match_keywords: ['트러스', 'truss', '구조물'],
+    source_keywords: ['무대 가이드'],
+    default_quantity_formula: '무대 폭 ÷ 4m',
+  },
+  {
+    key: 'bridge',
+    label: '브릿지',
+    description: '연결 구조물. 무대~조명·음향 부스 연결',
+    is_pending: true,
+    priority: 2,
+    typical_size_mm: { min_width: 2000, max_width: 8000, min_height: 2500, max_height: 5000 },
+    match_keywords: ['브릿지', 'bridge', '연결 구조'],
+    source_keywords: ['무대 가이드'],
+    default_quantity_formula: '메인 무대 × 1',
+  },
+  {
+    key: 'podium_extended',
+    label: '포디움 확장 (보강)',
+    description: '포디움 타이틀 확장 — 사회자·연사·대표·VIP 분리 사이즈',
+    is_pending: true,
+    priority: 3,
+    typical_size_mm: { min_width: 600, max_width: 1500, min_height: 200, max_height: 400 },
+    match_keywords: ['포디움 확장', '포디움 사이즈 변경', 'podium extended'],
+    source_keywords: ['시안 추가 학습'],
+    default_quantity_formula: '세션 수 × 2~4 (직급별 분리)',
+    parent_category: 'podium_title',
+  },
+  {
+    key: 'seating_chart_board',
+    label: '좌석배치도 폼보드',
+    description: '좌석 안내 폼보드. 행사 입구·로비 배치',
+    is_pending: true,
+    priority: 3,
+    typical_size_mm: { min_width: 600, max_width: 1200, min_height: 800, max_height: 1500 },
+    match_keywords: ['좌석배치도', '좌석 안내', 'seating chart'],
+    source_keywords: ['운영 자료'],
+    default_quantity_formula: '입구 수 × 1',
+  },
+  {
+    key: 'operation_guide',
+    label: '운영안내',
+    description: '행사 운영 흐름·시간표·동선 안내 보드',
+    is_pending: true,
+    priority: 3,
+    typical_size_mm: { min_width: 600, max_width: 1200, min_height: 800, max_height: 1800 },
+    match_keywords: ['운영안내', 'operation guide', '시간표', '동선 안내'],
+    source_keywords: ['시나리오·큐시트'],
+    default_quantity_formula: '인포데스크 수 × 1',
+    parent_category: 'i_banner',
+  },
+  {
+    key: 'award_board_extended',
+    label: '시상보드 확장 (BIXPO 등)',
+    description: '시상식 확장 보드. 트로피·수상자 디스플레이',
+    is_pending: true,
+    priority: 2,
+    typical_size_mm: { min_width: 1200, max_width: 3000, min_height: 800, max_height: 2000 },
+    match_keywords: ['시상보드 확장', 'BIXPO 시상'],
+    source_keywords: ['BIXPO 2024'],
+    default_quantity_formula: '시상 카테고리 × 1',
+    parent_category: 'award_board',
+  },
+  {
+    key: 'welcome_board',
+    label: '웰컴보드',
+    description: '행사 입구 환영 보드. VIP·해외 의전 행사',
+    is_pending: true,
+    priority: 2,
+    typical_size_mm: { min_width: 1500, max_width: 3000, min_height: 1500, max_height: 2500 },
+    match_keywords: ['웰컴보드', 'welcome board', '환영'],
+    source_keywords: ['의전·회의'],
+    default_quantity_formula: '주출입구 × 1',
+  },
+  {
+    key: 'mou_banner',
+    label: 'MOU 현수막',
+    description: 'MOU 협약식 전용 현수막. 비즈니스 행사',
+    is_pending: true,
+    priority: 2,
+    typical_size_mm: { min_width: 3000, max_width: 6000, min_height: 1500, max_height: 3000 },
+    match_keywords: ['MOU', 'mou', '협약', '협약식'],
+    source_keywords: ['비즈니스 행사'],
+    default_quantity_formula: '협약 건수 × 1',
+  },
+  {
+    key: 'newsroom_backboard',
+    label: '뉴스룸 백월',
+    description: '뉴스룸·기자회견 배경 백월. 로고·KV 노출',
+    is_pending: true,
+    priority: 2,
+    typical_size_mm: { min_width: 2500, max_width: 5000, min_height: 2000, max_height: 3000 },
+    match_keywords: ['뉴스룸 백월', '기자회견 배경', 'press wall'],
+    source_keywords: ['홍보 부속'],
+    default_quantity_formula: '기자회견 × 1',
+    parent_category: 'photo_wall',
+  },
+  {
+    key: 'ambassador_curtain',
+    label: '홍보대사 통천',
+    description: '홍보대사·외부 인플루언서 활용 외부 광고 통천',
+    is_pending: true,
+    priority: 1,
+    typical_size_mm: { min_width: 6000, max_width: 24000, min_height: 3000, max_height: 12000 },
+    match_keywords: ['홍보대사', 'ambassador', '인플루언서 통천'],
+    source_keywords: ['외부 광고'],
+    default_quantity_formula: '외벽 전면 × 1',
+    parent_category: 'outer_curtain',
   },
 ]
 
