@@ -646,6 +646,63 @@ StatusBar (하단: 실시간 동기화 상태 / mm 규격)
 
 ---
 
+## 16-D. 2026-05-14 — 환경장식물 발주 툴 v2 회의 결정 (이사님 보고 의제 포함)
+
+> **회의**: 5/14 김연아 대리님·CCO·조기흠 사원. 다음 주 수요일(5/20 예상) 곽은경 이사님 보고.
+> **SOT 문서**: `docs/NEW_STRUCTURE_260514.md` (24종 카테고리·43 L1·3단계 우선순위·4단 안전망·N:M 매핑)
+> **v2 시드 적재 위치**: `lib/data/v2/` + `lib/ai/v2/` + `supabase/migration_v10_new_structure.sql`
+> **컴펌 전 상태**: 코드·시드·SQL 작성 완료. 라이브 변경(DB 마이그레이션·UI 교체) = 컴펌 후 진행
+
+### 카테고리 마스터 — 15 확정 + 9 pending = 24종
+- **확정 15종** (5/14 회의): outer_wall·outer_curtain·vertical_pillar·streetlight·gate·x_banner_static·route_banner·i_banner·ceiling_hanging·podium_title·form_board_pop·water_banner·vehicle_q_bang·floor_sticker·window_sticker
+- **신규 9종 pending** (이사님 보고 의제): did_signage·photo_wall·award_board·stage_sidewing·badge_lanyard·table_number·name_plate·triangle_nameplate·pop_special
+- **X배너 ↔ 동선 배너 분리** (5/14 결정) — 학습 데이터 분석 결과 동선 비율 약 35%
+
+### 3단계 계층 (L1·L2·L3) + N:M 매핑
+- **L1 (행사장)**: 43개 (기존 30 + 신규 13 — aT센터·경남도청·경주·광주비엔날레·광화문광장·국립중앙박물관·서울스퀘어·OSCO 충북 청주·평창올림픽스타디움·부산(한아세안)·브라질 벨렘·프랑스 파리·웨스틴조선서울)
+- **L2 (상세 행사장 / 홀)**: COEX A·B / 송도 1·2·3·4홀 등
+- **L3 (진행 행사명 + 행사 코드 YYNNNN)**: 18(2018)~25(2025) × 0000~85000 일련번호
+- **N:M 매핑**: 행사장 × 프로그램 파트 × 환경장식물 (두 축 동일 레벨)
+
+### 3단계 우선순위 AI 추천 로직 (`lib/ai/v2/recommendationLogic.ts`)
+1. **1순위 — 프로그램 파트 매칭** (`matchByPart`): 사용자 선택 파트 다중 → 후보 카테고리 추출 (매칭률 ≥ 30%)
+2. **2순위 — 시설 가이드 위반 검사** (`checkFacility`): 행사장 venue_specs 기반 allowed/denied/unknown 분류
+3. **3순위 — 수량 산출 공식** (`calculateQuantity`): 면적·천장고·참가자·세션·셔틀 기반 산출
+4. **[보강] 도면 분석** (선택): Gemini Vision → 입출구·동선·설치 가능 영역 (4단계 보강)
+
+### 4단 안전망 (`recommendationLogic.ts`)
+1. **입력 강제** — Gemini responseSchema에 24종 카테고리 enum 강제
+2. **후처리 검증** — `validateAndFix()` 출력 검증 + safety_flags 부착 (no_data_flag·facility_violation·size_out_of_range)
+3. **Fallback** — Gemini 실패 시 `buildFallbackRecommendation()` 룰베이스 자동 추천
+4. **모니터링** — `ai_recommendation_logs` 테이블 + `ai_persona_revision_queue` (페르소나 재학습 큐)
+
+### v2 시드 파일 인덱스
+- `lib/data/v2/signageCategoriesSeed.ts` — 24종 SignageCategoryV2 마스터 + classifyCategoryV2 헬퍼
+- `lib/data/v2/venueListSeed.ts` — 43 L1 행사장 12항목 메타 (area·ceiling·rigging·allowed/denied 등)
+- `lib/data/v2/eventSeriesSeed.ts` — 24개 행사 시리즈 (BCWW·KME·스마트국토·SPP·APEC 등)
+- `lib/data/v2/eventOrderListSeed.ts` — 7 Excel 발주 리스트 정형화
+- `lib/data/v2/index.ts` — 통합 export + `getV2SeedSummary()`
+- `lib/ai/v2/recommendationLogic.ts` — RecommendInputV2·RecommendItemV2·matchByPart·checkFacility·calculateQuantity·validateAndFix·buildFallbackRecommendation·recommendV2
+
+### DB 마이그레이션 (`supabase/migration_v10_new_structure.sql`)
+- 9 신규 테이블: signage_categories·venue_halls·event_series·events·event_signage_orders·venue_category_coverage·ai_recommendation_logs·ai_persona_revision_queue + venues·design_items 보강
+- RLS 정책 모두 포함
+- **실행 위치**: Supabase Studio (사용자 직접 — 컴펌 후)
+
+### EZ 회사 폴더링 정합 (5/15 추가 확인)
+- 환경장식물 = **40.15.03** (40 사전운영 → 40.15 제작물 → 40.15.03 환경장식물)
+- 저장 파일 종류: 대형배너·배너·현수막·사인물·X배너·차량비표·POP 시안
+- 가이드 SOT: `업무/일반 업무 메모/EZ 프로젝트 폴더링 가이드_250110.pdf`
+
+### 컴펌 후 활성화 절차 (사용자 실행)
+1. `supabase/migration_v10_new_structure.sql` Supabase Studio 실행
+2. `lib/data/v2/` 시드 → 기존 `lib/data/dashboardSeed.ts` 점진 교체
+3. `lib/ai/v2/recommendationLogic.ts` → `recommendSignage.ts` 호출 교체
+4. UI 24종 카테고리·43 L1·3단계 우선순위 반영 (좌 8:우 2 레이아웃·시안 업로드 제거)
+5. 라이브 배포 (`https://ez-signage2.vercel.app`)
+
+---
+
 ## 17. 향후 확장 고려사항 (현재 미구현)
 
 - **시리즈 생성**: 같은 템플릿에서 방향/키워드/색상/언어만 바꿔 N장 동시 생성 (웨이파인딩 ←/→ 등)
@@ -685,7 +742,7 @@ C:\Users\EZPMP\Desktop\클로드 코드 활동용\환경장식물 최종 정보 
 | 1단계 | 프로젝트 생성 및 로그인 | 전원 | 이메일 계정 생성·로그인, 프로젝트 선택/생성 |
 | 2단계 | 마스터 시안 업로드 및 레이아웃 자동 분석 | 총괄 담당자 | 완성 시안 업로드 → AI 구역 분석 → 규격별 최적화 |
 | 3단계 | 멀티 유저 협업 및 텍스트 일괄 수정 | 팀원 전체 | 슬라이드 추가, 개별 편집, 실시간 공유 |
-| 4단계 | 실시간 모니터링 및 일괄 검수 | 총괄 담당자 | 전체 현황 대시보드, 마스터 레이아웃 일괄 업데이트 |
+| 4단계 | 실시간 모니터링 및 일괄 검수 | 총괄 담당자 | 전체 운영 대시보드, 마스터 레이아웃 일괄 업데이트 |
 | 5단계 | 통합 산출물 생성 및 발주 | 전원 | Excel(발주서) + PPT(디자인 가이드) 동시 출력 |
 
 **PPT 출력 핵심**: 객체 위치 그대로 텍스트박스·이미지 속성이 유지되어 수령 후 즉시 수정·활용 가능해야 함.

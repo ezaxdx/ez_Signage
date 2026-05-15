@@ -1,5 +1,103 @@
 # 작업 이력
 
+## 2026-05-16 (v9.55 — 야간 자율 진행 #51~#62) — 외부 검색 12건 + Agent 3개 결과 + hwp 변환 자동화
+
+### 사용자 요청
+조기흠 사원(AXDX팀, 2026-05-16): 사용자 9시 출근 후 "여러 검색 및 컴퓨터 내부 조사는?" "더 해야할거는 없는지?" "전부 진행" 등 다중 명시. 야간 자율 진행 사이클 #51~#62 (5분 간격).
+
+### A. 외부 검색 12건 (Wake-up #51~#55)
+- MICE ESG·PVC-free / 사내 AI 자동화 / 회사생활 / 문서·메일 자동화 / Vercel AI Gateway
+- Supabase 2026 (Postgres 17·Postgres 14 deprecation 7/1) / Gemini 3 Flash Agentic Vision / MICE 도면 AI
+- Claude Opus 4.7 / MICE 글로벌 표준 / 환경장식물 LED 신소재 (삼성 스페이셜·컬러 이페이퍼) / 행사 운영·Force Majeure·경쟁사
+- 통합 메모리: `reference_external_research_unified_260516`
+
+### B. Agent 3개 백그라운드 학습 (Wake-up #58~#60)
+- **Agent #86 SWAT 1236 Task 전수 조사**: 자동화 60% (738건) + 신규 후보 NEW-1~5 (15대 확장)
+- **Agent #87 데이터허브 192.168.10.191**: .ai 시안 80~150·CAD·11종 마스터 후보
+- **Agent #88 G:\ 깊이 학습**: AI 업무 파트너 06 홍보 콘텐츠 신규·리앤컴 gscript
+
+### C. 컴펌 후 활성화 도구 4개 추가 (Wake-up #56~#57)
+- `docs/DB_MIGRATION_체크리스트_260516.md` — Supabase Studio 단계별 + Postgres 14 점검
+- `docs/v1_v2_교체_PR_시안_260516.md` — 6 파일 변경 사전 + 호환성 안전망
+- `업무/업무 자동화 인터뷰 정리/인터뷰_답변_양식_5건_260516.md` — RSVP·계약서·환경장식물·명패·언론보도
+- `업무/회의록/회의록 아웃풋/회의록_5월_통합_260516.md` — 5/4·5/13·5/14·5/15 4건 1 docx
+
+### D. hwp 변환 자동화 + 한컴 보안 모듈 영구 설치
+- 계약09·계약11 .hwp → .docx 자동 변환 ✅ (HWP→HTML→DOCX 2단 우회)
+- FilePathCheckerModule.dll 한컴 공식 GitHub 다운로드 + `C:\Hancom\` 설치 + 레지스트리 등록
+- 향후 모든 hwp 파일 = Claude 자동 변환 가능 (보안 팝업 X)
+- 메모리: `reference_hwp_conversion`
+
+### E. 이사님 보고 자료 보강 (로컬 MD만, 노션·GitHub X)
+- ES 1슬라이드에 9 pending 17종 + 11종 = **28종 마스터 가능** 1줄 추가
+- SWAT NEW-1~5 = 별도 보고 영역 (이사님 보고 자료에 X — Skeptic 페르소나 결정 부담 회피)
+
+### F. 메모리 정합 강화
+- `feedback_no_live_change_before_confirm` §5/16 — 편집 위치 명시 의무 룰 추가 (사용자 명시 강조)
+- `project_yagan_progress_260515` 5/16 09시 후 추가 진행 표 누적
+- 신규 메모리 4개: `reference_external_research_unified_260516`·`reference_hwp_conversion`·자동화 후보 보강·5/14 메모리 누적
+
+### 보존
+- AiPipelineCard.tsx 미삭제 (v9.45 사용자 명시 보존 조건)
+- v2 코드 5/15 작성 그대로 (5/16 추가 변경 0건 — 메모리·문서·시드 외부 정보만 보강)
+- DB 라이브 변경 0건 / 라이브 사이트 변경 0건 / 노션 검토자 시각 영역 변경 0건
+- 의존성 추가 0건
+
+### 검증
+- TSC 0 에러 PASS (5/16 재검증)
+- Git status: 3 Modified + 9 Untracked (5/15 11건 + 5/16 docs 2건 추가)
+- 라이브 변경 0건 — 컴펌 전 안전 영역만
+
+---
+
+## 2026-05-15 (v9.54 — 야간 자율 학습 사이클) — v2 코드 정밀 점검 + Agent 결과 적재 + 컴펌 후 도구
+
+### 사용자 요청
+조기흠 사원(AXDX팀, 2026-05-15 야간): "환경장식물 코드에 문제 꽤 있는거 확인 코드 한 줄 한 줄 비교하면서 문제 무엇이 있는지 꼼꼼하게 확인할것 우리의 목표 사항에 맞게 진행 가능한지 조사 및 진행할 것" + "야간 자율 진행 무한 진행".
+
+### A. v2 코드 SOT 정합 점검 — 5건 수정
+
+| # | 항목 | 발견 | 수정 |
+|---|---|---|---|
+| 1 | `matchByPart()` 매칭 등급 | SOT §4.1 "70% 안정 추천" 코드 미반영 | `MatchTier` ('stable'/'review'/'excluded') 분기 추가 |
+| 2 | x_banner_static 수량 공식 | SOT ÷300+1 vs 코드 ÷500 | SOT 정합 (`max(2, ceil(÷300)+1)`) |
+| 3 | `recommendV2WithGemini()` 통합 함수 | SOT §4 흐름 (Gemini 호출 + 4단 안전망) 함수 자체 누락 | 신규 작성 (fetch + responseSchema + validateAndFix + buildFallback) |
+| 4 | `validateAndFix` type predicate 버그 | TS2677 — `as const` 좁아짐 | 명시 `RecommendItemV2` 타입 선언 |
+| 5 | venue_key alias 4건 | Agent 1 폴더 vs seed key 불일치 | gscoex→gsco·hico_gyeongju→hico·the_shilla_seoul_2→the_shilla·sono_calm_goyang→sono_calm |
+
+`npx tsc --noEmit` 0 에러 PASS.
+
+### B. Agent 1·2 결과 v2 시드 보강
+- signageCategoriesSeed.ts `source_keywords` 보강 3종: did_signage·photo_wall·podium_title (SPP·APEC·KME 2019 실측)
+- 200건 .ai 시안 카탈로그 → pending 9종 채택 권고 정밀화 (DID 22건·포토월 4건·POP 0건 매칭)
+- 700 도면 메타 → 결락 4곳 (신라호텔·안동·THE_SHILLA·HICO) 시설 가이드 신규 등록 우선순위
+
+### C. 컴펌 후 활성화 도구 신규 (2개)
+- `scripts/seed_v2.mjs` — Supabase v2 시드 INSERT 자동화 (idempotent, 5 테이블)
+- `scripts/test_v2_seeds.mjs` — 24 카테고리·43 venue·매칭 무결성 자동 검증
+
+### D. SOT·문서 정합화
+- `CLAUDE.md §16-D` 신설 — 5/14 회의 결정 SOT 링크 + v2 시드 인덱스 + EZ 40.15.03 정합
+- `NEW_STRUCTURE_260514.md §4.1` — 수량 공식 코드 실측 정합 (x배너 ÷300·포디움 × 2·가로등 ÷50)
+
+### E. 사용자 컴펌 대기 항목 (대화.txt 박제)
+1. 9 pending 카테고리 결정 — 옵션 A 권장 (17종 = 채택 5 + 통합 2 + 거절 2)
+2. `migration_v10_new_structure.sql` Supabase Studio 실행
+3. Claude Code 개선 5건 도입 범위 (Agent 4 분석)
+
+### 보존
+- AiPipelineCard.tsx 미삭제 (v9.45 사용자 명시 보존 조건)
+- v9.46 페르소나 본체 그대로
+- recommendSignage.ts (구버전) 미교체 — 컴펌 후
+- DB 라이브 변경 0건 / 라이브 사이트 변경 0건
+- 의존성 추가 0건 / 빌드 영향 0건
+
+### 검증
+- TSC 0 에러 / v2 코드 통합 점검 PASS
+- 라이브 변경 (컴펌 전 OK 영역) 0건 — 메모리·문서·시드·로직·SQL 작성만
+
+---
+
 ## 2026-05-14 (v9.53) — 페르소나 textarea placeholder를 가짜 예시 → 실제 PIPELINE_BLOCKS 기본 동작 본문으로 교체
 
 ### 사용자 요청
