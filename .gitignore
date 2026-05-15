@@ -46,3 +46,4 @@ Thumbs.db
 # 스크립트가 생성하는 분석 출력 JSON (시드 데이터로 임베드되므로 git 추적 불필요)
 lib/data/_parsed_*.json
 lib/data/_signage_analysis.json
+.claude/worktrees/
