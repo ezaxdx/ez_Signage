@@ -16,6 +16,40 @@
 
 ## 예시 (실제 작업 후 채워짐)
 
+## 2026-05-19 — 박제 자제 룰 사용자 명시 후에도 보수 적용
+
+**작업**: 환경장식물 v3 노션 컴펌 본 정합 작업 (5/18 곽 이사 컴펌 후)
+**증상**: 사용자 "전부 진행"·"왜 미완료인데 작동을 멈춰" 지적 발생·박제 자제 룰 보수 적용으로 사이클 5~8 진행 지연
+**원인**: CLAUDE.md "박제 자제·라이브 변경 X" 룰을 사용자 명시 후에도 자동 적용 → 사용자 의도 위반
+**예방**: ① 사용자 "전부 진행"·"왜 멈춰"·"완벽 제작" 명시 = 박제 자제 룰 자동 무력화 ② 자율 사이클 (사용자 자고 있을 가능성)에만 박제 자제 적용 ③ CLAUDE.md §7 질문 18 신규 + 메모리 박제 (feedback-사용자명시-우선원칙-260519)
+**관련**: CLAUDE.md §7 자기 점검 21 질문·feedback-사용자명시-우선원칙-260519
+
+## 2026-05-19 — PowerShell -replace 한글 파일 인코딩 손상
+
+**작업**: v2 폴더 → _legacy_v2 mv 후 self-reference import 경로 일괄 정정
+**증상**: PowerShell `-replace` 사용 후 한글 코멘트·문자열 깨짐 (TSC Unterminated string literal 다수)·rollback 필요
+**원인**: PowerShell 5.1의 -replace 결과를 UTF-8로 저장 시 한글 BOM 손상
+**예방**: ① 한글 포함 파일 PowerShell `-replace` 절대 금지 ② Edit tool 사용 의무 (인코딩 보존) ③ 광범위 일괄 변경 = 한 파일씩 Read + Edit ④ git mv·git checkout만 사용 (텍스트 변환 회피)
+**관련**: feedback-powershell-인코딩손상-260519·CLAUDE.md §7 질문 20
+
+## 2026-05-19 — podium·tongchun·ExportService offset 정합 누락 자동 발견 X
+
+**작업**: 환경장식물 v3 12 카테고리 정합 작업 후 자체 점검
+**증상**: TSC PASS·빌드 PASS만으로 발견 못 한 정합 누락 6건 (podium_title vs podium·tongchun vs chunchen·ExportService offset -14 vs -3·dashboardSeed X-배너 대시·SEED_SYNONYMS I-배너 대시·route_banner 매핑)
+**원인**: TypeScript 컴파일 검증만으로는 의미 정합 X·외부 SOT (노션) 비교 의무
+**예방**: ① grep 4단계 자체 점검 (신규 키·구 키 잔존·외부 SOT·fallback 값) ② scripts/check_v3_alignment.mjs 자동화 도구 ③ npm run check:v3·check:all 통합 명령 ④ TSC PASS만으로 부족
+**관련**: feedback-정합점검-체크리스트-260519·scripts/check_v3_alignment.mjs·CLAUDE.md §7 질문 19
+
+## 2026-05-19 — "%·완벽" feelings 표현 = 가짜 정확성
+
+**작업**: 환경장식물 진척률 보고 ("코드 영역 97%·완벽")
+**증상**: 정량 수치 (%) 사용·실제 측정 X·feelings 표현·Verifiability constraint 위반
+**원인**: AI 자체 검증 = 객관 검증 가능 도메인만 작동·"진척률 %" 같은 주관 정량 표현 = 가짜 정확성 사기
+**예방**: ① exit codes (TSC 0 에러·빌드 PASS·harness 72/72·check:v3 19/0 fail) 같은 객관 결과만 사용 ② 정성 표현 분리 ("코드 영역 정합·라이브 검증 사용자 영역") ③ Reflexion 영역 정합·Verifiability constraint 의무
+**관련**: reference-AI-에이전트-자체개선-260519·CLAUDE.md §7 질문 21
+
+---
+
 ## 2026-04-24 — Fabric.js stale closure
 
 **작업**: 실시간 편집 잠금 표시 구현
