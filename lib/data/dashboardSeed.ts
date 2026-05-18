@@ -41,6 +41,8 @@ export const SEED_SIGNAGE_TYPES: SignageTypeSeed[] = [
   { id: 'a3_landscape',       name: 'A3 가로',        width_mm: 420,  height_mm: 297,  default_material: '인쇄',    category: '중형 안내',  layout: '가로' },
   { id: 'foamboard',          name: '폼보드',         width_mm: 600,  height_mm: 900,  default_material: '폼보드 5T', category: '실내 안내', layout: '세로', note: '스탠드POP·L보드·큐방 포함. 세션룸 입구·데스크 안내' },
   { id: 'sheet',              name: '시트지',         width_mm: 1650, height_mm: 920,  default_material: '시트지',  category: '출입구·유리', layout: '가로', note: '출입구 유리창 부착. 바닥스티커·유도사인 포함' },
+  // v3 (5/18 PO 정정 10 카테고리 SOT) 신규 — 실내 동선 분리 (5/14 회의 X배너 분리 결정)
+  { id: 'route_banner',       name: '동선 배너',      width_mm: 600,  height_mm: 1500, default_material: '현수막',  category: '실내 동선',  layout: '세로', note: 'v3 신규. 실내 유도·화살표·방향 안내 전용. 5/14 회의 X배너 분리 결정' },
 ]
 
 // ── 2. 동의어 매핑 (명세 6.1.b.i) ─────────────────────────────

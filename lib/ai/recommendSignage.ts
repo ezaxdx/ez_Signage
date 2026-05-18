@@ -14,6 +14,7 @@ import {
   classifyCategory,
   type StandardCategoryKey,
 } from '@/lib/data/signageCategoryStandards'
+import { SIGNAGE_CATEGORIES_V3 } from '@/lib/data/v3/signageCategoriesSeedV3'
 import { PROGRAM_PART_BY_CODE, PROGRAM_PART_SIGNAGE_HINTS, partsForFormat, programPartName } from '@/lib/programParts'
 import {
   buildPipelineLogicSection,
@@ -133,6 +134,9 @@ function buildSystemInstruction(stepOverrides?: StepOverridesMap): string {
   const logic = stepOverrides
     ? buildPipelineLogicSectionWith(stepOverrides)
     : buildPipelineLogicSection()
+  const v3CategoryLines = SIGNAGE_CATEGORIES_V3
+    .map(c => `- ${c.key} / ${c.label} / ${c.default_size_mm.width}*${c.default_size_mm.height} / ${c.material}`)
+    .join('\n')
   return `당신은 MICE 환경장식물 발주 전문가입니다.
 
 ${logic}
@@ -142,19 +146,19 @@ ${logic}
 2순위 제외 = "[설치 불가 — 행사장 제약]"
 3순위 부재 = "[수량 미정 — 운영자 확정]"
 
-표준 12종 (category 키 / 표시명 / 일반 규격mm / 재질):
-- x_banner / X배너 / 600*1800 / PET
-- i_banner / I배너 / 600*1600 / PET
-- streetlight_banner / 가로등 배너 / 600*1800 / 현수막
-- horizontal_banner / 가로 현수막 / 5000*900 / 현수막
-- vertical_banner / 세로 현수막 / 900*5000 / 현수막
-- chunchen_banner / 통천 / 1000*5000 / 현수막
-- podium / 포디움 타이틀 / 600*200 / 스티커
-- l_board / L보드 / 600*900 / 폼보드 5T
-- foamboard / 폼보드 / 600*900 / 폼보드 5T
-- a4_portrait / A4 세로 / 210*297 / 인쇄
-- a3_portrait / A3 세로 / 297*420 / 인쇄
-- backwall / 백월 / 6000*2400 / 백월
+표준 12 카테고리 (category 키 / 표시명 / 일반 규격mm / 재질) — 노션 컴펌 본 §6-2 정합:
+${v3CategoryLines}
+
+위 12 카테고리 외 명칭(백월·포토월·트러스·부스·DID 사이니지·폼보드 POP·시트지·바닥스티커) 추천 금지.
+매핑 룰 (노션 §8-1 동의어 정합·5/7 손피켓 가로 기본):
+- 명패·웰컴 피켓·큐방·셔틀버스 큐방시트 = a4_landscape
+- 명패(대)·웰컴보드·시상보드·기념촬영보드·컨설팅폼보드·좌석배치도 안내사인 = a3_landscape
+- 천장배너·천정배너·행잉·장폭_천정배너 = tongchun_banner
+- 난간배너·드롭배너 = vertical_banner
+- 빵빠레배너 = streetlight_banner
+- MOU 현수막·투어용 현수막·상단 배너 = horizontal_banner
+- 스프링배너·롤업배너·물통배너 = x_banner
+- 스탠드POP = i_banner
 
 응답은 반드시 JSON 한 덩어리만 출력. 마크다운 펜스·해설 금지.
 형식:
