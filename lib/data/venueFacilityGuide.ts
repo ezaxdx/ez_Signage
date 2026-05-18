@@ -409,7 +409,7 @@ export const VENUE_FACILITY_GUIDE_SEED: VenueFacilityGuide[] = [
   // ══════════════════════════════════════════════════════════════
   {
     venue_key: 'icc_jeju',
-    venue_name: 'ICC 제주 (한라홀·아라홀 외)',
+    venue_name: 'ICC 제주 (탐라홀 외)',
     install_allowed: [
       { category: 'X배너', status: 'allowed', note: '자체 스탠드. 규격 제한 없음.' },
       {
@@ -467,7 +467,7 @@ export const VENUE_FACILITY_GUIDE_SEED: VenueFacilityGuide[] = [
   // ══════════════════════════════════════════════════════════════
   {
     venue_key: 'ddp_arthall_1',
-    venue_name: 'DDP 아트홀 1관',
+    venue_name: 'DDP 알림1·2관',
     install_allowed: [
       { category: 'X배너', status: 'allowed', note: '자체 스탠드(물통형). DDP 곡면 공간에 맞게 배치 — 벽면 기대기 불가.' },
       {
