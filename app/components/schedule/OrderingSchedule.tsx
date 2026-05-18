@@ -20,12 +20,14 @@ interface Milestone {
   locked?: boolean    // 행사 시작은 삭제 불가
 }
 
+// 노션 컴펌 본 §3-2 플로우별 예상 일수 정합 (5/18·페이지 36148589-8ea1-81d7-8b55-d1bd771a40a1)
+// 환경장식물 종류별 자동 분기: 구조물 D-30~D-21·인쇄물 D-14 기본·디지털 D-20
 const DEFAULT_MILESTONES: Milestone[] = [
-  { key: 'confirm', label: '시안 컨펌', offset: -21 },
-  { key: 'order',   label: '제작 발주', offset: -14 },
-  { key: 'review',  label: '시안 검수', offset: -7  },
-  { key: 'install', label: '설치 시작', offset: -1  },
-  { key: 'event',   label: '행사 시작', offset: 0, locked: true },
+  { key: 'review',  label: '시안 검수',     offset: -10 },
+  { key: 'produce', label: '제작',          offset: -5  },
+  { key: 'order',   label: '발주 마감',     offset: -3  },
+  { key: 'install', label: '설치 시작',     offset: -1  },
+  { key: 'event',   label: '행사 시작',     offset: 0, locked: true },
 ]
 
 const STORAGE_KEY = (pid?: string) => `ordering_schedule_v2_${pid ?? 'global'}`
@@ -179,6 +181,13 @@ export function OrderingSchedule({ eventDate, projectId, className = '' }: Props
                 <Plus className="w-3 h-3" /> 추가
               </button>
             </div>
+          </div>
+          {/* 노션 컴펌 본 §3-1·§3-3 안내 문구 A안 (5/18 정합) */}
+          <div className="px-3 py-2 bg-amber-50 border-b border-amber-200 flex items-start gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <p className="text-[10px] text-amber-800 leading-relaxed">
+              본 일정은 추정 일정입니다. 협력사 확인 후 변경될 수 있습니다.
+            </p>
           </div>
           <p className="px-3 py-1.5 text-[10px] text-slate-500 bg-slate-50 border-b border-slate-100">
             이름·D 값 클릭 시 편집. 추가·삭제 가능 (행사 시작은 고정).
