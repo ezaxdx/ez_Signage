@@ -103,6 +103,12 @@ export const SEED_SYNONYMS: SynonymSeed[] = [
 
   // ── 폼보드 변형 ──
   { alias: '스탠드POP',      canonical_name: 'I배너',         note: '폼보드형 스탠드 POP' },
+
+  // ── 동선 배너 동의어 (노션 §6-2 v3 신규 카테고리·§8-1 정합) ──
+  { alias: '유도사인',       canonical_name: '동선 배너',     note: '실내 동선·유도 안내' },
+  { alias: '동선안내',       canonical_name: '동선 배너',     note: '실내 동선 안내' },
+  { alias: '화살표',         canonical_name: '동선 배너',     note: '방향 안내 화살표' },
+  { alias: '방향 안내',      canonical_name: '동선 배너',     note: '동선 방향 안내' },
   { alias: '안내폼보드',     canonical_name: '폼보드',       note: 'L보드 통칭' },
   { alias: 'L보드',          canonical_name: '폼보드',       note: 'L자형 폼보드' },
   { alias: '큐방',           canonical_name: '폼보드',       note: '안내용 큐방' },
