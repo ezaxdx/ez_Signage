@@ -81,25 +81,22 @@ const FORMAT_DESCRIPTIONS: Record<string, { purpose: string; usage: string }> = 
   a3_landscape:       { purpose: '손피켓 / 안내', usage: 'A3 가로 인쇄. 큰 손피켓·중간 안내' },
 }
 
+// 노션 컴펌 본 §6-2 12 카테고리 SOT (5/18·페이지 36148589-8ea1-81d7-8b55-d1bd771a40a1)
+// 잔존 7 (l_board·foamboard·hardpaper·coated_paper·pop_guide·backwall·sheet) 제거
+// 라벨 노션 정합: X-배너→X배너·I-배너→I배너·통천 배너→통천
 const FORMAT_PRESETS = [
-  { id: 'x_banner',           name: 'X-배너',        width: 600,  height: 1800, material: 'PET' },
-  { id: 'i_banner',           name: 'I-배너',        width: 600,  height: 1600, material: 'PET' },
+  { id: 'x_banner',           name: 'X배너',         width: 600,  height: 1800, material: 'PET' },
+  { id: 'i_banner',           name: 'I배너',         width: 600,  height: 1600, material: 'PET' },
   { id: 'streetlight_banner', name: '가로등 배너',   width: 600,  height: 1800, material: '현수막' },
   { id: 'horizontal_banner',  name: '가로 현수막',   width: 5000, height: 900,  material: '현수막' },
   { id: 'vertical_banner',    name: '세로 현수막',   width: 900,  height: 5000, material: '현수막' },
-  { id: 'chunchen_banner',    name: '통천 배너',     width: 1000, height: 5000, material: '현수막' },
+  { id: 'chunchen_banner',    name: '통천',          width: 1000, height: 5000, material: '현수막' },
   { id: 'podium',             name: '포디움 타이틀', width: 600,  height: 200,  material: '스티커' },
-  { id: 'l_board',            name: 'L보드',         width: 600,  height: 900,  material: '폼보드 5T' },
-  { id: 'foamboard',          name: '폼보드',        width: 600,  height: 900,  material: '폼보드 5T' },
-  { id: 'hardpaper',          name: '하드지',        width: 297,  height: 420,  material: '하드지' },
-  { id: 'coated_paper',       name: '코팅지',        width: 210,  height: 297,  material: '코팅지' },
-  { id: 'pop_guide',          name: '안내 POP',      width: 297,  height: 420,  material: 'PET' },
-  { id: 'backwall',           name: '백월',          width: 6000, height: 2400, material: '백월' },
-  { id: 'sheet',              name: '시트지',        width: 1650, height: 920,  material: '시트지' },
   { id: 'a4_portrait',        name: 'A4 세로',       width: 210,  height: 297,  material: '인쇄' },
   { id: 'a4_landscape',       name: 'A4 가로',       width: 297,  height: 210,  material: '인쇄' },
   { id: 'a3_portrait',        name: 'A3 세로',       width: 297,  height: 420,  material: '인쇄' },
   { id: 'a3_landscape',       name: 'A3 가로',       width: 420,  height: 297,  material: '인쇄' },
+  { id: 'route_banner',       name: '동선 배너',     width: 600,  height: 1500, material: '현수막' },
 ] as const
 
 interface FormatState { selected: boolean; width: number; height: number; material: string; count: number; name: string }
