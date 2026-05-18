@@ -102,7 +102,7 @@ export const SEED_SYNONYMS: SynonymSeed[] = [
   { alias: 'A3안내POP',      canonical_name: 'A3 가로',      note: 'A3 POP 안내' },
 
   // ── 폼보드 변형 ──
-  { alias: '스탠드POP',      canonical_name: 'I-배너',        note: '폼보드형 스탠드 POP' },
+  { alias: '스탠드POP',      canonical_name: 'I배너',         note: '폼보드형 스탠드 POP' },
   { alias: '안내폼보드',     canonical_name: '폼보드',       note: 'L보드 통칭' },
   { alias: 'L보드',          canonical_name: '폼보드',       note: 'L자형 폼보드' },
   { alias: '큐방',           canonical_name: '폼보드',       note: '안내용 큐방' },
