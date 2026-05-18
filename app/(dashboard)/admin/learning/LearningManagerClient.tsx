@@ -10,7 +10,8 @@ import { createClient } from '@/lib/supabase/client'
 import { explainStorageError } from '@/lib/services/storagePaths'
 import { REGION_ORDER } from '@/lib/venueIntel'
 import { PROGRAM_PARTS, PROGRAM_PART_GROUPS, PROGRAM_PART_SIGNAGE_HINTS } from '@/lib/programParts'
-import { LEARNING_META_SEED } from '@/lib/data/v3/learningMetaSeed'
+import { LEARNING_META_SEED, NIST_RMF_STAGES } from '@/lib/data/v3/learningMetaSeed'
+import { VISION_ROADMAP } from '@/lib/ai/v3/visionRoadmap'
 
 // ── 타입 ──────────────────────────────────────────────────────
 interface Venue {
@@ -625,6 +626,65 @@ export function LearningManagerClient({
                 {m.note && <p className="text-[9px] text-slate-400 mt-0.5 leading-tight">{m.note}</p>}
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* ── NIST AI RMF 4단계 정합 (5/19 추가·노션 §1-3 정합) ── */}
+        <section className="bg-white border border-slate-200 rounded-xl p-5">
+          <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-emerald-500" />
+            AI 이상 답변 방지 4단 안전망 (NIST AI RMF 정합)
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            {NIST_RMF_STAGES.map((s, i) => (
+              <div key={s.stage} className="border border-emerald-200 rounded-lg p-3 bg-emerald-50/60">
+                <p className="text-[10px] text-emerald-700 font-semibold">단계 {i + 1}: {s.stage}</p>
+                <p className="text-sm font-semibold text-emerald-900 mt-1">{s.korean}</p>
+                <p className="text-[10px] text-slate-600 mt-1.5 leading-relaxed">{s.v3_implementation}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── 향후 도입 로드맵 (5/19 광범위 조사·visionRoadmap 시드) ── */}
+        <section className="bg-white border border-slate-200 rounded-xl p-5">
+          <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-500" />
+            향후 도입 로드맵 (5/19 광범위 조사 결과)
+          </h2>
+          <div className="overflow-x-auto border border-slate-200 rounded-lg">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr className="text-slate-600 text-[11px]">
+                  <th className="px-2 py-2 text-left font-semibold">우선</th>
+                  <th className="px-2 py-2 text-left font-semibold">영역</th>
+                  <th className="px-2 py-2 text-left font-semibold">tech</th>
+                  <th className="px-2 py-2 text-left font-semibold">활용</th>
+                  <th className="px-2 py-2 text-left font-semibold">비용 추정</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {VISION_ROADMAP.map(r => {
+                  const colorMap: Record<string, string> = {
+                    immediate: 'bg-emerald-100 text-emerald-700',
+                    'd-7': 'bg-amber-100 text-amber-700',
+                    'd-30': 'bg-blue-100 text-blue-700',
+                    quarter: 'bg-slate-100 text-slate-700',
+                  }
+                  return (
+                    <tr key={r.id} className="hover:bg-slate-50/50">
+                      <td className="px-2 py-2 align-top">
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${colorMap[r.priority] ?? 'bg-slate-100'}`}>{r.priority}</span>
+                      </td>
+                      <td className="px-2 py-2 align-top font-medium text-slate-800">{r.area}</td>
+                      <td className="px-2 py-2 align-top text-slate-500 text-[10px]">{r.tech_stack.slice(0, 3).join(', ')}{r.tech_stack.length > 3 && '...'}</td>
+                      <td className="px-2 py-2 align-top text-slate-600 text-[10px] max-w-md">{r.use_case}</td>
+                      <td className="px-2 py-2 align-top text-slate-500 text-[10px]">{r.cost_estimate_krw ?? '—'}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         </section>
 
