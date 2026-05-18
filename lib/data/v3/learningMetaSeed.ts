@@ -32,6 +32,36 @@ export const LEARNING_META_SEED: LearningMeta[] = [
   { metric: '도면 분석 누적',                       value: '20건',     category: 'analysis', note: '미분류 CAD 잔존' },
 ]
 
+/** NIST AI RMF 4단계 정합 (5/19 추가) — 환경장식물 v3 4단 안전망 매핑 */
+export interface NistRmfStage {
+  stage: 'Govern' | 'Map' | 'Measure' | 'Manage'
+  korean: string
+  v3_implementation: string
+}
+
+export const NIST_RMF_STAGES: NistRmfStage[] = [
+  {
+    stage: 'Govern',
+    korean: '입력 강제',
+    v3_implementation: 'JSON 스키마 + 12 카테고리 enum 강제·SignageCategoryKey union·responseSchema (recommendV2WithGemini)',
+  },
+  {
+    stage: 'Map',
+    korean: '상태 확인',
+    v3_implementation: 'no_data_flag·관리자 페이지 누적률 표시·LEARNING_META_SEED·VENUE_HISTORY_SEED',
+  },
+  {
+    stage: 'Measure',
+    korean: '후처리 검증',
+    v3_implementation: 'validateAndFixV3·classifyCategoryV3·키 일관 검증 (size·material·layout)',
+  },
+  {
+    stage: 'Manage',
+    korean: '실패 대체 안내',
+    v3_implementation: 'buildFallbackRecommendationV3·"[추천 없음 — 매뉴얼 확인]" 표기·매뉴얼 안내',
+  },
+]
+
 /** 카테고리별 집계 */
 export function groupLearningMetaByCategory(): Record<string, LearningMeta[]> {
   const grouped: Record<string, LearningMeta[]> = {}

@@ -1,12 +1,18 @@
-// v3 카테고리 마스터 시드 — 12 카테고리 SOT (2026-05-18)
+// v3 카테고리 마스터 시드 — 12 카테고리 SOT (2026-05-18·5/19 NIST 4단계 정합)
 //
 // 출처: 5/18 노션 컴펌 본 = 노션 페이지 36148589-8ea1-81d7-8b55-d1bd771a40a1 §6-2
-//       "환경장식물 마스터" 표 12행 (제목 10종·표 12행 = A4·A3 가로·세로 분리)
+//       "환경장식물 마스터" 표 12행 (A4·A3 가로·세로 분리)
 //
 // 변경 이력:
 //   - 5/14 회의록 = 14종 + 동선 배너 = 15종
-//   - 5/18 PO 정정 1차 = 10 카테고리 SOT
 //   - 5/18 노션 컴펌 본 = 12 카테고리 (A4 가로·A4 세로·A3 가로·A3 세로 분리)
+//   - 5/19 NIST AI RMF 4단계 (Govern·Map·Measure·Manage) 정합 표시
+//
+// NIST AI RMF 4단 안전망 정합 (노션 §1-3):
+//   1. Govern (입력 강제) = SignageCategoryKey union enum + JSON 스키마
+//   2. Map (상태 확인) = isExcludedCategory·no_data_flag
+//   3. Measure (후처리 검증) = classifyCategoryV3·findCategoryV3ByKey
+//   4. Manage (실패 대체) = fallback 매핑 룰 (a4_landscape·a3_landscape 손피켓 가로 기본)
 //
 // 적용 절차:
 //   1. signageCategoriesSeed.ts (v2 15종) → 본 파일 (v3 12 카테고리) 점진 교체
