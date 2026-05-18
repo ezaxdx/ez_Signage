@@ -84,20 +84,22 @@ export function migrateLegacyEventType(legacy: string | null | undefined): strin
   return []
 }
 
-/** program_parts 다중선택 → 권장 환경장식물 ID 매핑 (단일선택 v3 EVENT_TYPE_RECOMMEND 대체) */
+/** program_parts 다중선택 → 권장 환경장식물 ID 매핑
+ *  노션 §6-3 파트별 환경장식물 자동 추천 표 정합 (5/18 컴펌 본). 12 카테고리 외 노출 금지.
+ */
 export const PROGRAM_PART_SIGNAGE_HINTS: Record<string, string[]> = {
-  '40.04': ['x_banner', 'foamboard', 'a3_landscape'],          // 회의: 입구·세션 안내
-  '40.05': ['streetlight_banner', 'horizontal_banner', 'foamboard'], // 전시: 외부·내부 사인
-  '40.06': ['l_board', 'a4_portrait', 'a4_landscape'],         // 매칭: 룸 사인·명패
-  '40.07': ['x_banner', 'podium'],                              // 비즈니스 프로그램: 연단
-  '40.08': ['horizontal_banner', 'podium', 'backwall', 'chunchen_banner'], // 공식행사: 무대·천장
-  '40.09': ['x_banner', 'foamboard'],                           // 공모전형
-  '40.10': ['x_banner', 'a3_portrait', 'foamboard'],           // 체험형: 단계 안내
-  '40.11': ['a3_landscape', 'a4_portrait'],                    // 투어: 안내
-  '40.17': ['streetlight_banner', 'vertical_banner'],          // 홍보: 외부
-  '40.18': ['a4_portrait', 'a4_landscape'],                    // 의전: 손피켓
-  '40.19': ['x_banner', 'foamboard', 'pop_guide'],            // 등록: 데스크 사인
-  '40.20': ['x_banner', 'streetlight_banner', 'a3_landscape'], // 영접영송: 동선
+  '40.04': ['podium', 'a4_landscape', 'a3_landscape'],                                    // 회의
+  '40.05': ['x_banner', 'route_banner'],                                                   // 전시
+  '40.06': ['podium', 'a4_landscape'],                                                     // 비즈니스 매칭
+  '40.07': ['x_banner', 'a4_landscape'],                                                   // 비즈니스 프로그램
+  '40.08': ['chunchen_banner', 'podium', 'a4_landscape', 'a3_landscape', 'horizontal_banner'], // 공식행사
+  '40.09': ['a3_landscape', 'x_banner'],                                                   // 부대행사 - 공모전형
+  '40.10': ['x_banner'],                                                                    // 부대행사 - 체험형
+  '40.11': ['horizontal_banner', 'a3_landscape'],                                          // 부대행사 - 투어형
+  '40.17': ['x_banner', 'route_banner', 'i_banner', 'horizontal_banner'],                  // 홍보
+  '40.18': ['horizontal_banner', 'a3_landscape', 'podium'],                                // 의전
+  '40.19': ['x_banner', 'route_banner'],                                                   // 등록
+  '40.20': ['a3_landscape', 'a4_landscape'],                                               // 영접영송
 }
 
 /** 다중선택 결과 → 권장 환경장식물 union (중복 제거) */
