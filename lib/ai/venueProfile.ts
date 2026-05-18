@@ -1,9 +1,39 @@
 // 행사장 프로필 — 회의록 ′학습해 가지고 텍스트 파일 형태로 이거는 어떤 행사장이다가 나올 거예요′
 // venues 테이블 메타 + venueFacilityGuide 시드 + facility_exception_log 누적을
 // 텍스트로 압축해 AI(Gemini) 프롬프트에 ′이 행사장은 ~′ 형식으로 주입.
+//
+// v3 (2026-05-18): 노션 컴펌 본 §5 행사장 학습 8 행사장 누적값 시드 추가.
 
 import { createClient } from '@/lib/supabase/server'
 import { getFacilityGuide } from '@/lib/data/venueFacilityGuide'
+
+/**
+ * 노션 컴펌 본 §5 행사장 학습 시드 (5/18 페이지 36148589-8ea1-81d7-8b55-d1bd771a40a1)
+ * 행사장별 누적 환경장식물 종류·평균 수량. 새 프로젝트 만들 때 같은 행사장 누적 데이터 자동 입력.
+ *
+ * key 매칭: venueName 부분 일치 (대소문자 무관·공백 제거)
+ * 12 카테고리 외 영역 (부스·트러스·DID·키비주얼·웰컴보드 등) = 노션 원문 그대로 보존·AI 추천 단계에서 매핑 룰 적용
+ */
+const VENUE_HISTORY_SEED: Array<{ keywords: string[]; summary: string }> = [
+  { keywords: ['COEX', '코엑스'], summary: 'X배너 40 / 통천 1 / 부스 50 / 트러스 7 / DID 4' },
+  { keywords: ['KINTEX', '킨텍스'], summary: 'X배너 46 / 동선 배너 15 / 부스 125 / 트러스 7' },
+  { keywords: ['그랜드하얏트'], summary: 'X배너 17 / 키비주얼 1 / 명패 7' },
+  { keywords: ['ICC', '제주', '신라호텔', '로터스'], summary: '안내배너 10 / 포디움 1' },
+  { keywords: ['KDJCC', '김대중', '광주'], summary: 'X배너 35' },
+  { keywords: ['OSCO', '청주'], summary: 'X배너 35 / 행잉배너 / 가로현수막 / 콘코스 (면적 10,031㎡)' },
+  { keywords: ['광화문'], summary: 'X배너 4 / 통천 1 / 포디움 1 / 웰컴보드 1 (옥외)' },
+  { keywords: ['송도', '컨벤시아'], summary: 'X배너 30 / 동선 배너 10 / 부스 50 / 트러스 5' },
+]
+
+function findVenueHistory(venueName: string): string | null {
+  const normalized = venueName.toLowerCase().replace(/\s/g, '')
+  for (const v of VENUE_HISTORY_SEED) {
+    if (v.keywords.some(kw => normalized.includes(kw.toLowerCase().replace(/\s/g, '')))) {
+      return v.summary
+    }
+  }
+  return null
+}
 
 export interface VenueProfileBlock {
   text: string                  // 프롬프트에 직접 박는 텍스트
@@ -21,6 +51,13 @@ export async function buildVenueProfile(venueName: string | null | undefined): P
 
   const lines: string[] = [`[행사장 프로필 — ${venueName}]`]
   let hasData = false
+
+  // ⓪ 노션 §5 누적값 시드 (8 행사장 평균 수량)
+  const history = findVenueHistory(venueName)
+  if (history) {
+    hasData = true
+    lines.push(`- 같은 행사장 누적 평균 수량: ${history}`)
+  }
 
   // ① 시드 시설 가이드 (venueFacilityGuide.ts)
   const guide = getFacilityGuide(venueName)

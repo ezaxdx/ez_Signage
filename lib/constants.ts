@@ -9,6 +9,14 @@ export interface ProductionFormat {
   height_mm: number
   orientation: 'portrait' | 'landscape'
   description: string
+  /**
+   * 노션 컴펌 본 §6-2 외 영역 마킹 (5/18).
+   * true = 노션 12 카테고리 외 (l_board·foamboard·hardpaper·coated_paper·pop_guide·backwall·sheet).
+   * UI 동작은 보존 (DB 운영 데이터 호환). 점진 제거 후보.
+   */
+  deprecated?: boolean
+  /** deprecated 시 추천 매핑 카테고리 (§8-1 동의어 정합) */
+  replaces_with?: string
 }
 
 // ─── 실제 샘플 기반 템플릿 라이브러리 ────────────────────────
@@ -478,7 +486,7 @@ export const PRODUCTION_FORMATS: ProductionFormat[] = [
     orientation: 'landscape',
     description: '중형 안내·가로 손피켓 기본 (보통 폼보드 발주)',
   },
-  // ── 신규 추가 (실제 발주 샘플 기반) ──────────────────────
+  // ── 노션 §6-2 외 영역 (5/18 deprecated 마킹·UI 보존·DB 호환) ─────────
   {
     id: 'l_board',
     label: 'L보드',
@@ -487,6 +495,8 @@ export const PRODUCTION_FORMATS: ProductionFormat[] = [
     height_mm: 900,
     orientation: 'portrait',
     description: '로비·동선·라운지 안내',
+    deprecated: true,
+    replaces_with: 'a3_landscape',
   },
   {
     id: 'foamboard',
@@ -496,6 +506,8 @@ export const PRODUCTION_FORMATS: ProductionFormat[] = [
     height_mm: 900,
     orientation: 'portrait',
     description: '데스크·시상·발표 안내',
+    deprecated: true,
+    replaces_with: 'a3_landscape',
   },
   {
     id: 'hardpaper',
@@ -505,6 +517,8 @@ export const PRODUCTION_FORMATS: ProductionFormat[] = [
     height_mm: 420,
     orientation: 'portrait',
     description: '현장 등록 안내·차량 안내판',
+    deprecated: true,
+    replaces_with: 'a3_portrait',
   },
   {
     id: 'coated_paper',
@@ -514,6 +528,8 @@ export const PRODUCTION_FORMATS: ProductionFormat[] = [
     height_mm: 297,
     orientation: 'portrait',
     description: '비표·임시 게시',
+    deprecated: true,
+    replaces_with: 'a4_portrait',
   },
   {
     id: 'pop_guide',
@@ -523,6 +539,8 @@ export const PRODUCTION_FORMATS: ProductionFormat[] = [
     height_mm: 420,
     orientation: 'portrait',
     description: '데스크·테이블 안내',
+    deprecated: true,
+    replaces_with: 'a3_landscape',
   },
   {
     id: 'backwall',
@@ -532,6 +550,8 @@ export const PRODUCTION_FORMATS: ProductionFormat[] = [
     height_mm: 2400,
     orientation: 'landscape',
     description: '포토월·메인 무대 배경',
+    deprecated: true,
+    replaces_with: 'horizontal_banner',
   },
   {
     id: 'sheet',
@@ -541,6 +561,8 @@ export const PRODUCTION_FORMATS: ProductionFormat[] = [
     height_mm: 920,
     orientation: 'landscape',
     description: '출입구 유리창 부착. 바닥스티커·유도사인 포함',
+    deprecated: true,
+    replaces_with: 'horizontal_banner',
   },
 ]
 
