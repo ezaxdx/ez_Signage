@@ -153,16 +153,21 @@ export const PROGRAM_PART_RECOMMENDATION: Record<string, Array<{ category: Signa
   ],
 }
 
-// ========== 추천 함수 ==========
+// ========== 추천 함수 (5/19 고도화) ==========
 
-/** 1순위: 프로그램 파트 → 카테고리 후보 추출 */
+/** 카테고리 키 → SignageCategoryV3 사전 (Map 사전 빌드·O(1) 조회·O(N×M) → O(N) 최적화) */
+const CATEGORY_BY_KEY: Map<SignageCategoryKey, SignageCategoryV3> = new Map(
+  SIGNAGE_CATEGORIES_V3.map(c => [c.key, c])
+)
+
+/** 1순위: 프로그램 파트 → 카테고리 후보 추출 (Map 사전·O(N) 최적화) */
 export function matchByPartV3(programParts: string[]): Array<{ category: SignageCategoryV3; avg_quantity: number; part: string }> {
   const results: Array<{ category: SignageCategoryV3; avg_quantity: number; part: string }> = []
   for (const part of programParts) {
     const recommendations = PROGRAM_PART_RECOMMENDATION[part]
     if (!recommendations) continue
     for (const rec of recommendations) {
-      const cat = SIGNAGE_CATEGORIES_V3.find(c => c.key === rec.category)
+      const cat = CATEGORY_BY_KEY.get(rec.category)
       if (cat) {
         results.push({ category: cat, avg_quantity: rec.avg_quantity, part })
       }
@@ -205,13 +210,13 @@ export function calculateQuantityV3(
   return { quantity: defaultQuantity, formula: `프로그램 파트 기본 평균 ${defaultQuantity}` }
 }
 
-/** 4단 안전망 - 출력 검증 + safety_flags 부착 */
+/** 4단 안전망 - 출력 검증 + safety_flags 부착 (NIST RMF Measure 단계 정합·5/19 facility_violation 추가) */
 export function validateAndFixV3(
   items: RecommendItemV3[],
   input: RecommendInputV3
 ): RecommendItemV3[] {
   return items.map(item => {
-    const cat = SIGNAGE_CATEGORIES_V3.find(c => c.key === item.category)
+    const cat = CATEGORY_BY_KEY.get(item.category)
     if (!cat) {
       return { ...item, safety_flags: { ...item.safety_flags, no_data_flag: true } }
     }
@@ -221,52 +226,61 @@ export function validateAndFixV3(
     const sizeOk =
       Math.abs(width - defW) / defW <= tolerance &&
       Math.abs(height - defH) / defH <= tolerance
+    // 5/19 고도화: 시설 가이드 위반 자동 검사 (NIST §1-3 정합)
+    const facilityResult = checkFacilityV3(item.category, input.venue_specs)
     return {
       ...item,
       safety_flags: {
         ...item.safety_flags,
         size_out_of_range: !sizeOk,
+        facility_violation: facilityResult === 'denied',
+      },
+      match_info: {
+        ...item.match_info,
+        facility_check: facilityResult,
       },
     }
   })
 }
 
-/** 4단 안전망 - 실패 시 룰베이스 fallback */
+/** 4단 안전망 - 실패 시 룰베이스 fallback (5/19 고도화: matchByPartV3 재사용 DRY·violation_count 정확 집계) */
 export function buildFallbackRecommendationV3(input: RecommendInputV3): RecommendResultV3 {
-  const items: RecommendItemV3[] = []
-  for (const part of input.program_parts) {
-    const recommendations = PROGRAM_PART_RECOMMENDATION[part] || []
-    for (const rec of recommendations) {
-      const cat = SIGNAGE_CATEGORIES_V3.find(c => c.key === rec.category)
-      if (!cat) continue
-      const { quantity, formula } = calculateQuantityV3(rec.avg_quantity, rec.category, input.event, input.accumulated_context)
-      items.push({
-        category: rec.category,
-        category_label: cat.label,
-        program_part: part,
-        location: '미정 (도면 분석 미수행)',
-        size_mm: cat.default_size_mm,
-        quantity,
-        rationale: `[Fallback] ${formula}`,
-        safety_flags: { is_fallback: true },
-        match_info: {
-          part_match_rate: 100,
-          facility_check: checkFacilityV3(rec.category, input.venue_specs),
-          quantity_formula: formula,
-        },
-      })
+  const matched = matchByPartV3(input.program_parts)
+  const items: RecommendItemV3[] = matched.map(({ category: cat, avg_quantity, part }) => {
+    const { quantity, formula } = calculateQuantityV3(avg_quantity, cat.key, input.event, input.accumulated_context)
+    const facilityResult = checkFacilityV3(cat.key, input.venue_specs)
+    return {
+      category: cat.key,
+      category_label: cat.label,
+      program_part: part,
+      location: '미정 (도면 분석 미수행)',
+      size_mm: cat.default_size_mm,
+      quantity,
+      rationale: `[Fallback] ${formula}`,
+      safety_flags: {
+        is_fallback: true,
+        facility_violation: facilityResult === 'denied',
+      },
+      match_info: {
+        part_match_rate: 100,
+        facility_check: facilityResult,
+        quantity_formula: formula,
+      },
     }
-  }
+  })
   const allCategories = SIGNAGE_CATEGORIES_V3.map(c => c.key)
   const filled = Array.from(new Set(items.map(i => i.category)))
   const missing = allCategories.filter(k => !filled.includes(k))
+  // 5/19 고도화: violation_count·no_data_count 정확 집계
+  const violationCount = items.filter(i => i.safety_flags.facility_violation).length
+  const noDataCount = items.filter(i => i.safety_flags.no_data_flag).length
   return {
     items,
     coverage: { venue_key: input.venue_key, filled_categories: filled, missing_categories: missing },
     safety_summary: {
       total_items: items.length,
-      no_data_count: 0,
-      violation_count: 0,
+      no_data_count: noDataCount,
+      violation_count: violationCount,
       fallback_used: true,
     },
   }
