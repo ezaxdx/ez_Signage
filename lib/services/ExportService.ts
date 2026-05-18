@@ -80,9 +80,10 @@ function getMilestoneDates(projectId: string, eventDate: string | null): DateCon
   try {
     const storageKey = `ordering_schedule_v2_${projectId}`
     const raw = localStorage.getItem(storageKey)
+    // 노션 컴펌 본 §3-2 정합 (5/18) — 발주 마감 D-3·설치 D-1
     const milestones: Array<{ key: string; offset: number }> = raw
       ? JSON.parse(raw)
-      : [{ key: 'order', offset: -14 }, { key: 'install', offset: -1 }, { key: 'event', offset: 0 }]
+      : [{ key: 'order', offset: -3 }, { key: 'install', offset: -1 }, { key: 'event', offset: 0 }]
     const eventMs = new Date(eventDate).getTime()
     const fmt = (ms: number) => new Date(ms).toISOString().slice(0, 10)
     const installM = milestones.find(m => m.key === 'install')
@@ -90,7 +91,7 @@ function getMilestoneDates(projectId: string, eventDate: string | null): DateCon
     return {
       installDate: installM ? fmt(eventMs + installM.offset * 86400000) : fmt(eventMs - 86400000),
       uninstallDate: fmt(eventMs + 86400000),
-      orderDate: orderM ? fmt(eventMs + orderM.offset * 86400000) : fmt(eventMs - 14 * 86400000),
+      orderDate: orderM ? fmt(eventMs + orderM.offset * 86400000) : fmt(eventMs - 3 * 86400000),
     }
   } catch { return empty }
 }

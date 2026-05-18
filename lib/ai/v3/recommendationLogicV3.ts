@@ -98,7 +98,7 @@ export interface RecommendResultV3 {
 /** 노션 컴펌 본 §6-3 정합 — 손피켓 가로 기본 (5/7 결정) → a4_landscape·a3_landscape */
 export const PROGRAM_PART_RECOMMENDATION: Record<string, Array<{ category: SignageCategoryKey; avg_quantity: number }>> = {
   '회의': [
-    { category: 'podium_title', avg_quantity: 1 },
+    { category: 'podium', avg_quantity: 1 },
     { category: 'a4_landscape', avg_quantity: 20 },
     { category: 'a3_landscape', avg_quantity: 1 },
   ],
@@ -107,7 +107,7 @@ export const PROGRAM_PART_RECOMMENDATION: Record<string, Array<{ category: Signa
     { category: 'route_banner', avg_quantity: 15 },
   ],
   '비즈니스 매칭': [
-    { category: 'podium_title', avg_quantity: 1 },
+    { category: 'podium', avg_quantity: 1 },
     { category: 'a4_landscape', avg_quantity: 12 },
   ],
   '비즈니스 프로그램': [
@@ -116,7 +116,7 @@ export const PROGRAM_PART_RECOMMENDATION: Record<string, Array<{ category: Signa
   ],
   '공식행사': [
     { category: 'chunchen_banner', avg_quantity: 1 },
-    { category: 'podium_title', avg_quantity: 1 },
+    { category: 'podium', avg_quantity: 1 },
     { category: 'a4_landscape', avg_quantity: 20 },
     { category: 'a3_landscape', avg_quantity: 2 },
     { category: 'horizontal_banner', avg_quantity: 2 },
@@ -135,7 +135,7 @@ export const PROGRAM_PART_RECOMMENDATION: Record<string, Array<{ category: Signa
   '의전': [
     { category: 'horizontal_banner', avg_quantity: 2 },
     { category: 'a3_landscape', avg_quantity: 9 },
-    { category: 'podium_title', avg_quantity: 1 },
+    { category: 'podium', avg_quantity: 1 },
   ],
   '등록': [
     { category: 'x_banner', avg_quantity: 10 },

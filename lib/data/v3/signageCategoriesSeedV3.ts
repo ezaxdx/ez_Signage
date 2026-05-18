@@ -20,7 +20,7 @@ export type SignageCategoryKey =
   | 'horizontal_banner'    // 가로 현수막
   | 'vertical_banner'      // 세로 현수막
   | 'chunchen_banner'      // 통천
-  | 'podium_title'         // 포디움 타이틀
+  | 'podium'         // 포디움 타이틀
   | 'a4_portrait'          // A4 세로
   | 'a4_landscape'         // A4 가로 (손피켓 가로 기본·5/7 결정)
   | 'a3_portrait'          // A3 세로
@@ -105,7 +105,7 @@ export const SIGNAGE_CATEGORIES_V3: SignageCategoryV3[] = [
     match_keywords: ['통천', '통천현수막', '통천배너', '천장배너', '천정배너', '행잉', 'hanging', '장폭_천정배너_단면', '장폭_천정배너_양면', '행잉 배너', '출입구 천정 배너'],
   },
   {
-    key: 'podium_title',
+    key: 'podium',
     label: '포디움 타이틀',
     description: '연단 전면 폼보드. 사회자용·연사용 분리 2개.',
     layout: 'horizontal',
