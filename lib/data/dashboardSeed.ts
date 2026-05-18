@@ -27,8 +27,8 @@ export interface SignageTypeSeed {
 //   chunchen_banner → 통천 / podium → 포디움 타이틀 / backwall → 백월
 //   a4_portrait → A4 세로 / a4_landscape → A4 가로 / a3_portrait → A3 세로 / a3_landscape → A3 가로
 export const SEED_SIGNAGE_TYPES: SignageTypeSeed[] = [
-  { id: 'x_banner',           name: 'X-배너',         width_mm: 600,  height_mm: 1800, default_material: 'PET',     category: '입구·등록',  layout: '세로' },
-  { id: 'i_banner',           name: 'I-배너',         width_mm: 600,  height_mm: 1600, default_material: 'PET',     category: '실내 안내',  layout: '세로' },
+  { id: 'x_banner',           name: 'X배너',          width_mm: 600,  height_mm: 1800, default_material: 'PET',     category: '입구·등록',  layout: '세로' },
+  { id: 'i_banner',           name: 'I배너',          width_mm: 600,  height_mm: 1600, default_material: 'PET',     category: '실내 안내',  layout: '세로' },
   { id: 'streetlight_banner', name: '가로등 배너',    width_mm: 600,  height_mm: 1800, default_material: '현수막',  category: '외부 동선',  layout: '세로' },
   { id: 'horizontal_banner',  name: '가로 현수막',    width_mm: 5000, height_mm: 900,  default_material: '현수막',  category: '메인·외벽',  layout: '가로' },
   { id: 'vertical_banner',    name: '세로 현수막',    width_mm: 900,  height_mm: 5000, default_material: '현수막',  category: '로비·천장',  layout: '세로' },
