@@ -3,6 +3,36 @@
 > 작은 결정도 누적. "왜 X를 쓰는가?" 질문 시 검색.
 > CLAUDE.md를 부풀리지 않으면서 일관성 유지.
 
+## 2026-05-19 — 환경장식물 v3 노션 컴펌 본 12 카테고리 SOT + 자체 검증 도구화
+
+**컨텍스트**: 5/18 곽 이사 컴펌 후 노션 페이지 36148589-8ea1-81d7-8b55-d1bd771a40a1 = SOT. 5/14 회의 결정 24종 → 5/18 PO 정정 12 카테고리. 어제 (5/18) 누락 영역 다수 발견 + 사용자 "왜 미완료인데 작동을 멈춰" 지적.
+
+**선택**:
+  1. **노션 §6-2 12 카테고리 SOT** = signageCategoriesSeedV3.ts (A4·A3 가로/세로 분리·동선 배너 신규)
+  2. **key 호환 보장** = chunchen_banner·design_items.category·운영 데이터 영향 0건 (rename X·label만 정합)
+  3. **NIST AI RMF 4단계 정합** = §1-3 4단 안전망 = Govern·Map·Measure·Manage 표시 (곽 이사 보고 신뢰성)
+  4. **자체 검증 도구화** = scripts/check_v3_alignment.mjs (5/19 박제 룰 grep 4단계 자동) + npm run check:all (4단계 통합)
+  5. **5/19 학습 패턴 7건 메모리 박제** = 어제 문제 영구 회피 (Reflexion 영역)
+  6. **CLAUDE.md §7 자기 점검 21 질문** = 5/19 신규 4건 (사용자 명시·grep·PowerShell·feelings 회피)
+
+**대안**:
+  - **key rename** (chunchen_banner → tongchun_banner) = 라이브 영향 큼 (DB·UI 모든 사용처 영향)·5/22 D-3 risky → 보존
+  - **잔존 7 카테고리 제거** (l_board·foamboard·hardpaper 등) = 운영 데이터 영향·deprecated 표시만
+  - **수동 grep 점검** = 매번 누락 발견 영역·5/19 학습 패턴으로 자동화 결정
+
+**이유**:
+  - 노션 SOT 단일 진실 = 5/18 곽 이사 컴펌·5/22 라이브 D-3 정합 우선
+  - key 호환 = 라이브 영향 최소화·5/22 안정 운영 보장
+  - NIST 4단계 = 국제 표준 정합·곽 이사 보고 신뢰성·Korea AI Basic Act pre-emptive safety 정합
+  - 자체 검증 도구화 = Reflexion 영역·다음 사이클 누락 자동 발견·복리 효과
+  - 메모리 박제 + CLAUDE.md 21 질문 = 어제 문제 3중 회피 (질문 + 메모리 + 도구)
+
+**되돌릴 수 있는가**: 쉬움 — v3 시드는 별도 영역 (lib/data/v3/·lib/ai/v3/)·v2 LEGACY 영역 보존·rollback 가능. check:v3 도구 = 독립 스크립트·삭제 영향 X.
+
+**관련**: push 1~23회 (5/19)·노션 페이지 36148589-8ea1-81d7-8b55-d1bd771a40a1·PROGRESS.md 5/19 v10.0·메모리 7건 (`feedback-사용자명시-우선원칙-260519` 외)
+
+---
+
 ## 형식
 
 ```
