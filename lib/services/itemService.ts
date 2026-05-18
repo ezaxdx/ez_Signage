@@ -21,6 +21,8 @@ const CATEGORY_TO_DNA_TYPE: Record<string, string> = {
   'A4 가로':       'a4_landscape',
   'A3 세로':       'a3_portrait',
   'A3 가로':       'a3_landscape',
+  '동선 배너':     'route_banner',
+  '동선배너':      'route_banner',
   '백월':          'backwall',
 }
 
