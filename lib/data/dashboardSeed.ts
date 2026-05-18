@@ -54,15 +54,15 @@ export interface SynonymSeed {
 
 export const SEED_SYNONYMS: SynonymSeed[] = [
   // ── 명세 1번 명시 동의어 ──
-  { alias: '스프링배너',     canonical_name: 'X-배너',        note: '명세 1번 명시 동의어' },
+  { alias: '스프링배너',     canonical_name: 'X배너',        note: '명세 1번 명시 동의어' },
 
   // ── 거치대·재질 변형 (X배너) ──
-  { alias: '롤업배너',       canonical_name: 'X-배너',        note: '입구 거치형' },
-  { alias: '배너스탠드',     canonical_name: 'X-배너',        note: '거치대 일반화' },
-  { alias: '철재스프링배너', canonical_name: 'X-배너',        note: '2021 평창평화포럼 시트' },
-  { alias: 'A배너',          canonical_name: 'X-배너',        note: 'A형 거치대' },
-  { alias: '물통배너',       canonical_name: 'X-배너',        note: '물통 무게추' },
-  { alias: '기타 배너',      canonical_name: 'X-배너',        note: '기본 X배너 추정' },
+  { alias: '롤업배너',       canonical_name: 'X배너',        note: '입구 거치형' },
+  { alias: '배너스탠드',     canonical_name: 'X배너',        note: '거치대 일반화' },
+  { alias: '철재스프링배너', canonical_name: 'X배너',        note: '2021 평창평화포럼 시트' },
+  { alias: 'A배너',          canonical_name: 'X배너',        note: 'A형 거치대' },
+  { alias: '물통배너',       canonical_name: 'X배너',        note: '물통 무게추' },
+  { alias: '기타 배너',      canonical_name: 'X배너',        note: '기본 X배너 추정' },
 
   // ── 세로형 (세로 현수막) ──
   { alias: '드롭배너',       canonical_name: '세로 현수막',  note: '천장 매다는 형태' },
@@ -109,6 +109,15 @@ export const SEED_SYNONYMS: SynonymSeed[] = [
   { alias: '동선안내',       canonical_name: '동선 배너',     note: '실내 동선 안내' },
   { alias: '화살표',         canonical_name: '동선 배너',     note: '방향 안내 화살표' },
   { alias: '방향 안내',      canonical_name: '동선 배너',     note: '동선 방향 안내' },
+
+  // ── 노션 §8-1 누락 영역 (5/19 정밀 점검 추가·손피켓 가로 기본 5/7 결정) ──
+  { alias: '명패',           canonical_name: 'A4 가로',      note: '노션 §8-1·소형 명패·a4_landscape' },
+  { alias: '웰컴 피켓',      canonical_name: 'A4 가로',      note: '노션 §8-1·소형 손피켓·a4_landscape' },
+  { alias: '명패 (대)',      canonical_name: 'A3 가로',      note: '노션 §8-1·대형 명패·a3_landscape' },
+  { alias: '명패(대)',       canonical_name: 'A3 가로',      note: '노션 §8-1·대형 명패 (공백 X)·a3_landscape' },
+  { alias: '웰컴보드',       canonical_name: 'A3 가로',      note: '노션 §8-1·대형 안내·a3_landscape' },
+  { alias: 'MOU 현수막',     canonical_name: '가로 현수막',  note: '노션 §8-1·행사 현수막·horizontal_banner' },
+  { alias: 'MOU',            canonical_name: '가로 현수막',  note: '노션 §8-1·MOU 약어·horizontal_banner' },
   { alias: '안내폼보드',     canonical_name: '폼보드',       note: 'L보드 통칭' },
   { alias: 'L보드',          canonical_name: '폼보드',       note: 'L자형 폼보드' },
   { alias: '큐방',           canonical_name: '폼보드',       note: '안내용 큐방' },
@@ -121,10 +130,10 @@ export const SEED_SYNONYMS: SynonymSeed[] = [
   { alias: '화이트보드판',   canonical_name: '폼보드',       note: '하드보드 변형' },
   { alias: '안내사인',       canonical_name: '폼보드',       note: '일반 안내판' },
 
-  // ── 바닥·시트지 ──
-  { alias: '바닥스티커',     canonical_name: '시트지',       note: '바닥 부착' },
-  { alias: '바닥시트',       canonical_name: '시트지',       note: '바닥 시트 약어' },
-  { alias: '유도사인',       canonical_name: '시트지',       note: '바닥 유도 시트' },
+  // ── 바닥·시트지 (노션 §6-2 외·legacy 영역·완전 호환 보존) ──
+  { alias: '바닥스티커',     canonical_name: '시트지',       note: 'legacy·노션 §6-2 외·바닥 부착 호환' },
+  { alias: '바닥시트',       canonical_name: '시트지',       note: 'legacy·바닥 시트 약어 호환' },
+  // line 127 '유도사인' = line 108 동선 배너 매핑으로 일원화 (중복 제거·5/19 정정)
 ]
 
 // ── 3. 행사 폴더 → 행사 이력 (54개) ──────────────────────────
