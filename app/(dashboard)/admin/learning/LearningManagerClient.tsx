@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 import { explainStorageError } from '@/lib/services/storagePaths'
 import { REGION_ORDER } from '@/lib/venueIntel'
 import { PROGRAM_PARTS, PROGRAM_PART_GROUPS, PROGRAM_PART_SIGNAGE_HINTS } from '@/lib/programParts'
+import { LEARNING_META_SEED } from '@/lib/data/v3/learningMetaSeed'
 
 // ── 타입 ──────────────────────────────────────────────────────
 interface Venue {
@@ -610,6 +611,23 @@ export function LearningManagerClient({
         </section>
         </>}
         {activeSection === 'venue-status' && <>
+        {/* ── 노션 컴펌 본 §4 전체 학습 요약 (5/18 정합) ── */}
+        <section className="bg-white border border-slate-200 rounded-xl p-5">
+          <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-indigo-500" />
+            전체 학습 요약 (노션 §4 정합)
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {LEARNING_META_SEED.map(m => (
+              <div key={m.metric} className="border border-slate-200 rounded-lg p-3 bg-slate-50">
+                <p className="text-[10px] text-slate-500 leading-tight">{m.metric}</p>
+                <p className="text-base font-semibold text-slate-900 mt-1">{m.value}</p>
+                {m.note && <p className="text-[9px] text-slate-400 mt-0.5 leading-tight">{m.note}</p>}
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* ── 0. 행사장별 학습 현황 — 점진적 정확도 가시화 (★ v9) ── */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
