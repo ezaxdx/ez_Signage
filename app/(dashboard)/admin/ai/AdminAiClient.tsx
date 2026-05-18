@@ -449,6 +449,14 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
 
         </section>
 
+        {/* ── 노션 컴펌 본 §1-2 호출당 예상 비용 안내 (5/18 정합) ── */}
+        <section>
+          <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3 text-xs text-indigo-900 leading-relaxed">
+            <strong className="font-semibold">호출당 예상 비용</strong> (Gemini 2.5 Flash·환율 1,400원 기준):
+            추천 AI 약 10원 + 도면 분석 AI 약 15원 = <strong>1 프로젝트당 약 25원</strong>
+          </div>
+        </section>
+
         {/* ── v9.27 보존: 일별 상세 사용량 4카드 (오늘/이번 달 호출·비용) ── */}
         <section>
           <h2 className="text-slate-700 text-sm font-semibold mb-3">상세 사용량</h2>
