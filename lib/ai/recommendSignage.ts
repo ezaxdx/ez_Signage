@@ -153,7 +153,7 @@ ${v3CategoryLines}
 매핑 룰 (노션 §8-1 동의어 정합·5/7 손피켓 가로 기본):
 - 명패·웰컴 피켓·큐방·셔틀버스 큐방시트 = a4_landscape
 - 명패(대)·웰컴보드·시상보드·기념촬영보드·컨설팅폼보드·좌석배치도 안내사인 = a3_landscape
-- 천장배너·천정배너·행잉·장폭_천정배너 = tongchun_banner
+- 천장배너·천정배너·행잉·장폭_천정배너 = chunchen_banner
 - 난간배너·드롭배너 = vertical_banner
 - 빵빠레배너 = streetlight_banner
 - MOU 현수막·투어용 현수막·상단 배너 = horizontal_banner
