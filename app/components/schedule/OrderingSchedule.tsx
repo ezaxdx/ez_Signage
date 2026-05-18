@@ -185,9 +185,12 @@ export function OrderingSchedule({ eventDate, projectId, className = '' }: Props
           {/* 노션 컴펌 본 §3-1·§3-3 안내 문구 A안 (5/18 정합) */}
           <div className="px-3 py-2 bg-amber-50 border-b border-amber-200 flex items-start gap-1.5">
             <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <p className="text-[10px] text-amber-800 leading-relaxed">
-              본 일정은 추정 일정입니다. 협력사 확인 후 변경될 수 있습니다.
-            </p>
+            <div className="text-[10px] text-amber-800 leading-relaxed space-y-1">
+              <p>본 일정은 추정 일정입니다. 협력사 확인 후 변경될 수 있습니다.</p>
+              <p className="text-[9px] text-amber-700">
+                ※ 종류별 권장 분기 (§3-2): 구조물 D-30~D-21 · 인쇄물 D-14 · 디지털 D-20
+              </p>
+            </div>
           </div>
           <p className="px-3 py-1.5 text-[10px] text-slate-500 bg-slate-50 border-b border-slate-100">
             이름·D 값 클릭 시 편집. 추가·삭제 가능 (행사 시작은 고정).
