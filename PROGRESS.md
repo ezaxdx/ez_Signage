@@ -1,5 +1,62 @@
 # 작업 이력
 
+## 2026-05-19 (v10.0 — 환경장식물 v3 노션 컴펌 본 정합 + 자체 검증 도구화 + Reflexion 영역 박제)
+
+### 사용자 요청
+조기흠 사원(AXDX팀, 2026-05-19): "환경장식물 컴펌받음·전부 진행·꼼꼼 확인·완벽 제작·자체 검증·최적화·고도화·재발 회피·계획안". 5/18 곽 이사 컴펌 후 노션 SOT 정합 + 5/19 자체 학습 패턴 영구 박제.
+
+### A. 환경장식물 v3 노션 §1~§8 모두 코드 정합 (push 1~14)
+- §6-2 12 카테고리 마스터 (X배너·I배너·가로등·가로현수막·세로현수막·통천·포디움·A4 가로/세로·A3 가로/세로·동선 배너)
+- §6-3 파트별 추천 12종·§8-1 동의어 50+·§7 시설 가이드 6 행사장·§5 누적값 8 행사장
+- §3-2 일정 D-10·D-5·D-3·D-1·§3-3 안내 문구 A안·§1-3 4단 안전망 (NIST RMF 정합)·§4 학습 메타 10건·§1-2 호출당 비용 25원
+- key 호환 (chunchen_banner·design_items·운영 데이터 영향 0건)
+
+### B. 5/19 자체 검증·재검증 4건 정정 (push 15~17)
+- itemService.ts `route_banner` 매핑 누락 → 추가
+- dashboardSeed SEED_SYNONYMS 'I-배너' 대시 → 'I배너' 정정
+- 동선 배너 동의어 4건 추가 (유도사인·동선안내·화살표·방향 안내)
+- SEED_SYNONYMS 'X-배너' 7건 → 'X배너' 일괄 정정·'유도사인' 중복 제거·노션 §8-1 누락 7건 추가 (명패·웰컴보드·MOU·웰컴 피켓 등)
+
+### C. 로직 최적화·고도화 (push 18)
+- recommendationLogicV3.ts: CATEGORY_BY_KEY Map 사전 빌드·O(N×M) → O(N)
+- validateAndFixV3·facility_violation 자동 검사 (NIST §1-3 정합)
+- buildFallbackRecommendationV3·matchByPartV3 재사용 DRY·violation_count 정확 집계
+
+### D. 자체 검증 자동화 (push 19)
+- scripts/check_v3_alignment.mjs 신규·5 영역 19 점검 (신규 키·구 키·legacy 라벨·외부 SOT·fallback)
+- package.json: `npm run check:v3`·`npm run check:all` (4단계 통합)
+- 결과: 19 점검 / 16 통과 / 3 경고 (호환 영역) / 0 실패
+
+### E. docs 4건 신규 (push 20~21)
+- docs/회의자료_환경장식물_v3_260520.md (5/19·5/20 곽 이사 보고 1슬라이드)
+- docs/노션갱신_가이드_v3_260519.md (사용자 직접 노션 영역)
+- docs/향후도입_SD_PyTorch_가이드_260519.md (5건 도입 후보 상세)
+- docs/2026_05_19_월요일_계획안.md (5/19 일일 진행 계획)
+
+### F. 메모리 박제 7건 (Reflexion 영역 영구 누적)
+- feedback-사용자명시-우선원칙-260519 (어제 "왜 미완료인데 작동을 멈춰" 영구 회피)
+- feedback-powershell-인코딩손상-260519 (한글 파일 Edit tool 의무)
+- feedback-정합점검-체크리스트-260519 (grep 4단계 자동화)
+- reference-환경장식물-광범위조사-260519 (8건 WebSearch)
+- reference-5-19-20-회의자료-환경장식물-260519 (회의 SOT 1슬라이드)
+- reference-AI-에이전트-자체개선-260519 (Reflexion·Verifiability·CI/CD)
+
+### G. CLAUDE.md §7 자기 점검 21 질문 (5/19 신규 4건)
+- 18·19·20·21번 = 사용자 명시 즉시·grep 4단계·PowerShell 한글·feelings 회피
+- 어제 발생 4 문제 = 3중 회피 영구 (질문 + 메모리 + check:v3 도구)
+
+### 검증
+- TSC 0 에러 / Next 빌드 30+ 라우트 PASS / harness 72/72·0 fail / check:v3 19/0 fail
+- 인터페이스 변경 0건·DB 운영 데이터 영향 0건·Vercel auto deploy 22회 트리거
+
+### 잔존 영역 (사용자 영역·자율 X)
+- Supabase Studio migration_v11 SQL 실행
+- 라이브 검증 (https://ez-signage2.vercel.app)
+- 노션 페이지 v3 시각 갱신
+- Stable Diffusion·PyTorch·KoSBi 도입 결정 (곽 이사 컴펌·예산)
+
+---
+
 ## 2026-05-16 (v9.55 — 야간 자율 진행 #51~#62) — 외부 검색 12건 + Agent 3개 결과 + hwp 변환 자동화
 
 ### 사용자 요청
