@@ -61,15 +61,55 @@ interface Props {
   onClose: () => void
   /** 컬럼 핀포인트 (특정 컬럼 가이드만 강조). 'mount'·'rigging'·'safety' 등 */
   focusSection?: 'install' | 'mount' | 'rigging' | 'safety' | 'warning' | 'digital'
+  /** 5/22 사용자 명시 = admin 영역 = 가이드 직접 수정 영역 활성 */
+  adminMode?: boolean
+  /** admin 영역 venue_id (PATCH 영역 영역). 없으면 = 수정 X */
+  venueId?: string | null
 }
 
-export function FacilityGuidePanel({ venueName, open, onClose, focusSection }: Props) {
+export function FacilityGuidePanel({ venueName, open, onClose, focusSection, adminMode, venueId }: Props) {
   const guide: VenueFacilityGuide | null = getFacilityGuide(venueName)
   // v9.34: dbData·dbLoading state와 venues 조회 useEffect 삭제 (데이터 수집 현황 섹션 미사용).
   // 어드민 학습 관리자(LearningManagerClient)에서 venues.floor_plan_url·specs_text를 별도 조회·표시.
   const [correctionOpen, setCorrectionOpen] = useState(false)
   const [correctionText, setCorrectionText] = useState('')
   const [correctionDone, setCorrectionDone] = useState(false)
+  // 5/22 사용자 명시 = admin 영역 직접 수정 영역 (카테고리·주의사항 textarea)
+  const [editMode, setEditMode] = useState(false)
+  const [editCategories, setEditCategories] = useState('')
+  const [editWarnings, setEditWarnings] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [editSaved, setEditSaved] = useState(false)
+
+  const openEditMode = () => {
+    if (!guide) return
+    setEditCategories((guide.install_allowed ?? []).map(i => i.category + (i.note ? ` — ${i.note}` : '')).join('\n'))
+    setEditWarnings((guide.warnings ?? []).map(w => w.description ?? w.type ?? '').join('\n'))
+    setEditMode(true)
+  }
+
+  const saveEdit = async () => {
+    if (!venueId) { alert('venue_id 영역 없음 — 학습 관리자 영역 등록 후 수정 가능'); return }
+    setEditSaving(true)
+    try {
+      const catList = editCategories.split('\n').map(s => s.trim()).filter(Boolean).map(line => {
+        const [cat, ...rest] = line.split('—').map(s => s.trim())
+        return { category: cat, status: 'allowed' as const, note: rest.length > 0 ? rest.join('—') : undefined }
+      })
+      const warnList = editWarnings.split('\n').map(s => s.trim()).filter(Boolean).map(d => ({ type: '주의사항', description: d }))
+      const newJson = { ...(guide ?? {}), install_allowed: catList, warnings: warnList, last_updated: new Date().toISOString().slice(0, 10) }
+      const res = await fetch(`/api/admin/venues/${venueId}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ facility_guide_json: newJson }),
+      })
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || res.statusText) }
+      setEditSaved(true)
+      setTimeout(() => { setEditSaved(false); setEditMode(false); window.location.reload() }, 1500)
+    } catch (e) {
+      alert('저장 실패: ' + (e instanceof Error ? e.message : 'unknown'))
+    } finally { setEditSaving(false) }
+  }
 
   const submitCorrection = () => {
     if (!correctionText.trim()) return
@@ -127,10 +167,45 @@ export function FacilityGuidePanel({ venueName, open, onClose, focusSection }: P
             <h2 className="text-slate-900 text-base font-bold">행사장 시설 가이드</h2>
             <p className="text-slate-500 text-sm mt-0.5">{guide?.venue_name ?? venueName ?? '행사장 미지정'}</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded hover:bg-slate-100 text-slate-500 transition">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* 5/22 사용자 명시 = admin 영역 = 이 창에서 가이드 수정 가능 */}
+            {adminMode && guide && !editMode && (
+              <button onClick={openEditMode} className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded transition">
+                ✎ 가이드 수정
+              </button>
+            )}
+            {adminMode && editMode && (
+              <>
+                <button onClick={saveEdit} disabled={editSaving} className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-300 text-white text-xs rounded transition">
+                  {editSaving ? '저장 중...' : editSaved ? '✓ 저장됨' : '저장'}
+                </button>
+                <button onClick={() => setEditMode(false)} className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs rounded transition">
+                  취소
+                </button>
+              </>
+            )}
+            <button onClick={onClose} className="p-2 rounded hover:bg-slate-100 text-slate-500 transition">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
+
+        {/* 5/22 사용자 명시 = admin 편집 모드 영역 = 카테고리·주의사항 textarea 직접 편집 */}
+        {adminMode && editMode && (
+          <div className="px-6 py-5 space-y-4 bg-amber-50/40 border-b border-amber-200">
+            <div>
+              <label className="block text-sm text-slate-700 font-semibold mb-1">설치 가능 환경장식물 카테고리</label>
+              <p className="text-[10px] text-slate-500 mb-1.5">1줄 1건·′카테고리 — 상세 메모′ 영역 영역 (예: ′X배너 — 컨벤션홀 자립형′)</p>
+              <textarea value={editCategories} onChange={e => setEditCategories(e.target.value)} rows={8} className="w-full text-xs border border-slate-300 rounded px-2 py-1.5 font-mono" />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-700 font-semibold mb-1">주의사항</label>
+              <p className="text-[10px] text-slate-500 mb-1.5">1줄 1건 영역 (예: ′외벽 부착 = 운영팀 사전 협의 의무′)</p>
+              <textarea value={editWarnings} onChange={e => setEditWarnings(e.target.value)} rows={5} className="w-full text-xs border border-slate-300 rounded px-2 py-1.5" />
+            </div>
+            <p className="text-[10px] text-slate-500">※ 설치 방법·리깅·안전 기준·디지털 사이니지 영역 = 다음 사이클 영역 (현재 = 카테고리·주의사항만 영역 직접 편집).</p>
+          </div>
+        )}
 
         {!guide ? (
           <div className="px-5 py-4 space-y-4 text-xs">

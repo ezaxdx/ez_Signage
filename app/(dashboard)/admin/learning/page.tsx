@@ -22,13 +22,15 @@ export default async function LearningManagerPage() {
   if (!(await isAdmin(supabase))) redirect('/dashboard')
 
   // 초기 데이터 (병렬). v6 마이그레이션 미적용이면 빈 배열로 폴백.
-  const [venuesRes, requestsRes, jobsRes, projectsRes, itemsRes, aliasesRes, loadedSignageTypes] = await Promise.all([
+  // 5/22 영역 A1 = event_history DB SSR fetch 추가 (sigage_breakdown·program_parts 영역 SSR 영역 = 라이브 즉시 표시)
+  const [venuesRes, requestsRes, jobsRes, projectsRes, itemsRes, aliasesRes, eventHistoryRes, loadedSignageTypes] = await Promise.all([
     supabase.from('venues').select('*').order('created_at', { ascending: false }).then(r => r, () => ({ data: [], error: null })),
     supabase.from('venue_requests').select('*').order('requested_at', { ascending: false }).then(r => r, () => ({ data: [], error: null })),
     supabase.from('learning_jobs').select('*').order('triggered_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [], error: null })),
     supabase.from('projects').select('id, name, event_venue, event_date, program_parts, status, created_at, last_edited_by').limit(500).order('created_at', { ascending: false }).then(r => r, () => ({ data: [], error: null })),
     supabase.from('design_items').select('project_id, category, confirmed, finalized_at, location, purpose, quantity, width_mm, height_mm').limit(5000).then(r => r, () => ({ data: [], error: null })),
     supabase.from('signage_aliases').select('id, alias_name, canonical_name, note').order('alias_name').then(r => r, () => ({ data: [], error: null })),
+    supabase.from('event_history').select('*').is('deleted_at', null).limit(500).then(r => r, () => ({ data: [], error: null })),
     loadSignageTypes(supabase),
   ])
 
@@ -286,6 +288,7 @@ export default async function LearningManagerPage() {
       isAdmin={true}
       userProjectIndex={userProjectIndex}
       userEventHistory={userEventHistory}
+      serverEventHistory={((eventHistoryRes.data ?? []) as typeof SEED_EVENT_HISTORY)}
     />
   )
 }

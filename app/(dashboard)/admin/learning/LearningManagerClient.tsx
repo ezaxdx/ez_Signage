@@ -167,6 +167,8 @@ interface Props {
   facilityGuideStatus?: FacilityGuideRow[]
   signageTypes?: SignageTypeRow[]
   isAdmin?: boolean
+  // 5/22 영역 A1·A2 = SSR 영역 event_history DB fetch 영역 전달
+  serverEventHistory?: typeof SEED_EVENT_HISTORY
 }
 
 const VENUE_TYPES = ['컨벤션센터', '호텔', '전시장', '야외', '공공시설', '기타'] as const
@@ -184,6 +186,7 @@ export function LearningManagerClient({
   isAdmin = false,
   userProjectIndex = [],
   userEventHistory = [],
+  serverEventHistory = [],
 }: Props) {
   // ── 시설 가이드 AI 추출 상태 ────────────────────────────────
   const [extractingVenueId, setExtractingVenueId] = useState<string | null>(null)
@@ -449,7 +452,8 @@ export function LearningManagerClient({
   const [facilityPanelVenue, setFacilityPanelVenue] = useState<string | null>(null)
   // 5/22 사용자 명시 = 유기 연동. event_history DB 영역 fetch → SEED + DB 통합 SOT.
   // 행사 삭제 (deleted_at) = 즉시 모든 영역 (행사장 학습 현황·프로그램 파트 매칭·환경장식물 빈도·AI) 반영.
-  const [dbEventHistory, setDbEventHistory] = useState<typeof SEED_EVENT_HISTORY>([])
+  // 5/22 영역 A2 = SSR 영역 영역 초기값 영역 = serverEventHistory 영역 (라이브 즉시 표시·useEffect 영역 보조)
+  const [dbEventHistory, setDbEventHistory] = useState<typeof SEED_EVENT_HISTORY>(serverEventHistory)
   const [eventHistoryFallback, setEventHistoryFallback] = useState(false)
   useEffect(() => {
     fetch('/api/event-history')
