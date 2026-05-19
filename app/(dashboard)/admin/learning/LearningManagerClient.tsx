@@ -430,6 +430,38 @@ export function LearningManagerClient({
   const [stSamplePreview, setStSamplePreview] = useState<string>('')
   // 5/22 P2-7 = 행사 관리 표 펼침 영역 (▶ 행 클릭 시 환경장식물별 분리 표시)
   const [expandedEventKey, setExpandedEventKey] = useState<string | null>(null)
+  // 5/22 사용자 명시 = 유기 연동. event_history DB 영역 fetch → SEED + DB 통합 SOT.
+  // 행사 삭제 (deleted_at) = 즉시 모든 영역 (행사장 학습 현황·프로그램 파트 매칭·환경장식물 빈도·AI) 반영.
+  const [dbEventHistory, setDbEventHistory] = useState<typeof SEED_EVENT_HISTORY>([])
+  const [eventHistoryFallback, setEventHistoryFallback] = useState(false)
+  useEffect(() => {
+    fetch('/api/event-history')
+      .then(r => r.json())
+      .then(d => {
+        if (d.fallback) {
+          setEventHistoryFallback(true)
+          setDbEventHistory([])
+        } else {
+          setDbEventHistory((d.items ?? []).map((e: { project_name: string; project_code: string | null; year: number | null; venue: string; category_tag: string; program_parts: string[]; signage_breakdown: Array<{ category: string; quantity: number; sizes?: string }>; analyzed_item_count: number | null; is_seed: boolean }) => ({
+            project_name: e.project_name,
+            project_code: e.project_code,
+            year: e.year,
+            venue: e.venue,
+            category_tag: (e.category_tag ?? '일반') as '핵심' | '일반' | '미분류' | '해외',
+            has_excel: true,
+            has_image: false,
+            analyzed_item_count: e.analyzed_item_count ?? undefined,
+            program_parts: e.program_parts ?? [],
+            signage_breakdown: e.signage_breakdown ?? [],
+          })))
+        }
+      })
+      .catch(() => setEventHistoryFallback(true))
+  }, [])
+  // 통합 SOT = DB 영역 있으면 우선·없으면 SEED 영역 (deleted_at 영역 자동 반영)
+  const unifiedEventHistory = dbEventHistory.length > 0 && !eventHistoryFallback
+    ? dbEventHistory
+    : SEED_EVENT_HISTORY
   // 5/22 사용자 명시 = 프로그램 파트 관리 = 화살표 펼침 영역 (행사 관리와 동일 패턴)
   const [expandedPartCode, setExpandedPartCode] = useState<string | null>(null)
   // 5/22 사용자 명시 = 행사 관리 편집·삭제·추가 (localStorage 오버라이드 패턴)

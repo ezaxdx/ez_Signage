@@ -537,7 +537,6 @@ async function logUsage(action: 'export_excel' | 'export_pptx' | 'recommend' | '
       metadata,
     })
     // 엑셀·PPT 내보내기 시: 해당 프로젝트의 모든 design_items.finalized_at = now()
-    // (학습 가중치 100% 정답 풀로 자동 편입 — 회의록 ′학습 3종 ②′)
     // PPT도 동일: 제작 완료 다운로드 = 발주 완료로 간주 (사용자 요청 2026-05-12)
     if ((action === 'export_excel' || action === 'export_pptx') && typeof metadata.project_id === 'string') {
       await supabase
@@ -545,6 +544,51 @@ async function logUsage(action: 'export_excel' | 'export_pptx' | 'recommend' | '
         .update({ finalized_at: new Date().toISOString(), confirmed: true })
         .eq('project_id', metadata.project_id)
         .is('finalized_at', null)
+
+      // 5/22 사용자 명시 = 행사 종료 시 event_history 영역에 값 적힘·다른 영역 영향
+      // project + design_items 영역 합산 → event_history UPSERT (signage_breakdown 자동 채움)
+      try {
+        const projectId = metadata.project_id
+        const { data: proj } = await supabase
+          .from('projects')
+          .select('id, name, event_venue, event_date, program_parts')
+          .eq('id', projectId)
+          .single()
+        const { data: items } = await supabase
+          .from('design_items')
+          .select('category, quantity, width_mm, height_mm')
+          .eq('project_id', projectId)
+        if (proj && items) {
+          const sigByCategory = new Map<string, { quantity: number; sizes: Set<string> }>()
+          for (const it of items as Array<{ category: string | null; quantity: number | null; width_mm: number | null; height_mm: number | null }>) {
+            if (!it.category) continue
+            const prev = sigByCategory.get(it.category) ?? { quantity: 0, sizes: new Set() }
+            prev.quantity += it.quantity ?? 1
+            if (it.width_mm && it.height_mm) prev.sizes.add(`${it.width_mm}×${it.height_mm}`)
+            sigByCategory.set(it.category, prev)
+          }
+          const signage_breakdown = Array.from(sigByCategory.entries())
+            .map(([category, v]) => ({ category, quantity: v.quantity, sizes: Array.from(v.sizes).join('·') || undefined }))
+            .sort((a, b) => b.quantity - a.quantity)
+          const projWithParts = proj as { id: string; name: string; event_venue: string | null; event_date: string | null; program_parts: string[] | null }
+          await fetch('/api/event-history', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              project_code: projectId.slice(0, 12),
+              project_name: projWithParts.name,
+              year: projWithParts.event_date ? new Date(projWithParts.event_date).getFullYear() : new Date().getFullYear(),
+              venue: projWithParts.event_venue || '미정',
+              program_parts: projWithParts.program_parts ?? [],
+              signage_breakdown,
+              analyzed_item_count: items.length,
+              source: 'auto_project',
+            }),
+          })
+        }
+      } catch (err) {
+        console.warn('[event-history] 행사 종료 시 영역 자동 누적 실패:', err)
+      }
     }
   } catch {
     // usage_logs 테이블 없거나 권한 없음 — silent
