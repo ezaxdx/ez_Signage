@@ -4,6 +4,7 @@ import { isAdmin } from '@/lib/auth/role'
 import { LearningManagerClient } from './LearningManagerClient'
 import { SEED_SYNONYMS, SEED_EVENT_HISTORY } from '@/lib/data/dashboardSeed'
 import { VENUE_FACILITY_GUIDE_SEED, findVenueKey } from '@/lib/data/venueFacilityGuide'
+import { normalizeVenueName } from '@/lib/venueIntel'
 import { PROGRAM_PART_BY_CODE } from '@/lib/programParts'
 import { loadSignageTypes } from '@/lib/data/signageTypeLoader'
 import {
@@ -81,7 +82,8 @@ export default async function LearningManagerPage() {
         project_name: p.name,
         project_code: p.id.slice(0, 8),
         year: p.event_date ? new Date(p.event_date).getFullYear() : new Date(p.created_at).getFullYear(),
-        venue: p.event_venue ?? '미정',
+        // 5/22 사용자 명시 = 행사장 = 기존 영역 매칭 정합 (행사 관리 venue 영역)
+        venue: normalizeVenueName(p.event_venue) || '미정',
         category_tag: '일반' as const,
         has_excel: pItems.some(it => it.finalized_at != null),
         has_image: false,

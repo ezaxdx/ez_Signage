@@ -295,8 +295,8 @@ export function LearningManagerClient({
   // 5/22 P2-4 = 프로그램 파트 관리 편집·삭제·추가 (localStorage 오버라이드 패턴)
   const [hiddenProgramPartCodes, setHiddenProgramPartCodes] = useState<string[]>([])
   const [programPartOverrides, setProgramPartOverrides] = useState<Record<string, { name: string; hint: string }>>({})
-  const [customProgramParts, setCustomProgramParts] = useState<Array<{ code: string; name: string; hint: string; group: 'program'|'attendee'|'promotion' }>>([])
-  const [editingProgramPart, setEditingProgramPart] = useState<{ code: string; name: string; hint: string; group: 'program'|'attendee'|'promotion' } | null>(null)
+  const [customProgramParts, setCustomProgramParts] = useState<Array<{ code: string; name: string; hint: string; group: 'program'|'attendee'|'promotion'|'other' }>>([])
+  const [editingProgramPart, setEditingProgramPart] = useState<{ code: string; name: string; hint: string; group: 'program'|'attendee'|'promotion'|'other' } | null>(null)
   useEffect(() => {
     try {
       const h = localStorage.getItem('mice_hidden_program_parts')
@@ -314,7 +314,7 @@ export function LearningManagerClient({
       return next
     })
   }
-  const saveProgramPartEdit = (code: string, draft: { name: string; hint: string; group: 'program'|'attendee'|'promotion' }) => {
+  const saveProgramPartEdit = (code: string, draft: { name: string; hint: string; group: 'program'|'attendee'|'promotion'|'other' }) => {
     // 시드 = override, 신규 (custom_*) = customProgramParts 업데이트
     const isCustom = code.startsWith('custom_')
     if (isCustom) {
@@ -332,7 +332,7 @@ export function LearningManagerClient({
     }
     setEditingProgramPart(null)
   }
-  const addCustomProgramPart = (draft: { name: string; hint: string; group: 'program'|'attendee'|'promotion' }) => {
+  const addCustomProgramPart = (draft: { name: string; hint: string; group: 'program'|'attendee'|'promotion'|'other' }) => {
     if (!draft.name.trim()) { alert('파트명 필수'); return }
     const code = 'custom_' + Date.now().toString(36)
     setCustomProgramParts(prev => {
@@ -479,11 +479,6 @@ export function LearningManagerClient({
       })
       .catch(() => setEventHistoryFallback(true))
   }, [])
-  // 통합 SOT = DB 영역 있으면 우선·없으면 SEED 영역 (deleted_at 영역 자동 반영)
-  const unifiedEventHistory = dbEventHistory.length > 0 && !eventHistoryFallback
-    ? dbEventHistory
-    : SEED_EVENT_HISTORY
-
   // 5/22 사용자 명시 = 동의어 매핑에 있는 값 = 표준명으로 변환. signage_breakdown.category 영역 자동 표준화.
   const allAliases = useMemo(() => {
     return [
@@ -501,6 +496,32 @@ export function LearningManagerClient({
   }, [allAliases])
 
   // 5/22 사용자 명시 = venue별 program_parts·signage_breakdown 영역 집계 + 동의어 자동 표준화
+  // 5/22 사용자 명시 = 프로그램 파트 관리 = 화살표 펼침 영역 (행사 관리와 동일 패턴)
+  const [expandedPartCode, setExpandedPartCode] = useState<string | null>(null)
+  // 5/22 사용자 명시 = 행사 관리 편집·삭제·추가 (localStorage 오버라이드 패턴)
+  const [hiddenEventKeys, setHiddenEventKeys] = useState<string[]>([])
+  const [eventOverrides, setEventOverrides] = useState<Record<string, { project_name?: string; venue?: string; year?: number; program_parts?: string[]; analyzed_item_count?: number }>>({})
+  const [customEvents, setCustomEvents] = useState<Array<{ project_name: string; project_code: string; year: number; venue: string; category_tag: '핵심'|'일반'|'미분류'|'해외'; program_parts: string[]; analyzed_item_count?: number }>>([])
+  const [editingEvent, setEditingEvent] = useState<{ project_name: string; project_code: string; year: number; venue: string; program_parts: string[]; analyzed_item_count?: number } | null>(null)
+
+  // 통합 SOT = DB 영역 있으면 우선·없으면 SEED 영역 + 사용자 프로젝트 + 커스텀 영역 통합
+  // 5/22 사용자 명시 = 행사 관리 = SOT·행사장 관리·프로그램 파트 관리·환경장식물 관리 영역 모두 영향
+  const unifiedEventHistory = useMemo(() => {
+    const base = dbEventHistory.length > 0 && !eventHistoryFallback ? dbEventHistory : SEED_EVENT_HISTORY
+    const userMapped = userEventHistory.map(e => ({
+      ...e,
+      has_excel: e.has_excel ?? true,
+      has_image: e.has_image ?? false,
+    })) as typeof SEED_EVENT_HISTORY
+    const customMapped = customEvents.map(e => ({
+      ...e,
+      has_excel: true,
+      has_image: false,
+      signage_breakdown: undefined,
+    })) as unknown as typeof SEED_EVENT_HISTORY
+    return [...base, ...userMapped, ...customMapped]
+  }, [dbEventHistory, eventHistoryFallback, userEventHistory, customEvents])
+
   const venueAggregateByName = useMemo(() => {
     const map = new Map<string, { program_parts: Set<string>; signage: Map<string, number> }>()
     for (const e of unifiedEventHistory) {
@@ -516,13 +537,6 @@ export function LearningManagerClient({
     }
     return map
   }, [unifiedEventHistory, resolveCategoryName])
-  // 5/22 사용자 명시 = 프로그램 파트 관리 = 화살표 펼침 영역 (행사 관리와 동일 패턴)
-  const [expandedPartCode, setExpandedPartCode] = useState<string | null>(null)
-  // 5/22 사용자 명시 = 행사 관리 편집·삭제·추가 (localStorage 오버라이드 패턴)
-  const [hiddenEventKeys, setHiddenEventKeys] = useState<string[]>([])
-  const [eventOverrides, setEventOverrides] = useState<Record<string, { project_name?: string; venue?: string; year?: number; program_parts?: string[]; analyzed_item_count?: number }>>({})
-  const [customEvents, setCustomEvents] = useState<Array<{ project_name: string; project_code: string; year: number; venue: string; category_tag: '핵심'|'일반'|'미분류'|'해외'; program_parts: string[]; analyzed_item_count?: number }>>([])
-  const [editingEvent, setEditingEvent] = useState<{ project_name: string; project_code: string; year: number; venue: string; program_parts: string[]; analyzed_item_count?: number } | null>(null)
   useEffect(() => {
     try {
       const h = localStorage.getItem('mice_hidden_events')
@@ -2654,7 +2668,8 @@ export function LearningManagerClient({
                               <span className={`text-[10px] px-1.5 py-0.5 rounded ${
                                 pt.group === 'program' ? 'bg-emerald-50 text-emerald-700' :
                                 pt.group === 'attendee' ? 'bg-indigo-50 text-indigo-700' :
-                                'bg-amber-50 text-amber-700'
+                                pt.group === 'promotion' ? 'bg-amber-50 text-amber-700' :
+                                'bg-rose-50 text-rose-700'
                               }`}>{groupLabel}</span>
                             </td>
                             <td className="px-2 py-1.5 text-slate-800 font-medium whitespace-nowrap">{pt.name}</td>
@@ -3547,14 +3562,14 @@ function SignageTypeEditModal({ initial, onClose, onSave }: {
 
 // 5/22 P2-4 = 프로그램 파트 편집·추가 모달
 function ProgramPartEditModal({ initial, isNew, onClose, onSave }: {
-  initial: { code: string; name: string; hint: string; group: 'program'|'attendee'|'promotion' }
+  initial: { code: string; name: string; hint: string; group: 'program'|'attendee'|'promotion'|'other' }
   isNew: boolean
   onClose: () => void
-  onSave: (draft: { name: string; hint: string; group: 'program'|'attendee'|'promotion' }) => void
+  onSave: (draft: { name: string; hint: string; group: 'program'|'attendee'|'promotion'|'other' }) => void
 }) {
   const [name, setName] = useState(initial.name)
   const [hint, setHint] = useState(initial.hint)
-  const [group, setGroup] = useState<'program'|'attendee'|'promotion'>(initial.group)
+  const [group, setGroup] = useState<'program'|'attendee'|'promotion'|'other'>(initial.group)
   return (
     <div className="fixed inset-0 bg-black/40 z-[400] flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-2xl border-2 border-indigo-200 max-w-md w-full" onClick={e => e.stopPropagation()}>

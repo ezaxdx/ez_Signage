@@ -109,6 +109,54 @@ export function matchVenue(eventVenue: string | null): VenueInfo | null {
 }
 
 /**
+ * 5/22 사용자 명시 = 사용자 프로젝트 venue → 기존 행사장 표준명 매칭.
+ * "제주국제컨벤션센터" → "ICC JEJU"·"제주컨벤시아" → "ICC JEJU" 등 동일 venue 그룹핑.
+ * 행사 관리 영역에서 같은 venue 자동 합산.
+ */
+const VENUE_ALIAS_MAP: Record<string, string> = {
+  '제주국제컨벤션센터': 'ICC JEJU',
+  '제주컨벤시아': 'ICC JEJU',
+  'icc jeju': 'ICC JEJU',
+  '코엑스컨벤션센터': '코엑스',
+  'coex': '코엑스',
+  '코엑스 컨벤션센터': '코엑스',
+  '킨텍스 제1전시장': '킨텍스',
+  '킨텍스 제2전시장': '킨텍스',
+  'kintex': '킨텍스',
+  '송도컨벤시아': '송도컨벤시아',
+  '인천 송도컨벤시아': '송도컨벤시아',
+  '동대문디자인플라자': 'DDP',
+  '동대문 디자인 플라자': 'DDP',
+  'ddp': 'DDP',
+  '롯데호텔 서울': '롯데호텔',
+  '그랜드 하얏트 서울': '그랜드하얏트',
+  '웨스틴 조선 서울': '웨스틴조선',
+  '광주 김대중컨벤션센터': '김대중컨벤션센터',
+  '김대중컨벤션센터(광주)': '김대중컨벤션센터',
+  'aT 센터': 'aT센터',
+}
+
+export function normalizeVenueName(raw: string | null | undefined): string {
+  if (!raw) return ''
+  const trimmed = raw.trim()
+  if (!trimmed) return ''
+  // exact 매칭 영역
+  if (VENUE_ALIAS_MAP[trimmed]) return VENUE_ALIAS_MAP[trimmed]
+  const lower = trimmed.toLowerCase()
+  if (VENUE_ALIAS_MAP[lower]) return VENUE_ALIAS_MAP[lower]
+  // 부분 매칭 영역 (긴 영역 우선 영역)
+  const aliasKeys = Object.keys(VENUE_ALIAS_MAP).sort((a, b) => b.length - a.length)
+  for (const k of aliasKeys) {
+    if (trimmed.includes(k) || lower.includes(k.toLowerCase())) return VENUE_ALIAS_MAP[k]
+  }
+  // VENUE_LIST 영역 fuzzy 매칭 (예: "ICC JEJU" 영역 = displayName 영역 매칭)
+  for (const v of VENUE_LIST) {
+    if (trimmed.includes(v.key) || trimmed.includes(v.displayName)) return v.displayName
+  }
+  return trimmed
+}
+
+/**
  * L2 (상세 행사장 / 홀) — 노션 페이지 1 §9 시드.
  *
  * 출처: 노션 페이지 36148589-8ea1-81a3-b3e8-dd4a833c914c §9 행사장 관리.
