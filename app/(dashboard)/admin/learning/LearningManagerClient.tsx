@@ -2099,10 +2099,12 @@ export function LearningManagerClient({
                             ) : (
                               <div className="flex flex-wrap gap-0.5 items-center">
                                 {matchedLabels.map((label, i) => {
-                                  const useCnt = sigUsage.get(label) ?? 0
+                                  const totalQty = sigUsage.get(label) ?? 0
+                                  // 5/22 사용자 명시 = 총 수량 → 행사당 평균 수량 (보기 쉬운 영역)
+                                  const avgPerEvent = usageCount > 0 ? (totalQty / usageCount).toFixed(1) : '0'
                                   return (
                                     <span key={i} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">
-                                      {label}{useCnt > 0 && <span className="text-emerald-500 ml-0.5">({useCnt}회)</span>}
+                                      {label}{totalQty > 0 && <span className="text-emerald-500 ml-0.5">(평균 {avgPerEvent}개)</span>}
                                     </span>
                                   )
                                 })}
