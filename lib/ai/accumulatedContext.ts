@@ -391,9 +391,12 @@ export async function buildSeedEventHistoryContext(venue: string, programParts?:
     if (breakdown.length === 0) continue
     const totalQty = breakdown.reduce((s, b) => s + b.quantity, 0)
     const top = breakdown.slice(0, 5).map(b => `${b.category}(${b.quantity}${b.sizes ? `·${b.sizes}` : ''})`).join(' / ')
-    const estimateTag = (!e.signage_breakdown || e.signage_breakdown.length === 0) ? ' [추정]' : ''
     const sourceTag = e.source === 'manual' ? ' [사용자 추가]' : e.source === 'auto_project' ? ' [자동 누적]' : ' [SEED]'
-    lines.push(`  - ${e.project_name} (${e.year ?? '?'}·${e.venue})${sourceTag}${estimateTag}: 총 ${totalQty}건·${top}`)
+    lines.push(`  - ${e.project_name} (${e.year ?? '?'}·${e.venue})${sourceTag}: 총 ${totalQty}건·${top}`)
+    // 5/22 사용자 명시 = 프로그램 파트 영역 같은 형식·AI 영역에 동일 영역 정합
+    if (e.program_parts && e.program_parts.length > 0) {
+      lines.push(`     프로그램 파트: ${e.program_parts.join(', ')}`)
+    }
   }
   lines.push('→ 위 데이터 = 행사장·파트 매칭 과거 사례. 추천 수량·종류·규격 산정 시 참고.')
   return lines.join('\n')

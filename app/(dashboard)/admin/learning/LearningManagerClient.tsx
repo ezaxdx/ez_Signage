@@ -1197,16 +1197,9 @@ export function LearningManagerClient({
                 <span>홀 단위 분리</span>
               </label>
             </div>
+            {/* 5/22 사용자 명시 = 도면·가이드북·학습 큐·사용자 요청 영역 = 시설 가이드 메뉴로 이동. 행사장 추가 영역은 기본 정보만. */}
             <div className="sm:col-span-2">
-              <label className="block text-slate-500 text-[11px] mb-1">도면 첨부 (PDF/이미지)</label>
-              <input type="file" accept=".pdf,image/*" onChange={e => setFloorPlan(e.target.files?.[0] ?? null)} className="block w-full text-slate-400 text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-slate-50 file:text-slate-400 file:cursor-pointer" />
-              {floorPlan && <p className="text-slate-500 text-[10px] mt-1">{floorPlan.name}</p>}
-            </div>
-            {/* 5/22 사용자 명시 = 가이드북·매뉴얼 영역 첨부 */}
-            <div className="sm:col-span-2">
-              <label className="block text-slate-500 text-[11px] mb-1">시설 가이드북·매뉴얼 (PDF)</label>
-              <input type="file" accept=".pdf,.docx,.hwp,image/*" onChange={e => setFacilityGuideFile(e.target.files?.[0] ?? null)} className="block w-full text-slate-400 text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-slate-50 file:text-slate-400 file:cursor-pointer" />
-              {facilityGuideFile && <p className="text-slate-500 text-[10px] mt-1">{facilityGuideFile.name}</p>}
+              <p className="text-[10px] text-slate-400 italic">※ 도면·시설 가이드북 첨부 영역 = 시설 가이드 메뉴 영역에서 venue별 영역 영역 진행</p>
             </div>
           </div>
           {addError && (
@@ -1496,20 +1489,38 @@ export function LearningManagerClient({
                         </button>
                       </td>
                     </tr>
-                    {isExpanded && halls.length > 0 && (
+                    {isExpanded && (halls.length > 0 || extractedL2.length > 0) && (
                       <tr className="bg-slate-50/60">
                         <td colSpan={9} className="px-6 py-3">
-                          {/* 5/22 사용자 명시 = "추가·수정·삭제 기능 다음 사이클" 같은 보고용 메타 = 사용자 웹에 노출 X */}
-                          <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5">
-                            {halls.map((h, i) => (
-                              <li key={i} className="text-[11px] text-slate-700 bg-white border border-slate-200 rounded px-2 py-1 flex items-center justify-between">
-                                <span>{h.name}</span>
-                                {h.note && (
-                                  <span className="text-[9px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-1 ml-1.5">{h.note}</span>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
+                          {/* 5/22 사용자 명시 = 3 댑스 = L1 (venue) → L2 (halls) → L3 (환경장식물) */}
+                          <div className="text-[10px] text-slate-600 font-semibold mb-2">L2 (휘하 홀)·L3 (환경장식물 종류)</div>
+                          <div className="space-y-2">
+                            {(halls.length > 0 ? halls.map(h => h.name) : extractedL2).map((hallName, i) => {
+                              // L3 = event_history.signage_breakdown 영역에서 hall 영역 매칭 (휘하 L2 영역 = venue 문자열에 hall 포함)
+                              const validNames = new Set(signageTypeList.map(s => s.name))
+                              const hallSignages = new Set<string>()
+                              for (const ev of unifiedEventHistory) {
+                                if (!(ev.venue ?? '').includes(hallName) && !(ev.venue ?? '').includes(v.name)) continue
+                                for (const s of ev.signage_breakdown ?? []) {
+                                  if (validNames.has(s.category)) hallSignages.add(s.category)
+                                }
+                              }
+                              return (
+                                <div key={i} className="bg-white border border-slate-200 rounded px-2 py-1.5">
+                                  <div className="text-[11px] text-slate-800 font-medium mb-1">{hallName}</div>
+                                  {hallSignages.size === 0 ? (
+                                    <span className="text-[10px] text-slate-300">— L3 영역 데이터 없음</span>
+                                  ) : (
+                                    <div className="flex flex-wrap gap-0.5">
+                                      {Array.from(hallSignages).map(name => (
+                                        <span key={name} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">{name}</span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
                         </td>
                       </tr>
                     )}
