@@ -16,17 +16,20 @@ import { join, relative } from 'path'
 
 const ROOT = process.cwd()
 
-// 5/18 노션 컴펌 본 §6-2 = 12 카테고리 SOT
+// 5/22 김연아 대리님 명시 = 엑셀 SOT `구분` 컬럼 12 카테고리 SOT (5/22 정합)
+// - 삭제 5건 = i_banner·a4_portrait·a4_landscape·a3_portrait·a3_landscape
+// - 신규 5건 = award_board·q_room·digital_signage·foam_board·picket_board
+// - 표준명 정합 = '통천' → '통천 배너'·'동선 배너' → '동선 안내 배너'
 const V3_CATEGORY_KEYS = [
-  'x_banner', 'i_banner', 'streetlight_banner',
-  'horizontal_banner', 'vertical_banner', 'chunchen_banner',
-  'podium', 'a4_portrait', 'a4_landscape',
-  'a3_portrait', 'a3_landscape', 'route_banner',
+  'x_banner', 'streetlight_banner', 'horizontal_banner',
+  'vertical_banner', 'chunchen_banner', 'podium',
+  'route_banner', 'award_board', 'q_room',
+  'digital_signage', 'foam_board', 'picket_board',
 ]
 
 // 5/19 발견·정정 영역 (재발 회피)
-const DEPRECATED_KEYS = ['tongchun_banner', 'podium_title']
-const DEPRECATED_LABELS = ['X-배너', 'I-배너', '통천 배너']  // 대시 표기·legacy 라벨
+const DEPRECATED_KEYS = ['tongchun_banner', 'podium_title', 'i_banner', 'a4_portrait', 'a4_landscape', 'a3_portrait', 'a3_landscape']
+const DEPRECATED_LABELS = ['X-배너', 'I-배너', '통천 배너 (이전 = 통천)', '동선 배너 (이전·5/22 동선 안내 배너 변경)']
 
 // v3 활성 영역 파일 (v2 LEGACY 제외·glob 대신 직접 walk)
 const V3_ACTIVE_DIRS = [

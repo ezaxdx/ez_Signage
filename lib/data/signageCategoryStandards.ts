@@ -23,12 +23,11 @@ import rawVenueSignageMap from '@/lib/data/_venue_signage_map.json' assert { typ
 
 // 5/22 사용자 명시 = 6대 표준은 구 정보. v3 환경장식물 종류 12 카테고리로 일괄 변경
 // type union = legacy 6 + v3 12 동시 보유 (다른 함수 호환·옛 데이터 처리)
+// 5/22 김연아 대리님 명시 = 엑셀 SOT 12 카테고리 (i_banner·a4·a3 삭제·5건 신규)
 export type StandardCategoryKey =
-  // v3 12 카테고리 (SOT 5/22)
-  | 'x_banner' | 'i_banner' | 'streetlight_banner' | 'horizontal_banner'
-  | 'vertical_banner' | 'chunchen_banner' | 'podium'
-  | 'a4_portrait' | 'a4_landscape' | 'a3_portrait' | 'a3_landscape'
-  | 'route_banner'
+  | 'x_banner' | 'streetlight_banner' | 'horizontal_banner'
+  | 'vertical_banner' | 'chunchen_banner' | 'podium' | 'route_banner'
+  | 'award_board' | 'q_room' | 'digital_signage' | 'foam_board' | 'picket_board'
   // legacy 6 (호환 유지·새 표시 영역 X)
   | 'outer_wall' | 'gate' | 'streetlight' | 'ceiling' | 'support'
 
@@ -51,8 +50,8 @@ export interface StandardCategoryDef {
 const PRIORITY_MAP: Partial<Record<StandardCategoryKey, 1 | 2 | 3>> = {
   chunchen_banner: 1, horizontal_banner: 1, vertical_banner: 1,
   streetlight_banner: 2,
-  x_banner: 3, i_banner: 3, podium: 3, route_banner: 3,
-  a4_portrait: 3, a4_landscape: 3, a3_portrait: 3, a3_landscape: 3,
+  x_banner: 3, podium: 3, route_banner: 3,
+  award_board: 3, q_room: 3, digital_signage: 3, foam_board: 3, picket_board: 3,
 }
 
 export const STANDARD_CATEGORIES: StandardCategoryDef[] = SIGNAGE_CATEGORIES_V3.map(c => ({
@@ -169,10 +168,10 @@ function computeMapCoverageByVenueKey(): Map<string, Record<StandardCategoryKey,
         result.set(venueKey, {
           outer_wall: false, gate: false, streetlight: false,
           x_banner: false, ceiling: false, support: false,
-          i_banner: false, streetlight_banner: false, horizontal_banner: false,
+          streetlight_banner: false, horizontal_banner: false,
           vertical_banner: false, chunchen_banner: false, podium: false,
-          a4_portrait: false, a4_landscape: false, a3_portrait: false, a3_landscape: false,
           route_banner: false,
+          award_board: false, q_room: false, digital_signage: false, foam_board: false, picket_board: false,
         })
       }
       const entry = result.get(venueKey)!
