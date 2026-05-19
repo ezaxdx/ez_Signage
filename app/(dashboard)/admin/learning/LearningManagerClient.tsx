@@ -1381,10 +1381,11 @@ export function LearningManagerClient({
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-4 flex items-center gap-2">
             <Building2 className="w-4 h-4 text-emerald-400" />
-            학습된 행사장 ({venues.length})
+            학습된 행사장 — 과거 진행 내역 ({venues.length})
           </h2>
+          <p className="text-[10px] text-slate-500 mb-3">행사장별 과거 진행 행사·환경장식물 사용 내역 = AI 추천 영역에 학습 데이터로 자동 주입. 행사장의 규칙(설치 가능 카테고리·주의사항·도면)은 <span className="text-indigo-600 font-medium">시설 가이드</span> 메뉴 영역에서 관리.</p>
           {venues.length === 0 ? (
-            <p className="text-slate-400 text-xs italic">아직 등록된 행사장이 없습니다. 위에서 추가하세요.</p>
+            <p className="text-slate-400 text-xs italic">아직 등록된 행사장이 없습니다. <span className="text-indigo-600">시설 가이드</span> 메뉴에서 추가하세요.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
@@ -2607,12 +2608,14 @@ export function LearningManagerClient({
 
         {/* v9.36: 평면 메뉴 ′시설 가이드′ — 가이드 + 예외 패턴 두 블록 묶음 */}
         {activeSection === 'facility-guides' && <>
-        {/* 5/22 사용자 명시 = 행사장 추가 영역 = 시설 가이드 메뉴 영역 이동 */}
+        {/* 5/22 사용자 명시 = 행사장 규칙 추가 영역 = 시설 가이드 메뉴 영역 이동.
+            "이거 학습시켜주세요" = "행사장 규칙 추가해주세요" = 동일 영역. */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-4 flex items-center gap-2">
             <Plus className="w-4 h-4 text-indigo-400" />
-            행사장 추가
+            행사장 규칙 추가
           </h2>
+          <p className="text-[10px] text-slate-500 mb-3">행사장 기본 정보 + 도면·가이드북 + 설치 가능 카테고리·주의사항 직접 입력 = 시설 가이드(행사장 규칙) 즉시 등록. 도면 첨부 시 Vision 분석 = 자동 백그라운드 처리·완료 시 AI 추출 영역 활성.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-slate-500 text-[11px] mb-1">이름 <span className="text-indigo-400">*</span></label>
@@ -2677,12 +2680,14 @@ export function LearningManagerClient({
           </div>
         </section>
 
-        {/* 5/22 사용자 명시 = 사용자 요청 대기·도면 학습 큐 영역 = 시설 가이드 메뉴 영역 통합 */}
+        {/* 5/22 사용자 명시 = "이거 학습시켜주세요" = "행사장 규칙 추가해주세요" = 동일.
+            도면 학습 큐 영역 = 제거 (Vision 분석 = 자동 백그라운드 처리·UI 노출 X). */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-4 flex items-center gap-2">
             <Inbox className="w-4 h-4 text-amber-400" />
-            사용자 요청 대기 ({pendingRequests.length})
+            행사장 규칙 추가 요청 ({pendingRequests.length})
           </h2>
+          <p className="text-[10px] text-slate-500 mb-3">사용자(사원·대리)가 새 프로젝트 만들 때 "이 행사장 없는데 등록 요청" 영역 = 곧 행사장 규칙(시설 가이드) 추가 요청. 승인 시 위 행사장 추가 영역 데이터로 즉시 변환.</p>
           {pendingRequests.length === 0 ? (
             <p className="text-slate-400 text-xs italic">대기 중인 요청이 없습니다.</p>
           ) : (
@@ -2708,7 +2713,7 @@ export function LearningManagerClient({
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
                     <button onClick={() => approveRequest(req)} className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs rounded transition">
-                      <CheckCircle2 className="w-3 h-3" /> 승인
+                      <CheckCircle2 className="w-3 h-3" /> 승인 (규칙 추가)
                     </button>
                     <button onClick={() => rejectRequest(req)} className="flex items-center gap-1 px-2.5 py-1 bg-slate-200 hover:bg-slate-600 text-slate-800 text-xs rounded transition">
                       <XCircle className="w-3 h-3" /> 반려
@@ -2719,33 +2724,6 @@ export function LearningManagerClient({
             </div>
           )}
         </section>
-        {(() => {
-          const pendingJobs = jobs.filter(j => j.status !== 'done' && j.status !== 'skipped')
-          return (
-            <section className="bg-white border border-slate-200 rounded-xl p-5">
-              <h2 className="text-slate-900 font-semibold text-sm mb-4 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-violet-400" />
-                도면 학습 큐 ({pendingJobs.length})
-              </h2>
-              {pendingJobs.length === 0 ? (
-                <p className="text-slate-400 text-xs italic">대기 중인 학습 큐가 없습니다.</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {pendingJobs.map(job => {
-                    const venue = venues.find(v => v.id === job.venue_id)
-                    return (
-                      <div key={job.id} className="flex items-center gap-2 bg-slate-50/30 rounded px-3 py-1.5 text-xs">
-                        <span className="text-[10px] font-medium rounded px-1.5 py-0.5 text-slate-500 bg-slate-50">{job.status}</span>
-                        <span className="text-slate-700 truncate flex-1">{venue?.name ?? '(unknown venue)'}</span>
-                        {job.source_url && <a href={job.source_url} target="_blank" rel="noopener" className="text-indigo-500 hover:underline">도면</a>}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </section>
-          )
-        })()}
         {/* ── 시설 가이드 KPI 요약 ───────────── */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
