@@ -108,31 +108,25 @@ export const SEED_SYNONYMS: SynonymSeed[] = [
   { alias: '화살표',         canonical_name: '동선 배너',     note: '방향 안내 화살표' },
   { alias: '방향 안내',      canonical_name: '동선 배너',     note: '동선 방향 안내' },
 
-  // ── 노션 §8-1 누락 영역 (5/19 정밀 점검 추가·손피켓 가로 기본 5/7 결정) ──
-  { alias: '명패',           canonical_name: 'A4 가로',      note: '노션 §8-1·소형 명패·a4_landscape' },
-  { alias: '웰컴 피켓',      canonical_name: 'A4 가로',      note: '노션 §8-1·소형 손피켓·a4_landscape' },
-  { alias: '명패 (대)',      canonical_name: 'A3 가로',      note: '노션 §8-1·대형 명패·a3_landscape' },
-  { alias: '명패(대)',       canonical_name: 'A3 가로',      note: '노션 §8-1·대형 명패 (공백 X)·a3_landscape' },
-  { alias: '웰컴보드',       canonical_name: 'A3 가로',      note: '노션 §8-1·대형 안내·a3_landscape' },
-  { alias: 'MOU 현수막',     canonical_name: '가로 현수막',  note: '노션 §8-1·행사 현수막·horizontal_banner' },
-  { alias: 'MOU',            canonical_name: '가로 현수막',  note: '노션 §8-1·MOU 약어·horizontal_banner' },
-  // 5/21 사용자 명시 = 노션 §8-1 정합. 폼보드 표준명 매핑 → 12 카테고리 표준명(A4·A3·I배너) 재매핑.
-  // 노션 §8-1 = "안내폼보드·L보드·안내사인" → A4 가로 또는 A3 가로(크기에 따라 선택, 기본 A4 가로).
-  //          = "큐방·큐방시트·셔틀버스 큐방시트" → A4 가로 (폼보드 재질 발주).
-  //          = "시상보드·기념촬영보드·컨설팅폼보드·좌석배치도 안내사인" → A3 가로.
-  //          = "스탠드POP" → I배너 (위에서 이미 매핑).
-  //          = 시트지·바닥스티커 = 12 카테고리 외 = 매핑 제거 (화이트보드판 동일).
-  { alias: '안내폼보드',     canonical_name: 'A4 가로',     note: '노션 §8-1·기본 A4 가로(크기에 따라 A3 가로 선택)' },
-  { alias: 'L보드',          canonical_name: 'A4 가로',     note: '노션 §8-1·L자형 안내판' },
-  { alias: '안내사인',       canonical_name: 'A4 가로',     note: '노션 §8-1·일반 안내판' },
-  { alias: '큐방',           canonical_name: 'A4 가로',     note: '노션 §8-1·폼보드 재질 발주' },
-  { alias: '큐방시트',       canonical_name: 'A4 가로',     note: '노션 §8-1·큐방 시트 형태' },
-  { alias: '셔틀버스 큐방시트', canonical_name: 'A4 가로',  note: '노션 §8-1·셔틀버스 큐방' },
-  { alias: '컨설팅폼보드',   canonical_name: 'A3 가로',     note: '노션 §8-1·4단계 안내' },
-  { alias: '좌석배치도 안내사인', canonical_name: 'A3 가로', note: '노션 §8-1·배치도 안내판' },
-  { alias: '시상보드',       canonical_name: 'A3 가로',     note: '노션 §8-1·시상식 안내' },
-  { alias: '기념촬영보드',   canonical_name: 'A3 가로',     note: '노션 §8-1·포토존 보드' },
-  // 5/21 = 화이트보드판·시트지·바닥스티커·바닥시트 매핑 제거 (노션 §6-2 외 12 카테고리 외 영역).
+  // 손피켓·명패·웰컴 영역 (가로 기본 — 5/7 결정)
+  { alias: '명패',           canonical_name: 'A4 가로',      note: '소형 명패' },
+  { alias: '웰컴 피켓',      canonical_name: 'A4 가로',      note: '소형 손피켓' },
+  { alias: '명패 (대)',      canonical_name: 'A3 가로',      note: '대형 명패' },
+  { alias: '명패(대)',       canonical_name: 'A3 가로',      note: '대형 명패' },
+  { alias: '웰컴보드',       canonical_name: 'A3 가로',      note: '대형 안내' },
+  { alias: 'MOU 현수막',     canonical_name: '가로 현수막',  note: '행사 현수막' },
+  { alias: 'MOU',            canonical_name: '가로 현수막',  note: 'MOU 약어' },
+  // 폼보드 재질 발주 — 12 카테고리 표준명(A4·A3·I배너) 매핑
+  { alias: '안내폼보드',     canonical_name: 'A4 가로',     note: '기본 A4 가로(크기에 따라 A3 가로 선택)' },
+  { alias: 'L보드',          canonical_name: 'A4 가로',     note: 'L자형 안내판' },
+  { alias: '안내사인',       canonical_name: 'A4 가로',     note: '일반 안내판' },
+  { alias: '큐방',           canonical_name: 'A4 가로',     note: '폼보드 재질 발주' },
+  { alias: '큐방시트',       canonical_name: 'A4 가로',     note: '큐방 시트 형태' },
+  { alias: '셔틀버스 큐방시트', canonical_name: 'A4 가로',  note: '셔틀버스 큐방' },
+  { alias: '컨설팅폼보드',   canonical_name: 'A3 가로',     note: '4단계 안내' },
+  { alias: '좌석배치도 안내사인', canonical_name: 'A3 가로', note: '배치도 안내판' },
+  { alias: '시상보드',       canonical_name: 'A3 가로',     note: '시상식 안내' },
+  { alias: '기념촬영보드',   canonical_name: 'A3 가로',     note: '포토존 보드' },
 ]
 
 // ── 3. 행사 폴더 → 행사 이력 (54개) ──────────────────────────
