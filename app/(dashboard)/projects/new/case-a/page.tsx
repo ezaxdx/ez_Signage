@@ -13,7 +13,8 @@ import type { RecommendItem, EventType, EventLanguage } from '@/lib/ai/recommend
 import { SEED_PERFLIST } from '@/lib/data/dashboardSeed'
 import { formatNoteText } from '@/lib/text/normalizeAiText'
 import { STANDARD_CATEGORY_BY_KEY, type StandardCategoryKey } from '@/lib/data/signageCategoryStandards'
-import { PROGRAM_PARTS, PROGRAM_PART_GROUPS } from '@/lib/programParts'
+import { PROGRAM_PARTS, PROGRAM_PART_GROUPS, PROGRAM_PART_SIGNAGE_DETAILS } from '@/lib/programParts'
+import { SEED_SIGNAGE_TYPES } from '@/lib/data/dashboardSeed'
 import { getHallsByVenueName } from '@/lib/venueIntel'
 
 // 과거 수행실적에서 발주처·주관기관 후보 추출 (자동완성용)
@@ -516,6 +517,34 @@ export default function CaseAPage() {
                   })}
                   {programParts.size > 0 && (
                     <p className="text-[10px] text-emerald-600">선택 {programParts.size}개 — 각 추천 항목에 매칭된 파트 명시</p>
+                  )}
+                  {/* 5/22 사용자 명시 = 선택 파트별 환경장식물·역할(상세 구분) 묶음 영역 표시 */}
+                  {programParts.size > 0 && (
+                    <div className="mt-2 space-y-1.5 border border-emerald-200 bg-emerald-50/40 rounded p-2">
+                      <p className="text-[10px] text-emerald-700 font-semibold">선택 파트 영역 권장 환경장식물·역할 (엑셀 SOT)</p>
+                      {Array.from(programParts).map(code => {
+                        const part = PROGRAM_PARTS.find(p => p.code === code)
+                        const details = PROGRAM_PART_SIGNAGE_DETAILS[code] ?? []
+                        if (!part || details.length === 0) return null
+                        return (
+                          <div key={code} className="text-[10px] text-slate-700">
+                            <span className="font-semibold text-emerald-700">{part.name}</span>
+                            <ul className="ml-3 mt-0.5 space-y-0.5">
+                              {details.map((d, i) => {
+                                const type = SEED_SIGNAGE_TYPES.find(t => t.id === d.signage)
+                                return (
+                                  <li key={i}>
+                                    <span className="text-slate-800">· {type?.name ?? d.signage}</span>
+                                    {d.purposes.length > 0 && <span className="text-slate-500"> — {d.purposes.join(' · ')}</span>}
+                                    {d.note && <span className="text-amber-600 ml-1">({d.note})</span>}
+                                  </li>
+                                )
+                              })}
+                            </ul>
+                          </div>
+                        )
+                      })}
+                    </div>
                   )}
                 </div>
               </Field>

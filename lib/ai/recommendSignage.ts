@@ -15,7 +15,7 @@ import {
   type StandardCategoryKey,
 } from '@/lib/data/signageCategoryStandards'
 import { SIGNAGE_CATEGORIES_V3 } from '@/lib/data/v3/signageCategoriesSeedV3'
-import { PROGRAM_PART_BY_CODE, PROGRAM_PART_SIGNAGE_HINTS, partsForFormat, programPartName } from '@/lib/programParts'
+import { PROGRAM_PART_BY_CODE, PROGRAM_PART_SIGNAGE_HINTS, PROGRAM_PART_SIGNAGE_DETAILS, partsForFormat, programPartName } from '@/lib/programParts'
 import {
   buildPipelineLogicSection,
   buildPipelineLogicSectionWith,
@@ -259,16 +259,25 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
   // "이 행사장은 외벽·천정만 학습됨" → AI가 미학습 카테고리에 quantity=0 + 추천없음 표기하도록 명시
   const coverageBlock = formatCoverageForPrompt(input.venue)
 
-  // v9.31: 프로그램 파트 매핑 컨텍스트 (1순위 — 사용자 선택 파트별 환경장식물 후보)
+  // v9.31 + 5/22: 프로그램 파트 매핑 컨텍스트 (1순위) + 역할(상세 구분) 영역 = 엑셀 SOT 정합
   const selectedParts = (input.programParts ?? []).filter(c => PROGRAM_PART_BY_CODE.has(c))
   const programPartsBlock = selectedParts.length === 0 ? '' :
-    '\n\n[1순위 — 프로그램 파트 매핑] (사용자 선택 ' + selectedParts.length + '개)\n' +
+    '\n\n[1순위 — 프로그램 파트 매핑] (사용자 선택 ' + selectedParts.length + '개·엑셀 SOT 영역 = 환경장식물 + 역할 영역 묶음)\n' +
     selectedParts.map(code => {
       const p = PROGRAM_PART_BY_CODE.get(code)!
+      const details = PROGRAM_PART_SIGNAGE_DETAILS[code] ?? []
+      if (details.length > 0) {
+        return `- ${code} ${p.name}:\n` + details.map(d => {
+          const purposes = d.purposes.length > 0 ? ` [${d.purposes.join(' · ')}]` : ''
+          const note = d.note ? ` (${d.note})` : ''
+          return `    · ${d.signage}${purposes}${note}`
+        }).join('\n')
+      }
+      // fallback (기존 HINTS 영역 영역)
       const hints = PROGRAM_PART_SIGNAGE_HINTS[code] ?? []
       return `- ${code} ${p.name} → 권장 환경장식물: ${hints.join(', ')}`
     }).join('\n') +
-    '\n→ 위 파트별 권장 환경장식물을 1순위 후보로 사용. 각 추천 항목에 매칭된 파트 코드 1개를 program_part 필드에 명시.'
+    '\n→ 위 파트별 권장 환경장식물을 1순위 후보로 사용. 역할(상세 구분) 영역 = 추천 항목 purpose·location 필드 영역 활용. 각 추천 항목에 매칭된 파트 코드 1개를 program_part 필드에 명시.'
 
   // v9.40: 어드민 마스터 데이터 자동 주입 (signage_types 추가 + signage_aliases manual + venues.facility_guide_json)
   // 어드민이 학습 관리자에서 DB에 직접 적재한 추가 자료를 AI가 즉시 활용하도록 합침.

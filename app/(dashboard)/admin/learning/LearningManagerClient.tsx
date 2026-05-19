@@ -1153,7 +1153,7 @@ export function LearningManagerClient({
                             <td className="px-2 py-1.5 text-left">
                               {(() => {
                                 const venueAgg = venueAggregateByName.get(v.venue)
-                                const fromAgg = venueAgg ? Array.from(venueAgg.program_parts).map(code => PROGRAM_PART_BY_CODE.get(code)?.name ?? code) : []
+                                const fromAgg = venueAgg ? Array.from(venueAgg.program_parts).map(code => PROGRAM_PART_BY_CODE.get(code)?.name).filter((n): n is string => Boolean(n)) : []
                                 const allParts = Array.from(new Set([...fromAgg, ...parts]))
                                 if (allParts.length === 0) return <span className="text-slate-300 text-[10px]">미입력</span>
                                 return (
@@ -2786,8 +2786,10 @@ export function LearningManagerClient({
                     .map(e => {
                       const key = (e.project_code ?? '') + e.project_name
                       const isOpen = expandedEventKey === key
+                      // 5/22 사용자 명시 = 의전 (40.18) 영역 삭제 = SEED 영역 데이터 영역 raw 영역 표시 X·filter
                       const partNames = (e.program_parts ?? [])
-                        .map(code => PROGRAM_PART_BY_CODE.get(code)?.name ?? code)
+                        .map(code => PROGRAM_PART_BY_CODE.get(code)?.name)
+                        .filter((n): n is string => Boolean(n))
                       return (
                         <React.Fragment key={key}>
                           <tr className="hover:bg-slate-50 cursor-pointer" onClick={() => setExpandedEventKey(isOpen ? null : key)}>
