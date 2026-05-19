@@ -617,12 +617,14 @@ export function LearningManagerClient({
   const [entranceNote, setEntranceNote] = useState('')
   const [areaSqm, setAreaSqm] = useState('')
   const [floorPlan, setFloorPlan] = useState<File | null>(null)
+  // 5/22 사용자 명시 = 행사장 추가 시 시설 가이드북·매뉴얼 영역 첨부
+  const [facilityGuideFile, setFacilityGuideFile] = useState<File | null>(null)
   const [adding, setAdding] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
 
   const resetForm = () => {
     setName(''); setRegion(''); setVenueType(''); setHallSplit(false)
-    setEntranceNote(''); setAreaSqm(''); setFloorPlan(null); setAddError(null)
+    setEntranceNote(''); setAreaSqm(''); setFloorPlan(null); setFacilityGuideFile(null); setAddError(null)
   }
 
   const addVenue = async () => {
@@ -633,7 +635,7 @@ export function LearningManagerClient({
       let floorPlanUrl: string | null = null
       if (floorPlan) {
         const ext = (floorPlan.name.split('.').pop() || 'bin').toLowerCase()
-        const path = `${userId}/admin-venues/${Date.now()}.${ext}`
+        const path = `${userId}/admin-venues/floor-${Date.now()}.${ext}`
         const { error: upErr } = await supabase.storage.from('design-images').upload(path, floorPlan, { contentType: floorPlan.type || undefined, upsert: false })
         if (upErr) {
           setAddError('도면 업로드 실패: ' + explainStorageError(upErr.message))
@@ -642,7 +644,20 @@ export function LearningManagerClient({
         const { data: pub } = supabase.storage.from('design-images').getPublicUrl(path)
         floorPlanUrl = pub.publicUrl
       }
-      const { data: venue, error: insErr } = await supabase.from('venues').insert({
+      // 5/22 사용자 명시 = 시설 가이드북·매뉴얼 영역 업로드
+      let facilityGuideUrl: string | null = null
+      if (facilityGuideFile) {
+        const ext = (facilityGuideFile.name.split('.').pop() || 'pdf').toLowerCase()
+        const path = `${userId}/admin-venues/guide-${Date.now()}.${ext}`
+        const { error: upErr } = await supabase.storage.from('design-images').upload(path, facilityGuideFile, { contentType: facilityGuideFile.type || undefined, upsert: false })
+        if (upErr) {
+          setAddError('가이드북 업로드 실패: ' + explainStorageError(upErr.message))
+          setAdding(false); return
+        }
+        const { data: pub } = supabase.storage.from('design-images').getPublicUrl(path)
+        facilityGuideUrl = pub.publicUrl
+      }
+      const venueRow: Record<string, unknown> = {
         name: name.trim(),
         region: region || null,
         venue_type: venueType || null,
@@ -651,7 +666,9 @@ export function LearningManagerClient({
         area_sqm: areaSqm ? parseInt(areaSqm) : null,
         floor_plan_url: floorPlanUrl,
         created_by: userId,
-      }).select().single()
+      }
+      if (facilityGuideUrl) venueRow.facility_guide_url = facilityGuideUrl
+      const { data: venue, error: insErr } = await supabase.from('venues').insert(venueRow).select().single()
       if (insErr) {
         if (/relation .* does not exist/i.test(insErr.message)) {
           setAddError('venues 테이블이 없습니다. supabase/migration_v6_v4_1.sql을 실행하세요.')
@@ -1184,6 +1201,12 @@ export function LearningManagerClient({
               <label className="block text-slate-500 text-[11px] mb-1">도면 첨부 (PDF/이미지)</label>
               <input type="file" accept=".pdf,image/*" onChange={e => setFloorPlan(e.target.files?.[0] ?? null)} className="block w-full text-slate-400 text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-slate-50 file:text-slate-400 file:cursor-pointer" />
               {floorPlan && <p className="text-slate-500 text-[10px] mt-1">{floorPlan.name}</p>}
+            </div>
+            {/* 5/22 사용자 명시 = 가이드북·매뉴얼 영역 첨부 */}
+            <div className="sm:col-span-2">
+              <label className="block text-slate-500 text-[11px] mb-1">시설 가이드북·매뉴얼 (PDF)</label>
+              <input type="file" accept=".pdf,.docx,.hwp,image/*" onChange={e => setFacilityGuideFile(e.target.files?.[0] ?? null)} className="block w-full text-slate-400 text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-slate-50 file:text-slate-400 file:cursor-pointer" />
+              {facilityGuideFile && <p className="text-slate-500 text-[10px] mt-1">{facilityGuideFile.name}</p>}
             </div>
           </div>
           {addError && (
