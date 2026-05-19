@@ -1899,6 +1899,11 @@ export function LearningManagerClient({
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                     {groupParts.map(pt => {
                       const matchedIds = PROGRAM_PART_SIGNAGE_HINTS[pt.code] ?? []
+                      // 5/22 사용자 명시 = x_banner 영문 키 X·X배너 한국어 라벨로 변환 (SEED_SIGNAGE_TYPES.name 매핑)
+                      const matchedLabels = matchedIds.map(id => {
+                        const t = signageTypeList.find(s => s.id === id) ?? signageTypes.find(s => s.id === id)
+                        return t?.name ?? id
+                      })
                       return (
                         <div key={pt.code} className="border border-slate-200 rounded-lg p-3 bg-slate-50/50">
                           <div className="flex items-center justify-between mb-1">
@@ -1906,15 +1911,15 @@ export function LearningManagerClient({
                           </div>
                           {pt.hint && <p className="text-[10px] text-slate-500 mb-2">{pt.hint}</p>}
                           <div className="flex flex-wrap gap-0.5">
-                            <span className="text-[10px] text-slate-600 mr-1">매칭 ({matchedIds.length}):</span>
-                            {matchedIds.length === 0 ? (
+                            <span className="text-[10px] text-slate-600 mr-1">매칭 ({matchedLabels.length}):</span>
+                            {matchedLabels.length === 0 ? (
                               <span className="text-[10px] text-slate-300">—</span>
                             ) : (
-                              matchedIds.slice(0, 6).map(id => (
-                                <span key={id} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">{id}</span>
+                              matchedLabels.slice(0, 6).map((label, i) => (
+                                <span key={i} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">{label}</span>
                               ))
                             )}
-                            {matchedIds.length > 6 && <span className="text-[9px] text-slate-400">+{matchedIds.length - 6}</span>}
+                            {matchedLabels.length > 6 && <span className="text-[9px] text-slate-400">+{matchedLabels.length - 6}</span>}
                           </div>
                         </div>
                       )
