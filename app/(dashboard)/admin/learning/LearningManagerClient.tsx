@@ -3031,7 +3031,7 @@ export function LearningManagerClient({
                     <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">주의사항</th>
                     <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap" title="시설 가이드 정보 6 영역(① 설치 가능 카테고리 ② 설치 방법 ③ 리깅·천정 설치 ④ 안전 기준 ⑤ 주의사항 ⑥ 디지털 사이니지) 중 채워진 영역 수. 6/6 = 완전·낮을수록 보강 필요.">정보 채움 (6 영역)</th>
                     <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">학습 시점</th>
-                    <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">AI 추출</th>
+                    {/* 5/22 사용자 명시 = AI 추출 컬럼 삭제 (시설 가이드 영역) */}
                     {isAdmin && <th className="px-2 py-1.5 text-center font-semibold w-8"></th>}
                   </tr>
                 </thead>
@@ -3052,13 +3052,27 @@ export function LearningManagerClient({
                       if (!groups.has(groupName)) groups.set(groupName, [])
                       groups.get(groupName)!.push(f)
                     }
-                    const adminColCount = isAdmin ? 8 : 7
+                    const adminColCount = isAdmin ? 7 : 6 // 5/22 사용자 명시 = AI 추출 컬럼 삭제 (8/7 → 7/6)
                     const out: React.ReactNode[] = []
                     Array.from(groups.entries()).forEach(([groupName, items]) => {
                       const isGroupOpen = expandedFacilityGroup === groupName
                       const groupCategories = items.reduce((s, x) => s + x.categories_count, 0)
                       const groupWarnings = items.reduce((s, x) => s + x.warnings_count, 0)
-                      // L1 = 그룹 행 (코엑스·킨텍스 등). 가이드 정보 평균 영역 = 의미 모호·삭제 (사용자 명시).
+                      // 5/22 사용자 명시 = 정보 채움 (6 영역) = L1 영역에도 표시·휘하 홀 합산 영역
+                      // 6 영역 = ① install_allowed ② mount_methods ③ rigging ④ safety ⑤ warnings ⑥ digital_signage
+                      // 휘하 홀 중 ≥1 영역 정보 있는 영역 카운트 (0~6/6)
+                      const groupHas = {
+                        install: items.some(i => Array.isArray(i.install_allowed) && i.install_allowed.length > 0),
+                        mount: items.some(i => i.mount_methods != null),
+                        rigging: items.some(i => i.rigging?.available != null),
+                        safety: items.some(i => i.safety != null),
+                        warnings: items.some(i => Array.isArray(i.warnings) && i.warnings.length > 0),
+                        digital: items.some(i => i.digital_signage != null),
+                      }
+                      const groupFilled = Object.values(groupHas).filter(Boolean).length
+                      const groupRatio = groupFilled / 6
+                      const groupColor = groupRatio >= 0.83 ? 'text-emerald-600' : groupRatio >= 0.5 ? 'text-amber-600' : 'text-rose-600'
+                      // L1 = 그룹 행 (코엑스·킨텍스 등)
                       out.push(
                         <tr key={`L1-${groupName}`} className="bg-indigo-50/60 hover:bg-indigo-50 font-semibold border-t-2 border-indigo-100">
                           <td className="px-2 py-1.5 text-indigo-700 text-center">
@@ -3071,7 +3085,8 @@ export function LearningManagerClient({
                           </td>
                           <td className="px-2 py-1.5 text-right text-indigo-700 font-mono text-[11px]">{groupCategories}</td>
                           <td className="px-2 py-1.5 text-right text-indigo-700 font-mono text-[11px]">{groupWarnings}</td>
-                          <td className="px-2 py-1.5" colSpan={isAdmin ? 4 : 3}></td>
+                          <td className={`px-2 py-1.5 text-right font-mono font-semibold ${groupColor}`} title={`설치 가능 ${groupHas.install ? '있음' : '없음'}·설치 방법 ${groupHas.mount ? '있음' : '없음'}·리깅 ${groupHas.rigging ? '있음' : '없음'}·안전 ${groupHas.safety ? '있음' : '없음'}·주의사항 ${groupHas.warnings ? '있음' : '없음'}·디지털 ${groupHas.digital ? '있음' : '없음'}`}>{groupFilled}/6</td>
+                          <td className="px-2 py-1.5" colSpan={isAdmin ? 2 : 1}></td>
                         </tr>
                       )
                       if (!isGroupOpen) return
@@ -3079,8 +3094,7 @@ export function LearningManagerClient({
                       items.forEach(f => {
                         const ratio = (f.completeness / 6)
                         const color = ratio >= 0.83 ? 'text-emerald-600' : ratio >= 0.5 ? 'text-amber-600' : 'text-rose-600'
-                        const isExtracting = extractingVenueId === f.venue_id
-                        const isSuccess = extractSuccessId === f.venue_id
+                        void extractingVenueId; void extractSuccessId // 5/22 AI 추출 삭제 후 dead state·보존
                         const hidden = hiddenFacilityVenues.includes(f.venue_key)
                         const isOpen = expandedFacilityVenueKey === f.venue_key
                         // L2 = venue 행 - 메인
@@ -3100,48 +3114,7 @@ export function LearningManagerClient({
                         <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{f.warnings_count}</td>
                         <td className={`px-2 py-1.5 text-right font-mono font-semibold ${color}`}>{f.completeness}/6</td>
                         <td className="px-2 py-1.5 text-slate-500 text-[11px]">{f.last_updated ?? '미상'}</td>
-                        <td className="px-2 py-1.5 text-right">
-                          {f.venue_id && f.has_specs_text ? (
-                            isSuccess ? (
-                              <span className="flex items-center gap-1 text-emerald-600 text-[10px] justify-end">
-                                <CheckCircle2 className="w-3 h-3" /> 완료
-                              </span>
-                            ) : (
-                              <button
-                                disabled={isExtracting}
-                                onClick={async () => {
-                                  setExtractingVenueId(f.venue_id!)
-                                  try {
-                                    const res = await fetch('/api/admin/facility-guide', {
-                                      method: 'POST',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ venueId: f.venue_id, action: 'extract' }),
-                                    })
-                                    const data = await res.json()
-                                    if (res.ok) {
-                                      setExtractSuccessId(f.venue_id!)
-                                      setTimeout(() => setExtractSuccessId(null), 5000)
-                                    } else {
-                                      alert('추출 실패: ' + (data.error ?? 'unknown'))
-                                    }
-                                  } catch (e) {
-                                    alert('오류: ' + (e instanceof Error ? e.message : 'unknown'))
-                                  } finally {
-                                    setExtractingVenueId(null)
-                                  }
-                                }}
-                                className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-200 disabled:text-slate-400 text-white transition"
-                              >
-                                {isExtracting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                AI 추출
-                              </button>
-                            )
-                          ) : (
-                            <span className="text-slate-300 text-[10px]">
-                              {f.venue_id ? '분석 필요' : '—'}
-                            </span>
-                          )}
-                        </td>
+                        {/* 5/22 사용자 명시 = AI 추출 셀 삭제 (시설 가이드 영역) */}
                         {isAdmin && (
                           <td className="px-2 py-1.5 text-center whitespace-nowrap">
                             {/* 5/22 사용자 명시 = ✎ 편집 추가 (정보 수정 요청 형태로 누적) */}
