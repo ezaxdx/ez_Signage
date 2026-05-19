@@ -50,20 +50,51 @@ export default async function AdminAiPage() {
   const todayCalls = recommendLogs.filter(l => l.created_at.startsWith(todayKey)).length
   const monthCalls = recommendLogs.filter(l => l.created_at.startsWith(monthKey)).length
 
-  // 토큰 사용량 추정 (metadata.tokens 있으면 사용, 없으면 평균 3500 토큰)
-  const TOKEN_AVG = 3500
-  const todayTokens = recommendLogs
-    .filter(l => l.created_at.startsWith(todayKey))
-    .reduce((acc, l) => acc + ((l.metadata?.tokens as number) ?? TOKEN_AVG), 0)
-  const monthTokens = recommendLogs
-    .filter(l => l.created_at.startsWith(monthKey))
-    .reduce((acc, l) => acc + ((l.metadata?.tokens as number) ?? TOKEN_AVG), 0)
+  // 5/22 사용자 명시: 실제 비용 매핑 = Gemini usageMetadata 영역 토큰 합산 (평균 3500 추정 X).
+  // metadata.total_tokens 있으면 실제값·없으면 (구버전 INSERT) 평균 3500 fallback.
+  // input·output 영역 분리 합산 = 2.5 Flash 영역 정확 단가 적용.
+  const TOKEN_AVG_FALLBACK = 3500
+  const sumTokens = (logs: typeof recommendLogs, key: 'prompt_tokens' | 'output_tokens' | 'total_tokens', fallback = 0) =>
+    logs.reduce((acc, l) => acc + ((l.metadata?.[key] as number) ?? fallback), 0)
 
-  // 비용 추정 — Gemini 2.5 Flash 단가: $0.00015 / 1K tokens (input avg, ~05/2025)
-  const COST_USD_PER_1K = 0.00015
+  const todayLogs = recommendLogs.filter(l => l.created_at.startsWith(todayKey))
+  const monthLogs = recommendLogs.filter(l => l.created_at.startsWith(monthKey))
+
+  // 실제 토큰 합산 (metadata 없는 구버전 호출 = 평균 추정·신규 호출 = 실제값)
+  const todayPromptTokens = sumTokens(todayLogs, 'prompt_tokens')
+  const todayOutputTokens = sumTokens(todayLogs, 'output_tokens')
+  const monthPromptTokens = sumTokens(monthLogs, 'prompt_tokens')
+  const monthOutputTokens = sumTokens(monthLogs, 'output_tokens')
+
+  // total_tokens 영역 = prompt + output 합산·없으면 fallback
+  const todayTokens = todayPromptTokens + todayOutputTokens > 0
+    ? todayPromptTokens + todayOutputTokens
+    : sumTokens(todayLogs, 'total_tokens', TOKEN_AVG_FALLBACK)
+  const monthTokens = monthPromptTokens + monthOutputTokens > 0
+    ? monthPromptTokens + monthOutputTokens
+    : sumTokens(monthLogs, 'total_tokens', TOKEN_AVG_FALLBACK)
+
+  // 비용 산출 — Gemini 2.5 Flash 영역 실제 단가 (2025 영역·https://ai.google.dev/pricing):
+  // - Input:  $0.30 / 1M tokens = $0.0003 / 1K
+  // - Output: $2.50 / 1M tokens = $0.0025 / 1K
+  // 무료 tier (AI Studio·https://aistudio.google.com) 영역 = 청구 0원·근데 추정값 표시 (유료 전환 시 정확).
+  const INPUT_USD_PER_1K = 0.0003
+  const OUTPUT_USD_PER_1K = 0.0025
   const KRW_PER_USD = 1380
-  const todayCostUsd = (todayTokens / 1000) * COST_USD_PER_1K
-  const monthCostUsd = (monthTokens / 1000) * COST_USD_PER_1K
+
+  // 분리 산출 (실제 토큰 영역 있으면)·없으면 total × input 단가 fallback
+  const todayCostUsd = todayPromptTokens + todayOutputTokens > 0
+    ? (todayPromptTokens / 1000) * INPUT_USD_PER_1K + (todayOutputTokens / 1000) * OUTPUT_USD_PER_1K
+    : (todayTokens / 1000) * INPUT_USD_PER_1K
+  const monthCostUsd = monthPromptTokens + monthOutputTokens > 0
+    ? (monthPromptTokens / 1000) * INPUT_USD_PER_1K + (monthOutputTokens / 1000) * OUTPUT_USD_PER_1K
+    : (monthTokens / 1000) * INPUT_USD_PER_1K
+
+  // 무료 tier 영역 여부 = GEMINI_API_KEY 영역 AI Studio 영역 = 청구 0원
+  // (production 영역 점검 X·현 시점 모든 호출 무료 tier 가정·향후 유료 영역 전환 시 BILLING_ENABLED env 영역 도입)
+  const isFreeTier = true
+  const todayCostKrwActual = isFreeTier ? 0 : todayCostUsd * KRW_PER_USD
+  const monthCostKrwActual = isFreeTier ? 0 : monthCostUsd * KRW_PER_USD
 
   // ── 일자별 추이 (최근 30일) ────────────────────────────────
   const dailyMap = new Map<string, number>()
@@ -181,10 +212,18 @@ export default async function AdminAiPage() {
         monthCalls,
         todayTokens,
         monthTokens,
+        // 5/22 사용자 명시: 실제 청구 영역 = 무료 tier 영역 0원·근데 추정 비용 영역 (유료 전환 시 정확) 분리 표시
         todayCostUsd,
         monthCostUsd,
-        todayCostKrw: todayCostUsd * KRW_PER_USD,
-        monthCostKrw: monthCostUsd * KRW_PER_USD,
+        todayCostKrw: todayCostKrwActual,
+        monthCostKrw: monthCostKrwActual,
+        todayCostKrwEstimated: todayCostUsd * KRW_PER_USD,
+        monthCostKrwEstimated: monthCostUsd * KRW_PER_USD,
+        isFreeTier,
+        todayPromptTokens,
+        todayOutputTokens,
+        monthPromptTokens,
+        monthOutputTokens,
       }}
       dailyTrend={dailyTrend}
       abnormalUsers={abnormalUsers.slice(0, 20)}

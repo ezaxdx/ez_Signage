@@ -102,6 +102,14 @@ export interface RecommendResult {
     filled: string[]
     missing: string[]
   }
+  /** 5/22 사용자 명시: 실제 비용 매핑 = Gemini API 응답 usageMetadata 추출.
+   *  무료 tier 영역 = 청구 0원·유료 전환 시 = input/output 분리 단가로 정확 산출.
+   *  admin/ai 화면 영역 평균 3500 추정 → 실제 토큰 합산으로 정합. */
+  usage?: {
+    prompt_tokens: number | null
+    output_tokens: number | null
+    total_tokens: number | null
+  }
 }
 
 const EVENT_TYPE_KO: Record<EventType, string> = {
@@ -393,6 +401,7 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
   const data = await res.json() as {
     candidates?: { content?: { parts?: { text?: string }[] } }[]
     error?: { message?: string }
+    usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; totalTokenCount?: number }
   }
 
   if (data.error) {
@@ -468,6 +477,15 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
     }
     item.program_part = code
     item.program_part_name = programPartName(code)
+  }
+
+  // 5/22 사용자 명시: Gemini usageMetadata 영역 추출 + RecommendResult 영역 부착.
+  // = admin/ai 화면 영역에서 실제 토큰 영역 비용 산출 (평균 3500 추정 → 실제값).
+  // 무료 tier 영역 = 청구 0원·근데 추적용으로 토큰 영역 기록 (유료 전환 시 즉시 정확 산출 가능).
+  parsed.usage = {
+    prompt_tokens: data.usageMetadata?.promptTokenCount ?? null,
+    output_tokens: data.usageMetadata?.candidatesTokenCount ?? null,
+    total_tokens: data.usageMetadata?.totalTokenCount ?? null,
   }
 
   return parsed

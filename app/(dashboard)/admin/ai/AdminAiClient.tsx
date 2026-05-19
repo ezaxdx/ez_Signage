@@ -76,8 +76,16 @@ interface Stats {
   monthTokens: number
   todayCostUsd: number
   monthCostUsd: number
-  todayCostKrw: number
+  todayCostKrw: number          // 실제 청구 영역 (무료 tier = 0원)
   monthCostKrw: number
+  // 5/22 사용자 명시: 실제 비용 매핑 = 무료 tier 0원·추정 분리 표시
+  todayCostKrwEstimated?: number // 유료 전환 시 추정 비용
+  monthCostKrwEstimated?: number
+  isFreeTier?: boolean
+  todayPromptTokens?: number     // input 토큰 영역 (분리 비용 산출)
+  todayOutputTokens?: number     // output 토큰 영역
+  monthPromptTokens?: number
+  monthOutputTokens?: number
 }
 interface DailyTrend { date: string; count: number }
 interface AbnormalUser { user_id: string; project_id: string; count: number }
@@ -338,8 +346,24 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <UsageCard label="오늘 호출" value={stats.todayCalls} unit="회" sub={`토큰 ${stats.todayTokens.toLocaleString()}`} color="text-indigo-600" />
             <UsageCard label="이번 달 호출" value={stats.monthCalls} unit="회" sub={`토큰 ${stats.monthTokens.toLocaleString()}`} color="text-blue-600" />
-            <UsageCard label="오늘 비용" value={`$${stats.todayCostUsd.toFixed(4)}`} unit="" sub={`₩${Math.round(stats.todayCostKrw).toLocaleString()}`} color="text-amber-600" />
-            <UsageCard label="이번 달 비용" value={`$${stats.monthCostUsd.toFixed(4)}`} unit="" sub={`₩${Math.round(stats.monthCostKrw).toLocaleString()}`} color="text-emerald-600" />
+            <UsageCard
+              label={stats.isFreeTier ? '오늘 비용 (무료 tier)' : '오늘 비용'}
+              value={stats.isFreeTier ? '₩0' : `$${stats.todayCostUsd.toFixed(4)}`}
+              unit=""
+              sub={stats.isFreeTier
+                ? `유료 전환 시 ₩${Math.round(stats.todayCostKrwEstimated ?? 0).toLocaleString()}`
+                : `₩${Math.round(stats.todayCostKrw).toLocaleString()}`}
+              color="text-amber-600"
+            />
+            <UsageCard
+              label={stats.isFreeTier ? '이번 달 비용 (무료 tier)' : '이번 달 비용'}
+              value={stats.isFreeTier ? '₩0' : `$${stats.monthCostUsd.toFixed(4)}`}
+              unit=""
+              sub={stats.isFreeTier
+                ? `유료 전환 시 ₩${Math.round(stats.monthCostKrwEstimated ?? 0).toLocaleString()}`
+                : `₩${Math.round(stats.monthCostKrw).toLocaleString()}`}
+              color="text-emerald-600"
+            />
           </div>
         </section>
 

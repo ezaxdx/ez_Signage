@@ -56,6 +56,11 @@ export async function POST(req: NextRequest) {
         event_name: body.eventName,
         item_count: result?.items?.length ?? 0,
         result_status: resultStatus,
+        // 5/22 사용자 명시: 실제 비용 매핑 = Gemini usageMetadata 영역 토큰 저장.
+        // 무료 tier 청구 0원·유료 전환 시 정확 산출. admin/ai 화면 영역 평균 추정 → 실제값.
+        prompt_tokens: result?.usage?.prompt_tokens ?? null,
+        output_tokens: result?.usage?.output_tokens ?? null,
+        total_tokens: result?.usage?.total_tokens ?? null,
         ...(recommendErrorMsg ? { error: recommendErrorMsg } : {}),
       },
     })
