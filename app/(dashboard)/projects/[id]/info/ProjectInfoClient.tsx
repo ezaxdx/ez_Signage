@@ -198,6 +198,11 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
       setAddError('목록에서 사용자를 선택하세요.')
       return
     }
+    // 5/20 노션 §7 정합 = 본인 초대 차단 (소유자 = 자동 멤버·중복 차단)
+    if (selectedProfile.email === userEmail) {
+      setAddError('본인은 이미 프로젝트 소유자입니다.')
+      return
+    }
     if (members.some(m => m.user_email === selectedProfile.email)) {
       setAddError('이미 초대된 사용자입니다.')
       return
