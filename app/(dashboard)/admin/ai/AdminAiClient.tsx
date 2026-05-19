@@ -366,6 +366,17 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
               const Icon = CARD_ICONS[card.key]
               const cur = cardSettings[card.key]
               const isAlways = card.trigger === 'always'
+              // 5/21 사용자 명시 = trigger별 정확한 워딩 (항상 호출·도면 첨부 시만 만으로 부족)
+              const triggerLabel: Record<typeof card.trigger, string> = {
+                always: '새 프로젝트마다 자동 호출',
+                on_floor_plan: '행사 도면 업로드 시에만 호출',
+                on_venue_registration: '신규 행사장 등록 시 1회 호출 (이후 추천에 자동 반영)',
+              }
+              const triggerColor: Record<typeof card.trigger, string> = {
+                always: 'bg-indigo-100 text-indigo-700',
+                on_floor_plan: 'bg-amber-100 text-amber-700',
+                on_venue_registration: 'bg-violet-100 text-violet-700',
+              }
               // 이 카드에서 사용 가능한 변수 chip (cardScope null 또는 카드 키와 일치)
               const usableVars = PERSONA_VARIABLES.filter(v => !v.cardScope || v.cardScope === card.key)
               return (
@@ -374,11 +385,11 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
                   className={`bg-white border rounded-xl p-4 ${isAlways ? 'border-indigo-300 ring-1 ring-indigo-100' : 'border-slate-200'}`}
                 >
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Icon className={`w-4 h-4 ${isAlways ? 'text-indigo-600' : 'text-slate-600'}`} />
                       <span className="text-sm font-semibold text-slate-900">{card.title}</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${isAlways ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700'}`}>
-                        {isAlways ? '항상 호출' : '도면 첨부 시만'}
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${triggerColor[card.trigger]}`}>
+                        {triggerLabel[card.trigger]}
                       </span>
                     </div>
                   </div>

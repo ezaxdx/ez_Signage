@@ -81,12 +81,18 @@ export const PIPELINE_BLOCKS: Record<'step1' | 'step2' | 'step3' | 'step4' | 'st
 - 미첨부 시 호출 안 함 (이 step skip).`,
     status: 'active',
   },
-  // 5/20 노션 §1 (AI 호출 3종) 정합 = 행사장 특징 분석 AI = 신규 행사장 등록 시 시설가이드 텍스트화
+  // 5/20 노션 §1 (AI 호출 3종) 정합 = 행사장 특징 분석 AI
+  // 5/21 사용자 명시 = 텍스트화만으론 추천 흐름 통합 안 됨 → body에 자동 주입 흐름 명시
   step5: {
     num: 5,
     title: '행사장 특징 분석',
-    desc: '신규 행사장 등록 시 시설 가이드·매뉴얼 텍스트화',
-    body: `[행사장 등록] 신규 행사장 시설 가이드 PDF·매뉴얼 텍스트화 → venues.specs_text 저장`,
+    desc: '신규 행사장 등록 시 시설가이드 텍스트화 + 이후 추천에 자동 활용',
+    body: `[행사장 등록 시 1회 호출]
+- 입력: 신규 행사장 시설가이드 PDF·매뉴얼 + 도면 첨부 (관리자 페이지 → 행사장 추가에서 업로드).
+- 동작: Gemini Vision으로 표준 규격·제약·연락처·예약 시점 텍스트 추출 → venues.specs_text 저장.
+- 자동 활용: 이후 같은 행사장으로 새 프로젝트 생성 시 lib/ai/venueProfile.ts가 specs_text를
+  자동으로 읽어 추천 Gemini 프롬프트에 [행사장 특징] 블록으로 주입 → 추천 결과에 반영됨.
+- 즉 텍스트화는 1회·이후 모든 추천은 학습 결과 자동 사용 (별도 호출 X).`,
     status: 'coming',
   },
 }
@@ -168,8 +174,12 @@ export interface PipelineCard {
   notice: string
   /** 이 카드가 묶는 step 키들 (recommend = step1·2·3 / floor_plan_vision = step4) */
   steps: Array<keyof typeof PIPELINE_BLOCKS>
-  /** 항상 호출 / 첨부 시만 호출 */
-  trigger: 'always' | 'on_attachment'
+  /** 5/21 사용자 명시 = 정확한 워딩으로 분리.
+   *  - always = 모든 추천에 자동 적용 (사용자가 새 프로젝트 만들 때마다 호출)
+   *  - on_floor_plan = 행사 도면 첨부 시에만 추가 호출
+   *  - on_venue_registration = 신규 행사장 등록 시 1회 호출 (이후 추천은 학습 결과 자동 사용)
+   */
+  trigger: 'always' | 'on_floor_plan' | 'on_venue_registration'
   /**
    * v9.53 (2026-05-14) — 페르소나 textarea 비웠을 때 실제 적용되는 기본 동작 본문.
    * PIPELINE_BLOCKS의 묶인 step body를 그대로 join한 텍스트.
@@ -212,17 +222,18 @@ export const PIPELINE_CARDS: Record<CardKey, PipelineCard> = {
     desc: '행사장 배치도 Vision 분석 → 동선·설치 위치 컨텍스트',
     notice: '',
     steps: ['step4'],
-    trigger: 'on_attachment',
+    trigger: 'on_floor_plan',
     default_persona: buildDefaultPersonaForCard(['step4']),
   },
   // 5/20 노션 §1 (AI 호출 3종) 정합 = 행사장 특징 분석 AI
+  // 5/21 사용자 명시 = 신규 행사장 등록 시점 호출·이후 추천에 자동 활용
   venue_text_analysis: {
     key: 'venue_text_analysis',
     title: '행사장 특징 분석',
-    desc: '신규 행사장 등록 시 시설가이드 PDF·매뉴얼 텍스트화',
+    desc: '신규 행사장 등록 시 시설가이드 텍스트화 + 이후 추천에 자동 반영',
     notice: '',
     steps: ['step5'],
-    trigger: 'on_attachment',
+    trigger: 'on_venue_registration',
     default_persona: buildDefaultPersonaForCard(['step5']),
   },
 }
