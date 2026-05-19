@@ -949,18 +949,24 @@ export function LearningManagerClient({
                             )
                           })()}
                         </td>
-                        {/* 5/22 사용자 명시 = "X/6 학습" 영문 키 → "환경장식물 종류" 한국어 라벨로 정정 */}
+                        {/* 5/22 사용자 명시 = 환경장식물 종류 메뉴 (signage_types.name) 영역에 있는 종류명만 사용 */}
                         <td className="px-2 py-1.5 text-left">
-                          {!cov || cov.filled.length === 0 ? (
-                            <span className="text-slate-300 text-[10px]">—</span>
-                          ) : (
-                            <div className="flex flex-wrap gap-0.5">
-                              {/* page.tsx 영역 = STANDARD_CATEGORY_BY_KEY.get(k)?.label로 이미 한국어 변환됨·재변환 X */}
-                              {cov.filled.map(k => (
-                                <span key={k} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">{k}</span>
-                              ))}
-                            </div>
-                          )}
+                          {(() => {
+                            const validNames = new Set(signageTypeList.map(s => s.name))
+                            const usedTypes = Array.from(new Set((v.signage_breakdown ?? [])
+                              .map(s => s.category)
+                              .filter(c => validNames.has(c))))
+                            if (usedTypes.length === 0) {
+                              return <span className="text-slate-300 text-[10px]">—</span>
+                            }
+                            return (
+                              <div className="flex flex-wrap gap-0.5">
+                                {usedTypes.map(name => (
+                                  <span key={name} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">{name}</span>
+                                ))}
+                              </div>
+                            )
+                          })()}
                         </td>
                         <td className="px-2 py-1.5 text-left">
                           {parts.length === 0 ? (
