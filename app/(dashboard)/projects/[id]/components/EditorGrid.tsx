@@ -93,7 +93,7 @@ const DEFAULT_COLS: ColumnDef[] = [
   { id: 'size',           label: '규격',         width: '100px', field: 'size' },
   { id: 'material',       label: '재질',         width: '80px',  field: 'material' },
   { id: 'quantity',       label: '수량',         width: '52px',  field: 'quantity' },
-  { id: 'content',        label: '비고(직접 입력)', width: '1.4fr', field: 'content_text' },
+  { id: 'content',        label: '내용',           width: '1.4fr', field: 'content_text' },
   { id: 'design_vendor',  label: '디자인업체',   width: '100px', field: 'design_vendor' },
   { id: 'print_vendor',   label: '출력업체',     width: '100px', field: 'print_vendor' },
   { id: 'install_date',   label: '설치일자',     width: '100px', field: 'install_date' },

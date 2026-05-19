@@ -98,20 +98,19 @@ export function migrateLegacyEventType(legacy: string | null | undefined): strin
 // 5/22 김연아 대리님 명시 = 엑셀 영역 (제작물 리스트 가이드_환경 제작물 파트별 구분_20260519-수정) SOT.
 // `구분` 컬럼만 학습 활용·`상세 구분` = 참고만.
 // signage_types 영역 = 12 카테고리 + 5/22 신규 5건 (시상보드·Q방·디지털 사이니지·폼보드·피켓보드) = 17 카테고리.
+// 5/22 사용자 명시 = 엑셀 SOT 12 카테고리 영역만 영역 = i_banner·a4_*·a3_* 영역 제거 (signage_types 영역 삭제 정합)
 export const PROGRAM_PART_SIGNAGE_HINTS: Record<string, string[]> = {
-  '40.04': ['podium', 'vertical_banner', 'horizontal_banner'],                               // 회의: 포디움 타이틀·세로 현수막·가로 현수막
-  '40.05': ['x_banner', 'route_banner', 'chunchen_banner'],                                  // 전시: X배너·동선 안내 배너·천장 배너(=통천)
-  '40.06': ['x_banner'],                                                                      // 비즈니스 매칭: X배너
-  '40.07': ['x_banner', 'route_banner', 'podium', 'award_board'],                             // 비즈니스 프로그램: X배너·동선 안내·포디움·시상보드(폼보드 출력)
-  '40.08': ['podium', 'award_board', 'x_banner', 'horizontal_banner', 'vertical_banner', 'chunchen_banner'], // 공식행사: 포디움·시상보드·X배너·가로/세로 현수막·통천
-  '40.09': ['award_board', 'x_banner', 'podium', 'horizontal_banner', 'vertical_banner'],   // 부대행사 - 공모전형: 시상보드·X배너·포디움·가로/세로 현수막
-  '40.10': ['horizontal_banner', 'vertical_banner', 'x_banner'],                              // 부대행사 - 체험형: 가로·세로 현수막·X배너
-  '40.11': ['horizontal_banner', 'q_room'],                                                   // 부대행사 - 투어형: 가로 현수막·Q방
-  '40.17': ['x_banner', 'streetlight_banner'],                                                // 홍보: X배너·가로등 배너
-  // 5/22 의전 (40.18) 삭제
-  '40.19': ['x_banner', 'route_banner', 'horizontal_banner'],                                // 등록: X배너·동선 안내 배너·가로 현수막
-  '40.20': ['picket_board'],                                                                  // 영접영송: 피켓보드
-  // 5/22 신규 = 기타 조성 (로비·외벽·입구 등): 빵빠레배너(가로등)·X배너+디지털 사이니지+폼보드·가로/세로 현수막·통천
+  '40.04': ['podium', 'vertical_banner', 'horizontal_banner'],
+  '40.05': ['x_banner', 'route_banner', 'chunchen_banner'],
+  '40.06': ['x_banner'],
+  '40.07': ['x_banner', 'route_banner', 'podium', 'award_board'],
+  '40.08': ['podium', 'award_board', 'x_banner', 'horizontal_banner', 'vertical_banner', 'chunchen_banner'],
+  '40.09': ['award_board', 'x_banner', 'podium', 'horizontal_banner', 'vertical_banner'],
+  '40.10': ['horizontal_banner', 'vertical_banner', 'x_banner'],
+  '40.11': ['horizontal_banner', 'q_room'],
+  '40.17': ['x_banner', 'streetlight_banner'],
+  '40.19': ['x_banner', 'route_banner', 'horizontal_banner'],
+  '40.20': ['picket_board'],
   '40.21': ['streetlight_banner', 'x_banner', 'digital_signage', 'foam_board', 'horizontal_banner', 'vertical_banner', 'chunchen_banner'],
 }
 

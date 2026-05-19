@@ -26,20 +26,15 @@ export interface SignageTypeSeed {
 //   horizontal_banner → 가로 현수막 / vertical_banner → 세로 현수막
 //   chunchen_banner → 통천 / podium → 포디움 타이틀 / backwall → 백월
 //   a4_portrait → A4 세로 / a4_landscape → A4 가로 / a3_portrait → A3 세로 / a3_landscape → A3 가로
+// 5/22 김연아 대리님 명시 = 엑셀 SOT `구분` 컬럼 12 영역만 기본 영역.
+// I배너·A4 세로/가로·A3 세로/가로 = 엑셀 영역 X → 삭제 (5건). 동의어 매핑 = 가장 가까운 영역 (foam_board·picket_board 등) 영역 정정.
 export const SEED_SIGNAGE_TYPES: SignageTypeSeed[] = [
   { id: 'x_banner',           name: 'X배너',          width_mm: 600,  height_mm: 1800, default_material: 'PET',     category: '입구·등록',  layout: '세로' },
-  { id: 'i_banner',           name: 'I배너',          width_mm: 600,  height_mm: 1600, default_material: 'PET',     category: '실내 안내',  layout: '세로' },
   { id: 'streetlight_banner', name: '가로등 배너',    width_mm: 600,  height_mm: 1800, default_material: '현수막',  category: '외부 동선',  layout: '세로' },
   { id: 'horizontal_banner',  name: '가로 현수막',    width_mm: 5000, height_mm: 900,  default_material: '현수막',  category: '메인·외벽',  layout: '가로' },
   { id: 'vertical_banner',    name: '세로 현수막',    width_mm: 900,  height_mm: 5000, default_material: '현수막',  category: '로비·천장',  layout: '세로' },
   { id: 'chunchen_banner',    name: '통천 배너',      width_mm: 1000, height_mm: 5000, default_material: '현수막',  category: '천장 대형',  layout: '세로' },
   { id: 'podium',             name: '포디움 타이틀',  width_mm: 600,  height_mm: 200,  default_material: '스티커',  category: '연단',       layout: '가로' },
-  { id: 'a4_portrait',        name: 'A4 세로',        width_mm: 210,  height_mm: 297,  default_material: '인쇄',    category: '소형 안내',  layout: '세로' },
-  { id: 'a4_landscape',       name: 'A4 가로',        width_mm: 297,  height_mm: 210,  default_material: '인쇄',    category: '소형 안내',  layout: '가로' },
-  { id: 'a3_portrait',        name: 'A3 세로',        width_mm: 297,  height_mm: 420,  default_material: '인쇄',    category: '중형 안내',  layout: '세로' },
-  { id: 'a3_landscape',       name: 'A3 가로',        width_mm: 420,  height_mm: 297,  default_material: '인쇄',    category: '중형 안내',  layout: '가로' },
-  // 5/21 사용자 명시 = 노션 §6-2 12 카테고리 정합. backwall·foamboard·sheet 3건 제거.
-  // 동의어 매핑은 폼보드 → A4·A3·I배너 등으로 재매핑 (아래 SEED_SYNONYMS 정정).
   { id: 'route_banner',       name: '동선 안내 배너', width_mm: 600,  height_mm: 1500, default_material: '현수막',  category: '실내 동선',  layout: '세로', note: '5/22 엑셀 SOT 영역 정합 (동선 배너 → 동선 안내 배너). 실내 유도·화살표·방향 안내 전용.' },
   // 5/22 김연아 대리님 명시 = 엑셀 SOT 영역 추가 5건 (시상보드·Q방·디지털 사이니지·폼보드·피켓보드)
   { id: 'award_board',        name: '시상보드',       width_mm: 1200, height_mm: 1800, default_material: '폼보드 5T', category: '시상·공식행사', layout: '세로', note: '5/22 엑셀 SOT 영역 추가. 공식행사·공모전형 영역 시상 영역.' },
@@ -95,18 +90,20 @@ export const SEED_SYNONYMS: SynonymSeed[] = [
   { alias: '개막식 포디움',  canonical_name: '포디움 타이틀', note: '특정 행사용' },
   { alias: '연단',           canonical_name: '포디움 타이틀', note: '한자어 표기' },
 
-  // ── A4·A3 (사용자 결정: 피켓은 가로형) ──
-  { alias: '피켓 A4',        canonical_name: 'A4 가로',      note: '손피켓은 가로 기본 (사용자 결정 2026-05-07)' },
-  { alias: '피켓A4',         canonical_name: 'A4 가로',      note: '손피켓 (공백 없는 표기)' },
-  { alias: '피켓 A3',        canonical_name: 'A3 가로',      note: '손피켓은 가로 기본' },
-  { alias: '피켓A3',         canonical_name: 'A3 가로',      note: '손피켓 (공백 없는 표기)' },
-  { alias: '영접A4',         canonical_name: 'A4 가로',      note: '영접용 안내 피켓' },
-  { alias: 'A4안내',         canonical_name: 'A4 가로',      note: '안내용 A4' },
-  { alias: 'A3안내',         canonical_name: 'A3 가로',      note: '안내용 A3' },
-  { alias: 'A3안내POP',      canonical_name: 'A3 가로',      note: 'A3 POP 안내' },
+  // 5/22 사용자 명시 = A4·A3·I배너 영역 삭제 → 폼보드/피켓보드 영역 영역 영역 매핑
+  // ── 피켓 영역 (영접용·손피켓) = 피켓보드 영역 ──
+  { alias: '피켓 A4',        canonical_name: '피켓보드',    note: '손피켓·피켓보드 영역 (5/22 정합)' },
+  { alias: '피켓A4',         canonical_name: '피켓보드',    note: '손피켓·피켓보드 영역 (5/22 정합)' },
+  { alias: '피켓 A3',        canonical_name: '피켓보드',    note: '손피켓·피켓보드 영역 (5/22 정합)' },
+  { alias: '피켓A3',         canonical_name: '피켓보드',    note: '손피켓·피켓보드 영역 (5/22 정합)' },
+  { alias: '영접A4',         canonical_name: '피켓보드',    note: '영접용 피켓·피켓보드 영역' },
+  // ── 안내용 A4·A3 → 폼보드 영역 (부대시설 안내) ──
+  { alias: 'A4안내',         canonical_name: '폼보드',      note: '안내용 폼보드 (5/22 정합)' },
+  { alias: 'A3안내',         canonical_name: '폼보드',      note: '안내용 폼보드 (5/22 정합)' },
+  { alias: 'A3안내POP',      canonical_name: '폼보드',      note: 'POP 안내 폼보드' },
 
-  // ── 폼보드 변형 ──
-  { alias: '스탠드POP',      canonical_name: 'I배너',         note: '폼보드형 스탠드 POP' },
+  // ── 스탠드POP → 폼보드 영역 (5/22 정합 = I배너 삭제 후) ──
+  { alias: '스탠드POP',      canonical_name: '폼보드',      note: '폼보드형 스탠드 POP (5/22 I배너 삭제 정합)' },
 
   // ── 동선 배너 동의어 (노션 §6-2 v3 신규 카테고리·§8-1 정합) ──
   { alias: '유도사인',       canonical_name: '동선 안내 배너',     note: '실내 동선·유도 안내' },
@@ -115,11 +112,12 @@ export const SEED_SYNONYMS: SynonymSeed[] = [
   { alias: '방향 안내',      canonical_name: '동선 안내 배너',     note: '동선 방향 안내' },
 
   // 손피켓·명패·웰컴 영역 (가로 기본 — 5/7 결정)
-  { alias: '명패',           canonical_name: 'A4 가로',      note: '소형 명패' },
-  { alias: '웰컴 피켓',      canonical_name: 'A4 가로',      note: '소형 손피켓' },
-  { alias: '명패 (대)',      canonical_name: 'A3 가로',      note: '대형 명패' },
-  { alias: '명패(대)',       canonical_name: 'A3 가로',      note: '대형 명패' },
-  { alias: '웰컴보드',       canonical_name: 'A3 가로',      note: '대형 안내' },
+  // 5/22 = 명패·웰컴 = 피켓보드 영역 (영접·안내 영역)
+  { alias: '명패',           canonical_name: '피켓보드',     note: '소형 명패·피켓보드 영역' },
+  { alias: '웰컴 피켓',      canonical_name: '피켓보드',     note: '소형 손피켓·피켓보드 영역' },
+  { alias: '명패 (대)',      canonical_name: '피켓보드',     note: '대형 명패·피켓보드 영역' },
+  { alias: '명패(대)',       canonical_name: '피켓보드',     note: '대형 명패·피켓보드 영역' },
+  { alias: '웰컴보드',       canonical_name: '폼보드',       note: '대형 안내·폼보드 영역' },
   { alias: 'MOU 현수막',     canonical_name: '가로 현수막',  note: '행사 현수막' },
   { alias: 'MOU',            canonical_name: '가로 현수막',  note: 'MOU 약어' },
   // 폼보드 재질 발주 — 12 카테고리 표준명(A4·A3·I배너) 매핑
