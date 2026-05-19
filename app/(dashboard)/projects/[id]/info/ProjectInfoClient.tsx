@@ -8,7 +8,8 @@ import { createClient } from '@/lib/supabase/client'
 import { DEFAULT_SLOTS } from '@/lib/types'
 import { STYLE_PRESETS } from '@/lib/constants'
 import type { Project, ProjectMember, ProjectStatus, ProjectStage, SlotStyle, Profile, OrgLogoAsset } from '@/lib/types'
-import { PROGRAM_PARTS, PROGRAM_PART_GROUPS } from '@/lib/programParts'
+import { PROGRAM_PARTS, PROGRAM_PART_GROUPS, PROGRAM_PART_BY_CODE, PROGRAM_PART_SIGNAGE_HINTS } from '@/lib/programParts'
+import { SEED_SIGNAGE_TYPES } from '@/lib/data/dashboardSeed'
 import { VENUE_LIST, groupVenuesByRegion } from '@/lib/venueIntel'
 
 interface Props {
@@ -121,6 +122,8 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
   const [programParts, setProgramParts] = useState<Set<string>>(
     new Set(project.program_parts ?? [])
   )
+  // 5/22 사용자 명시 = 추가/제거 영역 = 환경장식물 재설정 영역 (initialParts 영역 보존)
+  const [initialParts] = useState<Set<string>>(new Set(project.program_parts ?? []))
   const [attendeesCount, setAttendeesCount] = useState(
     project.attendees_count ? String(project.attendees_count) : ''
   )
@@ -138,6 +141,19 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
 
   const handleSaveInfo = async () => {
     setIsSavingInfo(true)
+    // 5/22 사용자 명시 = 프로그램 파트 추가/제거 = 환경장식물 재설정 알랏 + 예 클릭 시 진행
+    const addedParts = Array.from(programParts).filter(p => !initialParts.has(p))
+    const removedParts = Array.from(initialParts).filter(p => !programParts.has(p))
+    let addRecommend = false
+    let removeItems = false
+    if (addedParts.length > 0) {
+      const addedNames = addedParts.map(c => PROGRAM_PART_BY_CODE.get(c)?.name ?? c).join('·')
+      addRecommend = confirm(`프로그램 파트 추가: ${addedNames}\n\n해당 파트의 환경장식물을 재설정하여 추가 제공할까요?`)
+    }
+    if (removedParts.length > 0) {
+      const removedNames = removedParts.map(c => PROGRAM_PART_BY_CODE.get(c)?.name ?? c).join('·')
+      removeItems = confirm(`프로그램 파트 제거: ${removedNames}\n\n해당 파트의 환경장식물 행을 삭제할까요?`)
+    }
     const updatePayload: Record<string, unknown> = {
       name: name.trim() || project.name,
       client_name: clientName.trim() || null,
@@ -149,6 +165,38 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
       attendees_count: attendeesCount ? parseInt(attendeesCount) : null,
     }
     const { error } = await supabase.from('projects').update(updatePayload).eq('id', project.id)
+    // 5/22 = 추가/제거 영역 처리
+    if (addRecommend && addedParts.length > 0) {
+      // 추가 파트별 환경장식물 ID 영역 = design_items 영역 INSERT
+      const newIds = new Set<string>()
+      for (const code of addedParts) {
+        for (const id of PROGRAM_PART_SIGNAGE_HINTS[code] ?? []) newIds.add(id)
+      }
+      const { data: existing } = await supabase.from('design_items').select('category').eq('project_id', project.id)
+      const existingCats = new Set((existing ?? []).map(r => r.category as string))
+      const toInsert = Array.from(newIds)
+        .filter(id => !existingCats.has(id))
+        .map(id => {
+          const type = SEED_SIGNAGE_TYPES.find(t => t.id === id)
+          return {
+            project_id: project.id,
+            category: id,
+            material: type?.default_material ?? '인쇄',
+            width_mm: type?.width_mm ?? 600,
+            height_mm: type?.height_mm ?? 1800,
+            quantity: 1,
+            program_part: addedParts.find(c => (PROGRAM_PART_SIGNAGE_HINTS[c] ?? []).includes(id)) ?? null,
+            part: addedParts.map(c => PROGRAM_PART_BY_CODE.get(c)?.name ?? c).join('·'),
+          }
+        })
+      if (toInsert.length > 0) {
+        await supabase.from('design_items').insert(toInsert).then(r => r, () => null)
+      }
+    }
+    if (removeItems && removedParts.length > 0) {
+      // 제거 파트 영역 = design_items 영역 DELETE (program_part 매칭)
+      await supabase.from('design_items').delete().eq('project_id', project.id).in('program_part', removedParts).then(r => r, () => null)
+    }
     // program_parts 컬럼 미적용(마이그레이션 v6 미실행) 시 기본 필드만 재시도
     if (error && /program_parts|attendees_count/i.test(error.message)) {
       await supabase.from('projects').update({
@@ -162,8 +210,9 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
     }
     setIsSavingInfo(false)
     setInfoSaved(true)
-    setTimeout(() => setInfoSaved(false), 2000)
-    router.refresh()
+    setTimeout(() => setInfoSaved(false), 1500)
+    // 5/22 사용자 명시 UX = 저장 후 자동 = 편집 창으로 복귀 (1회성 영역·1 클릭 절감)
+    setTimeout(() => router.push(`/projects/${project.id}`), 1500)
   }
 
   // ── 멤버 관리 ────────────────────────────────────────────
@@ -611,35 +660,24 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
       <header className="border-b border-slate-200/80 bg-white/60 backdrop-blur-md sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
+            {/* 5/22 사용자 명시 = 뒤로 = 환경장식물 편집 창 (/projects/<id>)으로 이동·대시보드 X */}
             <Link
-              href="/dashboard"
+              href={`/projects/${project.id}`}
               className="w-6 h-6 rounded-md bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center transition"
-              title="메인 대시보드로 이동"
+              title="환경장식물 편집 창으로 이동"
             >
               <LayoutGrid className="w-3.5 h-3.5 text-white" />
             </Link>
-            <Link href="/dashboard" className="flex items-center gap-1 text-slate-500 hover:text-slate-700 transition text-xs">
+            <Link href={`/projects/${project.id}`} className="flex items-center gap-1 text-slate-500 hover:text-slate-700 transition text-xs">
               <ArrowLeft className="w-3.5 h-3.5" />
-              대시보드
+              편집 창
             </Link>
             <span className="text-slate-700 text-xs">/</span>
-            <Link
-              href="/dashboard"
-              className="text-slate-700 hover:text-indigo-300 text-xs font-medium truncate max-w-[160px] transition"
-              title="메인 대시보드로 돌아가기"
-            >
-              {project.name}
-            </Link>
+            <span className="text-slate-700 text-xs font-medium truncate max-w-[160px]">{project.name}</span>
             <span className="text-slate-700 text-xs">/</span>
             <span className="text-slate-500 text-xs">프로젝트 정보</span>
           </div>
-          <Link
-            href={`/projects/${project.id}`}
-            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition"
-          >
-            에디터 열기
-            <ArrowLeft className="w-3.5 h-3.5 rotate-180" />
-          </Link>
+          {/* 5/22 사용자 명시 = ′에디터 열기′ 영역 = 삭제 (뒤로 영역 동일 영역 = 헤더 영역 충분) */}
         </div>
       </header>
 

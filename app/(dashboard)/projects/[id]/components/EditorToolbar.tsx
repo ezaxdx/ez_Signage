@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Download, FileSpreadsheet, Check, Loader2, Settings, BookOpen, CheckCircle2 } from 'lucide-react'
+import { Download, FileSpreadsheet, Check, Loader2, Settings, BookOpen, CheckCircle2, LayoutGrid } from 'lucide-react'
 // import { FormatSelector } from './FormatSelector'  // 1차 출시에서 일시 제거 (향후 복귀)
 import type { Project, DesignItem } from '@/lib/types'
 import { FacilityCheckModeToggle, type FacilityCheckMode } from '@/app/components/facility/FacilityCheckModeToggle'
@@ -80,8 +80,15 @@ export function EditorToolbar({
   return (
     <header className="h-12 flex items-center justify-between px-3 border-b border-slate-200 bg-white/80 backdrop-blur-sm flex-shrink-0 gap-3 relative z-20">
 
-      {/* 왼쪽: 프로젝트명 */}
+      {/* 왼쪽: 대시보드 + 프로젝트명 (5/22 사용자 명시 = 파란 네모 영역 = 대시보드 link) */}
       <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
+        <Link
+          href="/dashboard"
+          className="w-6 h-6 rounded-md bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center transition flex-shrink-0"
+          title="메인 대시보드로 이동"
+        >
+          <LayoutGrid className="w-3.5 h-3.5 text-white" />
+        </Link>
         <span className="text-slate-700 text-xs font-medium truncate max-w-[180px]" title={project.name}>
           {project.name}
         </span>

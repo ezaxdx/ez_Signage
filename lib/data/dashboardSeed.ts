@@ -123,16 +123,36 @@ export const SEED_SYNONYMS: SynonymSeed[] = [
   { alias: 'MOU 현수막',     canonical_name: '가로 현수막',  note: '행사 현수막' },
   { alias: 'MOU',            canonical_name: '가로 현수막',  note: 'MOU 약어' },
   // 폼보드 재질 발주 — 12 카테고리 표준명(A4·A3·I배너) 매핑
-  { alias: '안내폼보드',     canonical_name: 'A4 가로',     note: '기본 A4 가로(크기에 따라 A3 가로 선택)' },
   { alias: 'L보드',          canonical_name: 'A4 가로',     note: 'L자형 안내판' },
   { alias: '안내사인',       canonical_name: 'A4 가로',     note: '일반 안내판' },
-  { alias: '큐방',           canonical_name: 'A4 가로',     note: '폼보드 재질 발주' },
-  { alias: '큐방시트',       canonical_name: 'A4 가로',     note: '큐방 시트 형태' },
-  { alias: '셔틀버스 큐방시트', canonical_name: 'A4 가로',  note: '셔틀버스 큐방' },
-  { alias: '컨설팅폼보드',   canonical_name: 'A3 가로',     note: '4단계 안내' },
-  { alias: '좌석배치도 안내사인', canonical_name: 'A3 가로', note: '배치도 안내판' },
-  { alias: '시상보드',       canonical_name: 'A3 가로',     note: '시상식 안내' },
-  { alias: '기념촬영보드',   canonical_name: 'A3 가로',     note: '포토존 보드' },
+
+  // 5/22 신규 5건 동의어 정합 (시상보드·Q방·디지털 사이니지·폼보드·피켓보드)
+  // ── 시상보드 (award_board) ──
+  { alias: '시상보드',       canonical_name: '시상보드',     note: '5/22 엑셀 SOT 영역 = 독립 카테고리' },
+  { alias: '기념촬영보드',   canonical_name: '시상보드',     note: '포토존 보드' },
+  { alias: '포토월',         canonical_name: '시상보드',     note: '포토 영역 보드' },
+  // ── Q방 (q_room) ──
+  { alias: 'Q방',            canonical_name: 'Q방',          note: '5/22 엑셀 SOT 영역 = 등록·대기 영역' },
+  { alias: '큐방',           canonical_name: 'Q방',          note: 'Q방 한글 표기' },
+  { alias: '큐방시트',       canonical_name: 'Q방',          note: 'Q방 시트 형태' },
+  { alias: '셔틀버스 큐방시트', canonical_name: 'Q방',       note: '셔틀버스 Q방' },
+  { alias: 'Q룸',            canonical_name: 'Q방',          note: 'Q방 영문 표기' },
+  // ── 디지털 사이니지 (digital_signage) ──
+  { alias: '디지털 사이니지', canonical_name: '디지털 사이니지', note: '5/22 엑셀 SOT 영역' },
+  { alias: '디지털사이니지', canonical_name: '디지털 사이니지', note: '공백 없는 표기' },
+  { alias: 'DID',            canonical_name: '디지털 사이니지', note: 'Digital Information Display' },
+  { alias: 'LED 사이니지',   canonical_name: '디지털 사이니지', note: 'LED 패널' },
+  { alias: '전광판',         canonical_name: '디지털 사이니지', note: '한글 표기' },
+  // ── 폼보드 (foam_board) ──
+  { alias: '폼보드',         canonical_name: '폼보드',       note: '5/22 엑셀 SOT 영역 = 부대시설 안내' },
+  { alias: '폼포드',         canonical_name: '폼보드',       note: '오타 표기' },
+  { alias: '안내폼보드',     canonical_name: '폼보드',       note: '안내용 폼보드' },
+  { alias: '컨설팅폼보드',   canonical_name: '폼보드',       note: '4단계 안내 폼보드' },
+  { alias: '좌석배치도 안내사인', canonical_name: '폼보드',  note: '배치도 폼보드' },
+  // ── 피켓보드 (picket_board) ──
+  { alias: '피켓보드',       canonical_name: '피켓보드',     note: '5/22 엑셀 SOT 영역 = 영접영송 영역' },
+  { alias: '영접피켓',       canonical_name: '피켓보드',     note: '영접용 피켓' },
+  { alias: '입출국피켓',     canonical_name: '피켓보드',     note: '입출국 피켓' },
 ]
 
 // ── 3. 행사 폴더 → 행사 이력 (54개) ──────────────────────────

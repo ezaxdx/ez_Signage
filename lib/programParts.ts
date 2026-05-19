@@ -125,6 +125,84 @@ export function recommendSignageByParts(codes: string[]): string[] {
 }
 
 /**
+ * 5/22 김연아 대리님 명시 = 엑셀 SOT 영역 = 파트·환경장식물·역할(상세 구분) 묶음 영역.
+ * 학습 영역 = `구분` 영역 (signage)·표준명 매칭 영역 = `상세 구분(참고)` 영역 (purposes) 사용.
+ * 예: 회의 (40.04) → 포디움 타이틀 [개회식·세션·토론·시상식]
+ */
+export interface SignageDetail {
+  signage: string        // signage_types.id (예: 'podium')
+  purposes: string[]     // 역할·상세 구분 (예: ['개회식', '세션', '토론', '시상식'])
+  note?: string          // 비고 (예: '폼포드 출력')
+}
+
+export const PROGRAM_PART_SIGNAGE_DETAILS: Record<string, SignageDetail[]> = {
+  '40.04': [
+    { signage: 'podium', purposes: ['개회식', '세션', '토론', '시상식'] },
+    { signage: 'vertical_banner', purposes: ['무대 배경', '세션장 입구', '회의장 내부'] },
+    { signage: 'horizontal_banner', purposes: ['무대 배경', '세션장 입구', '회의장 내부'] },
+  ],
+  '40.05': [
+    { signage: 'x_banner', purposes: ['전시존 안내', '참가기업 안내', '체험존 안내', '프로그램 안내', 'QR 코드 안내'] },
+    { signage: 'route_banner', purposes: ['입구 유도', '출구 유도', '층별 이동'] },
+    { signage: 'chunchen_banner', purposes: ['구역 표시', '메인 동선 표시'] },
+  ],
+  '40.06': [
+    { signage: 'x_banner', purposes: ['매칭존 안내', '상담 절차 안내', '대기 안내'] },
+  ],
+  '40.07': [
+    { signage: 'x_banner', purposes: [] },
+    { signage: 'route_banner', purposes: [] },
+    { signage: 'podium', purposes: [], note: '폼포드로 출력' },
+    { signage: 'award_board', purposes: [], note: '폼포드로 출력' },
+  ],
+  '40.08': [
+    { signage: 'podium', purposes: ['개회식', '환영사', '축사', '시상식', '토론'] },
+    { signage: 'award_board', purposes: [], note: '폼포드로 출력' },
+    { signage: 'x_banner', purposes: ['프로그램 안내'] },
+    { signage: 'horizontal_banner', purposes: ['무대 배경', '행사장 입구', '무대 측면', '입구/로비'] },
+    { signage: 'vertical_banner', purposes: ['무대 배경', '행사장 입구', '무대 측면', '입구/로비'] },
+    { signage: 'chunchen_banner', purposes: ['무대 측면'] },
+  ],
+  '40.09': [
+    { signage: 'award_board', purposes: [] },
+    { signage: 'x_banner', purposes: ['공모전 안내', '시상식 안내'] },
+    { signage: 'podium', purposes: [], note: '폼포드로 출력' },
+    { signage: 'horizontal_banner', purposes: ['시상식 무대'] },
+    { signage: 'vertical_banner', purposes: [] },
+  ],
+  '40.10': [
+    { signage: 'horizontal_banner', purposes: [] },
+    { signage: 'vertical_banner', purposes: [] },
+    { signage: 'x_banner', purposes: [] },
+  ],
+  '40.11': [
+    { signage: 'horizontal_banner', purposes: [], note: '사진용' },
+    { signage: 'q_room', purposes: [] },
+  ],
+  '40.17': [
+    { signage: 'x_banner', purposes: [], note: '유관기관 오프라인 홍보 진행 시' },
+    { signage: 'streetlight_banner', purposes: ['행사 홍보', '장소 유도', '외부 홍보'], note: '게시 일자 고려하여 발주 필요' },
+  ],
+  '40.19': [
+    { signage: 'x_banner', purposes: ['입장 확인 QR 배너', '프로그램 안내 배너'] },
+    { signage: 'route_banner', purposes: [] },
+    { signage: 'horizontal_banner', purposes: [], note: '야외용인 경우' },
+  ],
+  '40.20': [
+    { signage: 'picket_board', purposes: [], note: '입출국 일자 고려하여 발주 필요' },
+  ],
+  '40.21': [
+    { signage: 'streetlight_banner', purposes: [], note: '빵빠레 배너' },
+    { signage: 'x_banner', purposes: ['부대시설 장소 안내 (PCO사무국, 발주처 사무국)'] },
+    { signage: 'digital_signage', purposes: ['부대시설 장소 안내'] },
+    { signage: 'foam_board', purposes: ['부대시설 장소 안내'] },
+    { signage: 'horizontal_banner', purposes: ['외부', '입구 홍보'] },
+    { signage: 'vertical_banner', purposes: ['외부', '입구 홍보'] },
+    { signage: 'chunchen_banner', purposes: ['외벽', '로비 홍보'] },
+  ],
+}
+
+/**
  * v9.31: 환경장식물 ID → 선택된 파트 중 첫 번째 매칭 파트 코드
  *
  * NewProjectButton에서 design_items 생성 시 program_part 컬럼을 자동 채움.

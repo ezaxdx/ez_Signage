@@ -82,39 +82,38 @@ interface ColumnDef {
 }
 
 // v9.19 (2026-05-12): 사용자 요청 헤더 개편
-// 기본 표시 21컬럼 + 담당자 hidden extra
-// 기본 숨김: 디자인업체·출력업체·설치일자·설치시간·사용기간·철거일자·철거시간·발주일
+// 5/22 사용자 명시 = 사용 목적 컬럼 삭제·발주 담당자 기본 숨김·넓이 조정
 const DEFAULT_COLS: ColumnDef[] = [
   { id: 'no',             label: 'NO.',         width: '44px',  field: 'no' },
-  { id: 'part',           label: '파트',         width: '72px',  field: 'part' },
-  // 5/21 회의 = "구분 vs 품목 차이 없으면 둘 중 하나 삭제" → 구분 컬럼 제거 (장소와 같은 location field·중복)
-  { id: 'location',       label: '장소',         width: '90px',  field: 'location' },
-  { id: 'purpose',        label: '사용 목적',    width: '90px',  field: 'purpose' },
-  { id: 'category',       label: '품목',         width: '84px',  field: 'category' },
-  { id: 'language',       label: '언어',         width: '68px',  field: 'language' },
-  { id: 'size',           label: '규격',         width: '86px',  field: 'size' },
-  { id: 'material',       label: '재질',         width: '70px',  field: 'material' },
-  { id: 'quantity',       label: '수량',         width: '44px',  field: 'quantity' },
-  { id: 'content',        label: '비고(직접 입력)', width: '1.2fr', field: 'content_text' },
-  { id: 'design_vendor',  label: '디자인업체',   width: '88px',  field: 'design_vendor' },
-  { id: 'print_vendor',   label: '출력업체',     width: '88px',  field: 'print_vendor' },
-  { id: 'install_date',   label: '설치일자',     width: '90px',  field: 'install_date' },
-  { id: 'install_time',   label: '설치시간',     width: '76px',  field: 'install_time' },
-  { id: 'usage_period',   label: '사용기간',     width: '120px', field: 'usage_period' },
-  { id: 'uninstall_date', label: '철거일자',     width: '90px',  field: 'uninstall_date' },
-  { id: 'uninstall_time', label: '철거시간',     width: '76px',  field: 'uninstall_time' },
-  { id: 'order_contact',  label: '발주 담당자',  width: '96px',  field: 'order_contact' },
-  { id: 'order_date',     label: '발주일',       width: '80px',  field: 'order_date' },
+  { id: 'part',           label: '파트',         width: '88px',  field: 'part' },
+  { id: 'location',       label: '장소',         width: '110px', field: 'location' },
+  // 5/22 사용자 명시 = '사용 목적' 컬럼 삭제 (구분 vs 사용 목적 vs 품목 영역 중복·5/21 회의 영역 정합)
+  { id: 'category',       label: '품목',         width: '100px', field: 'category' },
+  { id: 'language',       label: '언어',         width: '70px',  field: 'language' },
+  { id: 'size',           label: '규격',         width: '100px', field: 'size' },
+  { id: 'material',       label: '재질',         width: '80px',  field: 'material' },
+  { id: 'quantity',       label: '수량',         width: '52px',  field: 'quantity' },
+  { id: 'content',        label: '비고(직접 입력)', width: '1.4fr', field: 'content_text' },
+  { id: 'design_vendor',  label: '디자인업체',   width: '100px', field: 'design_vendor' },
+  { id: 'print_vendor',   label: '출력업체',     width: '100px', field: 'print_vendor' },
+  { id: 'install_date',   label: '설치일자',     width: '100px', field: 'install_date' },
+  { id: 'install_time',   label: '설치시간',     width: '84px',  field: 'install_time' },
+  { id: 'usage_period',   label: '사용기간',     width: '130px', field: 'usage_period' },
+  { id: 'uninstall_date', label: '철거일자',     width: '100px', field: 'uninstall_date' },
+  { id: 'uninstall_time', label: '철거시간',     width: '84px',  field: 'uninstall_time' },
+  { id: 'order_contact',  label: '발주 담당자',  width: '106px', field: 'order_contact' },
+  { id: 'order_date',     label: '발주일',       width: '90px',  field: 'order_date' },
   // 추가 전용 (기본 숨김 — 컬럼 관리에서 노출 가능)
   { id: 'editor',         label: '담당자',       width: '88px',  field: null },
   { id: 'note',           label: '비고',         width: '90px',  field: null },
 ]
 
-// 기본 숨김 8개 — 다운로드 시에도 숨김 상태이면 포함 안 됨
+// 5/22 사용자 명시 = 발주 담당자 기본 숨김 추가·사용 목적 컬럼 자체 삭제
 const DEFAULT_HIDDEN_COLS: ColumnId[] = [
   'design_vendor', 'print_vendor',
   'install_date', 'install_time', 'usage_period',
   'uninstall_date', 'uninstall_time', 'order_date',
+  'order_contact', // 5/22 신규 = 발주 담당자 기본 숨김
 ]
 // PPT 기본 제외: 디자인업체·출력업체·설치시간·사용기간·철거시간·발주담당자·발주일·담당자
 // PPT 기본 14컬럼: NO·파트·구분·장소·사용목적·품목·언어·규격·재질·수량·내용·설치일자·철거일자·비고
