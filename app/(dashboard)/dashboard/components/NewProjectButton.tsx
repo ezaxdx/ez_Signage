@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, X, Loader2, ChevronRight, ChevronLeft, Check, UserPlus, Trash2, Search, Target, Upload, FileSpreadsheet, AlertCircle, Map, ImageIcon, MapPinPlus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -421,7 +421,14 @@ export function NewProjectButton({ userId, userEmail }: Props) {
     Object.values(formats).filter(f => f.selected).reduce((sum, f) => sum + (f.count || 1), 0) +
     customFormats.filter(f => f.selected).reduce((sum, f) => sum + (f.count || 1), 0)
 
+  // 5/22 사용자 명시 = 프로젝트 2개씩 생성 = 더블 클릭·React state 동기화 영역. useRef 즉시 차단.
+  const isCreatingRef = useRef(false)
   const handleCreate = async () => {
+    if (isCreatingRef.current) {
+      console.warn('[NewProject] 중복 호출 차단 (이미 진행 중)')
+      return
+    }
+    isCreatingRef.current = true
     setIsLoading(true); setError(null)
     const supabase = createClient()
 
@@ -480,6 +487,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
     if (projectErr || !project) {
       setError('프로젝트 생성 실패: ' + (projectErr?.message ?? '알 수 없는 오류'))
       setIsLoading(false)
+      isCreatingRef.current = false
       return
     }
 
@@ -747,6 +755,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
     invalidateLiveStatsCache()
 
     setIsLoading(false)
+    isCreatingRef.current = false
     router.push(`/projects/${project.id}`)
   }
 
