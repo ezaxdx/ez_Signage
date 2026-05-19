@@ -1,5 +1,33 @@
 # 작업 이력
 
+## 2026-05-21 (v10.2 — 노션 페이지 1·2 잔존 B3·B6 정합)
+
+### 사용자 요청
+조기흠 사원(AXDX팀, 2026-05-21): "환경장식물 [노션 페이지 A·B URL] 에 맞게 업데이트" → "전부 진행" 명시. 5/19 v10.0 + 5/20 자율 사이클(A1~A8·B1·B2·B4·B5) 이후 매트릭스에서 사용자 컴펌 영역으로 분류했던 B3·B6 일괄 진행.
+
+### B3 — 우측 패널 = 예시 이미지 + 위반 사항 (노션 페이지 1 §3)
+- `lib/data/v3/signageCategoriesSeedV3.ts`: SignageCategoryV3에 `sample_image_url?` 옵셔널 + `getRatioLabel()` 헬퍼 (사이즈 비율 시각화)
+- `app/(dashboard)/projects/[id]/components/RightPanel.tsx` 신설: 상단 = 예시 이미지 + 규격 비율 / 하단 = 시설 가이드 위반 (있을 때만·노션 §3 "위반 사항이 있을 시 내용 보이지만 없으면 안 보이도록")
+- `EditorLayout.tsx` 우 2 영역 = CanvasBoard → RightPanel 교체. CanvasBoard는 orphan 보존(decisions.md 2026-05-07 정책)
+- 행 선택 시 카테고리별 예시·비율 자동 표시. 실사 이미지 미준비 시 placeholder 노출 + "관리자 페이지 → 환경 장식물 종류에서 업로드" 안내
+
+### B6 — 관리자 행사장 관리 L1·L2 계층 (노션 페이지 1 §9)
+- `lib/venueIntel.ts`: VenueHall 타입 + `VENUE_HALLS` 정적 시드 (COEX 10건 · KINTEX 10건 · DDP 5건 = 25건, 노션 §9 표 그대로) + `getHallsByVenueKey()`
+- `LearningManagerClient.tsx`: 행사장 섹션에 `VenueHierarchyTree` 신규 컴포넌트 (L1 펼침·접힘 토글, L2 홀 노션 §9 시드 표시, "정식 명칭 확인 필요" 노트 amber 배지)
+- 추가/수정/삭제는 Supabase venue_halls (v6 마이그레이션 + 사용자 컴펌 후 활성) — 1차는 read-only
+
+### 검증
+- TSC 0 에러 / Next 빌드 36/36 라우트 PASS / check:v3 21/0 fail / harness 72/0 fail
+- 변경 파일: 4건 (signageCategoriesSeedV3.ts·venueIntel.ts·EditorLayout.tsx·LearningManagerClient.tsx) + 신규 RightPanel.tsx
+- 의존성 추가 0건 · DB 마이그레이션 0건 · 라이브 운영 데이터 영향 0건
+
+### 잔존 (사용자 결정 후 진행)
+- 실사 예시 이미지 업로드 — 관리자 페이지 "환경 장식물 종류" 메뉴에 종류별 sample_image_url 입력 UI (관리자 권한)
+- Supabase venue_halls 마이그레이션 — 정적 VENUE_HALLS 25건 시드 INSERT + admin UI 추가/수정/삭제 활성
+- guideSourceUrl — 시설 가이드 원문 URL 매핑 (venueFacilityGuide에 manual_url 컬럼 추가 시점)
+
+---
+
 ## 2026-05-19 (v10.1 — 상사 보고 자료 분류 룰 5중 박제 + scripts/check_v3 SEED_SYNONYMS 정합 점검 추가)
 
 ### 사용자 요청

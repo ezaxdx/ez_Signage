@@ -1,25 +1,28 @@
-# 자율 작업 차단 사항 (2026-05-20)
+# 자율 작업 잔존 사항 (2026-05-20·5/21 갱신)
 
-## A3: LearningManager 수정 요청 = 시설 가이드 아래로 통합
+## 완료 (5/20·5/21 자율 진행)
 
-**상태**: BLOCKED — 다음 사이클·사용자 컴펌 필요
+- A1 OrderingSchedule 추가/삭제 버튼 제거 — f560e63
+- A2 시설 가이드 모달 중앙 정렬 — 3aa2ae1
+- A3 LearningManager 수정 요청 = 시설 가이드 아래 통합 — 7923982
+- A4 운영 대시보드·AI 관리 라벨 (과도 사용자·완료일) — 3491307
+- A5 동의어 매핑 삭제 가능 점검 — v9.8 적용 확인
+- A6 EditorGrid '내용' → '비고(직접 입력)' — ac3839a
+- A7 팀원 초대 본인 차단 — 71afa90
+- A8 멤버 삭제 전체 권한 — 568a7e2
+- B1 AI 호출 3종 정합 — de00a23
+- B2 EditorLayout 좌 8:우 2 분할 — 0ae59e9
+- B4 Excel 표지·상단 3행 — ec9044c / PPT 좌상단 행사 정보 — e2994ef
+- B5 프로젝트 카드 완료 버튼 — 29dcc25
 
-**사유**:
-- SECTIONS·SectionKey union·fetch effect·activeSection 분기·JSX render block 다수 변경 필요
-- correction-requests 별도 섹션 → facility-guides 내부 통합 = 컴포넌트 구조 큰 변경
-- 자동 검증 한계 = 시각 변경·라이브 영향 점검 필요
+## 잔존 (사용자 컴펌 영역 — 자율 진행 X)
 
-**필요 작업**:
-1. SECTIONS 배열에서 'correction-requests' 항목 제거 (사이드바 영역)
-2. SectionKey union에서 'correction-requests' 제거
-3. fetch effect = activeSection 조건 분기 변경
-4. correction-requests render block (1640~) → facility-guides render block (1426~1637) 안으로 이동
-5. UI = 시각 통합 후 사용자 컴펌
+### B3 우측 = 예시 이미지 + 위반 사항 표시
 
-**자율 진행 권장 시점**: 사용자 직접 검토 후 v10.2 영역
+**사유**: 신규 컴포넌트 + 데이터허브 실사 이미지 연동 + 시설 가이드 패널 결합 = UI·연동 큰 변경
+**필요**: 데이터허브 192.168.10.191 환경장식물 종류별 실사 이미지 매핑·관리자 페이지 이미지 업로드 기능 결정
 
-## 본 자율 야간 진행 완료 사항
+### B6 행사장 관리 L1·L2 계층
 
-- A1: OrderingSchedule 추가/삭제 제거 (f560e63)
-- A2: 시설 가이드 모달 중앙 정렬 (3aa2ae1)
-- A4: 운영 대시보드·AI 라벨 변경 (3491307)
+**사유**: DB 마이그레이션 필요 — venues·venue_halls 관계 재정의 + 기존 데이터 백필
+**필요**: Supabase migration_v12 작성·실행·DB 데이터 영향 검토 후 진행
