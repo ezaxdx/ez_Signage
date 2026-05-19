@@ -68,6 +68,8 @@ interface VenueLearningStatus {
     missing: string[]   // 미학습 카테고리 한글 라벨
     priority_1_missing: string[]  // 우선순위 1 (외벽·천정) 누락 표시용
   }
+  /** 5/22 사용자 명시 = 환경장식물별 사용 정보 (signage_breakdown 합산) */
+  signage_breakdown?: Array<{ category: string; quantity: number }>
 }
 
 interface SynonymRow {

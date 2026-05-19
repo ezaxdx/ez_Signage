@@ -96,14 +96,18 @@ export default async function LearningManagerPage() {
     if (p.program_parts?.length) programPartsByPid.set(p.id, p.program_parts)
   }
 
-  const venueStatusMap = new Map<string, { projects: Set<string>; input: number; mid: number; confirmed: number; finalized: number; missingCats: Set<string>; totalItems: number; programParts: Set<string> }>()
+  // 5/22 사용자 명시 = 행사장 학습 현황에 환경장식물별 사용 정보 추가
+  const venueStatusMap = new Map<string, { projects: Set<string>; input: number; mid: number; confirmed: number; finalized: number; missingCats: Set<string>; totalItems: number; programParts: Set<string>; signageByCategory: Map<string, number> }>()
   for (const it of itemsList) {
     const v = venueByPid.get(it.project_id)
     if (!v) continue
-    if (!venueStatusMap.has(v)) venueStatusMap.set(v, { projects: new Set(), input: 0, mid: 0, confirmed: 0, finalized: 0, missingCats: new Set(), totalItems: 0, programParts: new Set() })
+    if (!venueStatusMap.has(v)) venueStatusMap.set(v, { projects: new Set(), input: 0, mid: 0, confirmed: 0, finalized: 0, missingCats: new Set(), totalItems: 0, programParts: new Set(), signageByCategory: new Map() })
     const s = venueStatusMap.get(v)!
     s.projects.add(it.project_id)
     s.totalItems++
+    if (it.category) {
+      s.signageByCategory.set(it.category, (s.signageByCategory.get(it.category) ?? 0) + (it.quantity ?? 1))
+    }
     if (it.finalized_at) s.finalized++
     else if (it.confirmed) s.confirmed++
     else if (it.location || it.purpose) s.mid++
@@ -118,7 +122,7 @@ export default async function LearningManagerPage() {
   for (const ev of SEED_EVENT_HISTORY) {
     if (!ev.has_excel) continue
     const vk = ev.venue
-    if (!venueStatusMap.has(vk)) venueStatusMap.set(vk, { projects: new Set(), input: 0, mid: 0, confirmed: 0, finalized: 0, missingCats: new Set(), totalItems: 0, programParts: new Set() })
+    if (!venueStatusMap.has(vk)) venueStatusMap.set(vk, { projects: new Set(), input: 0, mid: 0, confirmed: 0, finalized: 0, missingCats: new Set(), totalItems: 0, programParts: new Set(), signageByCategory: new Map() })
     const s = venueStatusMap.get(vk)!
     s.projects.add(ev.project_code ?? ev.project_name)
     const cnt = ev.analyzed_item_count
@@ -129,6 +133,11 @@ export default async function LearningManagerPage() {
       // 엑셀은 있지만 미분석 — 1건 confirmed 계상
       s.confirmed += 1
       s.totalItems += 1
+    }
+    // 5/22 사용자 명시 = SEED signage_breakdown도 venue별 합산 (행사장 학습 현황에 환경장식물별 사용 정보 추가)
+    const breakdown = ev.signage_breakdown ?? []
+    for (const b of breakdown) {
+      s.signageByCategory.set(b.category, (s.signageByCategory.get(b.category) ?? 0) + b.quantity)
     }
   }
 
@@ -164,6 +173,11 @@ export default async function LearningManagerPage() {
           }
         : undefined
 
+      // 5/22 사용자 명시 = 환경장식물별 사용 정보 (행사장 학습 현황에 표시)
+      const signageBreakdown = Array.from(s.signageByCategory.entries())
+        .map(([category, quantity]) => ({ category, quantity }))
+        .sort((a, b) => b.quantity - a.quantity)
+
       return {
         venue,
         project_count: s.projects.size,
@@ -173,6 +187,7 @@ export default async function LearningManagerPage() {
         learned_categories: s.missingCats.size,
         program_parts: partNames,
         category_coverage: categoryCoverage,
+        signage_breakdown: signageBreakdown,
       }
     })
     .sort((a, b) => b.item_count - a.item_count)
