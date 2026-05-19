@@ -39,9 +39,10 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
 
   const [items, setItems] = useState<DesignItem[]>(initialItems)
   const [selectedItemId, setSelectedItemId] = useState<string>(initialItems[0]?.id ?? '')
-  // v9.11: 회의록 ′가로/세로 분할 한번 생각해 봅시다′ — 사용자 선택 가능
-  const [splitMode, setSplitMode] = useState<'horizontal' | 'vertical'>('horizontal')
-  const [splitPos, setSplitPos] = useState(50)   // 퍼센트 (20~80)
+  // 5/20 노션 §3 정합 = 좌 8:우 2 분할 고정 (vertical mode·splitPos 80%)
+  // 토글·드래그 인터페이스는 유지하되 default값만 노션 기준으로 변경
+  const [splitMode, setSplitMode] = useState<'horizontal' | 'vertical'>('vertical')
+  const [splitPos, setSplitPos] = useState(80)   // 퍼센트 (20~80)·노션 §3 좌 8:우 2
   const isDragging = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
