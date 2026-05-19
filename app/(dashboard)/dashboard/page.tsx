@@ -30,7 +30,14 @@ export default async function DashboardPage() {
     .select('*, design_items(count)')
     .order('created_at', { ascending: false })
 
-  const typedProjects = (projects ?? []) as ProjectWithCount[]
+  // 5/22 사용자 명시 = 최신순·진행중이 가장 위. status priority = 진행중(0) → 준비중(1) → 완료(2)
+  const STATUS_ORDER: Record<string, number> = { '진행중': 0, '준비중': 1, '완료': 2 }
+  const typedProjects = ((projects ?? []) as ProjectWithCount[]).slice().sort((a, b) => {
+    const sa = STATUS_ORDER[a.status ?? '준비중'] ?? 99
+    const sb = STATUS_ORDER[b.status ?? '준비중'] ?? 99
+    if (sa !== sb) return sa - sb
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  })
 
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
