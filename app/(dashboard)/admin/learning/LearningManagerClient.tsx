@@ -120,6 +120,20 @@ interface Props {
   initialRequests: VenueRequest[]
   initialJobs: LearningJob[]
   venueLearningStatus?: VenueLearningStatus[]
+  /** 5/22 사용자 명시 = 데이터 학습 관리자에 프로젝트별 정보 추가 */
+  userProjectIndex?: Array<{
+    id: string
+    name: string
+    event_venue: string | null
+    event_date: string | null
+    status: string
+    total_items: number
+    finalized_items: number
+    completion_rate: number
+    program_parts: string[]
+    created_at: string
+    last_edited_by: string | null
+  }>
   signageTypeCount?: number
   synonyms?: SynonymRow[]
   dbAliases?: DbAlias[]
@@ -141,6 +155,7 @@ export function LearningManagerClient({
   facilityGuideStatus = [],
   signageTypes = [],
   isAdmin = false,
+  userProjectIndex = [],
 }: Props) {
   // ── 시설 가이드 AI 추출 상태 ────────────────────────────────
   const [extractingVenueId, setExtractingVenueId] = useState<string | null>(null)
@@ -838,9 +853,70 @@ export function LearningManagerClient({
           )}
         </section>
 
-        {/* 5/22 회의록 김연아 대리님 명시 = 학습 시킨 자료 인덱스 정리 의무
-            (5/21 1차+2차 회의: "본인이 학습 시킨 프로젝트가 뭔지 정확하지 않으면
-             어디서 어떤 게 부족하니까 더 학습을 시켜라에 대한 가이드를 줄 수가 없거든요") */}
+        {/* 5/22 사용자 명시 = 사용자 프로젝트별 정보 추가 */}
+        {userProjectIndex.length > 0 && (
+          <section className="bg-white border border-slate-200 rounded-xl p-5">
+            <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-emerald-500" />
+              사용자 프로젝트 ({userProjectIndex.length})
+            </h2>
+            <p className="text-[11px] text-slate-500 mb-3">
+              실제 사용자가 생성한 프로젝트. 행사장·항목 수·발주 완료 비율 한눈에 확인.
+            </p>
+            <div className="overflow-x-auto border border-slate-200 rounded">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr className="text-slate-600 text-[11px]">
+                    <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">행사명</th>
+                    <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">행사장·홀</th>
+                    <th className="px-2 py-1.5 text-center font-semibold whitespace-nowrap">행사일</th>
+                    <th className="px-2 py-1.5 text-center font-semibold whitespace-nowrap">상태</th>
+                    <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">항목</th>
+                    <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">발주 완료</th>
+                    <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">완료율</th>
+                    <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">프로그램 파트</th>
+                    <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">담당자</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {userProjectIndex.map(p => {
+                    const rateColor = p.completion_rate >= 70 ? 'text-emerald-600' : p.completion_rate >= 40 ? 'text-amber-600' : 'text-rose-600'
+                    return (
+                      <tr key={p.id} className="hover:bg-slate-50">
+                        <td className="px-2 py-1.5 text-slate-800 font-medium whitespace-nowrap" title={p.name}>{p.name}</td>
+                        <td className="px-2 py-1.5 text-slate-700 whitespace-nowrap">{p.event_venue ?? '—'}</td>
+                        <td className="px-2 py-1.5 text-center text-slate-500 text-[11px]">{p.event_date ?? '—'}</td>
+                        <td className="px-2 py-1.5 text-center">
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                            p.status === '완료' ? 'bg-emerald-100 text-emerald-700' :
+                            p.status === '진행중' ? 'bg-indigo-100 text-indigo-700' :
+                            'bg-slate-100 text-slate-600'
+                          }`}>{p.status}</span>
+                        </td>
+                        <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{p.total_items}</td>
+                        <td className="px-2 py-1.5 text-right text-emerald-600 font-mono font-semibold">{p.finalized_items}</td>
+                        <td className={`px-2 py-1.5 text-right font-mono font-semibold ${rateColor}`}>{p.completion_rate}%</td>
+                        <td className="px-2 py-1.5 text-left">
+                          {p.program_parts.length === 0 ? <span className="text-slate-300 text-[10px]">미입력</span> : (
+                            <div className="flex flex-wrap gap-0.5">
+                              {p.program_parts.map(pt => (
+                                <span key={pt} className="inline-block px-1 py-0.5 bg-indigo-50 text-indigo-700 text-[9px] rounded">{pt}</span>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-2 py-1.5 text-slate-500 text-[10px] whitespace-nowrap">
+                          {p.last_edited_by ? p.last_edited_by.split('@')[0] : '—'}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
             <FileText className="w-4 h-4 text-indigo-500" />
@@ -1220,7 +1296,7 @@ export function LearningManagerClient({
                     {isExpanded && halls.length > 0 && (
                       <tr className="bg-slate-50/60">
                         <td colSpan={9} className="px-6 py-3">
-                          <p className="text-[10px] text-slate-500 mb-2">하위 홀 정보. 추가·수정·삭제 기능은 다음 사이클에 활성화 예정.</p>
+                          {/* 5/22 사용자 명시 = "추가·수정·삭제 기능 다음 사이클" 같은 보고용 메타 = 사용자 웹에 노출 X */}
                           <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5">
                             {halls.map((h, i) => (
                               <li key={i} className="text-[11px] text-slate-700 bg-white border border-slate-200 rounded px-2 py-1 flex items-center justify-between">

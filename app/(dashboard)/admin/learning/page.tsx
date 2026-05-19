@@ -26,17 +26,38 @@ export default async function LearningManagerPage() {
     supabase.from('venues').select('*').order('created_at', { ascending: false }).then(r => r, () => ({ data: [], error: null })),
     supabase.from('venue_requests').select('*').order('requested_at', { ascending: false }).then(r => r, () => ({ data: [], error: null })),
     supabase.from('learning_jobs').select('*').order('triggered_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [], error: null })),
-    supabase.from('projects').select('id, event_venue, program_parts').limit(500).then(r => r, () => ({ data: [], error: null })),
+    supabase.from('projects').select('id, name, event_venue, event_date, program_parts, status, created_at, last_edited_by').limit(500).order('created_at', { ascending: false }).then(r => r, () => ({ data: [], error: null })),
     supabase.from('design_items').select('project_id, category, confirmed, finalized_at, location, purpose').limit(5000).then(r => r, () => ({ data: [], error: null })),
     supabase.from('signage_aliases').select('id, alias_name, canonical_name, note').order('alias_name').then(r => r, () => ({ data: [], error: null })),
     loadSignageTypes(supabase),
   ])
 
   // venue별 단계 집계 (점진적 정확도 가시화)
-  type Project = { id: string; event_venue: string | null; program_parts: string[] | null }
+  type Project = { id: string; name: string; event_venue: string | null; event_date: string | null; program_parts: string[] | null; status: string | null; created_at: string; last_edited_by: string | null }
   type Item = { project_id: string; category: string | null; confirmed: boolean | null; finalized_at: string | null; location: string | null; purpose: string | null }
   const projectsList = (projectsRes.data ?? []) as Project[]
   const itemsList = (itemsRes.data ?? []) as Item[]
+
+  // 5/22 사용자 명시 = 데이터 학습 관리자 = 사용자 프로젝트별 정보 추가
+  // 회의록 5/21 김연아 대리님 명시 = "학습 시킨 프로젝트가 뭔지 정확하지 않으면 더 학습 가이드를 줄 수 없거든요"
+  const userProjectIndex = projectsList.map(p => {
+    const pItems = itemsList.filter(it => it.project_id === p.id)
+    const total = pItems.length
+    const finalized = pItems.filter(it => it.finalized_at).length
+    return {
+      id: p.id,
+      name: p.name,
+      event_venue: p.event_venue,
+      event_date: p.event_date,
+      status: p.status ?? '준비중',
+      total_items: total,
+      finalized_items: finalized,
+      completion_rate: total > 0 ? Math.round((finalized / total) * 100) : 0,
+      program_parts: p.program_parts ?? [],
+      created_at: p.created_at,
+      last_edited_by: p.last_edited_by,
+    }
+  })
   const venueByPid = new Map<string, string>()
   const programPartsByPid = new Map<string, string[]>()
   for (const p of projectsList) {
@@ -163,6 +184,7 @@ export default async function LearningManagerPage() {
       facilityGuideStatus={facilityGuideStatus}
       signageTypes={signageTypesForClient}
       isAdmin={true}
+      userProjectIndex={userProjectIndex}
     />
   )
 }

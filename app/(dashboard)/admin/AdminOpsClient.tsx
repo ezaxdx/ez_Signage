@@ -185,20 +185,19 @@ export function AdminOpsClient({ kpi, projects }: Props) {
           </div>
 
           {/* 테이블 (16컬럼) */}
-          {/* 5/21 회의 = 16컬럼 → 8컬럼 단순화.
-              제거: 컨펌율·AI정확도·확인자·비고·편집·승인·반려·보기 (사용자 의문 영역) */}
+          {/* 5/22 사용자 명시 = 삭제 컬럼 우측 추가 (회의 §7 = 관리자만 삭제 가능) */}
           <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
             <table className="w-full text-xs">
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
-                  {['NO', '파트', '담당자', '행사', '상태', '완료일', '다운로드', '항목수'].map(h => (
+                  {['NO', '파트', '담당자', '행사', '상태', '완료일', '다운로드', '항목수', '삭제'].map(h => (
                     <th key={h} className="px-2 py-2 text-left font-medium whitespace-nowrap border-b border-slate-200">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 && (
-                  <tr><td colSpan={8} className="text-center text-slate-400 py-8">조건에 맞는 프로젝트가 없습니다.</td></tr>
+                  <tr><td colSpan={9} className="text-center text-slate-400 py-8">조건에 맞는 프로젝트가 없습니다.</td></tr>
                 )}
                 {filtered.map(p => (
                   <tr key={p.id} className="hover:bg-slate-50 border-b border-slate-100">
@@ -217,13 +216,32 @@ export function AdminOpsClient({ kpi, projects }: Props) {
                     <td className="px-2 py-2 text-slate-600">{p.order_date}</td>
                     <td className="px-2 py-2 text-slate-600 text-[10px]">—</td>
                     <td className="px-2 py-2">{p.item_count}</td>
+                    <td className="px-2 py-2 text-center">
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`'${p.event_name}' 프로젝트를 영구 삭제할까요?\n관련 항목·시안·이력 모두 사라집니다.`)) return
+                          const { createClient } = await import('@/lib/supabase/client')
+                          const supabase = createClient()
+                          // 자식 테이블 먼저 정리
+                          await supabase.from('item_contents').delete().in('item_id',
+                            (await supabase.from('design_items').select('id').eq('project_id', p.id)).data?.map(x => x.id) ?? []
+                          )
+                          await supabase.from('design_items').delete().eq('project_id', p.id)
+                          const { error } = await supabase.from('projects').delete().eq('id', p.id)
+                          if (error) alert('삭제 실패: ' + error.message)
+                          else window.location.reload()
+                        }}
+                        title="프로젝트 영구 삭제 (관리자 권한)"
+                        className="text-[11px] leading-none text-slate-300 hover:text-red-500 px-1"
+                      >✕</button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           <p className="text-[10px] text-slate-400 mt-2">
-            ※ 행사명 클릭 시 프로젝트 편집. 삭제는 관리자만 가능(스토리지 확보 영역).
+            ※ 행사명 클릭 시 프로젝트 편집. 삭제 = 관리자만 (스토리지 확보 영역).
           </p>
         </section>
 
