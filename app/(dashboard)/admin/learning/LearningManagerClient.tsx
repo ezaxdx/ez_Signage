@@ -231,7 +231,8 @@ export function LearningManagerClient({
     setSignageTypeList(prev => prev.filter(t => t.name !== name))
   }
 
-  // 5/22 사용자 명시 = 데이터 학습 관리자 편집 기능 추가 (오류 보완)
+  // 5/22 사용자 명시 = 데이터 학습 관리자 편집 = 모든 정보 다 수정 가능 (종류명·너비·높이·재질·분류·레이아웃)
+  // 이미지 교체·삭제는 별도 ▣ 버튼 영역 (다음 사이클 모달 UI)
   const editSignageType = async (t: SignageTypeRow) => {
     const newName = prompt('종류명', t.name)
     if (newName === null) return
@@ -243,6 +244,9 @@ export function LearningManagerClient({
     if (newMat === null) return
     const newCat = prompt('분류', t.category ?? '')
     if (newCat === null) return
+    const newLayout = prompt('레이아웃 (세로·가로·정사각)', t.layout ?? '세로')
+    if (newLayout === null) return
+    const normalizedLayout = ['세로', '가로', '정사각'].includes(newLayout.trim()) ? newLayout.trim() : t.layout
 
     const widthNum = Number(newWidth)
     const heightNum = Number(newHeight)
@@ -276,11 +280,12 @@ export function LearningManagerClient({
       height_mm: heightNum,
       default_material: newMat.trim(),
       category: newCat.trim(),
+      layout: normalizedLayout,
     } : row))
     try {
       const key = 'mice_signage_type_overrides'
       const prev = JSON.parse(localStorage.getItem(key) ?? '{}')
-      prev[t.id] = { name: newName.trim(), width_mm: widthNum, height_mm: heightNum, default_material: newMat.trim(), category: newCat.trim() }
+      prev[t.id] = { name: newName.trim(), width_mm: widthNum, height_mm: heightNum, default_material: newMat.trim(), category: newCat.trim(), layout: normalizedLayout }
       localStorage.setItem(key, JSON.stringify(prev))
     } catch {}
   }
