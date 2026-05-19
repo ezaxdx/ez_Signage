@@ -1101,7 +1101,51 @@ export function LearningManagerClient({
                         )}
                       </td>
                       <td className="p-2 text-slate-500 text-[10px]">{new Date(v.created_at).toLocaleDateString('ko-KR')}</td>
-                      <td className="p-2 text-right">
+                      <td className="p-2 text-right whitespace-nowrap">
+                        {/* 5/22 사용자 명시 = ✎ 편집 추가 (행사장 마스터 권역·유형·면적·주출입구 등) */}
+                        <button
+                          onClick={async () => {
+                            const newName = prompt('행사장 이름', v.name)
+                            if (newName === null) return
+                            const newRegion = prompt('권역 (예: 서울특별시·경기도·해외)', v.region ?? '')
+                            if (newRegion === null) return
+                            const newType = prompt('유형 (예: 컨벤션·호텔·전시장·공공시설·야외·기타)', v.venue_type ?? '')
+                            if (newType === null) return
+                            const newArea = prompt('면적 (㎡, 숫자만)', v.area_sqm ? String(v.area_sqm) : '')
+                            if (newArea === null) return
+                            const newEntrance = prompt('주출입구 메모', v.main_entrance_note ?? '')
+                            if (newEntrance === null) return
+                            const areaNum = newArea.trim() ? Number(newArea) : null
+                            if (newArea.trim() && (!Number.isFinite(areaNum!) || areaNum! < 0)) {
+                              alert('면적은 0 이상 숫자만 가능')
+                              return
+                            }
+                            try {
+                              const res = await fetch(`/api/admin/venues/${v.id}`, {
+                                method: 'PATCH',
+                                headers: { 'content-type': 'application/json' },
+                                body: JSON.stringify({
+                                  name: newName.trim(),
+                                  region: newRegion.trim() || null,
+                                  venue_type: newType.trim() || null,
+                                  area_sqm: areaNum,
+                                  main_entrance_note: newEntrance.trim() || null,
+                                }),
+                              })
+                              if (!res.ok) { const d = await res.json(); throw new Error(d.error || res.statusText) }
+                              setVenues(prev => prev.map(x => x.id === v.id ? {
+                                ...x,
+                                name: newName.trim(),
+                                region: newRegion.trim() || null,
+                                venue_type: newType.trim() || null,
+                                area_sqm: areaNum,
+                                main_entrance_note: newEntrance.trim() || null,
+                              } : x))
+                            } catch (e) { alert('수정 실패: ' + (e instanceof Error ? e.message : 'unknown')) }
+                          }}
+                          title="행사장 정보 편집"
+                          className="text-[11px] text-slate-400 hover:text-indigo-600 mr-2"
+                        >✎</button>
                         <button
                           onClick={() => retriggerJob(v)}
                           disabled={!v.floor_plan_url}
@@ -1834,11 +1878,29 @@ export function LearningManagerClient({
                           )}
                         </td>
                         {isAdmin && (
-                          <td className="px-2 py-1.5 text-center">
+                          <td className="px-2 py-1.5 text-center whitespace-nowrap">
+                            {/* 5/22 사용자 명시 = ✎ 편집 추가 (정보 수정 요청 형태로 누적) */}
+                            <button
+                              onClick={async () => {
+                                const text = prompt(`${f.venue_name} — 수정할 정보를 입력하세요\n예: 코엑스 그랜드볼룸 최대 폭이 4,000mm에서 3,500mm로 변경됨`)
+                                if (!text || !text.trim()) return
+                                try {
+                                  const res = await fetch('/api/correction-requests', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ venue_key: f.venue_key, venue_name: f.venue_name, correction_text: text.trim() }),
+                                  })
+                                  if (res.ok) alert('수정 요청이 접수되었습니다.')
+                                  else alert('요청 실패')
+                                } catch { alert('요청 실패') }
+                              }}
+                              title="정보 수정 요청"
+                              className="text-[11px] leading-none px-1 text-slate-400 hover:text-indigo-600"
+                            >✎</button>
                             <button
                               onClick={() => toggleHideFacilityVenue(f.venue_key)}
                               title={hidden ? '복구' : '삭제·숨김 (데이터 오류 보완)'}
-                              className={`text-[11px] leading-none px-1 ${hidden ? 'text-indigo-600 hover:bg-indigo-50' : 'text-slate-300 hover:text-red-500'}`}
+                              className={`text-[11px] leading-none px-1 ml-1 ${hidden ? 'text-indigo-600 hover:bg-indigo-50' : 'text-slate-300 hover:text-red-500'}`}
                             >
                               {hidden ? '↺' : '✕'}
                             </button>
