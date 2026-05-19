@@ -10,6 +10,7 @@
 //   학습 신호로 신뢰 어려움. 정직 정합 = finalized_at만.
 
 import { createClient } from '@/lib/supabase/server'
+import { SEED_EVENT_HISTORY, estimateSignageBreakdown } from '@/lib/data/dashboardSeed'
 
 export interface AccumulatedContextOptions {
   venue: string
@@ -316,6 +317,35 @@ async function loadAdminMaster(venueName: string): Promise<{
   } catch {
     return fallback
   }
+}
+
+/**
+ * 5/22 사용자 명시 = 행사 관리 5대 영역 (행사장·프로그램 파트·환경장식물 종류·규격·수량) 영역 SEED_EVENT_HISTORY → AI 컨텍스트 주입.
+ * venue + programParts 매칭 행사 영역 signage_breakdown 합산하여 AI 프롬프트에 추가.
+ */
+export function buildSeedEventHistoryContext(venue: string, programParts?: string[]): string {
+  const venueNorm = venue.toLowerCase().replace(/\s/g, '')
+  // venue 부분 매칭 + program_parts 교집합 ≥1 영역
+  const matched = SEED_EVENT_HISTORY.filter(e => {
+    const evNorm = e.venue.toLowerCase().replace(/\s/g, '')
+    const venueMatch = evNorm.includes(venueNorm) || venueNorm.includes(evNorm)
+    const partsMatch = !programParts?.length || (e.program_parts ?? []).some(p => programParts.includes(p))
+    return venueMatch && partsMatch
+  }).slice(0, 5)
+  if (matched.length === 0) return ''
+  const lines: string[] = ['', '[행사 관리 SOT — 같은 행사장·파트 매칭 5건]']
+  for (const e of matched) {
+    const breakdown = e.signage_breakdown && e.signage_breakdown.length > 0
+      ? e.signage_breakdown
+      : estimateSignageBreakdown(e.program_parts, e.analyzed_item_count)
+    if (breakdown.length === 0) continue
+    const totalQty = breakdown.reduce((s, b) => s + b.quantity, 0)
+    const top = breakdown.slice(0, 5).map(b => `${b.category}(${b.quantity}${b.sizes ? `·${b.sizes}` : ''})`).join(' / ')
+    const estimateTag = (!e.signage_breakdown || e.signage_breakdown.length === 0) ? ' [추정]' : ''
+    lines.push(`  - ${e.project_name} (${e.year ?? '?'}·${e.venue})${estimateTag}: 총 ${totalQty}건·${top}`)
+  }
+  lines.push('→ 위 데이터 = 행사장·파트 매칭 과거 사례. 추천 수량·종류·규격 산정 시 참고.')
+  return lines.join('\n')
 }
 
 /** Gemini 프롬프트용 텍스트 압축 */

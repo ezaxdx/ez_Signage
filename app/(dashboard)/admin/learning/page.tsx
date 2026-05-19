@@ -27,14 +27,14 @@ export default async function LearningManagerPage() {
     supabase.from('venue_requests').select('*').order('requested_at', { ascending: false }).then(r => r, () => ({ data: [], error: null })),
     supabase.from('learning_jobs').select('*').order('triggered_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [], error: null })),
     supabase.from('projects').select('id, name, event_venue, event_date, program_parts, status, created_at, last_edited_by').limit(500).order('created_at', { ascending: false }).then(r => r, () => ({ data: [], error: null })),
-    supabase.from('design_items').select('project_id, category, confirmed, finalized_at, location, purpose').limit(5000).then(r => r, () => ({ data: [], error: null })),
+    supabase.from('design_items').select('project_id, category, confirmed, finalized_at, location, purpose, quantity, width_mm, height_mm').limit(5000).then(r => r, () => ({ data: [], error: null })),
     supabase.from('signage_aliases').select('id, alias_name, canonical_name, note').order('alias_name').then(r => r, () => ({ data: [], error: null })),
     loadSignageTypes(supabase),
   ])
 
   // venue별 단계 집계 (점진적 정확도 가시화)
   type Project = { id: string; name: string; event_venue: string | null; event_date: string | null; program_parts: string[] | null; status: string | null; created_at: string; last_edited_by: string | null }
-  type Item = { project_id: string; category: string | null; confirmed: boolean | null; finalized_at: string | null; location: string | null; purpose: string | null }
+  type Item = { project_id: string; category: string | null; confirmed: boolean | null; finalized_at: string | null; location: string | null; purpose: string | null; quantity?: number | null; width_mm?: number | null; height_mm?: number | null }
   const projectsList = (projectsRes.data ?? []) as Project[]
   const itemsList = (itemsRes.data ?? []) as Item[]
 
@@ -58,6 +58,37 @@ export default async function LearningManagerPage() {
       last_edited_by: p.last_edited_by,
     }
   })
+
+  // 5/22 사용자 명시 = 신규 행사 (사용자 프로젝트) 자동 행사 관리에 누적
+  const userEventHistory = projectsList
+    .filter(p => p.event_venue)
+    .map(p => {
+      const pItems = itemsList.filter(it => it.project_id === p.id)
+      const sigByCategory = new Map<string, { quantity: number; sizes: Set<string> }>()
+      for (const it of pItems) {
+        if (!it.category) continue
+        const prev = sigByCategory.get(it.category) ?? { quantity: 0, sizes: new Set() }
+        prev.quantity += it.quantity ?? 1
+        if (it.width_mm && it.height_mm) prev.sizes.add(`${it.width_mm}×${it.height_mm}`)
+        sigByCategory.set(it.category, prev)
+      }
+      const signage_breakdown = Array.from(sigByCategory.entries())
+        .map(([category, v]) => ({ category, quantity: v.quantity, sizes: Array.from(v.sizes).join('·') || undefined }))
+        .sort((a, b) => b.quantity - a.quantity)
+      return {
+        project_name: p.name,
+        project_code: p.id.slice(0, 8),
+        year: p.event_date ? new Date(p.event_date).getFullYear() : new Date(p.created_at).getFullYear(),
+        venue: p.event_venue ?? '미정',
+        category_tag: '일반' as const,
+        has_excel: pItems.some(it => it.finalized_at != null),
+        has_image: false,
+        analyzed_item_count: pItems.length,
+        program_parts: p.program_parts ?? [],
+        signage_breakdown: signage_breakdown.length > 0 ? signage_breakdown : undefined,
+        is_user_project: true,
+      }
+    })
   const venueByPid = new Map<string, string>()
   const programPartsByPid = new Map<string, string[]>()
   for (const p of projectsList) {
@@ -185,6 +216,7 @@ export default async function LearningManagerPage() {
       signageTypes={signageTypesForClient}
       isAdmin={true}
       userProjectIndex={userProjectIndex}
+      userEventHistory={userEventHistory}
     />
   )
 }

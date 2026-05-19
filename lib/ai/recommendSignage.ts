@@ -4,7 +4,7 @@
 
 import { findSimilarPastEvents, findCeilingBannerContext, getVenueSpecs, formatVenueSpecsContext } from '@/lib/data/dashboardSeed'
 import { findSimilarVenueSignage, formatVenueSignageContext } from '@/lib/data/venueSignageHelper'
-import { buildAccumulatedContext, formatAccumulatedContext } from '@/lib/ai/accumulatedContext'
+import { buildAccumulatedContext, formatAccumulatedContext, buildSeedEventHistoryContext } from '@/lib/ai/accumulatedContext'
 import { buildVenueProfile } from '@/lib/ai/venueProfile'
 import { buildAdminMasterContext } from '@/lib/ai/adminMasterContext'
 import { analyzeFloorPlan } from '@/lib/ai/visionFloorPlan'
@@ -233,6 +233,9 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
     accumulatedBlock = formatAccumulatedContext(accCtx)
   } catch { /* silent */ }
 
+  // 5/22 사용자 명시 = 행사 관리 SOT → AI 컨텍스트 주입. venue·programParts 매칭 5건 signage_breakdown.
+  const seedHistoryBlock = buildSeedEventHistoryContext(input.venue, input.programParts)
+
   // v9.6: 회의록 ′학습해 가지고 텍스트 파일 형태로 이거는 어떤 행사장이다가 나올 거예요′
   // 행사장 메타(venues) + 시설 가이드 시드(venueFacilityGuide) + 예외 누적(facility_exception_log) 통합
   let venueProfileBlock = ''
@@ -326,7 +329,7 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
     `사용 목적: ${input.purposes.join(', ') || '미지정 — 행사 유형 기준 자동 판단'}`,
     selectedParts.length > 0 ? `프로그램 파트: ${selectedParts.map(c => `${c} ${PROGRAM_PART_BY_CODE.get(c)!.name}`).join(', ')}` : '',
     input.notes ? `추가 메모: ${input.notes}` : '',
-  ].filter(Boolean).join('\n') + similarEventsBlock + venueSignageBlock + accumulatedBlock + venueProfileBlock + ceilingBannerBlock + venueSpecsBlock + coverageBlock + adminMasterBlock + programPartsBlock + floorPlanBlock
+  ].filter(Boolean).join('\n') + similarEventsBlock + venueSignageBlock + accumulatedBlock + seedHistoryBlock + venueProfileBlock + ceilingBannerBlock + venueSpecsBlock + coverageBlock + adminMasterBlock + programPartsBlock + floorPlanBlock
 
   // v9.51 — 카드 오버라이드(우선) → step 오버라이드(레거시 호환) → PIPELINE_BLOCKS 기본 순.
   // 추천 카드 페르소나는 변수 토큰 치환을 한 번 거친 뒤 step1·2·3에 일괄 적용.

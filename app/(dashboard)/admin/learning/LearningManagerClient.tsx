@@ -135,6 +135,20 @@ interface Props {
     created_at: string
     last_edited_by: string | null
   }>
+  // 5/22 사용자 명시 = 신규 행사 (사용자 프로젝트) 자동 행사 관리에 누적·AI 추천 정확도 향상 목표
+  userEventHistory?: Array<{
+    project_name: string
+    project_code: string
+    year: number
+    venue: string
+    category_tag: '핵심' | '일반' | '미분류' | '해외'
+    has_excel: boolean
+    has_image: boolean
+    analyzed_item_count?: number
+    program_parts?: string[]
+    signage_breakdown?: Array<{ category: string; quantity: number; sizes?: string }>
+    is_user_project?: boolean
+  }>
   signageTypeCount?: number
   synonyms?: SynonymRow[]
   dbAliases?: DbAlias[]
@@ -157,6 +171,7 @@ export function LearningManagerClient({
   signageTypes = [],
   isAdmin = false,
   userProjectIndex = [],
+  userEventHistory = [],
 }: Props) {
   // ── 시설 가이드 AI 추출 상태 ────────────────────────────────
   const [extractingVenueId, setExtractingVenueId] = useState<string | null>(null)
@@ -413,6 +428,54 @@ export function LearningManagerClient({
   const [stSamplePreview, setStSamplePreview] = useState<string>('')
   // 5/22 P2-7 = 행사 관리 표 펼침 영역 (▶ 행 클릭 시 환경장식물별 분리 표시)
   const [expandedEventKey, setExpandedEventKey] = useState<string | null>(null)
+  // 5/22 사용자 명시 = 행사 관리 편집·삭제·추가 (localStorage 오버라이드 패턴)
+  const [hiddenEventKeys, setHiddenEventKeys] = useState<string[]>([])
+  const [eventOverrides, setEventOverrides] = useState<Record<string, { project_name?: string; venue?: string; year?: number; program_parts?: string[]; analyzed_item_count?: number }>>({})
+  const [customEvents, setCustomEvents] = useState<Array<{ project_name: string; project_code: string; year: number; venue: string; category_tag: '핵심'|'일반'|'미분류'|'해외'; program_parts: string[]; analyzed_item_count?: number }>>([])
+  const [editingEvent, setEditingEvent] = useState<{ project_name: string; project_code: string; year: number; venue: string; program_parts: string[]; analyzed_item_count?: number } | null>(null)
+  useEffect(() => {
+    try {
+      const h = localStorage.getItem('mice_hidden_events')
+      if (h) setHiddenEventKeys(JSON.parse(h))
+      const o = localStorage.getItem('mice_event_overrides')
+      if (o) setEventOverrides(JSON.parse(o))
+      const c = localStorage.getItem('mice_custom_events')
+      if (c) setCustomEvents(JSON.parse(c))
+    } catch {}
+  }, [])
+  const toggleHideEvent = (key: string) => {
+    setHiddenEventKeys(prev => {
+      const next = prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+      try { localStorage.setItem('mice_hidden_events', JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
+  const saveEventEdit = (originalKey: string, draft: { project_name: string; project_code: string; year: number; venue: string; program_parts: string[]; analyzed_item_count?: number }) => {
+    const isCustom = originalKey.startsWith('custom_')
+    if (isCustom) {
+      setCustomEvents(prev => {
+        const next = prev.map(e => (e.project_code === originalKey.replace('custom_', '')) ? { ...e, ...draft, category_tag: e.category_tag } : e)
+        try { localStorage.setItem('mice_custom_events', JSON.stringify(next)) } catch {}
+        return next
+      })
+    } else {
+      setEventOverrides(prev => {
+        const next = { ...prev, [originalKey]: draft }
+        try { localStorage.setItem('mice_event_overrides', JSON.stringify(next)) } catch {}
+        return next
+      })
+    }
+    setEditingEvent(null)
+  }
+  const addCustomEvent = (draft: { project_name: string; project_code: string; year: number; venue: string; program_parts: string[]; analyzed_item_count?: number }) => {
+    if (!draft.project_name.trim()) { alert('행사명 필수'); return }
+    setCustomEvents(prev => {
+      const next = [...prev, { ...draft, category_tag: '일반' as const, project_code: draft.project_code || 'custom_' + Date.now().toString(36) }]
+      try { localStorage.setItem('mice_custom_events', JSON.stringify(next)) } catch {}
+      return next
+    })
+    setEditingEvent(null)
+  }
   useEffect(() => {
     try {
       const a = localStorage.getItem('mice_hidden_seed_aliases')
@@ -2068,13 +2131,23 @@ export function LearningManagerClient({
           </section>
         )}
 
-        {/* 5/22 P2-7 = 행사 관리 = 5대 영역·▶ 펼침 영역 환경장식물별 분리·정렬 1순위 최신 연도·2순위 가나다 */}
+        {/* 5/22 P2-7 = 행사 관리 = 5대 영역·▶ 펼침 영역·✎·✕·+ 패턴 */}
         {activeSection === 'events' && (
           <section className="bg-white border border-slate-200 rounded-xl p-5">
-            <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-emerald-500" />
-              행사 관리 ({SEED_EVENT_HISTORY.length})
-            </h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-slate-900 font-semibold text-sm flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-500" />
+                행사 관리 ({SEED_EVENT_HISTORY.length + customEvents.length})
+              </h2>
+              {isAdmin && (
+                <button
+                  onClick={() => setEditingEvent({ project_name: '', project_code: '', year: new Date().getFullYear(), venue: '', program_parts: [], analyzed_item_count: undefined })}
+                  className="flex items-center gap-1 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded"
+                >
+                  <Plus className="w-3 h-3" /> 행사 추가
+                </button>
+              )}
+            </div>
             <div className="overflow-x-auto border border-slate-200 rounded">
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200">
@@ -2085,13 +2158,28 @@ export function LearningManagerClient({
                     <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">연도</th>
                     <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">프로그램 파트</th>
                     <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">총 수량</th>
+                    {isAdmin && <th className="px-2 py-2 text-center font-semibold w-14"></th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {SEED_EVENT_HISTORY
+                  {/* 5/22 사용자 명시 = SEED + 신규 프로젝트 (userEventHistory) + 커스텀 행사 통합·AI 추천 정확도 향상 목표 */}
+                  {[
+                    ...SEED_EVENT_HISTORY.map(e => ({ ...e, is_user_project: false })),
+                    ...userEventHistory.map(e => ({ ...e, has_excel: e.has_excel ?? true, has_image: e.has_image ?? false, is_user_project: true })),
+                    ...customEvents.map(e => ({ ...e, has_excel: true, has_image: false, signage_breakdown: undefined, is_user_project: false })),
+                  ]
+                    .filter(e => !hiddenEventKeys.includes(e.project_code ?? e.project_name))
+                    .map(e => {
+                      // override 적용
+                      const ov = eventOverrides[e.project_code ?? e.project_name]
+                      return ov ? { ...e, ...ov } : e
+                    })
                     .slice()
                     .sort((a, b) => {
-                      // 5/22 사용자 명시 = 빠른 게 (최신) 위로. year DESC + project_code DESC (코드 클수록 최신) + 가나다
+                      // 5/22 사용자 명시 = 빠른 게 (최신) 위로. user_project 우선·year DESC + project_code DESC
+                      const aUser = (a as { is_user_project?: boolean }).is_user_project ? 1 : 0
+                      const bUser = (b as { is_user_project?: boolean }).is_user_project ? 1 : 0
+                      if (aUser !== bUser) return bUser - aUser
                       if ((b.year ?? 0) !== (a.year ?? 0)) return (b.year ?? 0) - (a.year ?? 0)
                       const codeCompare = (b.project_code ?? '').localeCompare(a.project_code ?? '')
                       if (codeCompare !== 0) return codeCompare
@@ -2122,6 +2210,20 @@ export function LearningManagerClient({
                             <td className="px-2 py-1.5 text-right font-mono text-emerald-600 font-semibold">
                               {e.analyzed_item_count ?? <span className="text-slate-300">—</span>}
                             </td>
+                            {isAdmin && (
+                              <td className="px-2 py-1.5 text-center whitespace-nowrap" onClick={ev => ev.stopPropagation()}>
+                                <button
+                                  onClick={() => setEditingEvent({ project_name: e.project_name, project_code: e.project_code ?? '', year: e.year ?? new Date().getFullYear(), venue: e.venue, program_parts: e.program_parts ?? [], analyzed_item_count: e.analyzed_item_count })}
+                                  title="편집"
+                                  className="text-[11px] leading-none px-1 text-slate-400 hover:text-indigo-600"
+                                >✎</button>
+                                <button
+                                  onClick={() => toggleHideEvent(e.project_code ?? e.project_name)}
+                                  title="삭제·숨김"
+                                  className="text-[11px] leading-none px-1 ml-1 text-slate-300 hover:text-red-500"
+                                >✕</button>
+                              </td>
+                            )}
                           </tr>
                           {isOpen && (
                             <tr className="bg-slate-50">
@@ -2627,6 +2729,18 @@ export function LearningManagerClient({
           }}
         />
       )}
+      {/* 5/22 사용자 명시 = 행사 관리 편집·추가 모달 */}
+      {editingEvent && (
+        <EventEditModal
+          initial={editingEvent}
+          isNew={editingEvent.project_name === ''}
+          onClose={() => setEditingEvent(null)}
+          onSave={(draft) => {
+            if (editingEvent.project_name === '') addCustomEvent(draft)
+            else saveEventEdit(editingEvent.project_code || editingEvent.project_name, draft)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -2734,6 +2848,85 @@ function ProgramPartEditModal({ initial, isNew, onClose, onSave }: {
           <button
             onClick={() => onSave({ name: name.trim(), hint: hint.trim(), group })}
             className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded"
+          >{isNew ? '추가' : '저장'}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// 5/22 사용자 명시 = 행사 관리 편집·추가 모달
+function EventEditModal({ initial, isNew, onClose, onSave }: {
+  initial: { project_name: string; project_code: string; year: number; venue: string; program_parts: string[]; analyzed_item_count?: number }
+  isNew: boolean
+  onClose: () => void
+  onSave: (draft: { project_name: string; project_code: string; year: number; venue: string; program_parts: string[]; analyzed_item_count?: number }) => void
+}) {
+  const [projectName, setProjectName] = useState(initial.project_name)
+  const [projectCode, setProjectCode] = useState(initial.project_code)
+  const [year, setYear] = useState(String(initial.year))
+  const [venue, setVenue] = useState(initial.venue)
+  const [parts, setParts] = useState<string[]>(initial.program_parts)
+  const [itemCount, setItemCount] = useState(initial.analyzed_item_count != null ? String(initial.analyzed_item_count) : '')
+  const togglePart = (code: string) => {
+    setParts(prev => prev.includes(code) ? prev.filter(p => p !== code) : [...prev, code])
+  }
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[400] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl border-2 border-emerald-200 max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-slate-900">{isNew ? '행사 추가' : '행사 편집'}</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700"><XCircle className="w-4 h-4" /></button>
+        </div>
+        <div className="px-5 py-4 space-y-3">
+          <div>
+            <label className="text-[11px] text-slate-600 block mb-1">행사명</label>
+            <input value={projectName} onChange={e => setProjectName(e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm" placeholder="예: 2025 K-MICE EXPO" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[11px] text-slate-600 block mb-1">행사 코드</label>
+              <input value={projectCode} onChange={e => setProjectCode(e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm" placeholder="예: 251020" />
+            </div>
+            <div>
+              <label className="text-[11px] text-slate-600 block mb-1">연도</label>
+              <input type="number" value={year} onChange={e => setYear(e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm" />
+            </div>
+          </div>
+          <div>
+            <label className="text-[11px] text-slate-600 block mb-1">행사장</label>
+            <input value={venue} onChange={e => setVenue(e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm" placeholder="예: 코엑스 그랜드볼룸" />
+          </div>
+          <div>
+            <label className="text-[11px] text-slate-600 block mb-1">프로그램 파트 (다중)</label>
+            <div className="flex flex-wrap gap-1">
+              {PROGRAM_PARTS.map(pt => (
+                <button
+                  key={pt.code}
+                  type="button"
+                  onClick={() => togglePart(pt.code)}
+                  className={`text-[10px] px-1.5 py-0.5 rounded border ${parts.includes(pt.code) ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-white border-slate-300 text-slate-500'}`}
+                >{pt.name}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-[11px] text-slate-600 block mb-1">분석 항목 수 (선택)</label>
+            <input type="number" value={itemCount} onChange={e => setItemCount(e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm" placeholder="예: 35" />
+          </div>
+        </div>
+        <div className="px-5 py-3 border-t border-slate-200 flex justify-end gap-2">
+          <button onClick={onClose} className="text-xs text-slate-500 hover:text-slate-700 px-3 py-1.5">취소</button>
+          <button
+            onClick={() => onSave({
+              project_name: projectName.trim(),
+              project_code: projectCode.trim(),
+              year: Number(year) || new Date().getFullYear(),
+              venue: venue.trim(),
+              program_parts: parts,
+              analyzed_item_count: itemCount ? Number(itemCount) : undefined,
+            })}
+            className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded"
           >{isNew ? '추가' : '저장'}</button>
         </div>
       </div>
