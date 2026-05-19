@@ -1177,55 +1177,8 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                     )}
                   </div>
 
-                  {/* 시안 업로드 — 일괄 or 품목별 */}
-                  <div className="bg-slate-50/40 border border-slate-300/50 rounded-xl p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p className="text-slate-400 text-xs font-medium">시안 이미지 업로드 <span className="text-slate-400 font-normal">— 선택 사항</span></p>
-                      <span className="text-slate-400 text-[10px]">업로드 시 캔버스 배경으로 자동 표시</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {/* 일괄 업로드 */}
-                      <div>
-                        <p className="text-slate-500 text-[10px] mb-1">일괄 — 모든 환경장식물에 동일 적용</p>
-                        {batchMockup ? (
-                          <div className="relative">
-                            <img src={batchMockup.preview} alt="" className="w-full h-16 object-cover rounded border border-slate-300" />
-                            <button type="button" onClick={() => setBatchMockup(null)} className="absolute top-1 right-1 bg-white/80 text-slate-500 hover:text-white p-0.5 rounded transition"><X className="w-3 h-3" /></button>
-                          </div>
-                        ) : (
-                          <label className="flex items-center justify-center gap-1.5 border border-dashed border-slate-300 hover:border-slate-600 rounded-lg h-16 cursor-pointer hover:bg-slate-50/30 transition">
-                            <input type="file" accept="image/*" className="hidden" onChange={e => {
-                              const f = e.target.files?.[0]; if (!f) return
-                              const reader = new FileReader()
-                              reader.onload = ev => setBatchMockup({ file: f, preview: ev.target?.result as string })
-                              reader.readAsDataURL(f); e.target.value = ''
-                            }} />
-                            <ImageIcon className="w-4 h-4 text-slate-400" />
-                            <span className="text-slate-400 text-[10px]">공통 시안 클릭 업로드</span>
-                          </label>
-                        )}
-                      </div>
-                      {/* 품목별 안내 */}
-                      <div>
-                        <p className="text-slate-500 text-[10px] mb-1">품목별 — 환경장식물마다 다른 시안</p>
-                        <div className="border border-dashed border-slate-200 rounded-lg h-16 flex flex-col items-center justify-center px-2">
-                          <ImageIcon className="w-3 h-3 text-slate-400 mb-0.5" />
-                          <span className="text-slate-400 text-[9px] text-center leading-tight">
-                            아래 표에서 각 행 우측 끝<br/>
-                            <ImageIcon className="w-2.5 h-2.5 inline mx-0.5 text-slate-500" />
-                            아이콘 클릭
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    {Object.keys(formatMockups).length > 0 && (
-                      <p className="text-violet-400 text-[10px]">✓ {Object.keys(formatMockups).length}개 품목에 개별 시안 설정됨 (일괄 시안보다 우선)</p>
-                    )}
-                    {/* 우선순위 안내 */}
-                    <p className="text-slate-400 text-[9px] mt-1">
-                      💡 일괄 + 품목별 모두 업로드 시: 품목별 시안이 그 종류에만 적용되고, 나머지는 일괄 시안 적용
-                    </p>
-                  </div>
+                  {/* 5/21 사용자 명시 = 시안 업로드 부분 전부 삭제 (노션 §3 = 시안 입력 전체 제거).
+                      관련 state·핸들러는 orphan 보존 (case-c 시작 흐름 호환). */}
 
                   {/* 엑셀 불러온 목록 미리보기 */}
                   {excelRows.length > 0 && (

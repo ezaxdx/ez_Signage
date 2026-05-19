@@ -41,16 +41,8 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
   const [items, setItems] = useState<DesignItem[]>(initialItems)
   const [selectedItemId, setSelectedItemId] = useState<string>(initialItems[0]?.id ?? '')
   const [projectStatus, setProjectStatus] = useState<string>(project.status ?? 'in_progress')
-  // 5/21 사용자 명시 = 분할 비율 고정 (노션 §3 좌 8:우 2). 드래그·localStorage 비율 무시.
-  // 토글(위·아래 / 좌·우)은 유지·사용자 선택 가능.
-  const [splitMode, setSplitMode] = useState<'horizontal' | 'vertical'>('vertical')
-  const splitPos = 80   // 좌 8:우 2 하드코딩 (드래그·localStorage 비활성)
-  useEffect(() => {
-    try {
-      const s = localStorage.getItem('mice_editor_split')
-      if (s === 'vertical' || s === 'horizontal') setSplitMode(s)
-    } catch {}
-  }, [])
+  // 5/21 사용자 명시 = 레이아웃 토글 기능 삭제 + 좌 8:우 2 고정 (노션 §3).
+  // splitMode·splitPos·드래그·localStorage 모두 제거.
   const [allContents, setAllContents] = useState<Record<string, ContentsMap>>({})
   const [slotStyles, setSlotStyles] = useState<SlotStylesMap>({})
   const [isLoading, setIsLoading] = useState(true)
@@ -672,6 +664,9 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
         onOpenFacilityGuide={() => setFacilityGuideOpen(true)}
         facilityCheckMode={facilityCheckMode}
         onFacilityCheckModeChange={handleFacilityCheckModeChange}
+        // 5/21 사용자 명시 = 설정 우측 완료 버튼
+        projectStatus={projectStatus}
+        onMarkCompleted={handleMarkCompleted}
       />
 
       {showPreflight && (
@@ -741,41 +736,13 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
         }}
       />
 
-      {/* 레이아웃 토글 (5/21 사용자 명시 = 분할 고정·드래그 핸들 제거·토글 우측에 완료 버튼) */}
-      <div className="px-3 py-1 bg-slate-50 border-b border-slate-200 flex items-center gap-2 text-[10px]">
-        <span className="text-slate-500">레이아웃:</span>
-        <button
-          onClick={() => { setSplitMode('horizontal'); try { localStorage.setItem('mice_editor_split', 'horizontal') } catch {} }}
-          className={`px-2 py-0.5 rounded ${splitMode === 'horizontal' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}
-        >
-          ⊟ 위·아래
-        </button>
-        <button
-          onClick={() => { setSplitMode('vertical'); try { localStorage.setItem('mice_editor_split', 'vertical') } catch {} }}
-          className={`px-2 py-0.5 rounded ${splitMode === 'vertical' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}
-        >
-          ⊟ 좌·우
-        </button>
-        <span className="ml-auto flex items-center gap-2">
-          {projectStatus === 'completed' && (
-            <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5 text-[10px]">완료됨</span>
-          )}
-          <button
-            onClick={handleMarkCompleted}
-            disabled={projectStatus === 'completed'}
-            className="px-3 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-200 disabled:text-slate-500 text-white text-[10px] font-medium transition"
-            title="다운로드 완료 후 클릭. 프로젝트를 완료 상태로 표시합니다."
-          >
-            완료
-          </button>
-        </span>
-      </div>
+      {/* 5/21 사용자 명시 = 레이아웃 토글바 통째 삭제. 좌 8:우 2 고정. */}
 
       <div className="flex flex-1 min-h-0">
-        <div className={`flex-1 ${splitMode === 'vertical' ? 'flex flex-row' : 'flex flex-col'} min-w-0`}>
+        <div className="flex-1 flex flex-row min-w-0">
           <div
-            className={`${splitMode === 'vertical' ? 'border-r' : 'border-b'} border-slate-200 overflow-hidden`}
-            style={splitMode === 'vertical' ? { width: `${splitPos}%` } : { height: `${splitPos}%` }}
+            className="border-r border-slate-200 overflow-hidden"
+            style={{ width: '80%' }}
           >
             <EditorGrid
               items={items}
@@ -796,7 +763,7 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
               CanvasBoard는 orphan 보존 (decisions.md 2026-05-07 orphan 정책) — v5 디자인 캔버스 부활 시 재사용 */}
           <div
             className="overflow-hidden"
-            style={splitMode === 'vertical' ? { width: `${100 - splitPos}%` } : { height: `${100 - splitPos}%` }}
+            style={{ width: '20%' }}
           >
             <RightPanel
               selectedItem={selectedItem}

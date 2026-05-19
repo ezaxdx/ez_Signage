@@ -645,16 +645,16 @@ export function LearningManagerClient({
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr className="text-slate-600 text-[11px]">
-                    <th className="px-2 py-2 text-left font-semibold">행사장</th>
-                    <th className="px-2 py-2 text-right font-semibold">프로젝트</th>
-                    <th className="px-2 py-2 text-right font-semibold">전체 항목</th>
-                    <th className="px-2 py-2 text-right font-semibold" title="아직 위치·목적도 미입력 (가중치 10%)">입력</th>
-                    <th className="px-2 py-2 text-right font-semibold" title="위치·목적 등 일부 입력 (가중치 30%)">중간</th>
-                    <th className="px-2 py-2 text-right font-semibold" title="사용자 컨펌 (가중치 70%)">컨펌</th>
-                    <th className="px-2 py-2 text-right font-semibold" title="발주·다운로드 완료 (가중치 100% — 정답풀)">완료</th>
-                    <th className="px-2 py-2 text-right font-semibold">정확도 추정</th>
-                    <th className="px-2 py-2 text-left font-semibold" title="6대 표준 카테고리 학습 현황 (외벽·게이트·가로등·X배너·천정·부속시설)">카테고리 학습</th>
-                    <th className="px-2 py-2 text-left font-semibold" title="이 행사장 프로젝트에 사용된 프로그램 파트">프로그램 파트</th>
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">행사장·홀</th>
+                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">프로젝트</th>
+                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">전체 항목</th>
+                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="위치·목적 미입력 단계">입력만</th>
+                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="위치·목적 일부 입력">중간 수정</th>
+                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="사용자 컨펌 완료">컨펌</th>
+                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="발주·다운로드 완료">발주 완료</th>
+                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">정확도 %</th>
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="외벽·게이트·가로등·X배너·천정·부속시설 학습 현황">학습 카테고리</th>
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="이 행사장 프로젝트에 사용된 프로그램 파트">프로그램 파트</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
