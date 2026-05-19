@@ -128,8 +128,8 @@ export const VENUE_HALLS: VenueHall[] = [
   { parent_key: '킨텍스', name: '제2전시장 10홀' },
   { parent_key: '킨텍스', name: '그랜드볼룸' },
   // DDP (동대문디자인플라자)
-  { parent_key: 'DDP', name: '알림1관', note: '정식 명칭 확인 필요' },
-  { parent_key: 'DDP', name: '알림2관', note: '정식 명칭 확인 필요' },
+  { parent_key: 'DDP', name: '알림1관' },
+  { parent_key: 'DDP', name: '알림2관' },
   { parent_key: 'DDP', name: '디자인올레' },
   { parent_key: 'DDP', name: '디자인전시관' },
   { parent_key: 'DDP', name: '어울림광장' },
