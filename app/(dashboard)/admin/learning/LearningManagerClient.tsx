@@ -972,7 +972,7 @@ export function LearningManagerClient({
                     <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">프로젝트</th>
                     <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">전체 항목</th>
                     <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="실제 다운로드·발주가 완료된 항목 수 (학습 신호)">발주 완료</th>
-                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="전체 항목 중 발주 완료 비율 (학습 누적 진행도)">학습 진행도 %</th>
+                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="현재 = 학습 진행도 (발주 완료 비율). 향후 = 정확도 (AI 추천값 vs 사용자 최종값 비교·migration_v16 영역 누적 후)">학습 진행도 %</th>
                     <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="이 행사장에서 사용된 환경장식물 종류 (event_history.signage_breakdown 합산·signage_types.name 매칭만)">환경장식물 종류</th>
                     <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="이 행사장에서 진행한 프로그램 파트">프로그램 파트</th>
                   </tr>
