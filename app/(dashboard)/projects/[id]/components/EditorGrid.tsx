@@ -87,7 +87,7 @@ interface ColumnDef {
 const DEFAULT_COLS: ColumnDef[] = [
   { id: 'no',             label: 'NO.',         width: '44px',  field: 'no' },
   { id: 'part',           label: '파트',         width: '72px',  field: 'part' },
-  { id: 'bigarea',        label: '구분',         width: '74px',  field: 'location' },
+  // 5/21 회의 = "구분 vs 품목 차이 없으면 둘 중 하나 삭제" → 구분 컬럼 제거 (장소와 같은 location field·중복)
   { id: 'location',       label: '장소',         width: '90px',  field: 'location' },
   { id: 'purpose',        label: '사용 목적',    width: '90px',  field: 'purpose' },
   { id: 'category',       label: '품목',         width: '84px',  field: 'category' },

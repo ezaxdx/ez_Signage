@@ -113,6 +113,18 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
   // ── 프로젝트 정보 ───────────────────────────────────────
   const [name, setName] = useState(project.name)
   const [clientName, setClientName] = useState(project.client_name ?? '')
+  // 5/21 회의 = 협력사 필드 신규 추가 (Excel/PPT 표지 출처). DB 컬럼 미존재 → localStorage 1차.
+  const [partnerCompany, setPartnerCompany] = useState<string>('')
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`mice_project_partner_${project.id}`)
+      if (saved) setPartnerCompany(saved)
+    } catch {}
+  }, [project.id])
+  const savePartnerCompany = (v: string) => {
+    setPartnerCompany(v)
+    try { localStorage.setItem(`mice_project_partner_${project.id}`, v) } catch {}
+  }
   const [eventDate, setEventDate] = useState(project.event_date ?? '')
   const [eventVenue, setEventVenue] = useState(project.event_venue ?? '')
   const [status, setStatus] = useState<ProjectStatus>(project.status)
@@ -660,6 +672,15 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
               <div>
                 <label className={LABEL_CLS}>발주처 / 주최기관</label>
                 <input value={clientName} onChange={e => setClientName(e.target.value)} className={INPUT_CLS} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>협력사 (Excel/PPT 표지에 자동 입력)</label>
+                <input
+                  value={partnerCompany}
+                  onChange={e => savePartnerCompany(e.target.value)}
+                  placeholder="예: 디자인 협력사·출력 협력사"
+                  className={INPUT_CLS}
+                />
               </div>
               <div>
                 <label className={LABEL_CLS}>행사 장소</label>
