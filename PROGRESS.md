@@ -1,5 +1,72 @@
 # 작업 이력
 
+## 2026-05-20 (v10.4 — design_items.no 책임 통합 + 12파트 시드 + ErrorBoundary + 정의 분석 보고서)
+
+### 사용자 요청
+조기흠 사원(AXDX팀, 2026-05-19~20 야간): 웹 Claude 작성 야간 작업 지시서 + 팀장님 환경장식물 정의 분석 미션 동시 진행. D-2 안전 모드 (push X·DB 실행 X·외부 자산 커밋 X).
+
+### Step 0 — 의도 확인 적용
+- 표면: "design_items.no NOT NULL + 정의 분석" 동시
+- 진짜 의도: INSERT 책임 통합 (SOT 단일화) + 분류 체계 SOT 확립 (팀장님 보고)
+- 설계 = DB trigger SOT + 클라이언트 헬퍼 보조 (이중 방어)
+
+### A. design_items.no 채번 통합 핫픽스 (Iteration 1~3)
+- `scripts/diagnose_no_column.mjs` 신설 — Supabase information_schema 진단·docs/reports/diagnose_no_<YYMMDD>.md 저장 (사용자 영역 실행)
+- `supabase/migration_v10_4_fix_design_items_no.sql` 신설 — ① NOT NULL 임시 해제 → ② set_design_items_no() trigger 생성 (project_id 단위 max+1 자동 채번) → ③ NOT NULL 재설정 + (project_id, no) UNIQUE 제약 (중복 점검 후 적용)
+- `lib/services/designItemNo.ts` 신설 — `nextDesignItemNo()` + `nextDesignItemNos(count)` + `fetchNextDesignItemNo()` 3종 helper
+- `EditorLayout.tsx` 정정 — `items.length+1` → `nextDesignItemNo(items)` (삭제 후 추가 시 중복 위험 해소)
+- `SeriesGenerator.tsx` 정정 — `currentItemCount+1` → DB max(no) 조회 + `nextDesignItemNos(count)` (시리즈 N건 채번 동시성 보강)
+
+### B. 12파트 환경장식물 매핑 시드 (Iteration 7~9)
+- `lib/data/v3/programPartSignageSeed.ts` 신설 — `SEED_PROGRAM_PART_SIGNAGE` 12파트 마스터 (61행 SOT 정합)
+- 12파트 모두 데이터 확정 (11번 영접영송·12번 홍보 BLOCKED 해제)
+- `recommendCategoriesForParts()` + `formatPartSignageForPrompt()` helper 2종
+- 천장 배너(전시 #2) ≠ 통천 배너(공식행사 #5) 별도 카테고리 명시 (매핑 금지)
+- Q방 (부대행사-투어형 #8) 규격·재질 미정 = 사용자 컴펌 보류
+
+### C. /admin/learning ErrorBoundary (Iteration 5)
+- `app/components/admin/SectionBoundary.tsx` 신설 — 학습 관리자 6 섹션 독립 격리·graceful degradation
+- 한 섹션 fail → 다른 섹션 정상 렌더 보장
+- (사용처 통합은 다음 사이클·LearningManagerClient에 SectionBoundary import + 6 섹션 wrap)
+
+### D. 환경장식물 정의 분석 보고서 (별도 미션)
+- `C:\Users\EZPMP\Desktop\환경장식물_정의_분석보고서_20260520.md` 신설 (11 섹션·5단계 정의·4 검증 통과)
+- 좋은 예/나쁜 예 폴더링 비교 → 핵심 발견 = L1=공간(L1_행사장) vs L1=속성(_원본_보존·_핵심_높음이상)
+- 5단계 정의: 한 문장·외연 (12파트 × 14종류)·내포 (4축 = 행사·한시·시각·공간)·경계 (7종 제외)·운영 (5질문 체크리스트)
+- 작업 로그 = `C:\Users\EZPMP\Desktop\환경장식물_정의_작업로그_20260520.md`
+- 트리·엑셀 추출 보조 = `Desktop\tree_정답.txt`·`Desktop\_xlsx_extracted.json`
+
+### 검증 (객관 exit codes)
+- TSC 0 에러
+- Next 빌드 PASS (모든 라우트 정상)
+- harness 70/72·0 fail (작업 무관 2 warn)
+
+### 잔존 (사용자 결정·라이브 영향)
+- `supabase/migration_v10_4_*.sql` Supabase Studio 실행 (D-1 안전 운영 후 권장)
+- ItemSidebar 추가 점검 + 본 helper 정합 (다음 사이클)
+- 12파트 시드의 AI 추천 프롬프트 자동 주입 통합 (`lib/ai/recommendSignage.ts` 변경 다음 사이클)
+- 12파트 시드의 신규 프로젝트 위자드 자동 체크 통합 (다음 사이클)
+- LearningManagerClient에 SectionBoundary 6 섹션 wrap (다음 사이클)
+- 팀장님 정의 보고서 컴펌 5건 (10.3절: 한 문장 톤·명찰 경계·카펫 경계·Q방 정의·12번 홍보 신규)
+- `auto/v10.4-design-items-no-fix-260519` 브랜치 main 머지·push (사용자 명시 후·D-1 안정 운영 우선)
+
+### 파일 변경 (8건 신규 + 2건 정정)
+신규:
+- `scripts/diagnose_no_column.mjs`
+- `supabase/migration_v10_4_fix_design_items_no.sql`
+- `lib/services/designItemNo.ts`
+- `lib/data/v3/programPartSignageSeed.ts`
+- `app/components/admin/SectionBoundary.tsx`
+- `docs/overnight/OVERNIGHT_TASK_20260519.md`
+- `docs/diagnosis_design_items_no_260519.md` (5/19)
+- `docs/diagnosis_overnight_260519.md` (5/19)
+
+정정:
+- `app/(dashboard)/projects/[id]/EditorLayout.tsx` (handleAddItem 채번)
+- `app/(dashboard)/projects/[id]/components/SeriesGenerator.tsx` (시리즈 채번)
+
+---
+
 ## 2026-05-19 (v10.3 — G드라이브 SOT 학습 시드 일괄 정합)
 
 ### 사용자 요청

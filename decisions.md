@@ -3,6 +3,65 @@
 > 작은 결정도 누적. "왜 X를 쓰는가?" 질문 시 검색.
 > CLAUDE.md를 부풀리지 않으면서 일관성 유지.
 
+## 2026-05-20 — design_items.no 채번 SOT = DB trigger + 클라이언트 헬퍼 (v10.4)
+
+**컨텍스트**: 5/19 b979439 ProjectInfoClient.tsx 1곳 fix 후 EditorLayout (items.length+1)·SeriesGenerator (currentItemCount+1) 등 다른 INSERT 경로에서 잠재 충돌 (삭제 후 추가 시 (project_id, no) 중복). 5/19 환경장식물 회고 = "설계 미스 = SOT 부재·INSERT 책임 7곳 분산"이 근본 원인.
+
+**선택**:
+1. **DB trigger = SOT** = `set_design_items_no()` BEFORE INSERT FOR EACH ROW, NEW.no NULL/빈 시 max+1 자동 채움
+2. **클라이언트 = 보조** = `lib/services/designItemNo.ts` (`nextDesignItemNo`·`nextDesignItemNos`·`fetchNextDesignItemNo`)
+3. **이중 방어** = 클라이언트가 잘못 보내도 DB trigger fallback·동시성 race condition도 DB level 정정
+4. **(project_id, no) UNIQUE 제약** = 중복 점검 후 적용 (기존 중복 있으면 스킵·수동 정합)
+
+**대안**:
+- SERIAL/IDENTITY 컬럼 전환 = 기존 데이터 영향 큼·"01·02" 표기 변경 위험
+- 클라이언트만 정합 = race condition 잔존·운영 데이터 일관성 깨질 위험
+- DB trigger만 = INSERT 시 클라이언트가 채번 결과 알 수 없음 (RETURNING 필요·코드 복잡도 ↑)
+
+**이유**:
+- 사용자 [[feedback-automation-design-upfront]] §2 "책임 통합" 원칙 정합 (7곳 분산 → DB 단일)
+- D-2 안전 = client 변경 즉시 적용 + DB trigger는 사용자 영역 실행 분리 (rollback 쉬움)
+- 동시성 가장 안전 패턴 (PostgreSQL trigger는 row-level lock 자동)
+
+**되돌릴 수 있는가**: 매우 쉬움 — trigger DROP·NOT NULL DROP·헬퍼 import 제거로 v10.3 동작 복귀
+
+**관련**: feedback-automation-design-upfront·feedback-intent-clarification-first·migration_v10_4_fix_design_items_no.sql
+
+---
+
+## 2026-05-20 — 천장 배너 ≠ 통천 배너 (별도 카테고리·매핑 금지)
+
+**컨텍스트**: 12파트 시드 작성 시 ① 전시(#2) 천장 배너 ② 공식행사(#5) 통천 배너 동의어 매핑 여부 결정 필요.
+
+**선택**: **별도 카테고리 유지**·SEED_SYNONYMS 매핑 금지.
+- 천장 배너 = 천장에 매다는 형태·전시장 구역 표시·메인 동선 표시 용도
+- 통천 배너 = 대형 천 소재·공식행사 무대 측면·외벽·로비 홍보 용도
+- 두 카테고리 모두 노션 §6-2 SOT에 독립 등록
+
+**대안**: 통합 (행잉 배너로 통합) = SEED_PROGRAM_PART_SIGNAGE 외연 흐림·사용자 의도 위배
+
+**이유**: 사용처·소재·시각 형식이 명백히 다름. 5/19 SOT (학습 현황 시트)에도 "천장 (행잉)"·"통천 배너" 분리 명시.
+
+**되돌릴 수 있는가**: 쉬움 — SEED_PROGRAM_PART_SIGNAGE에 note만 추가하면 됨 (사용자 결정 시)
+
+---
+
+## 2026-05-20 — /admin/learning 6 섹션 독립 ErrorBoundary 정책
+
+**컨텍스트**: 5/19 사용자 보고 "행사장 관리 페이지 전체 로딩 안 됨" = 한 섹션 fail이 페이지 전체 죽임. 다른 5 섹션도 사용 불가.
+
+**선택**: **섹션 단위 격리** = `app/components/admin/SectionBoundary.tsx` 신설·6 섹션 (개요·행사장 학습 현황·행사장 관리·환경장식물·시설 가이드·수정 요청) 각 wrap.
+
+**대안**:
+- 페이지 단위 ErrorBoundary 1개 = 페이지 전체 fallback·다른 섹션 사용 불가
+- try/catch 분산 = render 시점 에러 잡기 X
+
+**이유**: React 표준 ErrorBoundary 패턴·graceful degradation 산업 표준·사용자 명시 ("한 섹션 fail → 다른 섹션은 정상 사용")
+
+**되돌릴 수 있는가**: 매우 쉬움 — SectionBoundary wrap만 제거하면 v10.3 동작
+
+---
+
 ## 2026-05-21 — B3·B6 노션 정합 (v10.2)
 
 **컨텍스트**: 5/19 v10.0 + 5/20 자율 사이클로 노션 페이지 1·2 거의 모든 결정 정합 후, 매트릭스에서 "사용자 컴펌 영역"으로 분류했던 B3(우측 예시 이미지 + 위반 사항)·B6(행사장 L1·L2 계층) 잔존. 5/21 사용자 "전부 진행" 명시 → 박제 자제 룰 자동 무력화 룰 적용·즉시 진행.

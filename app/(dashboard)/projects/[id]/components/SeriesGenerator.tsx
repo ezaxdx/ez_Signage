@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { X, Loader2, Wand2, Plus, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { insertDefaultSlotsForItem } from '@/lib/services/itemService'
+import { nextDesignItemNos } from '@/lib/services/designItemNo'
 import type { DesignItem } from '@/lib/types'
 
 interface Props {
@@ -28,7 +29,10 @@ const DIRECTION_VALUES = [
 ]
 const LANGUAGE_VALUES: Array<'KOR' | 'EN' | 'EN/KOR'> = ['KOR', 'EN', 'EN/KOR']
 
-export function SeriesGenerator({ sourceItem, currentItemCount, projectId, onClose, onGenerated }: Props) {
+export function SeriesGenerator({ sourceItem, currentItemCount: _legacyCount, projectId, onClose, onGenerated }: Props) {
+  // v10.4 정정: currentItemCount는 더 이상 채번에 사용 X (호환 위해 prop만 유지·렌더 무효).
+  // 채번 = supabase 직접 조회 + nextDesignItemNos. props 시그니처는 호환 위해 보존.
+  void _legacyCount
   const [axis, setAxis] = useState<Axis>('direction')
   const [selectedDirections, setSelectedDirections] = useState<Set<string>>(new Set(['←', '→', '↑', '↓']))
   const [selectedLanguages, setSelectedLanguages] = useState<Set<'KOR' | 'EN' | 'EN/KOR'>>(new Set<'KOR' | 'EN' | 'EN/KOR'>(['KOR', 'EN']))
@@ -62,10 +66,17 @@ export function SeriesGenerator({ sourceItem, currentItemCount, projectId, onClo
         .eq('item_id', sourceItem.id)
 
       const newItems: DesignItem[] = []
-      let nextNoIdx = currentItemCount + 1
+      // v10.4 정정: currentItemCount+1 = 삭제 후 추가 시 중복 위험.
+      // DB에서 기존 no 조회 → max+1부터 채번 (ProjectInfoClient·EditorLayout 패턴 정합).
+      const { data: existingItems } = await supabase
+        .from('design_items')
+        .select('no')
+        .eq('project_id', projectId)
+      const seriesNos = nextDesignItemNos(existingItems ?? [], variations.length)
 
-      for (const v of variations) {
-        const newNo = String(nextNoIdx++).padStart(2, '0')
+      for (let i = 0; i < variations.length; i++) {
+        const v = variations[i]
+        const newNo = seriesNos[i]
         const patch: Partial<DesignItem> = {
           project_id: projectId,
           no: newNo,

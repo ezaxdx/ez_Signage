@@ -311,7 +311,10 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
 
   // ── 제작물 추가 (Grid용) — 종류 선택 시 카테고리·규격·재질 자동 채움 ────
   const handleAddItem = useCallback(async (preset?: { category: string; width_mm: number; height_mm: number; material: string }) => {
-    const nextNo = String(items.length + 1).padStart(2, '0')
+    // v10.4 정정: items.length+1 = 삭제 후 추가 시 중복 위험. nextDesignItemNo(max+1) 사용 = ProjectInfoClient 패턴 정합.
+    // SOT = DB trigger (set_design_items_no)·클라이언트는 보조. 동시성은 trigger fallback.
+    const { nextDesignItemNo } = await import('@/lib/services/designItemNo')
+    const nextNo = nextDesignItemNo(items)
     const newItem: Partial<DesignItem> = {
       project_id: project.id,
       no: nextNo,
