@@ -1425,7 +1425,27 @@ export function LearningManagerClient({
                       extractedL2 = split.l2
                     }
                     const isExpanded = expandedVenueId === v.id
-                    const canExpand = halls.length > 0 || extractedL2.length > 0
+                    // 5/22 사용자 명시 = 행사장별 통합 관리표 = 항상 펼침 가능 (휘하 행사·시설 가이드·KPI 영역 포함)
+                    const canExpand = true
+                    // 5/22 = 휘하 행사·환경장식물 영역 = unifiedEventHistory 매칭
+                    const venueEvents = unifiedEventHistory.filter(ev => {
+                      const vname = (ev.venue ?? '').trim()
+                      if (!vname) return false
+                      return vname === v.name || vname.includes(v.name) || v.name.includes(vname)
+                    })
+                    const validTypeNames = new Set(signageTypeList.map(s => s.name))
+                    const sigCountMap = new Map<string, number>()
+                    for (const ev of venueEvents) {
+                      for (const s of ev.signage_breakdown ?? []) {
+                        if (validTypeNames.has(s.category)) {
+                          sigCountMap.set(s.category, (sigCountMap.get(s.category) ?? 0) + s.quantity)
+                        }
+                      }
+                    }
+                    const totalSigQty = Array.from(sigCountMap.values()).reduce((a, b) => a + b, 0)
+                    const sigSorted = Array.from(sigCountMap.entries()).sort((a, b) => b[1] - a[1])
+                    // 시설 가이드 매칭
+                    const matchedGuide = facilityGuideStatus.find(f => f.venue_name === v.name || v.name.includes(f.venue_name) || f.venue_name.includes(v.name))
                     return (
                     <React.Fragment key={v.id}>
                     <tr className="border-b border-slate-200/40 hover:bg-slate-50/30">
@@ -1536,37 +1556,134 @@ export function LearningManagerClient({
                         </button>
                       </td>
                     </tr>
-                    {isExpanded && (halls.length > 0 || extractedL2.length > 0) && (
+                    {isExpanded && (
                       <tr className="bg-slate-50/60">
-                        <td colSpan={9} className="px-6 py-3">
-                          {/* 5/22 사용자 명시 = 3 댑스 = L1 (venue) → L2 (halls) → L3 (환경장식물) */}
-                          <div className="text-[10px] text-slate-600 font-semibold mb-2">L2 (휘하 홀)·L3 (환경장식물 종류)</div>
-                          <div className="space-y-2">
-                            {(halls.length > 0 ? halls.map(h => h.name) : extractedL2).map((hallName, i) => {
-                              // L3 = event_history.signage_breakdown 영역에서 hall 영역 매칭 (휘하 L2 영역 = venue 문자열에 hall 포함)
-                              const validNames = new Set(signageTypeList.map(s => s.name))
-                              const hallSignages = new Set<string>()
-                              for (const ev of unifiedEventHistory) {
-                                if (!(ev.venue ?? '').includes(hallName) && !(ev.venue ?? '').includes(v.name)) continue
-                                for (const s of ev.signage_breakdown ?? []) {
-                                  if (validNames.has(s.category)) hallSignages.add(s.category)
-                                }
-                              }
-                              return (
-                                <div key={i} className="bg-white border border-slate-200 rounded px-2 py-1.5">
-                                  <div className="text-[11px] text-slate-800 font-medium mb-1">{hallName}</div>
-                                  {hallSignages.size === 0 ? (
-                                    <span className="text-[10px] text-slate-300">— L3 영역 데이터 없음</span>
-                                  ) : (
-                                    <div className="flex flex-wrap gap-0.5">
-                                      {Array.from(hallSignages).map(name => (
-                                        <span key={name} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">{name}</span>
-                                      ))}
-                                    </div>
-                                  )}
+                        <td colSpan={9} className="px-6 py-4">
+                          {/* 5/22 사용자 명시 = 행사장별 통합 관리표 = 1 행사장 = 모든 학습 정보 1 패널 */}
+                          <div className="text-[11px] text-slate-700 font-semibold mb-3 flex items-center gap-1.5">
+                            <Building2 className="w-3.5 h-3.5 text-indigo-500" />
+                            {v.name} 통합 관리표
+                          </div>
+
+                          {/* KPI 4 카드 */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                            <div className="bg-white border border-slate-200 rounded px-2.5 py-1.5">
+                              <p className="text-[9px] text-slate-500">휘하 홀 (L2)</p>
+                              <p className="text-sm font-semibold text-indigo-700">{halls.length || extractedL2.length}<span className="text-[9px] text-slate-400 ml-0.5">개</span></p>
+                            </div>
+                            <div className="bg-white border border-slate-200 rounded px-2.5 py-1.5">
+                              <p className="text-[9px] text-slate-500">휘하 행사</p>
+                              <p className="text-sm font-semibold text-emerald-700">{venueEvents.length}<span className="text-[9px] text-slate-400 ml-0.5">건</span></p>
+                            </div>
+                            <div className="bg-white border border-slate-200 rounded px-2.5 py-1.5">
+                              <p className="text-[9px] text-slate-500">환경장식물 종류</p>
+                              <p className="text-sm font-semibold text-amber-700">{sigCountMap.size}<span className="text-[9px] text-slate-400 ml-0.5">종</span></p>
+                            </div>
+                            <div className="bg-white border border-slate-200 rounded px-2.5 py-1.5">
+                              <p className="text-[9px] text-slate-500">누적 수량</p>
+                              <p className="text-sm font-semibold text-rose-700">{totalSigQty}<span className="text-[9px] text-slate-400 ml-0.5">개</span></p>
+                            </div>
+                          </div>
+
+                          {/* 기본 정보 */}
+                          <div className="bg-white border border-slate-200 rounded p-2.5 mb-2">
+                            <p className="text-[10px] text-slate-600 font-semibold mb-1.5">기본 정보</p>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 text-[10px]">
+                              <div><span className="text-slate-400">권역:</span> <span className="text-slate-700">{v.region ?? '—'}</span></div>
+                              <div><span className="text-slate-400">유형:</span> <span className="text-slate-700">{v.venue_type ?? '—'}</span></div>
+                              <div><span className="text-slate-400">면적:</span> <span className="text-slate-700">{v.area_sqm ? `${v.area_sqm.toLocaleString()}㎡` : '—'}</span></div>
+                              <div><span className="text-slate-400">도면:</span> {v.floor_plan_url ? <a href={v.floor_plan_url} target="_blank" rel="noopener" className="text-indigo-600 hover:underline">보기</a> : <span className="text-slate-400">없음</span>}</div>
+                              {v.main_entrance_note && (
+                                <div className="md:col-span-4"><span className="text-slate-400">주출입구:</span> <span className="text-slate-700">{v.main_entrance_note}</span></div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                            {/* L2 휘하 홀 + L3 환경장식물 */}
+                            {(halls.length > 0 || extractedL2.length > 0) && (
+                              <div className="bg-white border border-slate-200 rounded p-2.5">
+                                <p className="text-[10px] text-slate-600 font-semibold mb-1.5">L2 휘하 홀·L3 환경장식물</p>
+                                <div className="space-y-1.5">
+                                  {(halls.length > 0 ? halls.map(h => h.name) : extractedL2).map((hallName, i) => {
+                                    const hallSignages = new Set<string>()
+                                    for (const ev of unifiedEventHistory) {
+                                      if (!(ev.venue ?? '').includes(hallName) && !(ev.venue ?? '').includes(v.name)) continue
+                                      for (const s of ev.signage_breakdown ?? []) {
+                                        if (validTypeNames.has(s.category)) hallSignages.add(s.category)
+                                      }
+                                    }
+                                    return (
+                                      <div key={i} className="border border-slate-100 rounded px-1.5 py-1">
+                                        <div className="text-[10px] text-slate-800 font-medium mb-0.5">{hallName}</div>
+                                        {hallSignages.size === 0 ? (
+                                          <span className="text-[9px] text-slate-300">— 학습 데이터 없음</span>
+                                        ) : (
+                                          <div className="flex flex-wrap gap-0.5">
+                                            {Array.from(hallSignages).map(name => (
+                                              <span key={name} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">{name}</span>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )
+                                  })}
                                 </div>
-                              )
-                            })}
+                              </div>
+                            )}
+
+                            {/* 환경장식물 빈도 TOP */}
+                            <div className="bg-white border border-slate-200 rounded p-2.5">
+                              <p className="text-[10px] text-slate-600 font-semibold mb-1.5">환경장식물 사용 빈도 (TOP 10)</p>
+                              {sigSorted.length === 0 ? (
+                                <p className="text-[9px] text-slate-400 italic">— 휘하 행사 영역에 환경장식물 데이터 없음</p>
+                              ) : (
+                                <ul className="space-y-0.5">
+                                  {sigSorted.slice(0, 10).map(([name, qty]) => (
+                                    <li key={name} className="flex items-center justify-between text-[10px]">
+                                      <span className="text-slate-700">{name}</span>
+                                      <span className="text-amber-700 font-mono">{qty}개</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+
+                            {/* 휘하 행사 목록 */}
+                            <div className="bg-white border border-slate-200 rounded p-2.5">
+                              <p className="text-[10px] text-slate-600 font-semibold mb-1.5">휘하 행사 ({venueEvents.length})</p>
+                              {venueEvents.length === 0 ? (
+                                <p className="text-[9px] text-slate-400 italic">— 매칭 행사 없음</p>
+                              ) : (
+                                <ul className="space-y-0.5 max-h-32 overflow-y-auto">
+                                  {venueEvents.slice(0, 12).map((ev, i) => (
+                                    <li key={i} className="flex items-center gap-1 text-[10px]">
+                                      <span className="text-slate-400 font-mono w-8 flex-shrink-0">{ev.year}</span>
+                                      <span className="text-slate-700 truncate flex-1">{ev.project_name}</span>
+                                      {ev.has_excel && <span className="text-emerald-600 text-[9px]">✓</span>}
+                                    </li>
+                                  ))}
+                                  {venueEvents.length > 12 && (
+                                    <li className="text-[9px] text-slate-400 italic pt-1">+ {venueEvents.length - 12}건</li>
+                                  )}
+                                </ul>
+                              )}
+                            </div>
+
+                            {/* 시설 가이드 매칭 */}
+                            <div className="bg-white border border-slate-200 rounded p-2.5">
+                              <p className="text-[10px] text-slate-600 font-semibold mb-1.5">시설 가이드</p>
+                              {matchedGuide ? (
+                                <div className="space-y-0.5 text-[10px]">
+                                  <div className="flex justify-between"><span className="text-slate-500">설치 가능 카테고리</span><span className="text-emerald-700 font-mono">{matchedGuide.categories_count}건</span></div>
+                                  <div className="flex justify-between"><span className="text-slate-500">주의사항</span><span className="text-rose-700 font-mono">{matchedGuide.warnings_count}건</span></div>
+                                  <div className="flex justify-between"><span className="text-slate-500">가이드 정보</span><span className={`font-mono ${matchedGuide.completeness >= 5 ? 'text-emerald-700' : matchedGuide.completeness >= 3 ? 'text-amber-700' : 'text-rose-700'}`}>{matchedGuide.completeness}/6</span></div>
+                                  <p className="text-[9px] text-slate-400 italic pt-0.5">→ 시설 가이드 메뉴 영역에서 상세 확인</p>
+                                </div>
+                              ) : (
+                                <p className="text-[9px] text-slate-400 italic">— 시설 가이드 미등록 (기본 컨벤션 가이드 적용)</p>
+                              )}
+                            </div>
                           </div>
                         </td>
                       </tr>
