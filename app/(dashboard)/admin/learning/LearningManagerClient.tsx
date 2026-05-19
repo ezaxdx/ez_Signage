@@ -199,16 +199,19 @@ export function LearningManagerClient({
   }
 
   const deleteSignageType = async (name: string) => {
-    if (!confirm(`'${name}' 종류를 삭제하시겠습니까?`)) return
+    if (!confirm(`'${name}' 종류를 숨길까요? (시드 항목은 복구 가능, DB 항목은 영구 삭제)`)) return
+    // 1차: DB API 호출 — DB row가 있으면 삭제, 없으면 시드라 무시
     try {
-      const res = await fetch('/api/admin/signage-types', {
+      await fetch('/api/admin/signage-types', {
         method: 'DELETE',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ name }),
       })
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || res.statusText) }
-      setSignageTypeList(prev => prev.filter(t => t.name !== name))
-    } catch (e) { alert(e instanceof Error ? e.message : '삭제 실패') }
+    } catch {}
+    // 2차: 시드 항목은 localStorage hidden (DB 영향 없이 사용자 화면에서만 숨김)
+    const target = signageTypeList.find(t => t.name === name)
+    if (target) toggleHideSignageType(target.id)
+    setSignageTypeList(prev => prev.filter(t => t.name !== name))
   }
   const [venues, setVenues] = useState<Venue[]>(initialVenues)
   const [requests, setRequests] = useState<VenueRequest[]>(initialRequests)
@@ -295,18 +298,39 @@ export function LearningManagerClient({
   const [hallSplit, setHallSplit] = useState(false)
   // 5/21 사용자 명시 = 학습된 행사장 표 행 클릭 시 L2 홀 펼침
   const [expandedVenueId, setExpandedVenueId] = useState<string | null>(null)
-  // 5/21 사용자 명시 = 시드 동의어 ✕ 삭제 + "없음" 표시 (localStorage hidden 보관)
+  // 5/21 사용자 명시 = 데이터 학습 관리자 직접 수정·삭제·편집 가능 (데이터 오류 보완).
+  // localStorage hidden 패턴으로 시드 항목도 ✕ 삭제 + ↺ 복구 가능.
   const [hiddenSeedAliases, setHiddenSeedAliases] = useState<string[]>([])
+  const [hiddenSignageTypeIds, setHiddenSignageTypeIds] = useState<string[]>([])
+  const [hiddenFacilityVenues, setHiddenFacilityVenues] = useState<string[]>([])
   useEffect(() => {
     try {
-      const s = localStorage.getItem('mice_hidden_seed_aliases')
-      if (s) setHiddenSeedAliases(JSON.parse(s))
+      const a = localStorage.getItem('mice_hidden_seed_aliases')
+      if (a) setHiddenSeedAliases(JSON.parse(a))
+      const s = localStorage.getItem('mice_hidden_signage_types')
+      if (s) setHiddenSignageTypeIds(JSON.parse(s))
+      const f = localStorage.getItem('mice_hidden_facility_venues')
+      if (f) setHiddenFacilityVenues(JSON.parse(f))
     } catch {}
   }, [])
   const toggleHideSeedAlias = (alias: string) => {
     setHiddenSeedAliases(prev => {
       const next = prev.includes(alias) ? prev.filter(a => a !== alias) : [...prev, alias]
       try { localStorage.setItem('mice_hidden_seed_aliases', JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
+  const toggleHideSignageType = (id: string) => {
+    setHiddenSignageTypeIds(prev => {
+      const next = prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]
+      try { localStorage.setItem('mice_hidden_signage_types', JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
+  const toggleHideFacilityVenue = (key: string) => {
+    setHiddenFacilityVenues(prev => {
+      const next = prev.includes(key) ? prev.filter(a => a !== key) : [...prev, key]
+      try { localStorage.setItem('mice_hidden_facility_venues', JSON.stringify(next)) } catch {}
       return next
     })
   }
@@ -1121,9 +1145,14 @@ export function LearningManagerClient({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {signageTypeList.map(t => (
-                    <tr key={t.id} className="hover:bg-slate-50">
-                      <td className="px-2 py-1 text-slate-800 font-medium">{t.name}</td>
+                  {/* 5/21 = 시드 항목도 hidden 패턴으로 숨김·↺ 복구 가능 (데이터 오류 보완) */}
+                  {signageTypeList.map(t => {
+                    const hidden = hiddenSignageTypeIds.includes(t.id)
+                    return (
+                    <tr key={t.id} className={`hover:bg-slate-50 ${hidden ? 'opacity-50' : ''}`}>
+                      <td className="px-2 py-1 text-slate-800 font-medium">
+                        {hidden ? <span className="line-through text-slate-400">{t.name}</span> : t.name}
+                      </td>
                       <td className="px-2 py-1">
                         <span className={`text-[10px] px-1.5 py-0.5 rounded ${t.layout === '세로' ? 'bg-violet-100 text-violet-700' : t.layout === '가로' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>{t.layout}</span>
                       </td>
@@ -1133,13 +1162,18 @@ export function LearningManagerClient({
                       <td className="px-2 py-1 text-slate-500 text-[11px]">{t.category}</td>
                       {isAdmin && (
                         <td className="px-2 py-1 text-center">
-                          <button onClick={() => deleteSignageType(t.name)}
-                            title="삭제 (표준 시드는 삭제 불가)"
-                            className="text-slate-300 hover:text-red-500 text-[11px] leading-none">✕</button>
+                          <button
+                            onClick={() => hidden ? toggleHideSignageType(t.id) : deleteSignageType(t.name)}
+                            title={hidden ? '복구' : '삭제·숨김 (데이터 오류 보완)'}
+                            className={`text-[11px] leading-none px-1 ${hidden ? 'text-indigo-600 hover:bg-indigo-50' : 'text-slate-300 hover:text-red-500'}`}
+                          >
+                            {hidden ? '↺' : '✕'}
+                          </button>
                         </td>
                       )}
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1232,9 +1266,14 @@ export function LearningManagerClient({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {signageTypeList.map(t => (
-                    <tr key={t.id} className="hover:bg-slate-50">
-                      <td className="px-2 py-1 text-slate-800 font-medium">{t.name}</td>
+                  {/* 5/21 = 시드 항목도 hidden 패턴으로 숨김·↺ 복구 가능 (데이터 오류 보완) */}
+                  {signageTypeList.map(t => {
+                    const hidden = hiddenSignageTypeIds.includes(t.id)
+                    return (
+                    <tr key={t.id} className={`hover:bg-slate-50 ${hidden ? 'opacity-50' : ''}`}>
+                      <td className="px-2 py-1 text-slate-800 font-medium">
+                        {hidden ? <span className="line-through text-slate-400">{t.name}</span> : t.name}
+                      </td>
                       <td className="px-2 py-1">
                         <span className={`text-[10px] px-1.5 py-0.5 rounded ${t.layout === '세로' ? 'bg-violet-100 text-violet-700' : t.layout === '가로' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>{t.layout}</span>
                       </td>
@@ -1244,13 +1283,18 @@ export function LearningManagerClient({
                       <td className="px-2 py-1 text-slate-500 text-[11px]">{t.category}</td>
                       {isAdmin && (
                         <td className="px-2 py-1 text-center">
-                          <button onClick={() => deleteSignageType(t.name)}
-                            title="삭제 (표준 시드는 삭제 불가)"
-                            className="text-slate-300 hover:text-red-500 text-[11px] leading-none">✕</button>
+                          <button
+                            onClick={() => hidden ? toggleHideSignageType(t.id) : deleteSignageType(t.name)}
+                            title={hidden ? '복구' : '삭제·숨김 (데이터 오류 보완)'}
+                            className={`text-[11px] leading-none px-1 ${hidden ? 'text-indigo-600 hover:bg-indigo-50' : 'text-slate-300 hover:text-red-500'}`}
+                          >
+                            {hidden ? '↺' : '✕'}
+                          </button>
                         </td>
                       )}
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1497,23 +1541,28 @@ export function LearningManagerClient({
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr className="text-slate-600 text-[11px]">
-                    <th className="px-2 py-1.5 text-left font-semibold">행사장·홀</th>
-                    <th className="px-2 py-1.5 text-right font-semibold">카테고리</th>
-                    <th className="px-2 py-1.5 text-right font-semibold">주의사항</th>
-                    <th className="px-2 py-1.5 text-right font-semibold">완성도</th>
-                    <th className="px-2 py-1.5 text-left font-semibold">학습 시점</th>
-                    <th className="px-2 py-1.5 text-right font-semibold">AI 추출</th>
+                    <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">행사장·홀</th>
+                    <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">카테고리</th>
+                    <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">주의사항</th>
+                    <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">완성도</th>
+                    <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">학습 시점</th>
+                    <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">AI 추출</th>
+                    {isAdmin && <th className="px-2 py-1.5 text-center font-semibold w-8"></th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
+                  {/* 5/21 = 시드 항목 hidden 패턴 추가 (데이터 오류 보완·복구 가능) */}
                   {facilityGuideStatus.map(f => {
                     const ratio = (f.completeness / 6)
                     const color = ratio >= 0.83 ? 'text-emerald-600' : ratio >= 0.5 ? 'text-amber-600' : 'text-rose-600'
                     const isExtracting = extractingVenueId === f.venue_id
                     const isSuccess = extractSuccessId === f.venue_id
+                    const hidden = hiddenFacilityVenues.includes(f.venue_key)
                     return (
-                      <tr key={f.venue_key} className="hover:bg-slate-50">
-                        <td className="px-2 py-1.5 text-slate-800 font-medium">{f.venue_name}</td>
+                      <tr key={f.venue_key} className={`hover:bg-slate-50 ${hidden ? 'opacity-50' : ''}`}>
+                        <td className="px-2 py-1.5 text-slate-800 font-medium whitespace-nowrap">
+                          {hidden ? <span className="line-through text-slate-400">{f.venue_name}</span> : f.venue_name}
+                        </td>
                         <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{f.categories_count}</td>
                         <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{f.warnings_count}</td>
                         <td className={`px-2 py-1.5 text-right font-mono font-semibold ${color}`}>{f.completeness}/6</td>
@@ -1560,6 +1609,17 @@ export function LearningManagerClient({
                             </span>
                           )}
                         </td>
+                        {isAdmin && (
+                          <td className="px-2 py-1.5 text-center">
+                            <button
+                              onClick={() => toggleHideFacilityVenue(f.venue_key)}
+                              title={hidden ? '복구' : '삭제·숨김 (데이터 오류 보완)'}
+                              className={`text-[11px] leading-none px-1 ${hidden ? 'text-indigo-600 hover:bg-indigo-50' : 'text-slate-300 hover:text-red-500'}`}
+                            >
+                              {hidden ? '↺' : '✕'}
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     )
                   })}
