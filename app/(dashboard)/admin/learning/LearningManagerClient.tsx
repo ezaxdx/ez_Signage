@@ -465,7 +465,23 @@ export function LearningManagerClient({
     ? dbEventHistory
     : SEED_EVENT_HISTORY
 
-  // 5/22 사용자 명시 = venue별 program_parts·signage_breakdown 영역 집계 (행사장 학습 현황 영역)
+  // 5/22 사용자 명시 = 동의어 매핑에 있는 값 = 표준명으로 변환. signage_breakdown.category 영역 자동 표준화.
+  const allAliases = useMemo(() => {
+    return [
+      ...synonyms.map(s => ({ alias_name: s.alias, canonical_name: s.canonical_name, note: s.note ?? null })),
+      ...dbAliases.map(a => ({ alias_name: a.alias_name, canonical_name: a.canonical_name, note: a.note ?? null })),
+    ]
+  }, [synonyms, dbAliases])
+  const resolveCategoryName = useMemo(() => {
+    const aliasMap = new Map<string, string>()
+    const normFn = (s: string) => s.replace(/[\s\-_·\(\)\[\]]/g, '').toLowerCase()
+    for (const a of allAliases) {
+      aliasMap.set(normFn(a.alias_name), a.canonical_name)
+    }
+    return (raw: string): string => aliasMap.get(normFn(raw)) ?? raw
+  }, [allAliases])
+
+  // 5/22 사용자 명시 = venue별 program_parts·signage_breakdown 영역 집계 + 동의어 자동 표준화
   const venueAggregateByName = useMemo(() => {
     const map = new Map<string, { program_parts: Set<string>; signage: Map<string, number> }>()
     for (const e of unifiedEventHistory) {
@@ -474,11 +490,13 @@ export function LearningManagerClient({
       const slot = map.get(venueNorm)!
       for (const p of e.program_parts ?? []) slot.program_parts.add(p)
       for (const s of e.signage_breakdown ?? []) {
-        slot.signage.set(s.category, (slot.signage.get(s.category) ?? 0) + s.quantity)
+        // 동의어 → 표준명 자동 변환
+        const standardName = resolveCategoryName(s.category)
+        slot.signage.set(standardName, (slot.signage.get(standardName) ?? 0) + s.quantity)
       }
     }
     return map
-  }, [unifiedEventHistory])
+  }, [unifiedEventHistory, resolveCategoryName])
   // 5/22 사용자 명시 = 프로그램 파트 관리 = 화살표 펼침 영역 (행사 관리와 동일 패턴)
   const [expandedPartCode, setExpandedPartCode] = useState<string | null>(null)
   // 5/22 사용자 명시 = 행사 관리 편집·삭제·추가 (localStorage 오버라이드 패턴)
