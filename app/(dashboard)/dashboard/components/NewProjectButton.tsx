@@ -835,36 +835,23 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                           : Object.entries(venueGroups).map(([r, items]) => ({ region: r, items }))
                         return (
                           <>
+                            {/* 5/21 사용자 명시 = 리스트 너무 김. 행사장(L1) select만 표시·
+                                선택 후 하단에 해당 행사장 홀(L2) dropdown 별도 표시. */}
                             <select
                               value={info.event_venue}
                               onChange={e => setInfo(p => ({ ...p, event_venue: e.target.value }))}
                               className={inputCls}
                             >
-                              <option value="">행사장·홀 선택…</option>
-                              {/* 5/21 사용자 명시 = 행사장 단위 아닌 홀 단위 기준 노출.
-                                  matched venue 있으면 venue + (venue · hall) 자식 옵션도 함께 표시 (노션 §9 정합) */}
+                              <option value="">행사장 선택…</option>
                               {venueOptions.map(g => (
                                 <optgroup key={g.region} label={g.region}>
-                                  {g.items.map(v => {
-                                    const halls = 'key' in v ? getHallsByVenueName(v.key as string) : []
-                                    return (
-                                      <React.Fragment key={v.displayName}>
-                                        <option value={v.displayName}>{v.displayName}</option>
-                                        {halls.map(h => (
-                                          <option
-                                            key={`${v.displayName}-${h.name}`}
-                                            value={`${v.displayName} ${h.name}`}
-                                          >
-                                            &nbsp;&nbsp;↳ {h.name}{h.note ? ` (${h.note})` : ''}
-                                          </option>
-                                        ))}
-                                      </React.Fragment>
-                                    )
-                                  })}
+                                  {g.items.map(v => (
+                                    <option key={v.displayName} value={v.displayName}>{v.displayName}</option>
+                                  ))}
                                 </optgroup>
                               ))}
                             </select>
-                            {/* 5/21 사용자 명시 = L2 홀 단위 선택 (노션 §9). 매칭 venue면 hall dropdown. */}
+                            {/* 선택된 행사장에 매칭된 홀이 있을 때만 하단에 dropdown 노출 */}
                             {(() => {
                               const halls = getHallsByVenueName(info.event_venue)
                               if (halls.length === 0) return null
@@ -892,7 +879,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                               className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 border border-indigo-700 rounded-md shadow-sm transition"
                             >
                               <MapPinPlus className="w-4 h-4" />
-                              우리 행사장이 목록에 없어요 — 신규 등록 요청
+                              행사장 신규 등록 요청
                             </button>
                           </>
                         )
