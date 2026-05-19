@@ -1444,7 +1444,7 @@ export function LearningManagerClient({
                     const typeByName = new Map(signageTypeList.map(s => [s.name, s] as const))
                     Array.from(venueGroups.entries()).forEach(([groupName, members]) => {
                       const isGroupOpen = expandedVenueId === groupName
-                      // 그룹 통계
+                      // 그룹 통계 (signage_breakdown 미정 영역 = estimateSignageBreakdown fallback)
                       let groupEventCount = 0
                       let groupSigQty = 0
                       for (const v of members) {
@@ -1455,7 +1455,10 @@ export function LearningManagerClient({
                         })
                         groupEventCount += venueEvents.length
                         for (const ev of venueEvents) {
-                          for (const s of ev.signage_breakdown ?? []) {
+                          const breakdown = ev.signage_breakdown && ev.signage_breakdown.length > 0
+                            ? ev.signage_breakdown
+                            : estimateSignageBreakdown(ev.program_parts, ev.analyzed_item_count)
+                          for (const s of breakdown) {
                             if (validTypeNames.has(s.category)) groupSigQty += s.quantity
                           }
                         }
@@ -1492,13 +1495,17 @@ export function LearningManagerClient({
                           if (!vname) return false
                           return vname === v.name || vname.includes(v.name) || v.name.includes(vname)
                         })
-                        // 5/22 사용자 명시 = 환경장식물별 사용 확률·평균 수량·가장 많이 사용한 규격 영역
+                        // 5/22 사용자 명시 = 환경장식물별 사용 확률·평균 수량·가장 많이 사용한 규격 영역.
+                        // signage_breakdown 미정 영역 = estimateSignageBreakdown fallback (프로그램 파트 관리 패턴 정합).
                         const sigCountMap = new Map<string, number>()          // 종류 → 총 수량
                         const sigEventMap = new Map<string, number>()          // 종류 → 사용 행사 수
                         const sigSizeFreqMap = new Map<string, Map<string, number>>() // 종류 → (규격 → 빈도)
                         for (const ev of venueEvents) {
                           const seenInEvent = new Set<string>()
-                          for (const s of ev.signage_breakdown ?? []) {
+                          const breakdown = ev.signage_breakdown && ev.signage_breakdown.length > 0
+                            ? ev.signage_breakdown
+                            : estimateSignageBreakdown(ev.program_parts, ev.analyzed_item_count)
+                          for (const s of breakdown) {
                             if (!validTypeNames.has(s.category)) continue
                             sigCountMap.set(s.category, (sigCountMap.get(s.category) ?? 0) + s.quantity)
                             if (!seenInEvent.has(s.category)) {
@@ -3003,7 +3010,7 @@ export function LearningManagerClient({
                     <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">행사장 / 휘하 홀</th>
                     <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">설치 가능 카테고리</th>
                     <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">주의사항</th>
-                    <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap" title="시설 가이드 정보 6 영역(설치 가능 영역·설치 방법·리깅·안전 기준·주의사항·디지털 사이니지) 중 채워진 영역">가이드 정보</th>
+                    <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap" title="시설 가이드 정보 6 영역(① 설치 가능 카테고리 ② 설치 방법 ③ 리깅·천정 설치 ④ 안전 기준 ⑤ 주의사항 ⑥ 디지털 사이니지) 중 채워진 영역 수. 6/6 = 완전·낮을수록 보강 필요.">정보 채움 (6 영역)</th>
                     <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">학습 시점</th>
                     <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">AI 추출</th>
                     {isAdmin && <th className="px-2 py-1.5 text-center font-semibold w-8"></th>}
@@ -3159,9 +3166,8 @@ export function LearningManagerClient({
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] rounded font-medium"
                             >
                               <AlertCircle className="w-3 h-3" />
-                              {f.venue_name} 가이드 보기 (실제 행사 제작 영역과 동일)
+                              {f.venue_name} 가이드 보기
                             </button>
-                            <p className="text-[10px] text-slate-400 mt-1.5">설치 가능 카테고리·주의사항·리깅·설치 방법·안전 기준·디지털 사이니지·특이사항 = 사람 영역 보기 패널 영역</p>
                           </td>
                         </tr>
                       )
