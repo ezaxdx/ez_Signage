@@ -144,6 +144,74 @@ export interface EventHistorySeed {
   signage_breakdown?: Array<{ category: string; quantity: number; sizes?: string }>   // 환경장식물별 분리 (분석된 행사만)
 }
 
+// 5/22 사용자 명시 = "쭉 적기"·환경장식물별 수량 제공. signage_breakdown 영역 없으면 program_parts 기반 추정값 자동 생성.
+// 추정 패턴 = 과거 분석 13건 평균·행사 유형별 패턴 SOT.
+export function estimateSignageBreakdown(parts: string[] | undefined | null, totalQty?: number): { category: string; quantity: number; sizes?: string }[] {
+  if (!parts || parts.length === 0) return []
+  const result: { category: string; quantity: number; sizes?: string }[] = []
+  const has = (code: string) => parts.includes(code)
+  // 전시·박람회·엑스포 (40.05 전시 포함)
+  if (has('40.05')) {
+    result.push({ category: 'X배너', quantity: 10, sizes: '600×1800 (추정)' })
+    result.push({ category: '세로현수막', quantity: 5, sizes: '600×1800 (추정)' })
+    result.push({ category: '동선 배너', quantity: 3, sizes: '600×1800 (추정)' })
+  }
+  // 회의·포럼 (40.04 회의 포함)
+  if (has('40.04')) {
+    result.push({ category: '포디움 타이틀', quantity: 2, sizes: '600×200 (추정)' })
+    result.push({ category: 'A4 가로', quantity: 5, sizes: '297×210 (추정)' })
+    result.push({ category: 'A3 가로', quantity: 3, sizes: '420×297 (추정)' })
+  }
+  // 공식행사·기념식 (40.08)
+  if (has('40.08')) {
+    result.push({ category: '통천', quantity: 1, sizes: '10000×7200 (추정)' })
+    result.push({ category: '가로 현수막', quantity: 2, sizes: '5000×900 (추정)' })
+  }
+  // 등록·영접영송 (40.19·40.20)
+  if (has('40.19') || has('40.20')) {
+    if (!result.find(r => r.category === 'X배너')) result.push({ category: 'X배너', quantity: 5, sizes: '600×1800 (추정)' })
+    result.push({ category: '동선 배너', quantity: 4, sizes: '600×1800 (추정)' })
+  }
+  // 의전 (40.18)
+  if (has('40.18')) {
+    if (!result.find(r => r.category === 'A3 가로')) result.push({ category: 'A3 가로', quantity: 3, sizes: '420×297 (추정)' })
+    result.push({ category: 'I배너', quantity: 2, sizes: '600×1800 (추정)' })
+  }
+  // 비즈매칭·비즈프로그램 (40.06·40.07)
+  if (has('40.06') || has('40.07')) {
+    if (!result.find(r => r.category === 'A4 가로')) result.push({ category: 'A4 가로', quantity: 4, sizes: '297×210 (추정)' })
+  }
+  // 홍보 (40.17)
+  if (has('40.17')) {
+    result.push({ category: '가로등 배너', quantity: 5, sizes: '600×1800 (추정)' })
+  }
+  // 체험·공모전 (40.10·40.09)
+  if (has('40.10') || has('40.09')) {
+    if (!result.find(r => r.category === 'A4 가로')) result.push({ category: 'A4 가로', quantity: 3, sizes: '297×210 (추정)' })
+  }
+  // 투어 (40.11)
+  if (has('40.11')) {
+    result.push({ category: '가로 현수막', quantity: 2, sizes: '5000×900 (추정)' })
+  }
+  // 중복 카테고리 통합 (quantity 합산)
+  const merged = new Map<string, { category: string; quantity: number; sizes?: string }>()
+  for (const r of result) {
+    const prev = merged.get(r.category)
+    if (prev) prev.quantity += r.quantity
+    else merged.set(r.category, { ...r })
+  }
+  const arr = Array.from(merged.values()).sort((a, b) => b.quantity - a.quantity)
+  // totalQty가 있으면 비율 조정
+  if (totalQty && totalQty > 0) {
+    const sum = arr.reduce((s, r) => s + r.quantity, 0)
+    if (sum > 0) {
+      const ratio = totalQty / sum
+      for (const r of arr) r.quantity = Math.max(1, Math.round(r.quantity * ratio))
+    }
+  }
+  return arr
+}
+
 // 폴더명에서 추출 — 패턴: "행사명 6자리코드" 또는 "행사명 코드 (면적)"
 // 5/22 사용자 명시 = 5대 영역 정합·program_parts 추정값·venue 정확화. 환경장식물별 분리는 _venue_signage_map.json 영역.
 export const SEED_EVENT_HISTORY: EventHistorySeed[] = [

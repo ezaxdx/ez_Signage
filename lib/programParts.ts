@@ -25,7 +25,7 @@ export const PROGRAM_PARTS: ReadonlyArray<ProgramPart> = [
   { code: '40.04', name: '회의',                group: 'program', hint: '컨퍼런스·세미나·포럼·심포지엄' },
   { code: '40.05', name: '전시',                group: 'program', hint: '부스 전시·기업관·테마관' },
   { code: '40.06', name: '비즈니스 매칭',       group: 'program', hint: '1:1 미팅·바이어 매칭' },
-  { code: '40.07', name: '비즈니스 프로그램',   group: 'program', hint: '김승이 진행·정책 발표·기업 IR' },
+  { code: '40.07', name: '비즈니스 프로그램',   group: 'program', hint: '정책 발표·기업 IR' },
   { code: '40.08', name: '공식행사',            group: 'program', hint: '개막식·폐막식·MOU·시상' },
   { code: '40.09', name: '부대행사 - 공모전형', group: 'program', hint: '경진대회·아이디어 공모' },
   { code: '40.10', name: '부대행사 - 체험형',   group: 'program', hint: '체험존·VR·시연' },

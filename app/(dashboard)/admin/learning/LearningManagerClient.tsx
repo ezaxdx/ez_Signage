@@ -11,7 +11,7 @@ import { explainStorageError } from '@/lib/services/storagePaths'
 import { REGION_ORDER, VENUE_HALLS, getHallsByVenueKey, getHallsByVenueName } from '@/lib/venueIntel'
 import { STANDARD_CATEGORY_BY_KEY, type StandardCategoryKey } from '@/lib/data/signageCategoryStandards'
 import { PROGRAM_PARTS, PROGRAM_PART_GROUPS, PROGRAM_PART_SIGNAGE_HINTS, PROGRAM_PART_BY_CODE } from '@/lib/programParts'
-import { SEED_EVENT_HISTORY } from '@/lib/data/dashboardSeed'
+import { SEED_EVENT_HISTORY, estimateSignageBreakdown } from '@/lib/data/dashboardSeed'
 // 5/21 사용자 명시 = NIST 4단·전체 학습 요약·향후 도입 로드맵 UI 표시 롤백.
 // 시드 (LEARNING_META_SEED·NIST_RMF_STAGES·VISION_ROADMAP) 자체는 lib/data·lib/ai에 보존
 // — 곽 이사 보고 자료 외부 영역 활용 가능. 관리자 페이지 UI는 ′응?′ 룰 정합 위해 노출 X.
@@ -1442,13 +1442,14 @@ export function LearningManagerClient({
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr className="text-slate-600 text-[11px]">
+                    <th className="px-2 py-1.5 text-left font-semibold w-16">예시 이미지</th>
                     <th className="px-2 py-1.5 text-left font-semibold">종류명</th>
                     <th className="px-2 py-1.5 text-left font-semibold">레이아웃</th>
                     <th className="px-2 py-1.5 text-right font-semibold">너비 (mm)</th>
                     <th className="px-2 py-1.5 text-right font-semibold">높이 (mm)</th>
                     <th className="px-2 py-1.5 text-left font-semibold">기본 재질</th>
                     <th className="px-2 py-1.5 text-left font-semibold">분류</th>
-                    {isAdmin && <th className="px-2 py-1.5 text-center font-semibold w-8"></th>}
+                    {isAdmin && <th className="px-2 py-1.5 text-center font-semibold w-20"></th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -1461,8 +1462,16 @@ export function LearningManagerClient({
                     return a.name.localeCompare(b.name, 'ko')
                   }).map(t => {
                     const hidden = hiddenSignageTypeIds.includes(t.id)
+                    const sampleUrl = signageTypeSamples[t.id]
                     return (
                     <tr key={t.id} className={`hover:bg-slate-50 ${hidden ? 'opacity-50' : ''}`}>
+                      <td className="px-2 py-1">
+                        {sampleUrl ? (
+                          <img src={sampleUrl} alt={t.name} className="w-12 h-12 object-cover rounded border border-slate-200" />
+                        ) : (
+                          <span className="text-[10px] text-slate-300">—</span>
+                        )}
+                      </td>
                       <td className="px-2 py-1 text-slate-800 font-medium">
                         {hidden ? <span className="line-through text-slate-400">{t.name}</span> : t.name}
                       </td>
@@ -1634,13 +1643,14 @@ export function LearningManagerClient({
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr className="text-slate-600 text-[11px]">
+                    <th className="px-2 py-1.5 text-left font-semibold w-16">예시 이미지</th>
                     <th className="px-2 py-1.5 text-left font-semibold">종류명</th>
                     <th className="px-2 py-1.5 text-left font-semibold">레이아웃</th>
                     <th className="px-2 py-1.5 text-right font-semibold">너비 (mm)</th>
                     <th className="px-2 py-1.5 text-right font-semibold">높이 (mm)</th>
                     <th className="px-2 py-1.5 text-left font-semibold">기본 재질</th>
                     <th className="px-2 py-1.5 text-left font-semibold">분류</th>
-                    {isAdmin && <th className="px-2 py-1.5 text-center font-semibold w-8"></th>}
+                    {isAdmin && <th className="px-2 py-1.5 text-center font-semibold w-20"></th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -1653,8 +1663,16 @@ export function LearningManagerClient({
                     return a.name.localeCompare(b.name, 'ko')
                   }).map(t => {
                     const hidden = hiddenSignageTypeIds.includes(t.id)
+                    const sampleUrl = signageTypeSamples[t.id]
                     return (
                     <tr key={t.id} className={`hover:bg-slate-50 ${hidden ? 'opacity-50' : ''}`}>
+                      <td className="px-2 py-1">
+                        {sampleUrl ? (
+                          <img src={sampleUrl} alt={t.name} className="w-12 h-12 object-cover rounded border border-slate-200" />
+                        ) : (
+                          <span className="text-[10px] text-slate-300">—</span>
+                        )}
+                      </td>
                       <td className="px-2 py-1 text-slate-800 font-medium">
                         {hidden ? <span className="line-through text-slate-400">{t.name}</span> : t.name}
                       </td>
@@ -1983,6 +2001,17 @@ export function LearningManagerClient({
                       const matchedIds = PROGRAM_PART_SIGNAGE_HINTS[pt.code] ?? []
                       // 5/22 P2-5 = 실 사용 빈도 = SEED_EVENT_HISTORY.program_parts에서 이 파트 사용된 행사 수 집계
                       const usageCount = SEED_EVENT_HISTORY.filter(e => (e.program_parts ?? []).includes(pt.code)).length
+                      // 5/22 사용자 명시 = 각 환경장식물 사용 횟수 = 이 파트 사용한 행사의 signage_breakdown에서 카테고리별 총 합산
+                      const sigUsage = new Map<string, number>()
+                      for (const e of SEED_EVENT_HISTORY) {
+                        if (!(e.program_parts ?? []).includes(pt.code)) continue
+                        const breakdown = e.signage_breakdown && e.signage_breakdown.length > 0
+                          ? e.signage_breakdown
+                          : estimateSignageBreakdown(e.program_parts, e.analyzed_item_count)
+                        for (const s of breakdown) {
+                          sigUsage.set(s.category, (sigUsage.get(s.category) ?? 0) + s.quantity)
+                        }
+                      }
                       const matchedLabels = matchedIds.map(id => {
                         const t = signageTypeList.find(s => s.id === id) ?? signageTypes.find(s => s.id === id)
                         return t?.name ?? id
@@ -2004,10 +2033,15 @@ export function LearningManagerClient({
                               <span className="text-slate-300 text-[10px]">—</span>
                             ) : (
                               <div className="flex flex-wrap gap-0.5 items-center">
-                                {matchedLabels.map((label, i) => (
-                                  <span key={i} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">{label}</span>
-                                ))}
-                                <span className="text-[9px] text-slate-400 ml-1">실 사용 {usageCount}회</span>
+                                {matchedLabels.map((label, i) => {
+                                  const useCnt = sigUsage.get(label) ?? 0
+                                  return (
+                                    <span key={i} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">
+                                      {label}{useCnt > 0 && <span className="text-emerald-500 ml-0.5">({useCnt}회)</span>}
+                                    </span>
+                                  )
+                                })}
+                                <span className="text-[9px] text-slate-400 ml-1">행사 {usageCount}건</span>
                               </div>
                             )}
                           </td>
@@ -2057,7 +2091,10 @@ export function LearningManagerClient({
                   {SEED_EVENT_HISTORY
                     .slice()
                     .sort((a, b) => {
+                      // 5/22 사용자 명시 = 빠른 게 (최신) 위로. year DESC + project_code DESC (코드 클수록 최신) + 가나다
                       if ((b.year ?? 0) !== (a.year ?? 0)) return (b.year ?? 0) - (a.year ?? 0)
+                      const codeCompare = (b.project_code ?? '').localeCompare(a.project_code ?? '')
+                      if (codeCompare !== 0) return codeCompare
                       return a.project_name.localeCompare(b.project_name, 'ko')
                     })
                     .map(e => {
@@ -2091,28 +2128,41 @@ export function LearningManagerClient({
                               <td></td>
                               <td colSpan={5} className="px-2 py-2">
                                 <div className="text-[10px] text-slate-600 mb-2 font-semibold">환경장식물별 분리</div>
-                                {(!e.signage_breakdown || e.signage_breakdown.length === 0) ? (
-                                  <div className="text-[10px] text-slate-400 italic">— 분석 데이터 누적 영역 (다음 사이클·parse_signage_lists 영역)</div>
-                                ) : (
-                                  <table className="w-full text-[11px]">
-                                    <thead>
-                                      <tr className="text-slate-500 text-[10px]">
-                                        <th className="px-2 py-1 text-left">환경장식물 종류</th>
-                                        <th className="px-2 py-1 text-left">규격(mm)</th>
-                                        <th className="px-2 py-1 text-right">수량</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {e.signage_breakdown.map((s, i) => (
-                                        <tr key={i} className="border-t border-slate-200">
-                                          <td className="px-2 py-1">{s.category}</td>
-                                          <td className="px-2 py-1 text-slate-500">{s.sizes ?? '—'}</td>
-                                          <td className="px-2 py-1 text-right font-mono">{s.quantity}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                )}
+                                {(() => {
+                                  // 5/22 사용자 명시 = 환경장식물별 수량 제공·signage_breakdown 없으면 program_parts 기반 추정값 자동
+                                  const breakdown = e.signage_breakdown && e.signage_breakdown.length > 0
+                                    ? e.signage_breakdown
+                                    : estimateSignageBreakdown(e.program_parts, e.analyzed_item_count)
+                                  const isEstimate = !e.signage_breakdown || e.signage_breakdown.length === 0
+                                  if (breakdown.length === 0) {
+                                    return <div className="text-[10px] text-slate-400 italic">— 데이터 없음 (프로그램 파트 미입력)</div>
+                                  }
+                                  return (
+                                    <>
+                                      {isEstimate && (
+                                        <div className="text-[9px] text-amber-600 mb-1 italic">※ 추정값 — 프로그램 파트 기반 평균 패턴</div>
+                                      )}
+                                      <table className="w-full text-[11px]">
+                                        <thead>
+                                          <tr className="text-slate-500 text-[10px]">
+                                            <th className="px-2 py-1 text-left">환경장식물 종류</th>
+                                            <th className="px-2 py-1 text-left">규격(mm)</th>
+                                            <th className="px-2 py-1 text-right">수량</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {breakdown.map((s, i) => (
+                                            <tr key={i} className="border-t border-slate-200">
+                                              <td className="px-2 py-1">{s.category}</td>
+                                              <td className="px-2 py-1 text-slate-500">{s.sizes ?? '—'}</td>
+                                              <td className="px-2 py-1 text-right font-mono">{s.quantity}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </>
+                                  )
+                                })()}
                               </td>
                             </tr>
                           )}
