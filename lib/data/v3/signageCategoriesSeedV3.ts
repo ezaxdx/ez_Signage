@@ -47,6 +47,19 @@ export interface SignageCategoryV3 {
   material: string
   classification: string
   match_keywords: string[]
+  /** 우측 패널 예시 이미지 URL (노션 §3 = 데이터허브 실사 이미지). 빈 값이면 placeholder 노출 */
+  sample_image_url?: string
+}
+
+/** 비율 라벨 (노션 §3 = "사이즈 비율 표시") */
+export function getRatioLabel(cat: SignageCategoryV3): string {
+  const { width, height } = cat.default_size_mm
+  const g = gcd(width, height)
+  return `${width / g} : ${height / g} (${width}×${height}mm)`
+}
+
+function gcd(a: number, b: number): number {
+  return b === 0 ? a : gcd(b, a % b)
 }
 
 export const SIGNAGE_CATEGORIES_V3: SignageCategoryV3[] = [

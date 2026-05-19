@@ -6,6 +6,7 @@ import { EditorGrid } from './components/EditorGrid'
 import { CanvasBoard } from './components/CanvasBoard'
 import { EditorToolbar } from './components/EditorToolbar'
 import { PreflightModal } from './components/PreflightModal'
+import { RightPanel } from './components/RightPanel'
 import { FacilityGuidePanel } from '@/app/components/facility/FacilityGuidePanel'
 import { FacilityGuideAlert } from '@/app/components/facility/FacilityGuideAlert'
 import { validateAgainstFacility, buildIssueMap, countViolations, type ValidationIssue } from '@/lib/services/facilityValidator'
@@ -796,20 +797,17 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
             <div className={`bg-slate-300 group-hover:bg-indigo-400 transition-colors rounded-full ${splitMode === 'horizontal' ? 'w-10 h-0.5' : 'w-0.5 h-10'}`} />
           </div>
 
-          {/* 디자인 캔버스 */}
+          {/* 우측 패널 — 노션 §3 = 예시 이미지 + 위반 사항 표시.
+              CanvasBoard는 orphan 보존 (decisions.md 2026-05-07 orphan 정책) — v5 디자인 캔버스 부활 시 재사용 */}
           <div
             className="overflow-hidden"
             style={splitMode === 'vertical' ? { width: `${100 - splitPos}%` } : { height: `${100 - splitPos}%` }}
           >
-            <CanvasBoard
-              item={selectedItem}
-              contents={contents}
-              slotStyles={slotStyles}
-              selectedSlotKey={selectedSlotKey}
-              onUpdate={updateSlot}
-              onSlotSelect={setSelectedSlotKey}
-              onSlotPanelOpen={() => { /* 1차 비활성 */ }}
-              masterImageUrl={project.master_image_url ?? null}
+            <RightPanel
+              selectedItem={selectedItem}
+              facilityIssues={selectedItem ? (facilityIssueMap[selectedItem.id] ?? []) : []}
+              venueName={project.event_venue}
+              guideSourceUrl={null}
             />
           </div>
         </div>

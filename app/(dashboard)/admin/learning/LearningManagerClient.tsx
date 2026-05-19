@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { explainStorageError } from '@/lib/services/storagePaths'
-import { REGION_ORDER } from '@/lib/venueIntel'
+import { REGION_ORDER, VENUE_HALLS, getHallsByVenueKey } from '@/lib/venueIntel'
 import { PROGRAM_PARTS, PROGRAM_PART_GROUPS, PROGRAM_PART_SIGNAGE_HINTS } from '@/lib/programParts'
 import { LEARNING_META_SEED, NIST_RMF_STAGES } from '@/lib/data/v3/learningMetaSeed'
 import { VISION_ROADMAP } from '@/lib/ai/v3/visionRoadmap'
@@ -955,6 +955,11 @@ export function LearningManagerClient({
           )
         })()}
 
+        {/* ── 표준 행사장 계층 L1·L2 (노션 §9 정적 시드) ────────────
+            5/14 회의 결정 = "구역·홀 단위로 묶기 (계층 구조)".
+            추가/수정/삭제는 Supabase venue_halls (v6 마이그레이션 + 사용자 컴펌 후) 영역. */}
+        <VenueHierarchyTree />
+
         {/* ── 학습된 행사장 현황 (queue 서브탭 보조 표시 — 도면 학습 결과 확인용) ── */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-4 flex items-center gap-2">
@@ -1811,5 +1816,72 @@ export function LearningManagerClient({
         </div>
       </main>
     </div>
+  )
+}
+
+/**
+ * 표준 행사장 계층 트리 — 노션 페이지 36148589-8ea1-81a3-b3e8-dd4a833c914c §9.
+ * L1 (COEX·KINTEX·DDP) → L2 (홀) 펼침/접힘.
+ *
+ * 1차 = 정적 시드 (lib/venueIntel.ts VENUE_HALLS).
+ * 2차 = Supabase venue_halls 테이블 (v6 마이그레이션 + 사용자 컴펌 후) — 추가/수정/삭제 활성.
+ */
+function VenueHierarchyTree() {
+  // L1 = VENUE_HALLS의 고유 parent_key. 노션 §9 순서 유지 (COEX·KINTEX·DDP)
+  const l1Keys = Array.from(new Set(VENUE_HALLS.map(h => h.parent_key)))
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(l1Keys.map(k => [k, true]))
+  )
+  const toggle = (k: string) => setExpanded(prev => ({ ...prev, [k]: !prev[k] }))
+
+  return (
+    <section className="bg-white border border-slate-200 rounded-xl p-5">
+      <h2 className="text-slate-900 font-semibold text-sm mb-2 flex items-center gap-2">
+        <Building2 className="w-4 h-4 text-indigo-500" />
+        표준 행사장 계층 (L1 → L2)
+        <span className="ml-2 text-[10px] font-normal text-slate-400">노션 §9 정적 시드 · 추가/수정/삭제는 컴펌 후 활성</span>
+      </h2>
+      <p className="text-[11px] text-slate-500 mb-4">
+        5/14 회의 결정 = 구역·홀 단위로 묶기 (계층 구조). 현재는 읽기 전용 트리. Supabase venue_halls 마이그레이션 후 편집 가능.
+      </p>
+
+      <div className="space-y-2">
+        {l1Keys.map(parentKey => {
+          const halls = getHallsByVenueKey(parentKey)
+          const isOpen = expanded[parentKey] ?? false
+          return (
+            <div key={parentKey} className="border border-slate-200 rounded-md overflow-hidden">
+              <button
+                onClick={() => toggle(parentKey)}
+                className="w-full flex items-center justify-between px-3 py-2 bg-slate-50 hover:bg-slate-100 transition text-left"
+              >
+                <span className="flex items-center gap-2 text-sm font-medium text-slate-800">
+                  <span className={`transition-transform ${isOpen ? 'rotate-90' : ''}`}>▶</span>
+                  {parentKey}
+                  <span className="text-[10px] text-slate-500 font-normal">L1 · {halls.length}개 하위 홀</span>
+                </span>
+              </button>
+              {isOpen && (
+                <ul className="divide-y divide-slate-100">
+                  {halls.map((h, i) => (
+                    <li key={`${parentKey}-${i}`} className="px-4 py-2 text-xs flex items-center justify-between hover:bg-slate-50/50">
+                      <span className="flex items-center gap-2">
+                        <span className="text-slate-300">└</span>
+                        <span className="text-slate-700">{h.name}</span>
+                      </span>
+                      {h.note && (
+                        <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                          {h.note}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </section>
   )
 }
