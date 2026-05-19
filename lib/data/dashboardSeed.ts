@@ -41,6 +41,12 @@ export const SEED_SIGNAGE_TYPES: SignageTypeSeed[] = [
   // 5/21 사용자 명시 = 노션 §6-2 12 카테고리 정합. backwall·foamboard·sheet 3건 제거.
   // 동의어 매핑은 폼보드 → A4·A3·I배너 등으로 재매핑 (아래 SEED_SYNONYMS 정정).
   { id: 'route_banner',       name: '동선 배너',      width_mm: 600,  height_mm: 1500, default_material: '현수막',  category: '실내 동선',  layout: '세로', note: 'v3 신규. 실내 유도·화살표·방향 안내 전용. 5/14 회의 X배너 분리 결정' },
+  // 5/22 김연아 대리님 명시 = 엑셀 SOT 영역 추가 5건 (시상보드·Q방·디지털 사이니지·폼보드·피켓보드)
+  { id: 'award_board',        name: '시상보드',       width_mm: 1200, height_mm: 1800, default_material: '폼보드 5T', category: '시상·공식행사', layout: '세로', note: '5/22 엑셀 SOT 영역 추가. 공식행사·공모전형 영역 시상 영역.' },
+  { id: 'q_room',             name: 'Q방',           width_mm: 600,  height_mm: 1800, default_material: '폼보드',   category: '등록·안내',  layout: '세로', note: '5/22 엑셀 SOT 영역 추가. 등록·대기 영역 안내 영역.' },
+  { id: 'digital_signage',    name: '디지털 사이니지', width_mm: 1080, height_mm: 1920, default_material: 'LED',     category: '디지털·전광판', layout: '세로', note: '5/22 엑셀 SOT 영역 추가. 로비·외벽 영역 디지털 영역.' },
+  { id: 'foam_board',         name: '폼보드',         width_mm: 600,  height_mm: 900,  default_material: '폼보드 5T', category: '부대시설 안내', layout: '세로', note: '5/22 엑셀 SOT 영역 추가. 부대시설 장소·POP 영역.' },
+  { id: 'picket_board',       name: '피켓보드',       width_mm: 300,  height_mm: 450,  default_material: '폼보드 3T', category: '영접영송',   layout: '세로', note: '5/22 엑셀 SOT 영역 추가. 영접영송 영역·입출국 일자 고려 영역.' },
 ]
 
 // ── 2. 동의어 매핑 (명세 6.1.b.i) ─────────────────────────────
