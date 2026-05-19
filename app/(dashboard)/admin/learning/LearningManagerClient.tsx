@@ -12,6 +12,7 @@ import { REGION_ORDER, VENUE_HALLS, getHallsByVenueKey, getHallsByVenueName, ext
 import { STANDARD_CATEGORY_BY_KEY, type StandardCategoryKey } from '@/lib/data/signageCategoryStandards'
 import { PROGRAM_PARTS, PROGRAM_PART_GROUPS, PROGRAM_PART_SIGNAGE_HINTS, PROGRAM_PART_BY_CODE } from '@/lib/programParts'
 import { SEED_EVENT_HISTORY, estimateSignageBreakdown } from '@/lib/data/dashboardSeed'
+import { FacilityGuidePanel } from '@/app/components/facility/FacilityGuidePanel'
 // 5/21 사용자 명시 = NIST 4단·전체 학습 요약·향후 도입 로드맵 UI 표시 롤백.
 // 시드 (LEARNING_META_SEED·NIST_RMF_STAGES·VISION_ROADMAP) 자체는 lib/data·lib/ai에 보존
 // — 곽 이사 보고 자료 외부 영역 활용 가능. 관리자 페이지 UI는 ′응?′ 룰 정합 위해 노출 X.
@@ -444,6 +445,8 @@ export function LearningManagerClient({
   // 5/22 사용자 명시 = 시설 가이드 학습 현황 3 댑스 (L1 코엑스 → L2 그랜드볼룸 → L3 학습 내용)
   const [expandedFacilityVenueKey, setExpandedFacilityVenueKey] = useState<string | null>(null)
   const [expandedFacilityGroup, setExpandedFacilityGroup] = useState<string | null>(null)
+  // 5/22 사용자 명시 = L3 학습 내용 = JSON.stringify X·실제 가이드 패널 영역 같은 사람 보기
+  const [facilityPanelVenue, setFacilityPanelVenue] = useState<string | null>(null)
   // 5/22 사용자 명시 = 유기 연동. event_history DB 영역 fetch → SEED + DB 통합 SOT.
   // 행사 삭제 (deleted_at) = 즉시 모든 영역 (행사장 학습 현황·프로그램 파트 매칭·환경장식물 빈도·AI) 반영.
   const [dbEventHistory, setDbEventHistory] = useState<typeof SEED_EVENT_HISTORY>([])
@@ -1060,7 +1063,7 @@ export function LearningManagerClient({
                           <td className="px-2 py-1.5 text-right text-indigo-700 font-mono">{groupItems}</td>
                           <td className="px-2 py-1.5 text-right text-emerald-700 font-mono">{groupFinalized}</td>
                           <td className={`px-2 py-1.5 text-right font-mono font-semibold ${groupColor}`}>{groupPct}%</td>
-                          <td colSpan={2} className="px-2 py-1.5 text-indigo-500 text-[10px]">L1 행사장 그룹</td>
+                          <td colSpan={2} className="px-2 py-1.5"></td>
                         </tr>
                       )
                       if (!isGroupOpen) return
@@ -1378,8 +1381,8 @@ export function LearningManagerClient({
             학습된 행사장 — 과거 진행 내역 ({venues.length})
           </h2>
           <p className="text-[10px] text-slate-500 mb-3">행사장별 과거 진행 행사·환경장식물 사용 내역 = AI 추천 영역에 학습 데이터로 자동 주입. 행사장의 규칙(설치 가능 카테고리·주의사항·도면)은 <span className="text-indigo-600 font-medium">시설 가이드</span> 메뉴 영역에서 관리.</p>
-          {venues.length === 0 ? (
-            <p className="text-slate-400 text-xs italic">아직 등록된 행사장이 없습니다. <span className="text-indigo-600">시설 가이드</span> 메뉴에서 추가하세요.</p>
+          {venues.length === 0 && unifiedEventHistory.length === 0 ? (
+            <p className="text-slate-400 text-xs italic">아직 등록된 행사장·진행 행사 영역이 없습니다. <span className="text-indigo-600">시설 가이드</span> 메뉴에서 행사장 규칙 추가 또는 <span className="text-emerald-600">행사 관리</span> 메뉴에서 행사 추가.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
@@ -1397,9 +1400,34 @@ export function LearningManagerClient({
                   </tr>
                 </thead>
                 <tbody>
-                  {/* 5/22 사용자 명시 = 행사장 학습 현황과 동일 댑스. L1 그룹 (코엑스·킨텍스 등) + ▶ 펼침 = L2 휘하 홀 행. */}
+                  {/* 5/22 사용자 명시 = 행사장 학습 현황과 동일 댑스. L1 그룹 (코엑스·킨텍스 등) + ▶ 펼침 = L2 휘하 홀 행.
+                      venues 비어있을 때 = unifiedEventHistory venue 자동 추출 (행사 데이터 영역 venue → 자동 행사장). */}
                   {(() => {
-                    const sortedVenues = venues.slice().sort((a, b) => {
+                    // venues DB 영역 + unifiedEventHistory venue 자동 보강 영역
+                    type VenueLike = typeof venues[number]
+                    const venueByName = new Map<string, VenueLike>()
+                    for (const v of venues) {
+                      if (v.name) venueByName.set(v.name.trim(), v)
+                    }
+                    // unifiedEventHistory venue 영역에서 = venues 영역에 없는 venue 자동 추가
+                    for (const ev of unifiedEventHistory) {
+                      const vname = (ev.venue ?? '').trim()
+                      if (!vname || vname === '미정' || vname === '미상' || venueByName.has(vname)) continue
+                      // 5/22 사용자 명시 = "행사장 관리 값 왜 없음?" = venues 비어있어도 행사 venue 영역 자동 표시
+                      venueByName.set(vname, {
+                        id: `auto_${vname}`,
+                        name: vname,
+                        region: null,
+                        venue_type: null,
+                        area_sqm: null,
+                        main_entrance_note: null,
+                        floor_plan_url: null,
+                        hall_split_requested: false,
+                        has_hall_split: false,
+                        created_at: new Date().toISOString(),
+                      } as VenueLike)
+                    }
+                    const sortedVenues = Array.from(venueByName.values()).sort((a, b) => {
                       const ad = a.created_at ? new Date(a.created_at).getTime() : 0
                       const bd = b.created_at ? new Date(b.created_at).getTime() : 0
                       if (ad !== bd) return bd - ad
@@ -1447,7 +1475,7 @@ export function LearningManagerClient({
                           <td className="p-2 text-indigo-500 text-[10px]">—</td>
                           <td className="p-2 text-right text-emerald-700 font-mono">{groupEventCount}건</td>
                           <td className="p-2 text-right text-amber-700 font-mono">{groupSigQty}개</td>
-                          <td colSpan={2} className="p-2 text-indigo-500 text-[10px]">L1 행사장 그룹</td>
+                          <td colSpan={2} className="p-2"></td>
                         </tr>
                       )
                       if (!isGroupOpen) return
@@ -3004,8 +3032,7 @@ export function LearningManagerClient({
                       const isGroupOpen = expandedFacilityGroup === groupName
                       const groupCategories = items.reduce((s, x) => s + x.categories_count, 0)
                       const groupWarnings = items.reduce((s, x) => s + x.warnings_count, 0)
-                      const avgCompleteness = items.length > 0 ? Math.round((items.reduce((s, x) => s + x.completeness, 0) / items.length) * 10) / 10 : 0
-                      // L1 = 그룹 행 (코엑스·킨텍스 등)
+                      // L1 = 그룹 행 (코엑스·킨텍스 등). 가이드 정보 평균 영역 = 의미 모호·삭제 (사용자 명시).
                       out.push(
                         <tr key={`L1-${groupName}`} className="bg-indigo-50/60 hover:bg-indigo-50 font-semibold border-t-2 border-indigo-100">
                           <td className="px-2 py-1.5 text-indigo-700 text-center">
@@ -3014,12 +3041,11 @@ export function LearningManagerClient({
                             </button>
                           </td>
                           <td className="px-2 py-1.5 text-indigo-900 whitespace-nowrap">
-                            {groupName} <span className="text-[10px] text-indigo-500 ml-1 font-normal">({items.length}건)</span>
+                            {groupName} <span className="text-[10px] text-indigo-500 ml-1 font-normal">(휘하 홀 {items.length})</span>
                           </td>
                           <td className="px-2 py-1.5 text-right text-indigo-700 font-mono text-[11px]">{groupCategories}</td>
                           <td className="px-2 py-1.5 text-right text-indigo-700 font-mono text-[11px]">{groupWarnings}</td>
-                          <td className="px-2 py-1.5 text-right text-indigo-700 font-mono text-[11px]">평균 {avgCompleteness}/6</td>
-                          <td className="px-2 py-1.5 text-indigo-500 text-[11px]" colSpan={isAdmin ? 3 : 2}>L1 행사장 그룹</td>
+                          <td className="px-2 py-1.5" colSpan={isAdmin ? 4 : 3}></td>
                         </tr>
                       )
                       if (!isGroupOpen) return
@@ -3121,72 +3147,21 @@ export function LearningManagerClient({
                         )}
                       </tr>
                     )
-                    // L3 = 펼침 시 학습 내용 (install_allowed·warnings·mount_methods·rigging·safety·digital_signage)
+                    // L3 = 펼침 시 학습 내용 = 사용자 명시 = "실제 행사 제작에서 가이드 열었을때 보이는 대로"
+                    // = FacilityGuidePanel 영역 호출·JSON.stringify 영역 X.
                     if (isOpen) {
                       out.push(
                         <tr key={`L3-${f.venue_key}`} className="bg-slate-50/70">
                           <td></td>
-                          <td colSpan={adminColCount - 1} className="px-3 py-2">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
-                              {Array.isArray(f.install_allowed) && f.install_allowed.length > 0 && (
-                                <div className="border border-emerald-200 bg-white rounded p-2">
-                                  <p className="font-semibold text-emerald-700 mb-1">설치 가능 카테고리 ({f.install_allowed.length})</p>
-                                  <ul className="space-y-0.5 text-slate-700">
-                                    {f.install_allowed.map((ia, i) => (
-                                      <li key={i} className="flex gap-1">
-                                        <span className={`inline-block w-2 h-2 mt-1 rounded-full ${ia.status === 'allowed' ? 'bg-emerald-500' : ia.status === 'denied' ? 'bg-rose-500' : 'bg-amber-500'}`}></span>
-                                        <span><span className="font-semibold">{ia.category ?? '미지정'}</span>{ia.note && <span className="text-slate-500"> — {ia.note}</span>}{(ia.standard_width_mm || ia.standard_height_mm) && <span className="text-indigo-600 font-mono ml-1">[{ia.standard_width_mm}×{ia.standard_height_mm}mm]</span>}</span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                              {Array.isArray(f.warnings) && f.warnings.length > 0 && (
-                                <div className="border border-rose-200 bg-white rounded p-2">
-                                  <p className="font-semibold text-rose-700 mb-1">주의사항 ({f.warnings.length})</p>
-                                  <ul className="space-y-0.5 text-slate-700">
-                                    {f.warnings.map((w, i) => (
-                                      <li key={i}>• {w.description ?? w.type ?? '미지정'}</li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                              {f.rigging != null && (
-                                <div className="border border-slate-200 bg-white rounded p-2">
-                                  <p className="font-semibold text-slate-700 mb-1">리깅 (천정 설치)</p>
-                                  <p className="text-slate-700">{f.rigging.available === true ? '가능' : f.rigging.available === false ? '불가' : '확인 필요'}{f.rigging.max_load_kg && ` · 최대 ${f.rigging.max_load_kg}kg`}{f.rigging.note && ` · ${f.rigging.note}`}</p>
-                                </div>
-                              )}
-                              {f.mount_methods != null && (
-                                <div className="border border-slate-200 bg-white rounded p-2">
-                                  <p className="font-semibold text-slate-700 mb-1">설치 방법</p>
-                                  <pre className="text-slate-600 text-[10px] whitespace-pre-wrap break-words">{typeof f.mount_methods === 'string' ? f.mount_methods : JSON.stringify(f.mount_methods, null, 2)}</pre>
-                                </div>
-                              )}
-                              {f.safety != null && (
-                                <div className="border border-slate-200 bg-white rounded p-2">
-                                  <p className="font-semibold text-slate-700 mb-1">안전 기준</p>
-                                  <pre className="text-slate-600 text-[10px] whitespace-pre-wrap break-words">{typeof f.safety === 'string' ? f.safety : JSON.stringify(f.safety, null, 2)}</pre>
-                                </div>
-                              )}
-                              {f.digital_signage != null && (
-                                <div className="border border-slate-200 bg-white rounded p-2">
-                                  <p className="font-semibold text-slate-700 mb-1">디지털 사이니지</p>
-                                  <pre className="text-slate-600 text-[10px] whitespace-pre-wrap break-words">{typeof f.digital_signage === 'string' ? f.digital_signage : JSON.stringify(f.digital_signage, null, 2)}</pre>
-                                </div>
-                              )}
-                              {Array.isArray(f.special_notes) && f.special_notes.length > 0 && (
-                                <div className="border border-amber-200 bg-amber-50/60 rounded p-2 md:col-span-2">
-                                  <p className="font-semibold text-amber-700 mb-1">특이사항 ({f.special_notes.length})</p>
-                                  <ul className="space-y-0.5 text-amber-900">
-                                    {f.special_notes.map((n, i) => <li key={i}>• {n}</li>)}
-                                  </ul>
-                                </div>
-                              )}
-                              {(!Array.isArray(f.install_allowed) || f.install_allowed.length === 0) && (!Array.isArray(f.warnings) || f.warnings.length === 0) && f.rigging == null && f.mount_methods == null && f.safety == null && f.digital_signage == null && (
-                                <p className="text-slate-400 italic md:col-span-2 text-center">학습 내용이 비어있습니다. ✎ 편집으로 정보를 추가하거나 시설 가이드 시드를 확장하세요.</p>
-                              )}
-                            </div>
+                          <td colSpan={adminColCount - 1} className="px-3 py-3">
+                            <button
+                              onClick={() => setFacilityPanelVenue(f.venue_name)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] rounded font-medium"
+                            >
+                              <AlertCircle className="w-3 h-3" />
+                              {f.venue_name} 가이드 보기 (실제 행사 제작 영역과 동일)
+                            </button>
+                            <p className="text-[10px] text-slate-400 mt-1.5">설치 가능 카테고리·주의사항·리깅·설치 방법·안전 기준·디지털 사이니지·특이사항 = 사람 영역 보기 패널 영역</p>
                           </td>
                         </tr>
                       )
@@ -3495,6 +3470,12 @@ export function LearningManagerClient({
           }}
         />
       )}
+      {/* 5/22 사용자 명시 = L3 학습 내용 = 실제 행사 제작에서 가이드 열었을때 보이는 패널 영역 */}
+      <FacilityGuidePanel
+        venueName={facilityPanelVenue}
+        open={facilityPanelVenue !== null}
+        onClose={() => setFacilityPanelVenue(null)}
+      />
     </div>
   )
 }

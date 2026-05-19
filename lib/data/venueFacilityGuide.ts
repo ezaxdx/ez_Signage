@@ -818,13 +818,15 @@ export function findVenueKey(venueName: string | null | undefined): string | nul
 
 /** 행사장명으로 시드 데이터 조회 */
 export function getFacilityGuide(venueName: string | null | undefined): VenueFacilityGuide | null {
+  if (!venueName) return null
   const key = findVenueKey(venueName)
-  if (!key) return null
-  return VENUE_FACILITY_GUIDE_SEED.find(g => g.venue_key === key) ?? null
+  // 5/22 사용자 명시 = 미등록 행사장 (BEXCO·EXCO·DCC 등) = 기본 컨벤션 가이드 영역 자동 반환·null X
+  if (!key) return buildDefaultConventionGuide(venueName)
+  return VENUE_FACILITY_GUIDE_SEED.find(g => g.venue_key === key) ?? buildDefaultConventionGuide(venueName)
 }
 
 /**
- * 비동기 조회: Supabase venues.facility_guide_json 우선 → 없으면 시드 폴백.
+ * 비동기 조회: Supabase venues.facility_guide_json 우선 → 없으면 시드 폴백 → 미매칭 시 기본 컨벤션 가이드.
  * 서버 컴포넌트 / API Route에서 사용.
  */
 export async function getFacilityGuideAsync(
@@ -832,8 +834,8 @@ export async function getFacilityGuideAsync(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any
 ): Promise<VenueFacilityGuide | null> {
+  if (!venueName) return null
   const key = findVenueKey(venueName)
-  if (!key) return null
 
   try {
     const keyword = venueName?.split(/[\s(]/)[0] ?? ''
@@ -847,7 +849,7 @@ export async function getFacilityGuideAsync(
 
       if (data?.facility_guide_json) {
         // DB 데이터 + seed 필드 병합 (seed가 베이스, DB가 덮어씀)
-        const seed = VENUE_FACILITY_GUIDE_SEED.find(g => g.venue_key === key)
+        const seed = key ? VENUE_FACILITY_GUIDE_SEED.find(g => g.venue_key === key) : null
         return seed ? { ...seed, ...data.facility_guide_json } : (data.facility_guide_json as VenueFacilityGuide)
       }
     }
@@ -855,5 +857,7 @@ export async function getFacilityGuideAsync(
     // Supabase 실패 시 폴백
   }
 
-  return VENUE_FACILITY_GUIDE_SEED.find(g => g.venue_key === key) ?? null
+  // 5/22 사용자 명시 = 미등록 행사장 = 기본 컨벤션 가이드 영역 자동 반환
+  if (!key) return buildDefaultConventionGuide(venueName)
+  return VENUE_FACILITY_GUIDE_SEED.find(g => g.venue_key === key) ?? buildDefaultConventionGuide(venueName)
 }
