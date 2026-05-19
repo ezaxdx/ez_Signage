@@ -1061,7 +1061,7 @@ export function LearningManagerClient({
                     {isExpanded && halls.length > 0 && (
                       <tr className="bg-slate-50/60">
                         <td colSpan={9} className="px-6 py-3">
-                          <p className="text-[10px] text-slate-500 mb-2">하위 홀 (L2) — 노션 §9 정적 시드. 추가/수정/삭제는 Supabase venue_halls 마이그레이션 후 활성.</p>
+                          <p className="text-[10px] text-slate-500 mb-2">하위 홀 정보. 추가·수정·삭제 기능은 다음 사이클에 활성화 예정.</p>
                           <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5">
                             {halls.map((h, i) => (
                               <li key={i} className="text-[11px] text-slate-700 bg-white border border-slate-200 rounded px-2 py-1 flex items-center justify-between">
@@ -1643,7 +1643,7 @@ export function LearningManagerClient({
             <AlertCircle className="w-4 h-4 text-rose-500" />
             시설 가이드 학습 현황 (홀 단위)
           </h2>
-          <p className="text-[11px] text-slate-500 mb-3">노션 §7 정합 = 행사장이 아닌 홀(L2) 단위로 표준 규격·제약·연락처·예약 시점 학습.</p>
+          <p className="text-[11px] text-slate-500 mb-3">행사장이 아닌 홀 단위로 표준 규격·제약·연락처·예약 시점을 학습합니다.</p>
           {facilityGuideStatus.length === 0 ? (
             <p className="text-slate-400 text-xs italic py-3 text-center">시설 가이드 시드 데이터가 비어있습니다.</p>
           ) : (
@@ -2024,7 +2024,7 @@ function VenueHierarchyTree() {
       <h2 className="text-slate-900 font-semibold text-sm mb-2 flex items-center gap-2">
         <Building2 className="w-4 h-4 text-indigo-500" />
         표준 행사장 계층 (L1 → L2)
-        <span className="ml-2 text-[10px] font-normal text-slate-400">노션 §9 정적 시드 · 추가/수정/삭제는 컴펌 후 활성</span>
+        <span className="ml-2 text-[10px] font-normal text-slate-400">표준 행사장 계층 정보 · 편집 기능은 다음 사이클</span>
       </h2>
       <p className="text-[11px] text-slate-500 mb-4">
         5/14 회의 결정 = 구역·홀 단위로 묶기 (계층 구조). 현재는 읽기 전용 트리. Supabase venue_halls 마이그레이션 후 편집 가능.
