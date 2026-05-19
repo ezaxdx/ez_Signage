@@ -164,14 +164,22 @@ export interface EventHistorySeed {
   project_name: string
   project_code: string | null
   year: number | null
-  venue: string
+  venue: string  // 메인 venue (예: "ICC JEJU 및 인근호텔"·"코엑스")
   category_tag: '핵심' | '일반' | '미분류' | '해외'
   has_excel: boolean   // 제작물리스트.xlsx 존재 여부
   has_image: boolean   // 시안 이미지 존재 여부
   analyzed_item_count?: number   // 실제 엑셀 파싱 시그너지 개수 (있는 경우만)
   // 5/22 사용자 명시 = 5대 영역 정합·프로그램 파트 추정값·환경장식물 분석 데이터
   program_parts?: string[]   // 행사명 기반 추정 파트 코드 (40.04 회의·40.05 전시 등)
-  signage_breakdown?: Array<{ category: string; quantity: number; sizes?: string }>   // 환경장식물별 분리 (분석된 행사만)
+  signage_breakdown?: Array<{ category: string; quantity: number; sizes?: string }>   // 환경장식물별 분리 (분석된 행사만·단일 venue 영역)
+  // 5/22 김연아 대리님 명시 = 1 행사 = 여러 행사장 분리 학습 의무
+  // 예: APEC 중소기업 장관회의 251004 = ICC JEJU + 롯데호텔 = venue별 분리 영역
+  venues_breakdown?: Array<{
+    venue: string  // 예: "ICC JEJU"·"롯데호텔 제주"
+    signage_breakdown: Array<{ category: string; quantity: number; sizes?: string }>
+    program_parts?: string[]   // venue별 영역 영역 영역 (선택)
+    analyzed_item_count?: number   // venue별 영역 영역 영역 (선택)
+  }>
 }
 
 // 5/22 사용자 명시 = "쭉 적기"·환경장식물별 수량 제공. signage_breakdown 영역 없으면 program_parts 기반 추정값 자동 생성.
@@ -292,7 +300,24 @@ export const SEED_EVENT_HISTORY: EventHistorySeed[] = [
     { category: '환영리셉션', quantity: 4, sizes: '600×1800' },
   ] },
   // ICC JEJU·제주
-  { project_name: 'APEC 중소기업 장관회의',                       project_code: '251004',  year: 2025, venue: 'ICC JEJU 및 인근호텔',           category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.04', '40.08', '40.18', '40.19'] },
+  // 5/22 김연아 대리님 피드백 = ICC JEJU + 롯데호텔 분리 학습 영역. venues_breakdown 영역 영역 영역 영역 학습.
+  // 파일 영역 영역 영역 = APEC중기장관회의-1번원형기둥배너·삼다홀쪽사각기둥배너·이벤트홀난간바톤 등 = ICC JEJU 영역
+  //                  APEC중기장관회의-롯데만찬통천·롯데포토월·롯데호텔가로등배너·롯데호텔천장·롯데호텔포디움 등 = 롯데호텔 제주 영역
+  { project_name: 'APEC 중소기업 장관회의',                       project_code: '251004',  year: 2025, venue: 'ICC JEJU 및 인근호텔',           category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.04', '40.08', '40.19'],
+    venues_breakdown: [
+      { venue: 'ICC JEJU', signage_breakdown: [
+        { category: 'X배너', quantity: 6, sizes: '600×1800' },
+        { category: '포디움 타이틀', quantity: 2, sizes: '600×200' },
+        { category: '가로 현수막', quantity: 3 },
+      ]},
+      { venue: '롯데호텔 제주', signage_breakdown: [
+        { category: '통천 배너', quantity: 1, sizes: '만찬 영역' },
+        { category: '시상보드', quantity: 2, sizes: '포토월' },
+        { category: '가로등 배너', quantity: 4 },
+        { category: '포디움 타이틀', quantity: 2, sizes: '600×200' },
+      ]},
+    ],
+  },
   { project_name: '2022 제주 IUCN리더스포럼',                     project_code: '223060',  year: 2022, venue: '제주국제컨벤션센터 (ICC JEJU)',  category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.04', '40.08', '40.18'] },
   { project_name: '제2회 세계리더스보전포럼',                     project_code: '183060',  year: 2018, venue: '제주국제컨벤션센터 (ICC JEJU)',  category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 33, program_parts: ['40.04', '40.08', '40.18', '40.19'], signage_breakdown: [
     { category: '참가자안내', quantity: 22, sizes: 'A4·600×1800' },
