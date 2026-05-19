@@ -8,8 +8,9 @@ import XLSX from 'xlsx'
 import fs from 'node:fs'
 import path from 'node:path'
 
-const L1_ROOT = 'C:/Users/EZPMP/Desktop/클로드 코드 활동용/업무 자동화/제작물 디자인 의뢰 가이드/참고자료/학습데이터_통합_260514/L1_행사장'
-const OUT_PATH = 'C:/Users/EZPMP/Desktop/클로드 코드 활동용/★확인/학습데이터_30행사장_조사_v2_260522.xlsx'
+// 5/22 김연아 대리님 영역 = SOT 변경 영역 = G:\ 드라이브 (현재 영역 영역 영역 영역)
+const L1_ROOT = 'G:/내 드라이브/2026년_AXDX팀/01. AI 업무 파트너/05. 제작물 리스트 가이드/AI 학습자료/L1_행사장'
+const OUT_PATH = 'C:/Users/EZPMP/Desktop/클로드 코드 활동용/★확인/학습데이터_30행사장_조사_v3_260522.xlsx'
 
 // 코드 영역 학습 영역 = 7건 영역 (5/22 영역 영역 영역 학습 영역 영역 영역)
 const CODE_LEARNED = {
