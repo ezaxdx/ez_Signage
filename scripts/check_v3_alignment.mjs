@@ -185,6 +185,34 @@ function main() {
     return `WARN:fallback offset 패턴 X·확인 필요`
   })
 
+  // ── 6. SEED_SYNONYMS 정합 (노션 §8-1 동의어 영역) ── 5/19 확장
+  console.log()
+  console.log('[6] SEED_SYNONYMS 정합 (노션 §8-1)')
+  const seedSynonymsPath = `${ROOT}/lib/data/dashboardSeed.ts`
+  // 노션 §8-1 영역 핵심 6건 영역 (5/19 push 22 추가 영역) — 누락 시 fail
+  // 폼보드·시트지·백월·포토월 = 노션 §5 제외 영역 (메모리 reference_환경장식물_종류_SOT_260518 정합)
+  const NOTION_8_1_CORE_SYNONYMS = [
+    '명패', '웰컴보드', 'MOU', '시상보드',  // 5/19 신규 추가 영역
+    '유도사인',  // 동선 배너 영역
+    '스프링배너',  // X배너 영역
+  ]
+  check('  SEED_SYNONYMS 핵심 7건 모두 포함 (노션 §8-1)', () => {
+    if (!existsSync(seedSynonymsPath)) return 'dashboardSeed.ts 누락'
+    const content = readFileSync(seedSynonymsPath, 'utf8')
+    const missing = NOTION_8_1_CORE_SYNONYMS.filter(s => !content.includes(`alias: '${s}'`))
+    if (missing.length === 0) return true
+    return `${missing.length}건 누락: ${missing.join(', ')}`
+  })
+  // 대시 표기 영역 잔존 점검 (X-배너·I-배너 영역 영역 정정 영역)
+  check('  SEED_SYNONYMS 대시 표기 잔존 X (X배너·I배너)', () => {
+    if (!existsSync(seedSynonymsPath)) return 'dashboardSeed.ts 누락'
+    const content = readFileSync(seedSynonymsPath, 'utf8')
+    const dashCount = (content.match(/canonical_name: 'X-배너'/g) || []).length +
+                      (content.match(/canonical_name: 'I-배너'/g) || []).length
+    if (dashCount === 0) return true
+    return `대시 표기 ${dashCount}건 잔존 (X-배너·I-배너 → X배너·I배너 정정 필요)`
+  })
+
   // ── 요약 ──
   console.log()
   console.log('━━ 요약 ━━')
