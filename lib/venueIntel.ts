@@ -81,6 +81,27 @@ export const VENUE_LIST: VenueInfo[] = [
   { key: '파리', displayName: '프랑스 파리', region: '해외', type: '기타', hasSamples: true },
 ]
 
+// 5/22 사용자 명시 = 복합 venue 자동 분리. "코엑스 그랜드볼룸·아셈볼룸·오디토리움" → L1·L2 분리
+export function extractL1L2FromComplexVenue(name: string): { l1: string; l2: string[]; l1Info: VenueInfo | null } {
+  const matched = matchVenue(name)
+  if (!matched) return { l1: name, l2: [], l1Info: null }
+  // L1 키워드 제거 후 = 잔여 영역 = L2 후보
+  const lower = name.toLowerCase()
+  const keyLower = matched.key.toLowerCase()
+  const idx = lower.indexOf(keyLower)
+  let remainder = name
+  if (idx >= 0) {
+    remainder = (name.slice(0, idx) + name.slice(idx + matched.key.length)).trim()
+  }
+  // "·"·"/"·"외" 영역 분리
+  const halls = remainder
+    .replace(/외$/g, '')
+    .split(/[·\/]+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0)
+  return { l1: matched.displayName, l2: halls, l1Info: matched }
+}
+
 /** project.event_venue 문자열에서 알려진 행사장 매칭 */
 export function matchVenue(eventVenue: string | null): VenueInfo | null {
   if (!eventVenue) return null
