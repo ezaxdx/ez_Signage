@@ -13,6 +13,7 @@ import { STANDARD_CATEGORY_BY_KEY, type StandardCategoryKey } from '@/lib/data/s
 import { PROGRAM_PARTS, PROGRAM_PART_GROUPS, PROGRAM_PART_SIGNAGE_HINTS, PROGRAM_PART_BY_CODE } from '@/lib/programParts'
 import { SEED_EVENT_HISTORY, estimateSignageBreakdown } from '@/lib/data/dashboardSeed'
 import { FacilityGuidePanel } from '@/app/components/facility/FacilityGuidePanel'
+import { ProgramPartSignageMatrix } from './components/ProgramPartSignageMatrix'
 // 5/21 사용자 명시 = NIST 4단·전체 학습 요약·향후 도입 로드맵 UI 표시 롤백.
 // 시드 (LEARNING_META_SEED·NIST_RMF_STAGES·VISION_ROADMAP) 자체는 lib/data·lib/ai에 보존
 // — 곽 이사 보고 자료 외부 영역 활용 가능. 관리자 페이지 UI는 ′응?′ 룰 정합 위해 노출 X.
@@ -2187,7 +2188,10 @@ export function LearningManagerClient({
 
         {/* v9.36 시안 매칭: 환경장식물 종류·동의어 매핑은 평면 메뉴로 분리 (서브탭 바 제거) */}
         {activeSection === 'signage-types' && (
-          <section className="bg-white border border-slate-200 rounded-xl p-5">
+          <>
+          {/* v10.4 신규: 12파트 × 환경장식물 표준 매트릭스 (SOT 시각화) */}
+          <ProgramPartSignageMatrix />
+          <section className="bg-white border border-slate-200 rounded-xl p-5 mt-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-slate-900 font-semibold text-sm flex items-center gap-2">
                 <Inbox className="w-4 h-4 text-indigo-500" />
@@ -2384,6 +2388,7 @@ export function LearningManagerClient({
               </table>
             </div>
           </section>
+          </>
         )}
 
         {activeSection === 'synonyms-mapping' && <>
