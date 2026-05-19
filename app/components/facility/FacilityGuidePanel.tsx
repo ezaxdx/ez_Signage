@@ -110,18 +110,19 @@ export function FacilityGuidePanel({ venueName, open, onClose, focusSection }: P
   // - 변경: pointer-events-none + backdrop만 onClose / 패널 본체는 pointer-events-auto + e.stopPropagation()
   //   첫 클릭에 즉시 모달이 열리고 그 안에서 어떤 자식 클릭도 닫지 않도록 격리
   return (
-    <div className="fixed inset-0 z-40 flex justify-end pointer-events-none">
+    <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none p-4">
       <div
         className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm pointer-events-auto"
         onClick={onClose}
         aria-label="가이드 닫기"
       />
+      {/* 5/20 노션 §4 정합 = 우측 → 중앙 정렬·스크롤 없이 읽히게 max-h 85vh */}
       <div
-        className="relative w-full max-w-md bg-white border-l border-slate-200 shadow-2xl h-full overflow-y-auto pointer-events-auto"
+        className="relative w-full max-w-2xl max-h-[85vh] bg-white border border-slate-200 rounded-lg shadow-2xl overflow-y-auto pointer-events-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 헤더 */}
-        <div className="sticky top-0 bg-white border-b border-slate-200 px-5 py-3 flex items-center justify-between">
+        {/* 헤더 = 중앙 정렬 모달 정합 (rounded top) */}
+        <div className="sticky top-0 bg-white border-b border-slate-200 rounded-t-lg px-5 py-3 flex items-center justify-between">
           <div>
             <h2 className="text-slate-900 text-sm font-bold">행사장 시설 가이드</h2>
             <p className="text-slate-500 text-xs">{guide?.venue_name ?? venueName ?? '행사장 미지정'}</p>
