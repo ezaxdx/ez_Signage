@@ -1214,8 +1214,8 @@ export function LearningManagerClient({
         </section>
 
         </>}
-        {true && <>
-        {/* ── 사용자 요청 대기 (4-② 서브) ───────────────────── */}
+        {/* 5/22 사용자 명시 = 사용자 요청 대기·도면 학습 큐 = 시설 가이드 메뉴 영역 이동·행사장 영역 hidden */}
+        {false && <>
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-4 flex items-center gap-2">
             <Inbox className="w-4 h-4 text-amber-400" />
@@ -1260,8 +1260,8 @@ export function LearningManagerClient({
         </section>
 
         </>}
-        {true && <>
-        {/* ── 도면 학습 큐 (4-③ 서브) — 미완료만 표시 ──────── */}
+        {/* 5/22 사용자 명시 = 도면 학습 큐 = 시설 가이드 메뉴 영역 이동·행사장 영역 hidden */}
+        {false && <>
         {(() => {
           const pendingJobs = jobs.filter(j => j.status !== 'done' && j.status !== 'skipped')
           return (
@@ -2443,12 +2443,75 @@ export function LearningManagerClient({
 
         {/* v9.36: 평면 메뉴 ′시설 가이드′ — 가이드 + 예외 패턴 두 블록 묶음 */}
         {activeSection === 'facility-guides' && <>
-        {/* 5/22 사용자 명시 = 도면 학습 큐·사용자 요청 대기·도면 첨부 영역 = 시설 가이드 메뉴 영역 이동 안내 */}
-        <section className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-          <p className="text-[11px] text-amber-800">
-            도면·시설 가이드북 첨부·도면 학습 큐·사용자 요청 대기 영역 = 시설 가이드 메뉴 영역 통합 영역. 현재 = 행사장 관리 메뉴 영역에서도 노출 영역 (다음 사이클 = 행사장 영역에서 제거).
-          </p>
+        {/* 5/22 사용자 명시 = 사용자 요청 대기·도면 학습 큐 영역 = 시설 가이드 메뉴 영역 통합 */}
+        <section className="bg-white border border-slate-200 rounded-xl p-5">
+          <h2 className="text-slate-900 font-semibold text-sm mb-4 flex items-center gap-2">
+            <Inbox className="w-4 h-4 text-amber-400" />
+            사용자 요청 대기 ({pendingRequests.length})
+          </h2>
+          {pendingRequests.length === 0 ? (
+            <p className="text-slate-400 text-xs italic">대기 중인 요청이 없습니다.</p>
+          ) : (
+            <div className="space-y-2">
+              {pendingRequests.map(req => (
+                <div key={req.id} className="flex items-start justify-between gap-3 bg-slate-50/40 border border-slate-300/60 rounded-lg p-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-900 font-medium text-sm">{req.name}</span>
+                      {req.region && <span className="text-slate-500 text-[10px] bg-slate-200/40 rounded px-1.5">{req.region}</span>}
+                      {req.venue_type && <span className="text-slate-500 text-[10px] bg-slate-200/40 rounded px-1.5">{req.venue_type}</span>}
+                    </div>
+                    {req.notes && <p className="text-slate-500 text-[11px] mt-1">{req.notes}</p>}
+                    <div className="text-slate-400 text-[10px] mt-1 flex items-center gap-2">
+                      <Clock className="w-2.5 h-2.5" />
+                      {new Date(req.requested_at).toLocaleString('ko-KR')}
+                      {req.floor_plan_url && (
+                        <a href={req.floor_plan_url} target="_blank" rel="noopener" className="text-indigo-400 hover:underline flex items-center gap-1">
+                          <FileText className="w-2.5 h-2.5" /> 도면
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button onClick={() => approveRequest(req)} className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs rounded transition">
+                      <CheckCircle2 className="w-3 h-3" /> 승인
+                    </button>
+                    <button onClick={() => rejectRequest(req)} className="flex items-center gap-1 px-2.5 py-1 bg-slate-200 hover:bg-slate-600 text-slate-800 text-xs rounded transition">
+                      <XCircle className="w-3 h-3" /> 반려
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
+        {(() => {
+          const pendingJobs = jobs.filter(j => j.status !== 'done' && j.status !== 'skipped')
+          return (
+            <section className="bg-white border border-slate-200 rounded-xl p-5">
+              <h2 className="text-slate-900 font-semibold text-sm mb-4 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-violet-400" />
+                도면 학습 큐 ({pendingJobs.length})
+              </h2>
+              {pendingJobs.length === 0 ? (
+                <p className="text-slate-400 text-xs italic">대기 중인 학습 큐가 없습니다.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {pendingJobs.map(job => {
+                    const venue = venues.find(v => v.id === job.venue_id)
+                    return (
+                      <div key={job.id} className="flex items-center gap-2 bg-slate-50/30 rounded px-3 py-1.5 text-xs">
+                        <span className="text-[10px] font-medium rounded px-1.5 py-0.5 text-slate-500 bg-slate-50">{job.status}</span>
+                        <span className="text-slate-700 truncate flex-1">{venue?.name ?? '(unknown venue)'}</span>
+                        {job.source_url && <a href={job.source_url} target="_blank" rel="noopener" className="text-indigo-500 hover:underline">도면</a>}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </section>
+          )
+        })()}
         {/* ── 시설 가이드 KPI 요약 ───────────── */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
