@@ -317,10 +317,10 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
               color="text-indigo-600"
             />
 
-            {/* ③ 이상 사용자 알림 — 임계값 초과 사용자 카운트 */}
+            {/* ③ 과도 사용자 알림 — 임계값 초과 사용자 카운트 (5/20 회의록 §8 정합) */}
             <Kpi3Card
               icon={<Bell className={`w-4 h-4 ${abnormalUsers.length > 0 ? 'text-rose-600' : ''}`} />}
-              label="이상 사용자 알림"
+              label="과도 사용자 알림"
               value={abnormalUsers.length > 0 ? `${abnormalUsers.length}명` : '0명'}
               color={abnormalUsers.length > 0 ? 'text-rose-600' : 'text-slate-700'}
             />
@@ -528,7 +528,7 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-rose-600" />
-              <h2 className="text-slate-700 text-sm font-semibold">이상 사용자 알림</h2>
+              <h2 className="text-slate-700 text-sm font-semibold">과도 사용자 알림</h2>
             </div>
             <span className="text-[10px] text-slate-500">
               임계값: 동일 프로젝트 {settings.abnormal_repeat_threshold}회 이상 재호출
@@ -598,7 +598,7 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
                 />
               </Field>
 
-              <Field label="이상 사용자 임계값 (회)" hint="동일 프로젝트 N회 이상 재호출 시 알림">
+              <Field label="과도 사용자 임계값 (회)" hint="동일 프로젝트 N회 이상 재호출 시 알림">
                 <input
                   type="number" min={2} max={50} step={1}
                   value={settings.abnormal_repeat_threshold}

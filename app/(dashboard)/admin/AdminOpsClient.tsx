@@ -189,7 +189,7 @@ export function AdminOpsClient({ kpi, projects }: Props) {
             <table className="w-full text-xs">
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
-                  {['NO', '파트', '담당자', '행사', '상태', '발주일', '컨펌율', '항목수', 'AI정확도', '확인자', '비고', '편집', '다운로드', '승인', '반려', '보기'].map(h => (
+                  {['NO', '파트', '담당자', '행사', '상태', '완료일', '컨펌율', '항목수', 'AI정확도', '확인자', '비고', '편집', '다운로드', '승인', '반려', '보기'].map(h => (
                     <th key={h} className="px-2 py-2 text-left font-medium whitespace-nowrap border-b border-slate-200">{h}</th>
                   ))}
                 </tr>
