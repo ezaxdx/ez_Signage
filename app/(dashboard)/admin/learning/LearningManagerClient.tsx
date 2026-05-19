@@ -1267,6 +1267,8 @@ export function LearningManagerClient({
                     const halls = getHallsByVenueName(v.name)
                     const isExpanded = expandedVenueId === v.id
                     const canExpand = halls.length > 0
+                    // 5/22 사용자 명시 = L1·L2 정합 X 영역 표시. "·" "외" "/" 포함 = 복합 venue
+                    const isComplexVenue = /[·\/]|외$|외\s/.test(v.name)
                     return (
                     <React.Fragment key={v.id}>
                     <tr className="border-b border-slate-200/40 hover:bg-slate-50/30">
@@ -1287,6 +1289,9 @@ export function LearningManagerClient({
                         <div className="flex items-center gap-1.5">
                           <MapPin className="w-3 h-3 text-slate-500" />
                           {v.name}
+                          {isComplexVenue && (
+                            <span className="text-[9px] bg-amber-50 text-amber-700 px-1 py-0.5 rounded" title="L1 (대분류) 영역만 입력해야 함. L2 (홀)은 노션 §9 SOT에서 자동 매칭">L1·L2 정합 필요</span>
+                          )}
                         </div>
                       </td>
                       <td className="p-2 text-slate-500">{v.region ?? '—'}</td>
