@@ -497,7 +497,8 @@ export function LearningManagerClient({
       return next
     })
   }
-  // 5/22 P1-2 = 이미지 교체·삭제 영역 신규 (Storage upload + sample localStorage 정합)
+  // 5/22 P1-2 = 이미지 교체·삭제 영역 (Storage upload + sample localStorage)
+  // 5/22 사용자 명시 = "사진 넣어도 적용 안 됨" 정정 = path 영역 ASCII safe·console.log 디버그·alert 명확
   const replaceSignageTypeImage = async (t: SignageTypeRow) => {
     const input = document.createElement('input')
     input.type = 'file'
@@ -505,19 +506,29 @@ export function LearningManagerClient({
     input.onchange = async () => {
       const file = input.files?.[0]
       if (!file) return
+      console.log('[이미지 교체] file selected:', file.name, file.size)
       try {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) { alert('로그인이 필요합니다'); return }
-        const ext = file.name.split('.').pop() ?? 'png'
-        const path = `${user.id}/signage-samples/${t.id}-${Date.now()}.${ext}`
-        const { error } = await supabase.storage.from('design-images').upload(path, file, { upsert: true })
-        if (error) { alert('이미지 업로드 실패: ' + error.message); return }
+        // ASCII safe id 영역 = 한글 영역 path 차단
+        const safeId = t.id.replace(/[^a-zA-Z0-9_\-]/g, '_').substring(0, 50) || 'signage'
+        const ext = (file.name.split('.').pop() ?? 'png').toLowerCase().replace(/[^a-z0-9]/g, '')
+        const path = `${user.id}/signage-samples/${safeId}-${Date.now()}.${ext}`
+        console.log('[이미지 교체] upload path:', path)
+        const { error: upErr } = await supabase.storage.from('design-images').upload(path, file, { upsert: true, contentType: file.type })
+        if (upErr) {
+          console.error('[이미지 교체] Storage upload 실패:', upErr)
+          alert('이미지 업로드 실패: ' + upErr.message + '\n\n원인 가능성:\n• design-images 버킷 부재 → Supabase Studio Storage 생성\n• Storage RLS 정책 차단\n• 파일 크기 10MB 초과')
+          return
+        }
         const { data: { publicUrl } } = supabase.storage.from('design-images').getPublicUrl(path)
+        console.log('[이미지 교체] ✓ publicUrl:', publicUrl)
         saveSignageTypeSample(t.id, publicUrl)
         alert(`'${t.name}' 예시 이미지 교체 완료`)
       } catch (e) {
-        alert('이미지 교체 실패: ' + (e instanceof Error ? e.message : 'unknown'))
+        console.error('[이미지 교체] Exception:', e)
+        alert('이미지 교체 실패 (F12 콘솔 확인): ' + (e instanceof Error ? e.message : 'unknown'))
       }
     }
     input.click()
