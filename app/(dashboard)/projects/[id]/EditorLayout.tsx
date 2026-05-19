@@ -40,18 +40,15 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
 
   const [items, setItems] = useState<DesignItem[]>(initialItems)
   const [selectedItemId, setSelectedItemId] = useState<string>(initialItems[0]?.id ?? '')
-  // 5/20 노션 §3 정합 = 좌 8:우 2 분할 고정 (vertical mode·splitPos 80%)
-  // 토글·드래그 인터페이스는 유지하되 default값만 노션 기준으로 변경
+  const [projectStatus, setProjectStatus] = useState<string>(project.status ?? 'in_progress')
+  // 5/21 사용자 명시 = 분할 비율 고정 (노션 §3 좌 8:우 2). 드래그·localStorage 비율 무시.
+  // 토글(위·아래 / 좌·우)은 유지·사용자 선택 가능.
   const [splitMode, setSplitMode] = useState<'horizontal' | 'vertical'>('vertical')
-  const [splitPos, setSplitPos] = useState(80)   // 퍼센트 (20~80)·노션 §3 좌 8:우 2
-  const isDragging = useRef(false)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const splitPos = 80   // 좌 8:우 2 하드코딩 (드래그·localStorage 비활성)
   useEffect(() => {
     try {
       const s = localStorage.getItem('mice_editor_split')
       if (s === 'vertical' || s === 'horizontal') setSplitMode(s)
-      const p = localStorage.getItem('mice_editor_split_pos')
-      if (p) setSplitPos(Math.max(20, Math.min(80, Number(p))))
     } catch {}
   }, [])
   const [allContents, setAllContents] = useState<Record<string, ContentsMap>>({})
@@ -80,27 +77,7 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
     if (typeof window !== 'undefined') localStorage.setItem(`facility_check_mode_${project.id}`, mode)
   }, [project.id])
 
-  // 드래그 크기 조절
-  const handleDragStart = useCallback((e: React.MouseEvent) => {
-    isDragging.current = true
-    e.preventDefault()
-  }, [])
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      if (!isDragging.current || !containerRef.current) return
-      const rect = containerRef.current.getBoundingClientRect()
-      const pos = splitMode === 'horizontal'
-        ? ((e.clientY - rect.top) / rect.height) * 100
-        : ((e.clientX - rect.left) / rect.width) * 100
-      const clamped = Math.max(20, Math.min(80, pos))
-      setSplitPos(clamped)
-      try { localStorage.setItem('mice_editor_split_pos', String(clamped)) } catch {}
-    }
-    const onUp = () => { isDragging.current = false }
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseup', onUp)
-    return () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp) }
-  }, [splitMode])
+  // 5/21 사용자 명시 = 분할 고정. 드래그 핸들·핸들러 제거.
   // v8: 첫 위반 알랏 (§11-6-1 — 한 행사에서 1회만)
   const [activeAlert, setActiveAlert] = useState<ValidationIssue | null>(null)
   const alertedItemsRef = useRef<Set<string>>(new Set())  // 알랏 표시 이력
@@ -596,6 +573,19 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
     supabase.from('design_items').update({ finalized_at: now }).in('id', ids).then(() => {}, () => {})
   }, [items, supabase])
 
+  // ── 완료 처리 (노션 §7 = 다운로드 클릭 → 완료 버튼 클릭) ────
+  const handleMarkCompleted = useCallback(async () => {
+    if (projectStatus === 'completed') return
+    const ok = window.confirm('이 프로젝트를 완료 상태로 표시하시겠습니까?\n발주·다운로드가 끝난 뒤에만 클릭하세요.')
+    if (!ok) return
+    setProjectStatus('completed')
+    const { error } = await supabase.from('projects').update({ status: 'completed' }).eq('id', project.id)
+    if (error) {
+      alert('완료 처리 실패: ' + error.message)
+      setProjectStatus(project.status ?? 'in_progress')
+    }
+  }, [projectStatus, project.id, project.status, supabase])
+
   // ── Excel 전체 내보내기 ────────────────────────────────────
   const handleExcelExport = useCallback(async () => {
     if (!confirmFacilityBeforeExport()) return
@@ -751,7 +741,7 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
         }}
       />
 
-      {/* v9.11: 회의록 ′가로/세로 분할 한번 생각해 봅시다′ — 사용자 선택 토글 */}
+      {/* 레이아웃 토글 (5/21 사용자 명시 = 분할 고정·드래그 핸들 제거·토글 우측에 완료 버튼) */}
       <div className="px-3 py-1 bg-slate-50 border-b border-slate-200 flex items-center gap-2 text-[10px]">
         <span className="text-slate-500">레이아웃:</span>
         <button
@@ -766,10 +756,23 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
         >
           ⊟ 좌·우
         </button>
+        <span className="ml-auto flex items-center gap-2">
+          {projectStatus === 'completed' && (
+            <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5 text-[10px]">완료됨</span>
+          )}
+          <button
+            onClick={handleMarkCompleted}
+            disabled={projectStatus === 'completed'}
+            className="px-3 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-200 disabled:text-slate-500 text-white text-[10px] font-medium transition"
+            title="다운로드 완료 후 클릭. 프로젝트를 완료 상태로 표시합니다."
+          >
+            완료
+          </button>
+        </span>
       </div>
 
       <div className="flex flex-1 min-h-0">
-        <div ref={containerRef} className={`flex-1 ${splitMode === 'vertical' ? 'flex flex-row' : 'flex flex-col'} min-w-0`}>
+        <div className={`flex-1 ${splitMode === 'vertical' ? 'flex flex-row' : 'flex flex-col'} min-w-0`}>
           <div
             className={`${splitMode === 'vertical' ? 'border-r' : 'border-b'} border-slate-200 overflow-hidden`}
             style={splitMode === 'vertical' ? { width: `${splitPos}%` } : { height: `${splitPos}%` }}
@@ -787,14 +790,6 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
               facilityIssueMap={facilityIssueMap}
               facilityCheckMode={facilityCheckMode}
             />
-          </div>
-
-          {/* 드래그 크기 조절 핸들 */}
-          <div
-            onMouseDown={handleDragStart}
-            className={`flex-shrink-0 flex items-center justify-center bg-slate-100 hover:bg-indigo-200 active:bg-indigo-300 transition-colors group ${splitMode === 'horizontal' ? 'h-1.5 cursor-row-resize w-full' : 'w-1.5 cursor-col-resize h-full'}`}
-          >
-            <div className={`bg-slate-300 group-hover:bg-indigo-400 transition-colors rounded-full ${splitMode === 'horizontal' ? 'w-10 h-0.5' : 'w-0.5 h-10'}`} />
           </div>
 
           {/* 우측 패널 — 노션 §3 = 예시 이미지 + 위반 사항 표시.

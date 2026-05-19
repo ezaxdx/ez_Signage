@@ -846,12 +846,8 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
                   </div>
                 )}
                 {showSearch && !selectedProfile && searchQuery.trim() && searchResults.length === 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-slate-50 border border-slate-300 rounded-lg p-3 text-xs z-20 space-y-2">
-                    <p className="text-slate-400">일치하는 가입 사용자가 없습니다</p>
-                    <p className="text-slate-500 leading-relaxed">
-                      • 초대할 사람이 먼저 <a href="/signup" target="_blank" className="text-indigo-400 underline">/signup</a> 에서 가입해야 합니다<br />
-                      • 또는 Supabase에서 <code className="text-amber-400">migration_all.sql</code> 실행이 필요할 수 있습니다 (profiles 백필)
-                    </p>
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-slate-50 border border-slate-300 rounded-lg p-3 text-xs z-20">
+                    <p className="text-slate-500">해당 이름의 사용자를 찾을 수 없습니다.</p>
                   </div>
                 )}
               </div>
@@ -878,61 +874,10 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
           )}
         </section>
 
-        {/* 마스터 시안 업로드 */}
-        <section className="bg-white border border-slate-200 rounded-xl p-6">
-          <input ref={masterFileRef} type="file" accept="image/*" className="hidden" onChange={handleMasterUpload} />
-          <div className="flex items-center gap-2 mb-5">
-            <ImagePlus className="w-4 h-4 text-indigo-400" />
-            <h2 className="text-slate-800 font-semibold text-sm">마스터 시안</h2>
-            <span className="ml-auto text-slate-500 text-xs">전체 디자인 기준 이미지</span>
-          </div>
-          <p className="text-slate-500 text-xs mb-4 leading-relaxed">
-            완성된 디자인 시안을 업로드하면 모든 제작물의 기준이 됩니다. 팀원들이 이 시안을 보고 텍스트만 수정하므로 일관된 결과물이 나옵니다.
-          </p>
-          <div className="flex gap-4 items-start">
-            {masterImageUrl ? (
-              <div className="w-40 h-40 bg-slate-50 rounded-lg overflow-hidden border border-slate-300 flex-shrink-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={masterImageUrl} alt="master" className="w-full h-full object-contain" />
-              </div>
-            ) : (
-              <div className="w-40 h-40 bg-slate-50 rounded-lg border border-dashed border-slate-300 flex flex-col items-center justify-center gap-1 flex-shrink-0">
-                <ImagePlus className="w-6 h-6 text-slate-700" />
-                <span className="text-slate-500 text-xs">시안 없음</span>
-              </div>
-            )}
-            {isOwner && (
-              <div className="flex-1 space-y-2">
-                <div className="flex gap-2 flex-wrap">
-                  <button
-                    onClick={() => masterFileRef.current?.click()}
-                    disabled={isUploadingMaster}
-                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-medium px-4 py-2 rounded-lg transition"
-                  >
-                    {isUploadingMaster ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5" />}
-                    {isUploadingMaster ? '업로드 중...' : masterImageUrl ? '시안 교체' : '시안 업로드'}
-                  </button>
-
-                  {masterImageUrl && (
-                    <button
-                      onClick={handleAnalyzeLayout}
-                      disabled={analyzingLayout}
-                      title="시안에서 슬롯 위치를 AI가 자동 분석"
-                      className="flex items-center gap-2 bg-purple-700 hover:bg-purple-600 disabled:opacity-50 text-white text-xs font-medium px-4 py-2 rounded-lg transition"
-                    >
-                      {analyzingLayout ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
-                      {analyzingLayout ? 'AI 분석 중...' : 'AI 슬롯 분석'}
-                    </button>
-                  )}
-                </div>
-                <p className="text-slate-500 text-[11px]">JPG·PNG 권장 · 자동으로 WebP 변환됩니다</p>
-                {analyzeMessage && (
-                  <p className="text-emerald-400 text-[11px]">{analyzeMessage}</p>
-                )}
-              </div>
-            )}
-          </div>
-        </section>
+        {/* 마스터 시안 카드 = 노션 §3 "시안 입력 전체 제거" 5/21 사용자 명시 삭제.
+            관련 state·handler (masterImageUrl·handleMasterUpload·handleAnalyzeLayout 등)는
+            case-c 시작 흐름·DB Project.master_image_url 컬럼 호환 위해 보존 (orphan 정책).
+            void 처리는 본 컴포넌트 마지막에 일괄. */}
 
         {/* 스타일 프리셋 6종 — 사용자 결정으로 숨김 (2026-05-11) */}
         {false && <section className="bg-white border border-slate-200 rounded-xl p-6">
