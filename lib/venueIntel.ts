@@ -57,6 +57,8 @@ export const VENUE_LIST: VenueInfo[] = [
   { key: 'aT센터', displayName: 'aT센터', region: '서울특별시', type: '컨벤션', hasSamples: true, typicalItemCount: 30 },
   // 호텔 — 평균 이하
   { key: '롯데호텔 서울', displayName: '롯데호텔 서울', region: '서울특별시', type: '호텔', hasSamples: true, typicalItemCount: 20 },
+  // 5/22 김연아 대리님 명시 = APEC 251004 = 롯데호텔 제주 별도 L1 분리 영역
+  { key: '롯데호텔 제주', displayName: '롯데호텔 제주', region: '제주특별자치도', type: '호텔', hasSamples: true, typicalItemCount: 25 },
   { key: '그랜드하얏트', displayName: '그랜드하얏트 서울', region: '서울특별시', type: '호텔', hasSamples: true, typicalItemCount: 25 },
   { key: '더플라자', displayName: '더플라자 호텔 서울', region: '서울특별시', type: '호텔', hasSamples: true, typicalItemCount: 20 },
   { key: '웨스틴 조선', displayName: '웨스틴 조선 서울', region: '서울특별시', type: '호텔', hasSamples: true, typicalItemCount: 20 },
@@ -149,7 +151,11 @@ const VENUE_ALIAS_MAP: Record<string, string> = {
   '동대문디자인플라자': 'DDP',
   '동대문 디자인 플라자': 'DDP',
   'ddp': 'DDP',
-  '롯데호텔 서울': '롯데호텔',
+  '롯데호텔 서울': '롯데호텔 서울',
+  // 5/22 김연아 대리님 = 롯데호텔 제주 별도 L1·매칭 강화
+  '롯데호텔 제주': '롯데호텔 제주',
+  '롯데시티호텔 제주': '롯데호텔 제주',
+  '제주 롯데호텔': '롯데호텔 제주',
   '그랜드 하얏트 서울': '그랜드하얏트',
   '웨스틴 조선 서울': '웨스틴조선',
   '광주 김대중컨벤션센터': '김대중컨벤션센터',
@@ -236,7 +242,7 @@ export const VENUE_HALLS: VenueHall[] = [
   { parent_key: 'ICC JEJU', name: '소회의실' },
   { parent_key: 'ICC JEJU', name: '전시장' },
   { parent_key: 'ICC JEJU', name: '공용' },                          // 오설록·인천공항·기둥배너·에스컬레이터 등 행사 운영 공용 영역 (사용자 결정·2026-05-19)
-  { parent_key: 'ICC JEJU', name: '롯데호텔 제주(인근호텔)' },        // APEC 중소기업 장관회의 251004 인근호텔 영역
+  // 5/22 김연아 대리님 = 롯데호텔 제주 = 별도 L1 분리·ICC JEJU 하위 영역 제거
   // 그랜드하얏트 서울 — G드라이브 L2_그랜드볼룸_포이어_살롱_남산홀 기반
   { parent_key: '그랜드하얏트 서울', name: '그랜드볼룸' },
   { parent_key: '그랜드하얏트 서울', name: '포이어' },

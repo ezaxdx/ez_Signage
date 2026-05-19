@@ -62,10 +62,29 @@ export const NIST_RMF_STAGES: NistRmfStage[] = [
   },
 ]
 
-/** 카테고리별 집계 */
+/**
+ * G드라이브 폴더 실측 메타 (2026-05-19 추가)
+ * 출처: G:/내 드라이브/2026년_AXDX팀/01. AI 업무 파트너/05. 제작물 리스트 가이드/AI 학습자료/L1_행사장
+ * 생성: scripts/scan_l1_venues_v5.mjs + extract_learning_seeds.mjs
+ *
+ * 노션 §4 시드(LEARNING_META_SEED)는 5/18 곽 이사 컴펌 본 SOT 유지.
+ * 본 시드는 G드라이브 폴더 실측 = 코드 정합 갭 점검 + 학습 진척 추적 용도.
+ */
+export const FOLDER_LEARNING_META: LearningMeta[] = [
+  { metric: 'L1 행사장 (G드라이브 폴더 SOT)',  value: '29개',    category: 'venue',    note: 'AI 학습자료/L1_행사장 폴더 실측 (2026-05-19)' },
+  { metric: '행사 학습 인덱스 (자동 생성)',     value: '18건',    category: 'order',    note: 'eventLearningIndexSeed.ts (G드라이브 폴더 SOT)' },
+  { metric: '학습 파일 (시안·실사·발주 엑셀)', value: '345건',   category: 'order',    note: '시안·이미지·발주 엑셀 등' },
+  { metric: '기본 도면 파일',                    value: '427건',   category: 'analysis', note: '도면·_기본도면·회의실 도면 폴더 walk' },
+  { metric: '안내·신청 서류',                    value: '210건',   category: 'analysis', note: '센터·전시장 안내서류·임대자료·제출서류' },
+  { metric: '시설 가이드 등록 (코드 시드)',      value: '40건',    category: 'venue',    note: 'VENUE_FACILITY_GUIDE_SEED — 실측 19 + 골격 21 (2026-05-19 추가)' },
+  { metric: 'VENUE_HALLS 등록 (코드 시드)',      value: '47건',    category: 'venue',    note: 'COEX 10·KINTEX 10·DDP 5·ICC JEJU 12·하얏트 4·플라자 1·BEXCO 6' },
+  { metric: '시설 가이드 미등록 갭 (보강 전)',   value: '21건 → 0건', category: 'gap',  note: '2026-05-19 골격 시드 추가 후 0건 (운영팀 연락처 보강은 안내·임대자료 PDF 분석 후)' },
+]
+
+/** 카테고리별 집계 (노션 §4 + G드라이브 폴더 두 출처 합산) */
 export function groupLearningMetaByCategory(): Record<string, LearningMeta[]> {
   const grouped: Record<string, LearningMeta[]> = {}
-  for (const m of LEARNING_META_SEED) {
+  for (const m of [...LEARNING_META_SEED, ...FOLDER_LEARNING_META]) {
     if (!grouped[m.category]) grouped[m.category] = []
     grouped[m.category].push(m)
   }

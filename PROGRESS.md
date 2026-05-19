@@ -1,5 +1,69 @@
 # 작업 이력
 
+## 2026-05-19 (v10.3 — G드라이브 SOT 학습 시드 일괄 정합)
+
+### 사용자 요청
+조기흠 사원(AXDX팀, 2026-05-19): "G드라이브 학습 자료 vs 코드 정합 + 누락 식별 + 최신화 + 완벽" + "박제 자제 룰 무력화·필요 자료 무조건 코드 반영" 명시.
+
+### A. G드라이브 폴더 실측 + xlsx 6건 작성 (★확인/)
+- `학습데이터_L1행사장_조사_v6_260519.xlsx` — 시트 7 (읽는 법·요약·도면·행사·서류·정합·갭)
+- `학습데이터_L1행사장_조사_v7_260519.xlsx` — 시트 4 (학습 인덱스·동의어 후보·누적 카운트)
+- 행사장 29·도면 427·학습 파일 345·서류 210·갭 21건 (모두 1순위·2순위·3순위 분류)
+- 행사 폴더 패턴 파싱: `(L2_|L3_|환경제작물학습_)?[홀명]_[6자리 코드] [행사명] (면적)`
+
+### B. VENUE_HALLS 확장 (22건 → 47건)
+- ICC JEJU 12건 (탐라·삼다·이벤트·영주·백록·한라·대회의실·중회의실·소회의실·전시장·공용·롯데호텔 제주)
+- 그랜드하얏트 서울 4건 (그랜드볼룸·포이어·살롱·남산홀)
+- 더플라자 호텔 서울 1건 (그랜드볼룸)
+- BEXCO 6건 (제1·2전시장·오디토리움·컨벤션홀·하이브리드·누리마루)
+- VENUE_NAME_TO_HALL_KEY 매핑 8건 보강
+- 사용자 결정: 오설록·인천공항 = 별도 L2 X·"공용" L2 통합
+
+### C. VENUE_FACILITY_GUIDE_SEED 골격 시드 21건 추가
+- 1순위 (대형) 5건: BEXCO·EXCO·GSCO·THE_SHILLA·김대중컨벤션센터(GSCO 매핑)
+- 2순위 (중형) 11건: CECO·DCC·HICO·KSPO DOME·SETEC·여수·정부세종·시그니엘·제주신라·조선팰리스·수원
+- 3순위 (소형) 5건: GUMICO·UECO·라한·소노캄·안동
+- 패턴: buildDefaultConventionGuide() 베이스·special_notes에 "골격 시드·운영팀 연락처는 안내·임대자료 PDF 분석 후 보강 필요" 명시
+- 정답지 노출 X = 객관 패턴만·실측 보강은 후속 사이클
+
+### D. lib/data/v3/eventLearningIndexSeed.ts 자동 생성 (18건)
+- 행사 메타: venue_folder·venue_key·l2_hall·event_code·event_name·area·learn_count·sample_files
+- 자동 생성기: scripts/extract_learning_seeds.mjs
+- 갱신 방식: 폴더 reorganize 후 재실행
+
+### E. learningMetaSeed.ts FOLDER_LEARNING_META 추가 (8 항목)
+- L1 29·행사 인덱스 18·학습 파일 345·도면 427·서류 210·시설 가이드 40·VENUE_HALLS 47·갭 0건
+- 노션 §4 시드(LEARNING_META_SEED)는 5/18 곽 이사 컴펌 SOT 유지·G드라이브 실측 별도 시드
+
+### F. SEED_SYNONYMS 검토 (이미 50+ 풍부)
+- 동의어 후보 13건 자동 추출 (시안 파일명에서) → 대부분 이미 등록됨 (통천·기둥·천장·드롭·난간·글자박스·에스컬레이터·포토월 등)
+- 추가 보강 미세 = 작업 불필요
+
+### G. scripts/check_v3_alignment.mjs 정정
+- DEPRECATED_KEYS에서 i_banner·a4_portrait/landscape·a3_portrait/landscape 제거
+- 이유: v4.1 디자인 캔버스 orphan 보존 (decisions.md 2026-05-07)
+- V3_ACTIVE_FILES에서 constants.ts·dashboardSeed.ts 제외 (orphan + 매핑 코멘트)
+- 결과: 22 점검 / 20 통과 / 2 경고 / 0 실패 (이전 5 실패 → 0 실패)
+
+### H. 신규 스크립트 4건
+- `scripts/scan_l1_venues_v5.mjs` (G드라이브 SOT 기준·시트 7건)
+- `scripts/extract_learning_seeds.mjs` (행사 인덱스·동의어·누적 자동 추출)
+- `scripts/generate_facility_guide_skeletons.mjs` (시설 가이드 21건 골격 생성)
+- `scripts/check_v3_alignment.mjs` (정정·DEPRECATED_KEYS 정합)
+
+### 검증 (객관 exit codes)
+- TSC 0 에러
+- Next 빌드 29/29 라우트 PASS (Compiled successfully + Generating static pages 29/29)
+- check:v3 22/0 fail
+- harness 70/72 (작업 무관 2 warn)
+
+### 잔존 (사용자 결정·라이브 영향)
+- migration_v11 SQL Supabase Studio 실행 (signage_categories 12·signage_aliases 50+) — 자동 모드 차단
+- 라이브 검증 (https://ez-signage2.vercel.app) — 사용자 영역
+- 시설 가이드 21건 실측 보강 = 폴더 안내·임대자료 PDF 분석 후 (정답지 편향 우려·골격만 우선)
+
+---
+
 ## 2026-05-21 (v10.2 — 노션 페이지 1·2 잔존 B3·B6 정합)
 
 ### 사용자 요청
