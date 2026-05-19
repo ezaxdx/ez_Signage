@@ -22,43 +22,58 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '행사명·장소는 필수' }, { status: 400 })
   }
 
+  // 5/22 사용자 명시 = silent fail 완전 제거 = INSERT 코드를 recommendSignage 결과와 분리.
+  // 이전 구조 = recommendSignage 실패 → fallback 200 → INSERT 코드 미도달 (recommend_count 0건 유지).
+  // 신규 구조 = 호출 자체 시점에 무조건 INSERT (recommendSignage 성공·실패 영역 무관·호출 카운트 정합).
+  // 결과 분기 = result_status (success / fallback / error) metadata 영역 부착.
+
+  let result: Awaited<ReturnType<typeof recommendSignage>> | null = null
+  let resultStatus: 'success' | 'fallback' | 'error' = 'success'
+  let recommendErrorMsg: string | null = null
+  let httpStatus = 200
+
   try {
-    // 5/22 사용자 명시 = /api/recommend 500 에러 정정 = 내부 호출 영역 try/catch 강화
-    let result
-    try {
-      result = await recommendSignage(body)
-    } catch (recommendErr) {
-      console.error('[recommend] recommendSignage 실패:', recommendErr)
-      const msg = recommendErr instanceof Error ? recommendErr.message : '추천 생성 실패'
-      // GEMINI_API_KEY·event_history 영역 = fallback 빈 응답·200 (라이브 영향 0)
-      if (/GEMINI_API_KEY|event_history|relation/.test(msg)) {
-        return NextResponse.json({ items: [], skipped: true, error: msg }, { status: 200 })
-      }
-      throw recommendErr
+    result = await recommendSignage(body)
+  } catch (recommendErr) {
+    console.error('[recommend] recommendSignage 실패:', recommendErr)
+    recommendErrorMsg = recommendErr instanceof Error ? recommendErr.message : '추천 생성 실패'
+    if (/GEMINI_API_KEY|event_history|relation|column/.test(recommendErrorMsg)) {
+      resultStatus = 'fallback'
+    } else {
+      resultStatus = 'error'
+      httpStatus = 500
     }
-    // 5/22 P4-B 사용자 명시 = silent fail 제거. INSERT 실패 시 console.error 명시 (Vercel Functions Logs 영역에서 확인).
-    try {
-      const { error: logError } = await supabase.from('usage_logs').insert({
-        user_id: user.id,
-        project_id: null,
-        action: 'recommend',
-        metadata: {
-          venue: body.venue,
-          event_name: body.eventName,
-          item_count: result.items?.length ?? 0,
-        },
-      })
-      if (logError) {
-        console.error('[usage_logs] INSERT failed:', logError.message, logError.code, logError.details)
-      } else {
-        console.log('[usage_logs] ✓ recommend INSERT')
-      }
-    } catch (logEx) {
-      console.error('[usage_logs] Exception:', logEx)
-    }
-    return NextResponse.json(result)
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : '추천 생성 실패'
-    return NextResponse.json({ error: msg }, { status: 500 })
   }
+
+  // ★ INSERT = 호출 자체 시점에 무조건 실행 (recommendSignage 결과와 무관)
+  try {
+    const { error: logError } = await supabase.from('usage_logs').insert({
+      user_id: user.id,
+      project_id: null,
+      action: 'recommend',
+      metadata: {
+        venue: body.venue,
+        event_name: body.eventName,
+        item_count: result?.items?.length ?? 0,
+        result_status: resultStatus,
+        ...(recommendErrorMsg ? { error: recommendErrorMsg } : {}),
+      },
+    })
+    if (logError) {
+      console.error('[usage_logs] INSERT failed:', logError.message, logError.code, logError.details)
+    } else {
+      console.log(`[usage_logs] ✓ recommend INSERT (status=${resultStatus})`)
+    }
+  } catch (logEx) {
+    console.error('[usage_logs] Exception:', logEx)
+  }
+
+  // 응답 분기
+  if (resultStatus === 'error') {
+    return NextResponse.json({ error: recommendErrorMsg }, { status: httpStatus })
+  }
+  if (resultStatus === 'fallback') {
+    return NextResponse.json({ items: [], skipped: true, error: recommendErrorMsg }, { status: 200 })
+  }
+  return NextResponse.json(result)
 }
