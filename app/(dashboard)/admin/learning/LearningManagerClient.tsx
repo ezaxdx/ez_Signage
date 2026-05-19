@@ -1172,9 +1172,8 @@ export function LearningManagerClient({
 
         </>}
         {activeSection === 'venues' && <>
-        {/* v9.36 시안 매칭: 가로 서브탭 바 제거. 행사장 관리 안의 3개 블록(추가·요청·큐)을 세로로 모두 표시. */}
-        {true && <>
-        {/* ── 행사장 추가 (4-① 서브) ─────────────────────────── */}
+        {/* 5/22 사용자 명시 = 행사장 추가 영역 = 시설 가이드 메뉴 영역 이동. 행사장 관리 영역 = 학습된 행사장 표만. */}
+        {false && <>
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-4 flex items-center gap-2">
             <Plus className="w-4 h-4 text-indigo-400" />
@@ -2461,6 +2460,67 @@ export function LearningManagerClient({
 
         {/* v9.36: 평면 메뉴 ′시설 가이드′ — 가이드 + 예외 패턴 두 블록 묶음 */}
         {activeSection === 'facility-guides' && <>
+        {/* 5/22 사용자 명시 = 행사장 추가 영역 = 시설 가이드 메뉴 영역 이동 */}
+        <section className="bg-white border border-slate-200 rounded-xl p-5">
+          <h2 className="text-slate-900 font-semibold text-sm mb-4 flex items-center gap-2">
+            <Plus className="w-4 h-4 text-indigo-400" />
+            행사장 추가
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-slate-500 text-[11px] mb-1">이름 <span className="text-indigo-400">*</span></label>
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="예: BEXCO 1전시장" className="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-slate-900 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-500 text-[11px] mb-1">권역</label>
+                <select value={region} onChange={e => setRegion(e.target.value)} className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-2 text-slate-900 text-sm">
+                  <option value="">선택</option>
+                  {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-slate-500 text-[11px] mb-1">유형</label>
+                <select value={venueType} onChange={e => setVenueType(e.target.value)} className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-2 text-slate-900 text-sm">
+                  <option value="">선택</option>
+                  {VENUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-slate-500 text-[11px] mb-1">주출입구 메모 (선택)</label>
+              <input value={entranceNote} onChange={e => setEntranceNote(e.target.value)} placeholder="예: 1층 정문 동측" className="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-slate-900 text-sm" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-500 text-[11px] mb-1">면적 (㎡, 선택)</label>
+                <input type="number" value={areaSqm} onChange={e => setAreaSqm(e.target.value)} className="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-slate-900 text-sm" />
+              </div>
+              <label className="flex items-center gap-2 text-slate-400 text-xs cursor-pointer pt-6">
+                <input type="checkbox" checked={hallSplit} onChange={e => setHallSplit(e.target.checked)} />
+                <span>홀 단위 분리</span>
+              </label>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-slate-500 text-[11px] mb-1">도면 첨부 (PDF/이미지)</label>
+              <input type="file" accept=".pdf,image/*" onChange={e => setFloorPlan(e.target.files?.[0] ?? null)} className="block w-full text-slate-400 text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-slate-50 file:text-slate-400 file:cursor-pointer" />
+              {floorPlan && <p className="text-slate-500 text-[10px] mt-1">{floorPlan.name}</p>}
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-slate-500 text-[11px] mb-1">시설 가이드북·매뉴얼 (PDF·DOCX·HWP·이미지)</label>
+              <input type="file" accept=".pdf,.docx,.hwp,image/*" onChange={e => setFacilityGuideFile(e.target.files?.[0] ?? null)} className="block w-full text-slate-400 text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-slate-50 file:text-slate-400 file:cursor-pointer" />
+              {facilityGuideFile && <p className="text-slate-500 text-[10px] mt-1">{facilityGuideFile.name}</p>}
+            </div>
+          </div>
+          {addError && <div className="mt-3 text-red-700 text-xs bg-red-50 border border-red-300 rounded px-3 py-2">{addError}</div>}
+          <div className="mt-4 flex justify-end">
+            <button onClick={addVenue} disabled={adding || !name.trim()} className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-200 disabled:text-slate-500 text-white text-sm rounded transition">
+              {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              등록 + 학습 트리거
+            </button>
+          </div>
+        </section>
+
         {/* 5/22 사용자 명시 = 사용자 요청 대기·도면 학습 큐 영역 = 시설 가이드 메뉴 영역 통합 */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-4 flex items-center gap-2">
