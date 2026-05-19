@@ -318,6 +318,8 @@ export function LearningManagerClient({
   type SectionKey =
     | 'venue-status'
     | 'venues'
+    | 'program-parts'
+    | 'events'
     | 'signage-types'
     | 'synonyms-mapping'
     | 'facility-guides'
@@ -353,10 +355,12 @@ export function LearningManagerClient({
   const SECTIONS: { key: SectionKey; label: string; icon: typeof GraduationCap }[] = [
     { key: 'venue-status',         label: '행사장 학습 현황',  icon: GraduationCap },
     { key: 'venues',               label: '행사장 관리',       icon: Building2 },
-    { key: 'signage-types',        label: '환경장식물 종류',   icon: ImageIcon },
+    // 5/22 사용자 명시 = 행사장 관리 ↔ 행사 관리 사이에 프로그램 파트 관리·행사 관리 신설
+    { key: 'program-parts',        label: '프로그램 파트 관리', icon: Workflow },
+    { key: 'events',               label: '행사 관리',         icon: Sparkles },
+    { key: 'signage-types',        label: '환경장식물 관리',   icon: ImageIcon },
     { key: 'synonyms-mapping',     label: '동의어 매핑',       icon: FileText },
     { key: 'facility-guides',      label: '시설 가이드',       icon: AlertCircle },
-    // 5/20 노션 §12 정합 = correction-requests 별도 메뉴 제거 → facility-guides 내부 통합
   ]
 
   // v9.47: VENUE_SUBTABS 상수 제거 — v9.36에서 가로 서브탭 바를 제거하고 블록을 세로 동시 표시로
@@ -809,12 +813,10 @@ export function LearningManagerClient({
                             <span className="text-slate-300 text-[10px]">—</span>
                           ) : (
                             <div className="flex flex-wrap gap-0.5">
-                              {cov.filled.map(k => {
-                                const label = STANDARD_CATEGORY_BY_KEY.get(k as StandardCategoryKey)?.label ?? k
-                                return (
-                                  <span key={k} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">{label}</span>
-                                )
-                              })}
+                              {/* page.tsx 영역 = STANDARD_CATEGORY_BY_KEY.get(k)?.label로 이미 한국어 변환됨·재변환 X */}
+                              {cov.filled.map(k => (
+                                <span key={k} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">{k}</span>
+                              ))}
                             </div>
                           )}
                         </td>
@@ -1871,6 +1873,104 @@ export function LearningManagerClient({
             })}
           </div>
         </section>
+        )}
+
+        {/* 5/22 사용자 명시 = 프로그램 파트 관리 메뉴 — PROGRAM_PARTS 12종 × 환경장식물 매칭 평균값 */}
+        {activeSection === 'program-parts' && (
+          <section className="bg-white border border-slate-200 rounded-xl p-5">
+            <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
+              <Workflow className="w-4 h-4 text-indigo-500" />
+              프로그램 파트 관리 ({PROGRAM_PARTS.length})
+            </h2>
+            <p className="text-[11px] text-slate-500 mb-3">
+              프로그램 파트별 매칭 환경장식물 = AI 추천 1순위 기준. 평균 매칭 환경장식물 수는 누적 프로젝트 데이터 기반 자동 갱신.
+            </p>
+            <div className="space-y-4">
+              {PROGRAM_PART_GROUPS.map(g => {
+                const groupParts = PROGRAM_PARTS.filter(p => p.group === g.group)
+                return (
+                <div key={g.group}>
+                  <h3 className="text-[11px] font-semibold text-slate-700 mb-2 uppercase tracking-wide">{g.label}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {groupParts.map(pt => {
+                      const code = pt.code
+                      const matchedIds = PROGRAM_PART_SIGNAGE_HINTS[code] ?? []
+                      return (
+                        <div key={code} className="border border-slate-200 rounded-lg p-3 bg-slate-50/50">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-semibold text-slate-900">{pt.name}</span>
+                            <span className="text-[10px] font-mono text-slate-400">{code}</span>
+                          </div>
+                          {pt.hint && <p className="text-[10px] text-slate-500 mb-2">{pt.hint}</p>}
+                          <div className="flex flex-wrap gap-0.5">
+                            <span className="text-[10px] text-slate-600 mr-1">매칭 ({matchedIds.length}):</span>
+                            {matchedIds.length === 0 ? (
+                              <span className="text-[10px] text-slate-300">—</span>
+                            ) : (
+                              matchedIds.slice(0, 6).map(id => (
+                                <span key={id} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">{id}</span>
+                              ))
+                            )}
+                            {matchedIds.length > 6 && <span className="text-[9px] text-slate-400">+{matchedIds.length - 6}</span>}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+                )
+              })}
+              <div className="text-[10px] text-slate-400 italic pt-2 border-t border-slate-100">
+                평균 매칭 = 누적 프로젝트의 design_items 통계 자동 산출 (실 데이터 누적 후 표시·현재 SOT = PROGRAM_PART_SIGNAGE_HINTS 정적 매핑).
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* 5/22 사용자 명시 = 행사 관리 메뉴 — SEED_EVENT_HISTORY 44건 + 향후 데이터 누적 */}
+        {activeSection === 'events' && (
+          <section className="bg-white border border-slate-200 rounded-xl p-5">
+            <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-500" />
+              행사 관리 ({SEED_EVENT_HISTORY.length})
+            </h2>
+            <p className="text-[11px] text-slate-500 mb-3">
+              이 앱에서 진행한 가정 = 기반·뼈대 정보. 신규 프로젝트 INSERT 시 동일 누적·자동 갱신.
+            </p>
+            <div className="overflow-x-auto border border-slate-200 rounded">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr className="text-slate-600 text-[11px]">
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">행사명</th>
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">행사장</th>
+                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">연도</th>
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">분류</th>
+                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="실제 엑셀 파싱으로 추출된 환경장식물 항목 수">분석 항목 수</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {SEED_EVENT_HISTORY.map(e => (
+                    <tr key={(e.project_code ?? '') + e.project_name} className="hover:bg-slate-50">
+                      <td className="px-2 py-1.5 text-slate-800 font-medium">{e.project_name}</td>
+                      <td className="px-2 py-1.5 text-slate-700">{e.venue}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-600 font-mono">{e.year ?? '—'}</td>
+                      <td className="px-2 py-1.5">
+                        <span className={`inline-block px-1.5 py-0.5 text-[10px] rounded ${
+                          e.category_tag === '핵심' ? 'bg-rose-50 text-rose-700' :
+                          e.category_tag === '해외' ? 'bg-violet-50 text-violet-700' :
+                          e.category_tag === '미분류' ? 'bg-slate-100 text-slate-500' :
+                          'bg-emerald-50 text-emerald-700'
+                        }`}>{e.category_tag}</span>
+                      </td>
+                      <td className="px-2 py-1.5 text-right font-mono text-emerald-600 font-semibold">
+                        {e.analyzed_item_count ?? <span className="text-slate-300">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
         )}
 
         {/* v9.36: 평면 메뉴 ′시설 가이드′ — 가이드 + 예외 패턴 두 블록 묶음 */}
