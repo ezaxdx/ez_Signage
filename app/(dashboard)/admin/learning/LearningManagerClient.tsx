@@ -806,7 +806,7 @@ export function LearningManagerClient({
                         {/* 5/22 사용자 명시 = "X/6 학습" 영문 키 → "환경장식물 종류" 한국어 라벨로 정정 */}
                         <td className="px-2 py-1.5 text-left">
                           {!cov || cov.filled.length === 0 ? (
-                            <span className="text-slate-300 text-[10px]">학습 데이터 부재</span>
+                            <span className="text-slate-300 text-[10px]">—</span>
                           ) : (
                             <div className="flex flex-wrap gap-0.5">
                               {cov.filled.map(k => {
