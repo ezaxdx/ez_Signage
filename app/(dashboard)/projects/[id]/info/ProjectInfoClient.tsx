@@ -779,14 +779,17 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
                     <span className="ml-2 text-emerald-500/70 text-xs">나</span>
                   )}
                 </div>
-                {isOwner && member.user_email !== userEmail && (
+                {/* 5/20 노션 §7-3 정합 = 모든 멤버 삭제 가능 (관리자·본인·팀원 전체 동일 권한)
+                    본인 = 자기 삭제 가능·소유자 = 모두 삭제 가능·팀원 = 다른 팀원 삭제 가능 */}
+                {member.user_email !== userEmail || !isOwner ? (
                   <button
                     onClick={() => handleRemoveMember(member.id, member.user_email)}
                     className="text-slate-500 hover:text-red-400 transition p-1 rounded"
+                    title={member.user_email === userEmail ? '나가기' : '삭제'}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
-                )}
+                ) : null}
               </div>
             ))}
           </div>
