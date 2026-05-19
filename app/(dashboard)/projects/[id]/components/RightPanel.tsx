@@ -201,13 +201,13 @@ function SampleImageView({
       const raw = localStorage.getItem('mice_signage_type_samples')
       if (!raw) return
       const samples = JSON.parse(raw) as Record<string, string>
-      const url = samples[matchedCategory.id]
+      const url = samples[matchedCategory.key]
       if (url) setUploadedSampleUrl(url)
       else setUploadedSampleUrl(null)
     } catch {
       setUploadedSampleUrl(null)
     }
-  }, [matchedCategory.id])
+  }, [matchedCategory.key])
   const imageUrl = uploadedSampleUrl ?? matchedCategory.sample_image_url
   return (
     <div className="p-4 h-full flex flex-col">

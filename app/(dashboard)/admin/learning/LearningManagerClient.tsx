@@ -430,6 +430,8 @@ export function LearningManagerClient({
   const [stSamplePreview, setStSamplePreview] = useState<string>('')
   // 5/22 P2-7 = 행사 관리 표 펼침 영역 (▶ 행 클릭 시 환경장식물별 분리 표시)
   const [expandedEventKey, setExpandedEventKey] = useState<string | null>(null)
+  // 5/22 사용자 명시 = 프로그램 파트 관리 = 화살표 펼침 영역 (행사 관리와 동일 패턴)
+  const [expandedPartCode, setExpandedPartCode] = useState<string | null>(null)
   // 5/22 사용자 명시 = 행사 관리 편집·삭제·추가 (localStorage 오버라이드 패턴)
   const [hiddenEventKeys, setHiddenEventKeys] = useState<string[]>([])
   const [eventOverrides, setEventOverrides] = useState<Record<string, { project_name?: string; venue?: string; year?: number; program_parts?: string[]; analyzed_item_count?: number }>>({})
@@ -2050,10 +2052,11 @@ export function LearningManagerClient({
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr className="text-slate-600 text-[11px]">
+                    <th className="px-2 py-2 w-6"></th>
                     <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">분류</th>
                     <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">파트명</th>
                     <th className="px-2 py-2 text-left font-semibold">설명</th>
-                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">매칭 환경장식물 (실 사용 빈도)</th>
+                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">사용 행사</th>
                     {isAdmin && <th className="px-2 py-1.5 text-center font-semibold w-16"></th>}
                   </tr>
                 </thead>
@@ -2074,10 +2077,9 @@ export function LearningManagerClient({
                       return a.name.localeCompare(b.name, 'ko')
                     })
                     .map(pt => {
-                      const matchedIds = PROGRAM_PART_SIGNAGE_HINTS[pt.code] ?? []
-                      // 5/22 P2-5 = 실 사용 빈도 = SEED_EVENT_HISTORY.program_parts에서 이 파트 사용된 행사 수 집계
+                      // 5/22 사용자 명시 = 사용 행사 = SEED_EVENT_HISTORY에서 이 파트 사용된 행사 수
                       const usageCount = SEED_EVENT_HISTORY.filter(e => (e.program_parts ?? []).includes(pt.code)).length
-                      // 5/22 사용자 명시 = 각 환경장식물 사용 횟수 = 이 파트 사용한 행사의 signage_breakdown에서 카테고리별 총 합산
+                      // 사용된 환경장식물·평균 수량 = 이 파트 사용한 행사의 signage_breakdown 합산 → 평균
                       const sigUsage = new Map<string, number>()
                       for (const e of SEED_EVENT_HISTORY) {
                         if (!(e.program_parts ?? []).includes(pt.code)) continue
@@ -2088,56 +2090,72 @@ export function LearningManagerClient({
                           sigUsage.set(s.category, (sigUsage.get(s.category) ?? 0) + s.quantity)
                         }
                       }
-                      const matchedLabels = matchedIds.map(id => {
-                        const t = signageTypeList.find(s => s.id === id) ?? signageTypes.find(s => s.id === id)
-                        return t?.name ?? id
-                      })
+                      const sigArr = Array.from(sigUsage.entries())
+                        .map(([category, total]) => ({ category, avg: usageCount > 0 ? total / usageCount : 0 }))
+                        .filter(s => s.avg > 0)
+                        .sort((a, b) => b.avg - a.avg)
                       const groupLabel = PROGRAM_PART_GROUPS.find(g => g.group === pt.group)?.label ?? pt.group
+                      const isOpen = expandedPartCode === pt.code
                       return (
-                        <tr key={pt.code} className="hover:bg-slate-50">
-                          <td className="px-2 py-1.5">
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                              pt.group === 'program' ? 'bg-emerald-50 text-emerald-700' :
-                              pt.group === 'attendee' ? 'bg-indigo-50 text-indigo-700' :
-                              'bg-amber-50 text-amber-700'
-                            }`}>{groupLabel}</span>
-                          </td>
-                          <td className="px-2 py-1.5 text-slate-800 font-medium whitespace-nowrap">{pt.name}</td>
-                          <td className="px-2 py-1.5 text-slate-500 text-[10px]">{pt.hint ?? '—'}</td>
-                          <td className="px-2 py-1.5">
-                            {matchedLabels.length === 0 ? (
-                              <span className="text-slate-300 text-[10px]">—</span>
-                            ) : (
-                              <div className="flex flex-wrap gap-0.5 items-center">
-                                {matchedLabels.map((label, i) => {
-                                  const totalQty = sigUsage.get(label) ?? 0
-                                  // 5/22 사용자 명시 = 총 수량 → 행사당 평균 수량 (보기 쉬운 영역)
-                                  const avgPerEvent = usageCount > 0 ? (totalQty / usageCount).toFixed(1) : '0'
-                                  return (
-                                    <span key={i} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">
-                                      {label}{totalQty > 0 && <span className="text-emerald-500 ml-0.5">(평균 {avgPerEvent}개)</span>}
-                                    </span>
-                                  )
-                                })}
-                                <span className="text-[9px] text-slate-400 ml-1">행사 {usageCount}건</span>
-                              </div>
-                            )}
-                          </td>
-                          {isAdmin && (
-                            <td className="px-2 py-1.5 text-center whitespace-nowrap">
-                              <button
-                                onClick={() => setEditingProgramPart({ code: pt.code, name: pt.name, hint: pt.hint ?? '', group: pt.group })}
-                                title="편집"
-                                className="text-[11px] leading-none px-1 text-slate-400 hover:text-indigo-600"
-                              >✎</button>
-                              <button
-                                onClick={() => toggleHideProgramPart(pt.code)}
-                                title="삭제·숨김"
-                                className="text-[11px] leading-none px-1 ml-1 text-slate-300 hover:text-red-500"
-                              >✕</button>
+                        <React.Fragment key={pt.code}>
+                          <tr className="hover:bg-slate-50 cursor-pointer" onClick={() => setExpandedPartCode(isOpen ? null : pt.code)}>
+                            <td className="px-2 py-1.5 text-slate-400 text-[11px]">{isOpen ? '▼' : '▶'}</td>
+                            <td className="px-2 py-1.5">
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                pt.group === 'program' ? 'bg-emerald-50 text-emerald-700' :
+                                pt.group === 'attendee' ? 'bg-indigo-50 text-indigo-700' :
+                                'bg-amber-50 text-amber-700'
+                              }`}>{groupLabel}</span>
                             </td>
+                            <td className="px-2 py-1.5 text-slate-800 font-medium whitespace-nowrap">{pt.name}</td>
+                            <td className="px-2 py-1.5 text-slate-500 text-[10px]">{pt.hint ?? '—'}</td>
+                            <td className="px-2 py-1.5 text-right font-mono text-emerald-600 font-semibold">
+                              {usageCount > 0 ? `${usageCount}건` : <span className="text-slate-300">—</span>}
+                            </td>
+                            {isAdmin && (
+                              <td className="px-2 py-1.5 text-center whitespace-nowrap" onClick={ev => ev.stopPropagation()}>
+                                <button
+                                  onClick={() => setEditingProgramPart({ code: pt.code, name: pt.name, hint: pt.hint ?? '', group: pt.group })}
+                                  title="편집"
+                                  className="text-[11px] leading-none px-1 text-slate-400 hover:text-indigo-600"
+                                >✎</button>
+                                <button
+                                  onClick={() => toggleHideProgramPart(pt.code)}
+                                  title="삭제·숨김"
+                                  className="text-[11px] leading-none px-1 ml-1 text-slate-300 hover:text-red-500"
+                                >✕</button>
+                              </td>
+                            )}
+                          </tr>
+                          {isOpen && (
+                            <tr className="bg-slate-50">
+                              <td></td>
+                              <td colSpan={isAdmin ? 5 : 4} className="px-2 py-2">
+                                <div className="text-[10px] text-slate-600 mb-2 font-semibold">사용된 환경장식물 (평균 수량/행사)</div>
+                                {sigArr.length === 0 ? (
+                                  <div className="text-[10px] text-slate-400 italic">— 사용된 행사 없음</div>
+                                ) : (
+                                  <table className="w-full text-[11px]">
+                                    <thead>
+                                      <tr className="text-slate-500 text-[10px]">
+                                        <th className="px-2 py-1 text-left">환경장식물 종류</th>
+                                        <th className="px-2 py-1 text-right">평균 수량</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {sigArr.map((s, i) => (
+                                        <tr key={i} className="border-t border-slate-200">
+                                          <td className="px-2 py-1">{s.category}</td>
+                                          <td className="px-2 py-1 text-right font-mono">{s.avg.toFixed(1)}개</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                )}
+                              </td>
+                            </tr>
                           )}
-                        </tr>
+                        </React.Fragment>
                       )
                     })}
                 </tbody>
