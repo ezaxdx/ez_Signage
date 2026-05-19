@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { explainStorageError } from '@/lib/services/storagePaths'
-import { REGION_ORDER, VENUE_HALLS, getHallsByVenueKey, getHallsByVenueName, extractL1L2FromComplexVenue } from '@/lib/venueIntel'
+import { REGION_ORDER, VENUE_HALLS, getHallsByVenueKey, getHallsByVenueName, extractL1L2FromComplexVenue, normalizeVenueName } from '@/lib/venueIntel'
 import { STANDARD_CATEGORY_BY_KEY, type StandardCategoryKey } from '@/lib/data/signageCategoryStandards'
 import { PROGRAM_PARTS, PROGRAM_PART_GROUPS, PROGRAM_PART_SIGNAGE_HINTS, PROGRAM_PART_BY_CODE } from '@/lib/programParts'
 import { SEED_EVENT_HISTORY, estimateSignageBreakdown } from '@/lib/data/dashboardSeed'
@@ -1057,7 +1057,10 @@ export function LearningManagerClient({
                     // L1 그룹 = venue 이름 첫 단어 (코엑스·킨텍스·송도 등)
                     const groups = new Map<string, typeof filtered>()
                     for (const v of filtered) {
-                      const g = (v.venue ?? '').split(' ')[0] || v.venue
+                      // 5/22 사용자 명시 = "ICC JEJU 및 인근호텔" + "(ICC JEJU)" 같은 영역 다른 행사장 영역 영역 X
+                      // = normalizeVenueName 영역 적용 후 = 같은 행사장 영역 같은 L1 그룹
+                      const normalized = normalizeVenueName(v.venue ?? '')
+                      const g = (normalized.split(' ')[0] || normalized || v.venue)
                       if (!groups.has(g)) groups.set(g, [])
                       groups.get(g)!.push(v)
                     }
@@ -1082,7 +1085,10 @@ export function LearningManagerClient({
                         for (const s of m.signage_breakdown ?? []) if (validNames.has(s.category)) groupSig.add(s.category)
                         for (const p of m.program_parts ?? []) groupParts.add(p)
                       }
-                      const groupPartNames = Array.from(groupParts).map(c => PROGRAM_PART_BY_CODE.get(c)?.name ?? c)
+                      // 5/22 = 의전 (40.18) 등 삭제된 영역 코드 raw 표시 X·filter
+                      const groupPartNames = Array.from(groupParts)
+                        .map(c => PROGRAM_PART_BY_CODE.get(c)?.name)
+                        .filter((n): n is string => Boolean(n))
                       // L1 = 행사장 그룹 행
                       out.push(
                         <tr key={`L1-${groupName}`} className="bg-indigo-50/60 hover:bg-indigo-50 cursor-pointer border-t-2 border-indigo-100"
@@ -1480,7 +1486,9 @@ export function LearningManagerClient({
                     })
                     const venueGroups = new Map<string, typeof sortedVenues>()
                     for (const v of sortedVenues) {
-                      const g = (v.name ?? '').split(' ')[0] || v.name
+                      // 5/22 = normalizeVenueName 영역 적용 = 같은 행사장 영역 같은 L1 그룹
+                      const normName = normalizeVenueName(v.name ?? '')
+                      const g = (normName.split(' ')[0] || normName || v.name)
                       if (!venueGroups.has(g)) venueGroups.set(g, [])
                       venueGroups.get(g)!.push(v)
                     }
@@ -3097,7 +3105,9 @@ export function LearningManagerClient({
                     // L1 그룹 = venue_name 첫 단어 (코엑스·킨텍스·송도 등). 매칭 X 영역 = 단독 그룹.
                     const groups = new Map<string, typeof sorted>()
                     for (const f of sorted) {
-                      const groupName = f.venue_name.split(' ')[0] || f.venue_name
+                      // 5/22 = 같은 행사장 영역 같은 L1 그룹 영역 = normalizeVenueName 적용
+                      const normalizedName = normalizeVenueName(f.venue_name)
+                      const groupName = (normalizedName.split(' ')[0] || normalizedName || f.venue_name)
                       if (!groups.has(groupName)) groups.set(groupName, [])
                       groups.get(groupName)!.push(f)
                     }

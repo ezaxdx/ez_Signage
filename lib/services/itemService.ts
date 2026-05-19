@@ -2,28 +2,26 @@ import { pickDefaultSlots } from '@/lib/types'
 import { findLayoutDNA, type LayoutDNAEntry } from '@/lib/data/dashboardSeed'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-// SEED_LAYOUT_DNA의 type_id ↔ 환경장식물 카테고리 명칭 매핑
-// (대시보드 시드에서는 영어 type_id 사용, items.category는 한글)
+// 5/22 김연아 대리님 명시 = 엑셀 SOT 12 카테고리만 영역. I배너·A4·A3 영역 = 폼보드·피켓보드 영역 영역 매핑.
 const CATEGORY_TO_DNA_TYPE: Record<string, string> = {
   'X배너':         'x_banner',
   'X-배너':        'x_banner',
-  'I배너':         'i_banner',
-  'I-배너':        'i_banner',
   '가로등 배너':   'streetlight_banner',
   '가로 현수막':   'horizontal_banner',
   '세로 현수막':   'vertical_banner',
   '통천':          'chunchen_banner',
   '통천 배너':     'chunchen_banner',
   '포디움 타이틀': 'podium',
-  '폼보드':        'foamboard',
-  'L보드':         'foamboard',
-  'A4 세로':       'a4_portrait',
-  'A4 가로':       'a4_landscape',
-  'A3 세로':       'a3_portrait',
-  'A3 가로':       'a3_landscape',
   '동선 배너':     'route_banner',
+  '동선 안내 배너': 'route_banner',
   '동선배너':      'route_banner',
-  '백월':          'backwall',
+  // 5/22 신규 5건
+  '시상보드':      'award_board',
+  'Q방':           'q_room',
+  '디지털 사이니지': 'digital_signage',
+  '폼보드':        'foam_board',
+  'L보드':         'foam_board',
+  '피켓보드':      'picket_board',
 }
 
 /** 카테고리(한글) → SEED_LAYOUT_DNA 적합 항목 조회. 없으면 null. */
