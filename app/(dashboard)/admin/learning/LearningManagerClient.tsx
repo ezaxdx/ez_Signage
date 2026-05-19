@@ -909,62 +909,8 @@ export function LearningManagerClient({
           </section>
         )}
 
-        <section className="bg-white border border-slate-200 rounded-xl p-5">
-          <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
-            <FileText className="w-4 h-4 text-indigo-500" />
-            학습 시킨 행사 인덱스 ({SEED_EVENT_HISTORY.length})
-          </h2>
-          <p className="text-[11px] text-slate-500 mb-3">
-            학습 데이터 확보된 행사 목록. 도면·엑셀·이미지 보유 여부와 실제 분석된 항목 수를 한눈에 확인.
-          </p>
-          <div className="overflow-x-auto border border-slate-200 rounded">
-            <table className="w-full text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr className="text-slate-600 text-[11px]">
-                  <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">행사명</th>
-                  <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">행사장</th>
-                  <th className="px-2 py-1.5 text-center font-semibold whitespace-nowrap">연도</th>
-                  <th className="px-2 py-1.5 text-center font-semibold whitespace-nowrap">분류</th>
-                  <th className="px-2 py-1.5 text-center font-semibold whitespace-nowrap">엑셀</th>
-                  <th className="px-2 py-1.5 text-center font-semibold whitespace-nowrap">이미지</th>
-                  <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">분석 항목 수</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {SEED_EVENT_HISTORY
-                  .slice()
-                  .sort((a, b) => (b.year ?? 0) - (a.year ?? 0))
-                  .map(e => (
-                    <tr key={`${e.project_code ?? e.project_name}-${e.year ?? ''}`} className="hover:bg-slate-50">
-                      <td className="px-2 py-1.5 text-slate-800 font-medium whitespace-nowrap" title={e.project_name}>{e.project_name}</td>
-                      <td className="px-2 py-1.5 text-slate-700 whitespace-nowrap">{e.venue}</td>
-                      <td className="px-2 py-1.5 text-center text-slate-500 font-mono">{e.year ?? '—'}</td>
-                      <td className="px-2 py-1.5 text-center">
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                          e.category_tag === '핵심' ? 'bg-rose-100 text-rose-700' :
-                          e.category_tag === '해외' ? 'bg-violet-100 text-violet-700' :
-                          e.category_tag === '미분류' ? 'bg-slate-100 text-slate-500' :
-                          'bg-emerald-100 text-emerald-700'
-                        }`}>{e.category_tag}</span>
-                      </td>
-                      <td className="px-2 py-1.5 text-center">
-                        {e.has_excel ? <span className="text-emerald-600">✓</span> : <span className="text-slate-300">—</span>}
-                      </td>
-                      <td className="px-2 py-1.5 text-center">
-                        {e.has_image ? <span className="text-emerald-600">✓</span> : <span className="text-slate-300">—</span>}
-                      </td>
-                      <td className="px-2 py-1.5 text-right text-slate-700 font-mono">
-                        {e.analyzed_item_count != null ? e.analyzed_item_count : <span className="text-slate-300">—</span>}
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="text-[10px] text-slate-400 mt-2">
-            ※ 분석 항목 수 = 실제 엑셀 파싱으로 추출된 환경장식물 수. "—" = 분석 미완료 또는 데이터 없음.
-          </p>
-        </section>
+        {/* 5/22 사용자 명시 = "학습 시킨 행사 인덱스 (44)" 영역 전부 삭제. venue-status 섹션 내 잔존 표 제거.
+            행사 관리 메뉴 (events 섹션)에 5대 영역 정합 표만 유지. */}
 
         </>}
         {activeSection === 'venues' && <>
