@@ -9,6 +9,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { explainStorageError } from '@/lib/services/storagePaths'
 import { REGION_ORDER, VENUE_HALLS, getHallsByVenueKey, getHallsByVenueName } from '@/lib/venueIntel'
+import { STANDARD_CATEGORY_BY_KEY, type StandardCategoryKey } from '@/lib/data/signageCategoryStandards'
 import { PROGRAM_PARTS, PROGRAM_PART_GROUPS, PROGRAM_PART_SIGNAGE_HINTS } from '@/lib/programParts'
 import { SEED_EVENT_HISTORY } from '@/lib/data/dashboardSeed'
 // 5/21 사용자 명시 = NIST 4단·전체 학습 요약·향후 도입 로드맵 UI 표시 롤백.
@@ -759,7 +760,8 @@ export function LearningManagerClient({
                     <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">프로젝트</th>
                     <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">전체 항목</th>
                     <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="실제 다운로드·발주가 완료된 항목 수 (학습 신호)">발주 완료</th>
-                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="전체 항목 중 발주 완료 비율 (학습 풀 비중)">완료율 %</th>
+                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="전체 항목 중 발주 완료 비율 (학습 누적 진행도)">학습 진행도 %</th>
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="시설 가이드에서 학습된 환경장식물 종류">환경장식물 종류</th>
                     <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="이 행사장 프로젝트에 사용된 프로그램 파트">프로그램 파트</th>
                   </tr>
                 </thead>
@@ -801,7 +803,21 @@ export function LearningManagerClient({
                             )
                           })()}
                         </td>
-                        {/* 5/22 사용자 명시 = "X/6 학습" 영문 키 컬럼 자체 삭제 (옛 6대 표준 = v3 12 카테고리 정합 후 잔존) */}
+                        {/* 5/22 사용자 명시 = "X/6 학습" 영문 키 → "환경장식물 종류" 한국어 라벨로 정정 */}
+                        <td className="px-2 py-1.5 text-left">
+                          {!cov || cov.filled.length === 0 ? (
+                            <span className="text-slate-300 text-[10px]">학습 데이터 부재</span>
+                          ) : (
+                            <div className="flex flex-wrap gap-0.5">
+                              {cov.filled.map(k => {
+                                const label = STANDARD_CATEGORY_BY_KEY.get(k as StandardCategoryKey)?.label ?? k
+                                return (
+                                  <span key={k} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">{label}</span>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </td>
                         <td className="px-2 py-1.5 text-left">
                           {parts.length === 0 ? (
                             <span className="text-slate-300 text-[10px]">미입력</span>
@@ -1878,7 +1894,7 @@ export function LearningManagerClient({
                 <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
                   <p className="text-[10px] text-slate-500">등록 행사장</p>
                   <p className="text-xl font-bold text-slate-900">{totalVenues}<span className="text-xs text-slate-400 ml-1">개</span></p>
-                  <p className="text-[10px] text-emerald-600 mt-0.5">{fullyDocumented}개 완성도 5/6↑</p>
+                  <p className="text-[10px] text-emerald-600 mt-0.5">{fullyDocumented}개 정보 5/6↑</p>
                 </div>
                 <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
                   <p className="text-[10px] text-slate-500">카테고리 제약 누계</p>
@@ -1889,7 +1905,7 @@ export function LearningManagerClient({
                   <p className="text-xl font-bold text-amber-600">{totalWarnings}<span className="text-xs text-slate-400 ml-1">건</span></p>
                 </div>
                 <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
-                  <p className="text-[10px] text-slate-500">평균 완성도</p>
+                  <p className="text-[10px] text-slate-500">평균 정보 채움</p>
                   <p className={`text-xl font-bold ${avgCompleteness >= 80 ? 'text-emerald-600' : avgCompleteness >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>
                     {avgCompleteness}<span className="text-xs text-slate-400 ml-1">%</span>
                   </p>
@@ -1918,7 +1934,7 @@ export function LearningManagerClient({
                     <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">행사장·홀</th>
                     <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">카테고리</th>
                     <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">주의사항</th>
-                    <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">완성도</th>
+                    <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap" title="시설 가이드 6 정보(설치 가능 카테고리·설치 방법·리깅·안전 기준·주의사항·디지털 사이니지) 중 채워진 개수">정보 채움 (6 항목)</th>
                     <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">학습 시점</th>
                     <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">AI 추출</th>
                     {isAdmin && <th className="px-2 py-1.5 text-center font-semibold w-8"></th>}

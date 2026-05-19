@@ -71,6 +71,11 @@ export const VENUE_LIST: VenueInfo[] = [
   { key: '광주비엔날레', displayName: '광주비엔날레전시관', region: '광주광역시', type: '전시장', hasSamples: true },
   { key: '평창', displayName: '평창올림픽스타디움', region: '강원특별자치도', type: '야외', hasSamples: true },
   { key: '오스코', displayName: '오스코 (OSCO)', region: '서울특별시', type: '기타', hasSamples: true },
+  // 5/22 사용자 명시 = 벡스코 오디토리움이 "지방" 그룹으로 떨어지는 문제 정정. BEXCO·BPEX 부산광역시 산하
+  { key: '벡스코', displayName: '벡스코 (BEXCO)', region: '부산광역시', type: '컨벤션', hasSamples: false, typicalItemCount: 40 },
+  { key: 'BEXCO', displayName: '벡스코 (BEXCO)', region: '부산광역시', type: '컨벤션', hasSamples: false, typicalItemCount: 40 },
+  { key: 'BPEX', displayName: 'BPEX 부산', region: '부산광역시', type: '컨벤션', hasSamples: false },
+  { key: '누리마루', displayName: '누리마루 APEC하우스', region: '부산광역시', type: '공공시설', hasSamples: false },
   // 해외
   { key: '벨렘', displayName: '브라질 벨렘', region: '해외', type: '기타', hasSamples: true },
   { key: '파리', displayName: '프랑스 파리', region: '해외', type: '기타', hasSamples: true },
