@@ -537,7 +537,7 @@ async function logUsage(action: 'export_excel' | 'export_pptx' | 'recommend' | '
       metadata,
     })
     // 엑셀·PPT 내보내기 시: 해당 프로젝트의 모든 design_items.finalized_at = now()
-    // PPT도 동일: 제작 완료 다운로드 = 발주 완료로 간주 (사용자 요청 2026-05-12)
+    // 5/22 사용자 명시 = 행사 종료 ≠ 다운로드. event_history 영역 자동 누적 X = ProjectCard 완료 버튼 영역에서만 진행
     if ((action === 'export_excel' || action === 'export_pptx') && typeof metadata.project_id === 'string') {
       await supabase
         .from('design_items')
@@ -545,8 +545,8 @@ async function logUsage(action: 'export_excel' | 'export_pptx' | 'recommend' | '
         .eq('project_id', metadata.project_id)
         .is('finalized_at', null)
 
-      // 5/22 사용자 명시 = 행사 종료 시 event_history 영역에 값 적힘·다른 영역 영향
-      // project + design_items 영역 합산 → event_history UPSERT (signage_breakdown 자동 채움)
+      // 5/22 영역 정정 = event_history 영역 자동 누적 = ProjectCard handleComplete 영역에서만 진행 (행사 종료 키 영역)
+      // 다음 영역 = 회수 가능한 영역 (try/catch 영역 보존)
       try {
         const projectId = metadata.project_id
         const { data: proj } = await supabase
@@ -571,20 +571,8 @@ async function logUsage(action: 'export_excel' | 'export_pptx' | 'recommend' | '
             .map(([category, v]) => ({ category, quantity: v.quantity, sizes: Array.from(v.sizes).join('·') || undefined }))
             .sort((a, b) => b.quantity - a.quantity)
           const projWithParts = proj as { id: string; name: string; event_venue: string | null; event_date: string | null; program_parts: string[] | null }
-          await fetch('/api/event-history', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-              project_code: projectId.slice(0, 12),
-              project_name: projWithParts.name,
-              year: projWithParts.event_date ? new Date(projWithParts.event_date).getFullYear() : new Date().getFullYear(),
-              venue: projWithParts.event_venue || '미정',
-              program_parts: projWithParts.program_parts ?? [],
-              signage_breakdown,
-              analyzed_item_count: items.length,
-              source: 'auto_project',
-            }),
-          })
+          // 5/22 영역 정정 = 다운로드 영역에서는 event_history 영역 호출 X (handleComplete 영역에서만)
+          void projWithParts; void signage_breakdown
         }
       } catch (err) {
         console.warn('[event-history] 행사 종료 시 영역 자동 누적 실패:', err)
