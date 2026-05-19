@@ -1,12 +1,13 @@
-// v3 카테고리 마스터 시드 — 12 카테고리 SOT (2026-05-18·5/19 NIST 4단계 정합)
-//
-// 출처: 5/18 노션 컴펌 본 = 노션 페이지 36148589-8ea1-81d7-8b55-d1bd771a40a1 §6-2
-//       "환경장식물 마스터" 표 12행 (A4·A3 가로·세로 분리)
+// v3 카테고리 마스터 시드 — 12 카테고리 SOT
 //
 // 변경 이력:
 //   - 5/14 회의록 = 14종 + 동선 배너 = 15종
-//   - 5/18 노션 컴펌 본 = 12 카테고리 (A4 가로·A4 세로·A3 가로·A3 세로 분리)
+//   - 5/18 노션 컴펌 본 = 12 카테고리 (A4·A3 가로/세로 분리·I배너 포함)
 //   - 5/19 NIST AI RMF 4단계 (Govern·Map·Measure·Manage) 정합 표시
+//   - 5/22 김연아 대리님 명시 = 엑셀 SOT `구분` 컬럼 12 영역만 영역 정합:
+//     · 삭제 5건 = i_banner·a4_portrait·a4_landscape·a3_portrait·a3_landscape
+//     · 신규 5건 = award_board·q_room·digital_signage·foam_board·picket_board
+//     · 표준명 정합 = chunchen_banner '통천' → '통천 배너'·route_banner '동선 배너' → '동선 안내 배너'
 //
 // NIST AI RMF 4단 안전망 정합 (노션 §1-3):
 //   1. Govern (입력 강제) = SignageCategoryKey union enum + JSON 스키마
@@ -19,19 +20,20 @@
 //   2. 매핑 룰 = 노션 §8-1 동의어 표 정합 (손피켓 가로 기본·5/7 결정 정합)
 //   3. recommendationLogic.ts·UI enum 정합
 
+// 5/22 김연아 대리님 명시 = 엑셀 SOT 12 카테고리만 영역
 export type SignageCategoryKey =
   | 'x_banner'             // X배너
-  | 'i_banner'             // I배너
   | 'streetlight_banner'   // 가로등 배너
   | 'horizontal_banner'    // 가로 현수막
   | 'vertical_banner'      // 세로 현수막
-  | 'chunchen_banner'      // 통천
-  | 'podium'         // 포디움 타이틀
-  | 'a4_portrait'          // A4 세로
-  | 'a4_landscape'         // A4 가로 (손피켓 가로 기본·5/7 결정)
-  | 'a3_portrait'          // A3 세로
-  | 'a3_landscape'         // A3 가로 (손피켓 가로 기본·5/7 결정)
-  | 'route_banner'         // 동선 배너 (5/14 회의 X배너 분리 결정)
+  | 'chunchen_banner'      // 통천 배너
+  | 'podium'               // 포디움 타이틀
+  | 'route_banner'         // 동선 안내 배너 (5/14 회의 X배너 분리 결정)
+  | 'award_board'          // 5/22 신규 = 시상보드
+  | 'q_room'               // 5/22 신규 = Q방
+  | 'digital_signage'      // 5/22 신규 = 디지털 사이니지
+  | 'foam_board'           // 5/22 신규 = 폼보드
+  | 'picket_board'         // 5/22 신규 = 피켓보드
 
 export type SignageLayout = 'horizontal' | 'vertical'
 
@@ -74,16 +76,6 @@ export const SIGNAGE_CATEGORIES_V3: SignageCategoryV3[] = [
     match_keywords: ['x배너', 'X배너', 'x-배너', 'X-배너', '엑스배너', '스프링 배너', '스프링배너', '롤업배너', '배너스탠드', '철재스프링배너', 'A배너', '물통배너', '물통 배너', '기타 배너'],
   },
   {
-    key: 'i_banner',
-    label: 'I배너',
-    description: '인포메이션·실내 안내. 셔틀버스·운영시간·프로그램 시간표.',
-    layout: 'vertical',
-    default_size_mm: { width: 600, height: 1600 },
-    material: 'PET',
-    classification: '실내 안내',
-    match_keywords: ['i배너', 'I배너', 'i-배너', 'I-배너', '아이배너', '인포', 'information', '스탠드POP'],
-  },
-  {
     key: 'streetlight_banner',
     label: '가로등 배너',
     description: '외부 가로등 폴 부착. D-30 이전 폴 예약 필수. 행사장별 클램프 규격 상이.',
@@ -115,13 +107,13 @@ export const SIGNAGE_CATEGORIES_V3: SignageCategoryV3[] = [
   },
   {
     key: 'chunchen_banner',
-    label: '통천',
+    label: '통천 배너',
     description: '천장 매다는 대형. 외벽·천장 모두 사용. 매우 큰 사이즈, 키비주얼 + 행사명 + 일자.',
     layout: 'vertical',
     default_size_mm: { width: 1000, height: 5000 },
     material: '현수막',
     classification: '천장 대형',
-    match_keywords: ['통천', '통천현수막', '통천배너', '천장배너', '천정배너', '행잉', 'hanging', '장폭_천정배너_단면', '장폭_천정배너_양면', '행잉 배너', '출입구 천정 배너'],
+    match_keywords: ['통천', '통천현수막', '통천배너', '통천 배너', '천장배너', '천정배너', '행잉', 'hanging', '장폭_천정배너_단면', '장폭_천정배너_양면', '행잉 배너', '출입구 천정 배너'],
   },
   {
     key: 'podium',
@@ -134,54 +126,65 @@ export const SIGNAGE_CATEGORIES_V3: SignageCategoryV3[] = [
     match_keywords: ['포디움', '포디움 타이틀', '포디움타이틀', '연단', '포디움 1', '포디움 2', '1인용 포디움', '개막식 포디움'],
   },
   {
-    key: 'a4_portrait',
-    label: 'A4 세로',
-    description: '소형 안내·세로형. 보통 폼보드 재질로 발주.',
-    layout: 'vertical',
-    default_size_mm: { width: 210, height: 297 },
-    material: '인쇄 (발주 시 보통 폼보드)',
-    classification: '소형 안내',
-    match_keywords: ['A4 세로', 'A4세로'],
-  },
-  {
-    key: 'a4_landscape',
-    label: 'A4 가로',
-    description: '소형 안내·가로형. 손피켓 가로 기본 (5/7 결정). 보통 폼보드 재질로 발주.',
-    layout: 'horizontal',
-    default_size_mm: { width: 297, height: 210 },
-    material: '인쇄 (발주 시 보통 폼보드)',
-    classification: '소형 안내',
-    match_keywords: ['A4 가로', 'A4가로', 'A4', 'a4', '피켓 A4', '피켓A4', '피켓(A4)', '영접A4', 'A4안내', '명패', '웰컴 피켓', '큐방', '큐방시트', '셔틀버스 큐방시트'],
-  },
-  {
-    key: 'a3_portrait',
-    label: 'A3 세로',
-    description: '중형 안내·세로형. 보통 폼보드 재질로 발주.',
-    layout: 'vertical',
-    default_size_mm: { width: 297, height: 420 },
-    material: '인쇄 (발주 시 보통 폼보드)',
-    classification: '중형 안내',
-    match_keywords: ['A3 세로', 'A3세로'],
-  },
-  {
-    key: 'a3_landscape',
-    label: 'A3 가로',
-    description: '중형 안내·가로형. 손피켓 가로 기본 (5/7 결정). 보통 폼보드 재질로 발주.',
-    layout: 'horizontal',
-    default_size_mm: { width: 420, height: 297 },
-    material: '인쇄 (발주 시 보통 폼보드)',
-    classification: '중형 안내',
-    match_keywords: ['A3 가로', 'A3가로', 'A3', 'a3', '피켓 A3', '피켓A3', '피켓(A3)', 'A3안내', 'A3안내POP', '명패 (대)', '명패(대)', '웰컴보드', '시상보드', '시상 보드', '컨설팅폼보드', '좌석배치도 안내사인', '기념촬영보드', '안내폼보드', 'L보드', '안내사인'],
-  },
-  {
     key: 'route_banner',
-    label: '동선 배너',
+    label: '동선 안내 배너',
     description: '실내 동선·유도·화살표 안내 전용. 5/14 회의 X배너 분리 결정.',
     layout: 'vertical',
     default_size_mm: { width: 600, height: 1500 },
     material: '현수막',
     classification: '실내 동선',
-    match_keywords: ['동선 배너', '동선배너', '유도사인', '동선안내', '화살표', '방향 안내'],
+    match_keywords: ['동선 안내 배너', '동선 배너', '동선배너', '유도사인', '동선안내', '화살표', '방향 안내'],
+  },
+  // 5/22 김연아 대리님 명시 = 엑셀 SOT 영역 신규 5건
+  {
+    key: 'award_board',
+    label: '시상보드',
+    description: '공식행사·공모전형 영역 시상 영역. 폼보드 5T 재질.',
+    layout: 'vertical',
+    default_size_mm: { width: 1200, height: 1800 },
+    material: '폼보드 5T',
+    classification: '시상·공식행사',
+    match_keywords: ['시상보드', '시상 보드', '기념촬영보드', '포토월', '포토 월'],
+  },
+  {
+    key: 'q_room',
+    label: 'Q방',
+    description: '등록·대기 영역 안내 영역. 폼보드 재질.',
+    layout: 'vertical',
+    default_size_mm: { width: 600, height: 1800 },
+    material: '폼보드',
+    classification: '등록·안내',
+    match_keywords: ['Q방', '큐방', '큐방시트', '셔틀버스 큐방시트', 'Q룸'],
+  },
+  {
+    key: 'digital_signage',
+    label: '디지털 사이니지',
+    description: '로비·외벽 영역 디지털 영역. LED 패널.',
+    layout: 'vertical',
+    default_size_mm: { width: 1080, height: 1920 },
+    material: 'LED',
+    classification: '디지털·전광판',
+    match_keywords: ['디지털 사이니지', '디지털사이니지', 'DID', 'LED 사이니지', '전광판'],
+  },
+  {
+    key: 'foam_board',
+    label: '폼보드',
+    description: '부대시설 장소·POP 영역. 폼보드 5T 재질.',
+    layout: 'vertical',
+    default_size_mm: { width: 600, height: 900 },
+    material: '폼보드 5T',
+    classification: '부대시설 안내',
+    match_keywords: ['폼보드', '폼포드', '안내폼보드', '컨설팅폼보드', '좌석배치도 안내사인', '웰컴보드', 'L보드', '안내사인', 'A4안내', 'A3안내', 'A3안내POP', '스탠드POP'],
+  },
+  {
+    key: 'picket_board',
+    label: '피켓보드',
+    description: '영접영송 영역·입출국 일자 고려 영역. 폼보드 3T 재질.',
+    layout: 'vertical',
+    default_size_mm: { width: 300, height: 450 },
+    material: '폼보드 3T',
+    classification: '영접영송',
+    match_keywords: ['피켓보드', '영접피켓', '입출국피켓', '피켓 A4', '피켓A4', '피켓(A4)', '피켓 A3', '피켓A3', '피켓(A3)', '영접A4', '명패', '웰컴 피켓', '명패 (대)', '명패(대)'],
   },
 ]
 

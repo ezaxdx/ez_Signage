@@ -95,61 +95,71 @@ export interface RecommendResultV3 {
 
 // ========== 프로그램 파트 → 카테고리 매핑 ==========
 
-/** 노션 컴펌 본 §6-3 정합 — 손피켓 가로 기본 (5/7 결정) → a4_landscape·a3_landscape */
+/** 5/22 김연아 대리님 명시 = 엑셀 SOT 정합 (a4·a3·i_banner → 신규 5건 매핑) */
 export const PROGRAM_PART_RECOMMENDATION: Record<string, Array<{ category: SignageCategoryKey; avg_quantity: number }>> = {
   '회의': [
     { category: 'podium', avg_quantity: 1 },
-    { category: 'a4_landscape', avg_quantity: 20 },
-    { category: 'a3_landscape', avg_quantity: 1 },
+    { category: 'vertical_banner', avg_quantity: 4 },
+    { category: 'horizontal_banner', avg_quantity: 2 },
   ],
   '전시': [
     { category: 'x_banner', avg_quantity: 46 },
     { category: 'route_banner', avg_quantity: 15 },
+    { category: 'chunchen_banner', avg_quantity: 2 },
   ],
   '비즈니스 매칭': [
-    { category: 'podium', avg_quantity: 1 },
-    { category: 'a4_landscape', avg_quantity: 12 },
+    { category: 'x_banner', avg_quantity: 3 },
   ],
   '비즈니스 프로그램': [
     { category: 'x_banner', avg_quantity: 10 },
-    { category: 'a4_landscape', avg_quantity: 20 },
+    { category: 'route_banner', avg_quantity: 3 },
+    { category: 'podium', avg_quantity: 1 },
+    { category: 'award_board', avg_quantity: 1 },
   ],
   '공식행사': [
-    { category: 'chunchen_banner', avg_quantity: 1 },
     { category: 'podium', avg_quantity: 1 },
-    { category: 'a4_landscape', avg_quantity: 20 },
-    { category: 'a3_landscape', avg_quantity: 2 },
-    { category: 'horizontal_banner', avg_quantity: 2 },
+    { category: 'award_board', avg_quantity: 1 },
+    { category: 'x_banner', avg_quantity: 5 },
+    { category: 'horizontal_banner', avg_quantity: 4 },
+    { category: 'vertical_banner', avg_quantity: 4 },
+    { category: 'chunchen_banner', avg_quantity: 1 },
   ],
   '부대행사 - 공모전형': [
-    { category: 'a3_landscape', avg_quantity: 4 },
-    { category: 'x_banner', avg_quantity: 7 },
+    { category: 'award_board', avg_quantity: 1 },
+    { category: 'x_banner', avg_quantity: 4 },
+    { category: 'podium', avg_quantity: 1 },
+    { category: 'horizontal_banner', avg_quantity: 1 },
+    { category: 'vertical_banner', avg_quantity: 1 },
   ],
   '부대행사 - 체험형': [
-    { category: 'x_banner', avg_quantity: 7 },
+    { category: 'horizontal_banner', avg_quantity: 2 },
+    { category: 'vertical_banner', avg_quantity: 2 },
+    { category: 'x_banner', avg_quantity: 4 },
   ],
   '부대행사 - 투어형': [
-    { category: 'horizontal_banner', avg_quantity: 7 },
-    { category: 'a3_landscape', avg_quantity: 1 },
-  ],
-  '의전': [
     { category: 'horizontal_banner', avg_quantity: 2 },
-    { category: 'a3_landscape', avg_quantity: 9 },
-    { category: 'podium', avg_quantity: 1 },
+    { category: 'q_room', avg_quantity: 4 },
   ],
   '등록': [
     { category: 'x_banner', avg_quantity: 10 },
     { category: 'route_banner', avg_quantity: 7 },
+    { category: 'horizontal_banner', avg_quantity: 1 },
   ],
   '영접영송': [
-    { category: 'a3_landscape', avg_quantity: 2 },
-    { category: 'a4_landscape', avg_quantity: 6 },
+    { category: 'picket_board', avg_quantity: 6 },
   ],
   '홍보': [
     { category: 'x_banner', avg_quantity: 20 },
-    { category: 'route_banner', avg_quantity: 10 },
-    { category: 'i_banner', avg_quantity: 4 },
+    { category: 'streetlight_banner', avg_quantity: 10 },
+  ],
+  '기타 조성': [
+    { category: 'streetlight_banner', avg_quantity: 10 },
+    { category: 'x_banner', avg_quantity: 5 },
+    { category: 'digital_signage', avg_quantity: 2 },
+    { category: 'foam_board', avg_quantity: 4 },
     { category: 'horizontal_banner', avg_quantity: 2 },
+    { category: 'vertical_banner', avg_quantity: 2 },
+    { category: 'chunchen_banner', avg_quantity: 1 },
   ],
 }
 
