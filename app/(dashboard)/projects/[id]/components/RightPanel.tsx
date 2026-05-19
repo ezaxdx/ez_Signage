@@ -11,7 +11,7 @@
  * 노션 페이지 36148589-8ea1-81a3-b3e8-dd4a833c914c §3 정합.
  */
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { ImageIcon, AlertTriangle, ExternalLink, Ruler } from 'lucide-react'
 import { classifyCategoryV3, getRatioLabel, type SignageCategoryV3 } from '@/lib/data/v3/signageCategoriesSeedV3'
 import type { DesignItem } from '@/lib/types'
@@ -194,15 +194,30 @@ function SampleImageView({
       </div>
     )
   }
+  // 5/22 사용자 명시 = 관리자 업로드 이미지 영역 (signageTypeSamples localStorage) 영역 fallback
+  const [uploadedSampleUrl, setUploadedSampleUrl] = useState<string | null>(null)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('mice_signage_type_samples')
+      if (!raw) return
+      const samples = JSON.parse(raw) as Record<string, string>
+      const url = samples[matchedCategory.id]
+      if (url) setUploadedSampleUrl(url)
+      else setUploadedSampleUrl(null)
+    } catch {
+      setUploadedSampleUrl(null)
+    }
+  }, [matchedCategory.id])
+  const imageUrl = uploadedSampleUrl ?? matchedCategory.sample_image_url
   return (
     <div className="p-4 h-full flex flex-col">
       <div className="flex items-center gap-2 mb-3">
         <span className="text-xs font-semibold text-slate-700">{matchedCategory.label}</span>
         <span className="text-[10px] text-slate-500">{matchedCategory.classification}</span>
       </div>
-      {matchedCategory.sample_image_url ? (
+      {imageUrl ? (
         <img
-          src={matchedCategory.sample_image_url}
+          src={imageUrl}
           alt={`${matchedCategory.label} 예시`}
           className="w-full rounded border border-slate-200 object-contain max-h-full"
         />
@@ -212,7 +227,7 @@ function SampleImageView({
           <p className="text-xs text-slate-500 text-center leading-relaxed">
             실사 예시 이미지 준비 중
             <br />
-            <span className="text-slate-400 text-[11px]">관리자 페이지 → 환경 장식물 종류에서 업로드</span>
+            <span className="text-slate-400 text-[11px]">관리자 페이지 → 환경장식물 관리에서 업로드</span>
           </p>
         </div>
       )}
