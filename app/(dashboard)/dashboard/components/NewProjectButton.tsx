@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, X, Loader2, ChevronRight, ChevronLeft, Check, UserPlus, Trash2, Search, Target, Upload, FileSpreadsheet, AlertCircle, Map, ImageIcon, MapPinPlus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -840,12 +840,27 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                               onChange={e => setInfo(p => ({ ...p, event_venue: e.target.value }))}
                               className={inputCls}
                             >
-                              <option value="">행사장 선택…</option>
+                              <option value="">행사장·홀 선택…</option>
+                              {/* 5/21 사용자 명시 = 행사장 단위 아닌 홀 단위 기준 노출.
+                                  matched venue 있으면 venue + (venue · hall) 자식 옵션도 함께 표시 (노션 §9 정합) */}
                               {venueOptions.map(g => (
                                 <optgroup key={g.region} label={g.region}>
-                                  {g.items.map(v => (
-                                    <option key={v.displayName} value={v.displayName}>{v.displayName}</option>
-                                  ))}
+                                  {g.items.map(v => {
+                                    const halls = 'key' in v ? getHallsByVenueName(v.key as string) : []
+                                    return (
+                                      <React.Fragment key={v.displayName}>
+                                        <option value={v.displayName}>{v.displayName}</option>
+                                        {halls.map(h => (
+                                          <option
+                                            key={`${v.displayName}-${h.name}`}
+                                            value={`${v.displayName} ${h.name}`}
+                                          >
+                                            &nbsp;&nbsp;↳ {h.name}{h.note ? ` (${h.note})` : ''}
+                                          </option>
+                                        ))}
+                                      </React.Fragment>
+                                    )
+                                  })}
                                 </optgroup>
                               ))}
                             </select>
