@@ -2808,7 +2808,14 @@ export function LearningManagerClient({
                               )}
                             </td>
                             <td className="px-2 py-1.5 text-right font-mono text-emerald-600 font-semibold">
-                              {e.analyzed_item_count ?? <span className="text-slate-300">—</span>}
+                              {(() => {
+                                // 5/22 사용자 명시 = "총 수량" = 환경장식물 총 수량 (signage_breakdown.quantity 합산)
+                                const bd = e.signage_breakdown && e.signage_breakdown.length > 0
+                                  ? e.signage_breakdown
+                                  : estimateSignageBreakdown(e.program_parts, e.analyzed_item_count)
+                                const total = bd.reduce((s, x) => s + x.quantity, 0)
+                                return total > 0 ? total : <span className="text-slate-300">—</span>
+                              })()}
                             </td>
                             {isAdmin && (
                               <td className="px-2 py-1.5 text-center whitespace-nowrap" onClick={ev => ev.stopPropagation()}>
@@ -2851,13 +2858,34 @@ export function LearningManagerClient({
                                           </tr>
                                         </thead>
                                         <tbody>
-                                          {breakdown.map((s, i) => (
-                                            <tr key={i} className="border-t border-slate-200">
-                                              <td className="px-2 py-1">{s.category}</td>
-                                              <td className="px-2 py-1 text-slate-500">{s.sizes ?? '—'}</td>
-                                              <td className="px-2 py-1 text-right font-mono">{s.quantity}</td>
-                                            </tr>
-                                          ))}
+                                          {/* 5/22 사용자 명시 = signage_types.name 정합 (영역 = 동의어 자동 변환 영역). 12 카테고리만 표시. */}
+                                          {(() => {
+                                            const validNames = new Set(signageTypeList.map(t => t.name))
+                                            const aggregated = new Map<string, { quantity: number; sizes: Set<string> }>()
+                                            for (const s of breakdown) {
+                                              const standard = resolveCategoryName(s.category)
+                                              if (!validNames.has(standard)) continue // 12 카테고리 외 영역 제외
+                                              const prev = aggregated.get(standard) ?? { quantity: 0, sizes: new Set<string>() }
+                                              prev.quantity += s.quantity
+                                              if (s.sizes) s.sizes.split('·').forEach(z => z.trim() && prev.sizes.add(z.trim()))
+                                              aggregated.set(standard, prev)
+                                            }
+                                            const arr = Array.from(aggregated.entries()).sort((a, b) => b[1].quantity - a[1].quantity)
+                                            if (arr.length === 0) {
+                                              return <tr><td colSpan={3} className="px-2 py-1 text-slate-400 italic text-center">— 12 카테고리 영역 매칭 데이터 없음</td></tr>
+                                            }
+                                            return arr.map(([name, v], i) => {
+                                              const t = signageTypeList.find(x => x.name === name)
+                                              const baseSize = t ? `${t.width_mm}×${t.height_mm}` : ''
+                                              return (
+                                                <tr key={i} className="border-t border-slate-200">
+                                                  <td className="px-2 py-1">{name}</td>
+                                                  <td className="px-2 py-1 text-slate-500">{v.sizes.size > 0 ? Array.from(v.sizes).join(' · ') : baseSize || '—'}</td>
+                                                  <td className="px-2 py-1 text-right font-mono">{v.quantity}</td>
+                                                </tr>
+                                              )
+                                            })
+                                          })()}
                                         </tbody>
                                       </table>
                                     </>

@@ -52,6 +52,12 @@ export interface SynonymSeed {
 }
 
 export const SEED_SYNONYMS: SynonymSeed[] = [
+  // 5/22 신규 = SEED_EVENT_HISTORY 영역 표기 영역 (공백 X 영역) → signage_types.name 정합 영역
+  { alias: '세로현수막',     canonical_name: '세로 현수막',  note: '5/22 SEED_EVENT_HISTORY 영역 표기 영역' },
+  { alias: '가로현수막',     canonical_name: '가로 현수막',  note: '5/22 SEED_EVENT_HISTORY 영역 표기 영역' },
+  { alias: '통천현수막',     canonical_name: '통천 배너',    note: '5/22 SEED_EVENT_HISTORY 영역 표기 영역' },
+  { alias: 'X-배너',         canonical_name: 'X배너',        note: '5/22 대시 표기 정합' },
+
   // ── 명세 1번 명시 동의어 ──
   { alias: '스프링배너',     canonical_name: 'X배너',        note: '명세 1번 명시 동의어' },
 

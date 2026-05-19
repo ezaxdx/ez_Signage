@@ -77,7 +77,8 @@ export default async function AdminAiPage() {
   // 비용 산출 — Gemini 2.5 Flash 영역 실제 단가 (2025 영역·https://ai.google.dev/pricing):
   // - Input:  $0.30 / 1M tokens = $0.0003 / 1K
   // - Output: $2.50 / 1M tokens = $0.0025 / 1K
-  // 무료 tier (AI Studio·https://aistudio.google.com) 영역 = 청구 0원·근데 추정값 표시 (유료 전환 시 정확).
+  // Gemini usageMetadata 영역 토큰 = 실측값·× 공식 단가 = 청구 산출값 = 실측 비용.
+  // 무료 tier (AI Studio) 영역에서는 Google이 청구 X·근데 계산값 영역 자체 = 정확한 영역.
   const INPUT_USD_PER_1K = 0.0003
   const OUTPUT_USD_PER_1K = 0.0025
   const KRW_PER_USD = 1380
