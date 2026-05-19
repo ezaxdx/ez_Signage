@@ -234,7 +234,7 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
   } catch { /* silent */ }
 
   // 5/22 사용자 명시 = 행사 관리 SOT → AI 컨텍스트 주입. venue·programParts 매칭 5건 signage_breakdown.
-  const seedHistoryBlock = buildSeedEventHistoryContext(input.venue, input.programParts)
+  const seedHistoryBlock = await buildSeedEventHistoryContext(input.venue, input.programParts)
 
   // v9.6: 회의록 ′학습해 가지고 텍스트 파일 형태로 이거는 어떤 행사장이다가 나올 거예요′
   // 행사장 메타(venues) + 시설 가이드 시드(venueFacilityGuide) + 예외 누적(facility_exception_log) 통합

@@ -733,6 +733,27 @@ export function NewProjectButton({ userId, userEmail }: Props) {
       return
     }
 
+    // 5/22 사용자 명시 = 신규 프로젝트 = event_history 영역 자동 누적 (background fire-and-forget)
+    void (async () => {
+      try {
+        await fetch('/api/event-history', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            project_code: projectId.slice(0, 12),
+            project_name: info.name,
+            year: info.event_date ? new Date(info.event_date).getFullYear() : new Date().getFullYear(),
+            venue: info.event_venue || '미정',
+            category_tag: '일반',
+            program_parts: programPartsArr,
+            source: 'auto_project',
+          }),
+        })
+      } catch (err) {
+        console.warn('[event-history] 자동 누적 실패:', err)
+      }
+    })()
+
     // background에서 AI 추천 호출 → design_items 자동 INSERT. UX 차단 영역 X.
     void (async () => {
       try {

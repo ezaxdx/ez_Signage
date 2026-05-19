@@ -320,29 +320,80 @@ async function loadAdminMaster(venueName: string): Promise<{
 }
 
 /**
- * 5/22 사용자 명시 = 행사 관리 5대 영역 (행사장·프로그램 파트·환경장식물 종류·규격·수량) 영역 SEED_EVENT_HISTORY → AI 컨텍스트 주입.
+ * 5/22 사용자 명시 = 행사 관리 5대 영역 SEED + DB 영역 통합. event_history 테이블 있으면 SELECT·없으면 SEED fallback.
  * venue + programParts 매칭 행사 영역 signage_breakdown 합산하여 AI 프롬프트에 추가.
  */
-export function buildSeedEventHistoryContext(venue: string, programParts?: string[]): string {
+interface EventHistoryDb {
+  project_code: string | null
+  project_name: string
+  year: number | null
+  venue: string
+  program_parts: string[]
+  signage_breakdown: Array<{ category: string; quantity: number; sizes?: string }>
+  analyzed_item_count: number | null
+  is_seed: boolean
+  source: string
+}
+
+export async function buildSeedEventHistoryContext(venue: string, programParts?: string[]): Promise<string> {
   const venueNorm = venue.toLowerCase().replace(/\s/g, '')
-  // venue 부분 매칭 + program_parts 교집합 ≥1 영역
-  const matched = SEED_EVENT_HISTORY.filter(e => {
-    const evNorm = e.venue.toLowerCase().replace(/\s/g, '')
-    const venueMatch = evNorm.includes(venueNorm) || venueNorm.includes(evNorm)
-    const partsMatch = !programParts?.length || (e.program_parts ?? []).some(p => programParts.includes(p))
-    return venueMatch && partsMatch
-  }).slice(0, 5)
+
+  // 1. DB 영역 SELECT (event_history 테이블 있으면)
+  let dbMatched: EventHistoryDb[] = []
+  try {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('event_history')
+      .select('project_code, project_name, year, venue, program_parts, signage_breakdown, analyzed_item_count, is_seed, source')
+      .is('deleted_at', null)
+      .limit(500)
+    if (data) {
+      dbMatched = (data as EventHistoryDb[]).filter(e => {
+        const evNorm = (e.venue ?? '').toLowerCase().replace(/\s/g, '')
+        const venueMatch = evNorm.includes(venueNorm) || venueNorm.includes(evNorm)
+        const partsMatch = !programParts?.length || (e.program_parts ?? []).some(p => programParts.includes(p))
+        return venueMatch && partsMatch
+      }).slice(0, 5)
+    }
+  } catch {
+    // event_history 테이블 부재 영역 = SEED fallback
+  }
+
+  // 2. SEED fallback (DB 영역 빈 영역 or 부재)
+  let matched: Array<EventHistoryDb & { is_db?: boolean }> = []
+  if (dbMatched.length > 0) {
+    matched = dbMatched.map(e => ({ ...e, is_db: true }))
+  } else {
+    matched = SEED_EVENT_HISTORY.filter(e => {
+      const evNorm = e.venue.toLowerCase().replace(/\s/g, '')
+      const venueMatch = evNorm.includes(venueNorm) || venueNorm.includes(evNorm)
+      const partsMatch = !programParts?.length || (e.program_parts ?? []).some(p => programParts.includes(p))
+      return venueMatch && partsMatch
+    }).slice(0, 5).map(e => ({
+      project_code: e.project_code,
+      project_name: e.project_name,
+      year: e.year,
+      venue: e.venue,
+      program_parts: e.program_parts ?? [],
+      signage_breakdown: e.signage_breakdown ?? [],
+      analyzed_item_count: e.analyzed_item_count ?? null,
+      is_seed: true,
+      source: 'seed',
+    }))
+  }
+
   if (matched.length === 0) return ''
   const lines: string[] = ['', '[행사 관리 SOT — 같은 행사장·파트 매칭 5건]']
   for (const e of matched) {
     const breakdown = e.signage_breakdown && e.signage_breakdown.length > 0
       ? e.signage_breakdown
-      : estimateSignageBreakdown(e.program_parts, e.analyzed_item_count)
+      : estimateSignageBreakdown(e.program_parts, e.analyzed_item_count ?? undefined)
     if (breakdown.length === 0) continue
     const totalQty = breakdown.reduce((s, b) => s + b.quantity, 0)
     const top = breakdown.slice(0, 5).map(b => `${b.category}(${b.quantity}${b.sizes ? `·${b.sizes}` : ''})`).join(' / ')
     const estimateTag = (!e.signage_breakdown || e.signage_breakdown.length === 0) ? ' [추정]' : ''
-    lines.push(`  - ${e.project_name} (${e.year ?? '?'}·${e.venue})${estimateTag}: 총 ${totalQty}건·${top}`)
+    const sourceTag = e.source === 'manual' ? ' [사용자 추가]' : e.source === 'auto_project' ? ' [자동 누적]' : ' [SEED]'
+    lines.push(`  - ${e.project_name} (${e.year ?? '?'}·${e.venue})${sourceTag}${estimateTag}: 총 ${totalQty}건·${top}`)
   }
   lines.push('→ 위 데이터 = 행사장·파트 매칭 과거 사례. 추천 수량·종류·규격 산정 시 참고.')
   return lines.join('\n')
