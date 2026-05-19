@@ -139,68 +139,72 @@ export interface EventHistorySeed {
   has_excel: boolean   // 제작물리스트.xlsx 존재 여부
   has_image: boolean   // 시안 이미지 존재 여부
   analyzed_item_count?: number   // 실제 엑셀 파싱 시그너지 개수 (있는 경우만)
+  // 5/22 사용자 명시 = 5대 영역 정합·프로그램 파트 추정값·환경장식물 분석 데이터
+  program_parts?: string[]   // 행사명 기반 추정 파트 코드 (40.04 회의·40.05 전시 등)
+  signage_breakdown?: Array<{ category: string; quantity: number; sizes?: string }>   // 환경장식물별 분리 (분석된 행사만)
 }
 
 // 폴더명에서 추출 — 패턴: "행사명 6자리코드" 또는 "행사명 코드 (면적)"
+// 5/22 사용자 명시 = 5대 영역 정합·program_parts 추정값·venue 정확화. 환경장식물별 분리는 _venue_signage_map.json 영역.
 export const SEED_EVENT_HISTORY: EventHistorySeed[] = [
   // 코엑스
-  { project_name: '2018 스마트국토엑스포',                        project_code: '183080',  year: 2018, venue: '코엑스',                        category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 41 },
-  { project_name: '2019 국제방송영상마켓 (BCWW 2019)',             project_code: '193800',  year: 2019, venue: '코엑스',                        category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '2019 스마트국토엑스포',                        project_code: '193700',  year: 2019, venue: '코엑스',                        category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: 'BCWW 2018',                                   project_code: '183090',  year: 2018, venue: '코엑스',                        category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 36 },
-  { project_name: 'NextRise 2022, Seoul',                        project_code: '221030',  year: 2022, venue: '코엑스',                        category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '공정경제 전략회의',                            project_code: '182090',  year: 2018, venue: '코엑스',                        category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '콘텐츠 IP 마켓 2023',                          project_code: '231009',  year: 2023, venue: '코엑스 그랜드볼룸 외',           category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '제33차 아시아광고대회 (AdAsia 2023 Seoul)',     project_code: '231004',  year: 2023, venue: '코엑스 그랜드볼룸·아셈볼룸·오디토리움', category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '2023 웹툰 잡 페스타',                          project_code: '232030',  year: 2023, venue: '코엑스 컨퍼런스룸·아셈볼룸',     category_tag: '일반', has_excel: true,  has_image: true  },
+  { project_name: '2018 스마트국토엑스포',                        project_code: '183080',  year: 2018, venue: '코엑스 D2·컨퍼런스룸',          category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 41, program_parts: ['40.05', '40.04', '40.19', '40.18'] },
+  { project_name: '2019 국제방송영상마켓 (BCWW 2019)',             project_code: '193800',  year: 2019, venue: '코엑스',                        category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.06', '40.19', '40.17'] },
+  { project_name: '2019 스마트국토엑스포',                        project_code: '193700',  year: 2019, venue: '코엑스',                        category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.04', '40.19', '40.18'] },
+  { project_name: 'BCWW 2018',                                   project_code: '183090',  year: 2018, venue: '코엑스 Hall B',                  category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 36, program_parts: ['40.05', '40.06', '40.19', '40.17'] },
+  { project_name: 'NextRise 2022, Seoul',                        project_code: '221030',  year: 2022, venue: '코엑스',                        category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.06', '40.07', '40.19'] },
+  { project_name: '공정경제 전략회의',                            project_code: '182090',  year: 2018, venue: '코엑스',                        category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.04', '40.08', '40.18'] },
+  { project_name: '콘텐츠 IP 마켓 2023',                          project_code: '231009',  year: 2023, venue: '코엑스 그랜드볼룸',              category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.06', '40.19', '40.17'] },
+  { project_name: '제33차 아시아광고대회 (AdAsia 2023 Seoul)',     project_code: '231004',  year: 2023, venue: '코엑스 그랜드볼룸·아셈볼룸·오디토리움', category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.04', '40.08', '40.18', '40.19'] },
+  { project_name: '2023 웹툰 잡 페스타',                          project_code: '232030',  year: 2023, venue: '코엑스 컨퍼런스룸·아셈볼룸',     category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.10', '40.19', '40.17'] },
   // 킨텍스
-  { project_name: '제2회 월드 스마트시티 위크',                   project_code: '182070',  year: 2018, venue: '킨텍스',                        category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '제6회 월드 스마트시티 엑스포 (WSCE 2022)',      project_code: '222020',  year: 2022, venue: '킨텍스 제1전시장 3·4·5홀',       category_tag: '핵심', has_excel: true,  has_image: true  },
-  { project_name: '2023 대한민국 순환경제 페스티벌',              project_code: '232033',  year: 2023, venue: '킨텍스 제2전시장 9B홀',          category_tag: '핵심', has_excel: true,  has_image: true  },
+  { project_name: '제2회 월드 스마트시티 위크',                   project_code: '182070',  year: 2018, venue: '킨텍스',                        category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.04', '40.19'] },
+  { project_name: '제6회 월드 스마트시티 엑스포 (WSCE 2022)',      project_code: '222020',  year: 2022, venue: '킨텍스 제1전시장 3·4·5홀',       category_tag: '핵심', has_excel: true,  has_image: true, program_parts: ['40.05', '40.04', '40.19', '40.18'] },
+  { project_name: '2023 대한민국 순환경제 페스티벌',              project_code: '232033',  year: 2023, venue: '킨텍스 제2전시장 9B홀',          category_tag: '핵심', has_excel: true,  has_image: true, program_parts: ['40.05', '40.10', '40.19', '40.17'] },
   // 송도
-  { project_name: 'KOREA MICE EXPO 2018',                        project_code: '183000-1',year: 2018, venue: '송도컨벤시아',                  category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 62 },
-  { project_name: 'KOREA MICE EXPO 2019',                        project_code: '193100',  year: 2019, venue: '송도컨벤시아',                  category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 9 },
+  { project_name: 'KOREA MICE EXPO 2018',                        project_code: '183000-1',year: 2018, venue: '송도컨벤시아',                  category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 62, program_parts: ['40.05', '40.04', '40.06', '40.08', '40.19'] },
+  { project_name: 'KOREA MICE EXPO 2019',                        project_code: '193100',  year: 2019, venue: '송도컨벤시아',                  category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 9, program_parts: ['40.05', '40.04', '40.06', '40.08', '40.19'] },
   // ICC JEJU·제주
-  { project_name: 'APEC 중소기업 장관회의',                       project_code: '251004',  year: 2025, venue: 'ICC JEJU 및 인근호텔',           category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '2022 제주 IUCN리더스포럼',                     project_code: '223060',  year: 2022, venue: '제주국제컨벤션센터 (ICC JEJU)',  category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '제2회 세계리더스보전포럼',                     project_code: '183060',  year: 2018, venue: '제주국제컨벤션센터 (ICC JEJU)',  category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 33 },
+  { project_name: 'APEC 중소기업 장관회의',                       project_code: '251004',  year: 2025, venue: 'ICC JEJU 및 인근호텔',           category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.04', '40.08', '40.18', '40.19'] },
+  { project_name: '2022 제주 IUCN리더스포럼',                     project_code: '223060',  year: 2022, venue: '제주국제컨벤션센터 (ICC JEJU)',  category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.04', '40.08', '40.18'] },
+  { project_name: '제2회 세계리더스보전포럼',                     project_code: '183060',  year: 2018, venue: '제주국제컨벤션센터 (ICC JEJU)',  category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 33, program_parts: ['40.04', '40.08', '40.18', '40.19'] },
   // 호텔
-  { project_name: 'SPP 국제콘텐츠마켓 2024',                      project_code: '245006',  year: 2024, venue: '그랜드하얏트 서울',              category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '2024 국제농업협력 정책 홍보 및 행사',          project_code: '242008',  year: 2024, venue: '더플라자 호텔 서울 그랜드볼룸',  category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '제17차 한-중앙아 협력 포럼',                   project_code: '241014',  year: 2024, venue: '롯데호텔 서울',                  category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '환경 협력 네트워크 구축 주한공관장 초청 간담회', project_code: '252016',year: 2025, venue: '롯데호텔 서울',                  category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '제16차 한·베트남 환경장관회의',                project_code: '241011',  year: 2024, venue: '웨스틴 조선 서울 라일락+튤립',   category_tag: '일반', has_excel: true,  has_image: true  },
+  { project_name: 'SPP 국제콘텐츠마켓 2024',                      project_code: '245006',  year: 2024, venue: '그랜드하얏트 서울',              category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.06', '40.04', '40.19'] },
+  { project_name: '2024 국제농업협력 정책 홍보 및 행사',          project_code: '242008',  year: 2024, venue: '더플라자 호텔 서울 그랜드볼룸',  category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.04', '40.17', '40.19'] },
+  { project_name: '제17차 한-중앙아 협력 포럼',                   project_code: '241014',  year: 2024, venue: '롯데호텔 서울',                  category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.04', '40.18', '40.19'] },
+  { project_name: '환경 협력 네트워크 구축 주한공관장 초청 간담회', project_code: '252016',year: 2025, venue: '롯데호텔 서울',                  category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.04', '40.18'] },
+  { project_name: '제16차 한·베트남 환경장관회의',                project_code: '241011',  year: 2024, venue: '웨스틴 조선 서울 라일락+튤립',   category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.04', '40.08', '40.18'] },
   // 광주광역시·경상남도·경상북도·강원특별자치도
-  { project_name: 'BIXPO 2018 행사 (본계약)',                     project_code: '183300-1',year: 2018, venue: '광주 김대중컨벤션센터',          category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '제13회 광주비엔날레',                          project_code: '201100',  year: 2020, venue: '광주비엔날레전시관',             category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '중소기업 스마트 제조혁신 전략보고회',          project_code: '182120',  year: 2018, venue: '경남도청 대회의실',              category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '2025년 APEC 경제행사 대행 용역',               project_code: '251014',  year: 2025, venue: '경주',                          category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '4차 산업혁명시대, 관광과 박물관',              project_code: '193910',  year: 2019, venue: '국립중앙박물관',                category_tag: '일반', has_excel: true,  has_image: true  },
+  { project_name: 'BIXPO 2018 행사 (본계약)',                     project_code: '183300-1',year: 2018, venue: '광주 김대중컨벤션센터',          category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.04', '40.19'] },
+  { project_name: '제13회 광주비엔날레',                          project_code: '201100',  year: 2020, venue: '광주비엔날레전시관',             category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.17', '40.19'] },
+  { project_name: '중소기업 스마트 제조혁신 전략보고회',          project_code: '182120',  year: 2018, venue: '경남도청 대회의실',              category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.04', '40.08'] },
+  { project_name: '2025년 APEC 경제행사 대행 용역',               project_code: '251014',  year: 2025, venue: '경주',                          category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.04', '40.08', '40.18', '40.11'] },
+  { project_name: '4차 산업혁명시대, 관광과 박물관',              project_code: '193910',  year: 2019, venue: '국립중앙박물관',                category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.04', '40.05'] },
   // 광화문 광장
-  { project_name: '2018 실패박람회',                              project_code: '182040',  year: 2018, venue: '광화문 광장',                    category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '2019 실패박람회',                              project_code: '192400',  year: 2019, venue: '광화문 광장',                    category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '제100주년 3.1절 중앙기념식',                   project_code: '192000',  year: 2019, venue: '광화문 광장',                    category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 52 },
-  // DDP·서울스퀘어 추정
-  { project_name: '제1회 대한민국 정부혁신박람회',                project_code: '191400',  year: 2019, venue: '동대문디자인플라자 (DDP)',       category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 22 },
-  { project_name: '농식품 청년해외개척단 8기 발대식',             project_code: '191600',  year: 2019, venue: '서울스퀘어',                     category_tag: '일반', has_excel: true,  has_image: true  },
+  { project_name: '2018 실패박람회',                              project_code: '182040',  year: 2018, venue: '광화문 광장',                    category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.10', '40.17', '40.19'] },
+  { project_name: '2019 실패박람회',                              project_code: '192400',  year: 2019, venue: '광화문 광장',                    category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.10', '40.17', '40.19'] },
+  { project_name: '제100주년 3.1절 중앙기념식',                   project_code: '192000',  year: 2019, venue: '광화문 광장·세종로공원',         category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 52, program_parts: ['40.08', '40.18', '40.19'] },
+  // DDP·서울스퀘어
+  { project_name: '제1회 대한민국 정부혁신박람회',                project_code: '191400',  year: 2019, venue: '동대문디자인플라자 (DDP) 알림1·2관', category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 22, program_parts: ['40.05', '40.08', '40.10', '40.17', '40.19'] },
+  { project_name: '농식품 청년해외개척단 8기 발대식',             project_code: '191600',  year: 2019, venue: '서울스퀘어',                     category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.08', '40.18'] },
   // aT
-  { project_name: '2019 대한민국 식품대전',                       project_code: '191200',  year: 2019, venue: 'aT센터',                         category_tag: '일반', has_excel: true,  has_image: true  },
+  { project_name: '2019 대한민국 식품대전',                       project_code: '191200',  year: 2019, venue: 'aT센터',                         category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.19', '40.17'] },
   // 오스코
-  { project_name: '2025 대한민국 정부 박람회',                    project_code: '252006',  year: 2025, venue: '오스코 (OSCO)',                  category_tag: '일반', has_excel: true,  has_image: true  },
+  { project_name: '2025 대한민국 정부 박람회',                    project_code: '252006',  year: 2025, venue: '오스코 (OSCO)',                  category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.08', '40.19', '40.17'] },
   // 핵심 폴더
-  { project_name: '2020 평창평화포럼',                            project_code: '193960',  year: 2020, venue: '평창',                          category_tag: '핵심', has_excel: true,  has_image: true  },
+  { project_name: '2020 평창평화포럼',                            project_code: '193960',  year: 2020, venue: '평창 알펜시아',                  category_tag: '핵심', has_excel: true,  has_image: true, program_parts: ['40.04', '40.18', '40.19'] },
   // 해외
-  { project_name: 'UNFCCC COP30 한국홍보관',                      project_code: '252026',  year: 2025, venue: '브라질 벨렘',                    category_tag: '해외', has_excel: true,  has_image: true  },
-  // 미분류
-  { project_name: '2018 KFP 한국수산식품홍보관 (K-FISH)',         project_code: '181000',  year: 2018, venue: '미분류',                        category_tag: '미분류', has_excel: true, has_image: true },
-  { project_name: '2018 SW교육 성과발표회 및 시상식',             project_code: '183900',  year: 2018, venue: '미분류',                        category_tag: '미분류', has_excel: true, has_image: true },
-  { project_name: '2019 홍콩 트래블마트 및 기업설명회',           project_code: '193200',  year: 2019, venue: '미분류',                        category_tag: '미분류', has_excel: true, has_image: true },
-  { project_name: '2019년 야영장 담당공무원 안전관리 실무교육',   project_code: '193000',  year: 2019, venue: '미분류',                        category_tag: '미분류', has_excel: true, has_image: true },
-  { project_name: '한일 우정상 수여식 행사',                      project_code: '193600',  year: 2019, venue: '미분류',                        category_tag: '미분류', has_excel: true, has_image: true },
+  { project_name: 'UNFCCC COP30 한국홍보관',                      project_code: '252026',  year: 2025, venue: '브라질 벨렘',                    category_tag: '해외', has_excel: true,  has_image: true, program_parts: ['40.05', '40.17'] },
+  // 미분류 — 파트 추정 불가 (정직)
+  { project_name: '2018 KFP 한국수산식품홍보관 (K-FISH)',         project_code: '181000',  year: 2018, venue: '미분류',                        category_tag: '미분류', has_excel: true, has_image: true, program_parts: ['40.05', '40.17'] },
+  { project_name: '2018 SW교육 성과발표회 및 시상식',             project_code: '183900',  year: 2018, venue: '미분류',                        category_tag: '미분류', has_excel: true, has_image: true, program_parts: ['40.08', '40.04'] },
+  { project_name: '2019 홍콩 트래블마트 및 기업설명회',           project_code: '193200',  year: 2019, venue: '미분류',                        category_tag: '미분류', has_excel: true, has_image: true, program_parts: ['40.06', '40.05'] },
+  { project_name: '2019년 야영장 담당공무원 안전관리 실무교육',   project_code: '193000',  year: 2019, venue: '미분류',                        category_tag: '미분류', has_excel: true, has_image: true, program_parts: ['40.04'] },
+  { project_name: '한일 우정상 수여식 행사',                      project_code: '193600',  year: 2019, venue: '미분류',                        category_tag: '미분류', has_excel: true, has_image: true, program_parts: ['40.08', '40.18'] },
   // 루트 직접 노출
-  { project_name: '2020 국제방송영상마켓 (BCWW) 및 글로벌 포맷마켓 온오프라인', project_code: '203130', year: 2020, venue: '온라인+오프라인', category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '2020 글로벌 코리아 박람회 LH전시부스 및 LH로드쇼 (LH GBC)',   project_code: '202140-1', year: 2020, venue: '복합',         category_tag: '일반', has_excel: true,  has_image: true  },
-  { project_name: '2035 국가 온실가스 감축목표 대국민 공개 논의',  project_code: '251015',  year: 2025, venue: '미정',                          category_tag: '일반', has_excel: true,  has_image: true  },
+  { project_name: '2020 국제방송영상마켓 (BCWW) 및 글로벌 포맷마켓 온오프라인', project_code: '203130', year: 2020, venue: '온라인+오프라인', category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.06', '40.17']  },
+  { project_name: '2020 글로벌 코리아 박람회 LH전시부스 및 LH로드쇼 (LH GBC)',   project_code: '202140-1', year: 2020, venue: '복합',         category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.17', '40.11']  },
+  { project_name: '2035 국가 온실가스 감축목표 대국민 공개 논의',  project_code: '251015',  year: 2025, venue: '미정',                          category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.04', '40.10']  },
 ]
 
 // ── 4. 디자인 업체 (명세 6.1.b.iii) ───────────────────────────

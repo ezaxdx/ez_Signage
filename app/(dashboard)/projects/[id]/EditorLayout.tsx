@@ -762,9 +762,10 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
             className="overflow-hidden"
             style={{ width: '20%' }}
           >
+            {/* 5/22 사용자 명시 = 모두 끄기('off') 모드 = 시설 가이드 위반 우측 패널에서도 안 보이게 */}
             <RightPanel
               selectedItem={selectedItem}
-              facilityIssues={selectedItem ? (facilityIssueMap[selectedItem.id] ?? []) : []}
+              facilityIssues={facilityCheckMode === 'off' || !selectedItem ? [] : (facilityIssueMap[selectedItem.id] ?? [])}
               venueName={project.event_venue}
               guideSourceUrl={null}
             />

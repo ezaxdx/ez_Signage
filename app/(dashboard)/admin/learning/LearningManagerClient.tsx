@@ -1943,9 +1943,6 @@ export function LearningManagerClient({
               <Sparkles className="w-4 h-4 text-emerald-500" />
               행사 관리 ({SEED_EVENT_HISTORY.length})
             </h2>
-            <p className="text-[11px] text-slate-500 mb-3">
-              AI 추천 매핑 SOT = 5대 영역(행사장·프로그램 파트·환경장식물 종류·규격·수량). 행사 삭제해도 영구 보존·다음 추천에 자동 활용. 신규 프로젝트 INSERT 시 자동 누적.
-            </p>
             <div className="overflow-x-auto border border-slate-200 rounded">
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200">
