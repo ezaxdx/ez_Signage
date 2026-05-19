@@ -82,17 +82,39 @@ export const PIPELINE_BLOCKS: Record<'step1' | 'step2' | 'step3' | 'step4' | 'st
     status: 'active',
   },
   // 5/20 노션 §1 (AI 호출 3종) 정합 = 행사장 특징 분석 AI
-  // 5/21 사용자 명시 = 텍스트화만으론 추천 흐름 통합 안 됨 → body에 자동 주입 흐름 명시
+  // 5/21 사용자 명시 = 텍스트화만으론 부족. 구조화 JSON 출력 → 3채널 자동 활용 흐름 명시.
   step5: {
     num: 5,
     title: '행사장 특징 분석',
-    desc: '신규 행사장 등록 시 시설가이드 텍스트화 + 이후 추천에 자동 활용',
-    body: `[행사장 등록 시 1회 호출]
+    desc: '신규 행사장 등록 시 시설가이드 구조화 JSON 추출 + 추천·시설 가이드·주의사항 알림 3채널 자동 반영',
+    body: `[행사장 등록 시 1회 호출 — 구조화 JSON 추출]
 - 입력: 신규 행사장 시설가이드 PDF·매뉴얼 + 도면 첨부 (관리자 페이지 → 행사장 추가에서 업로드).
-- 동작: Gemini Vision으로 표준 규격·제약·연락처·예약 시점 텍스트 추출 → venues.specs_text 저장.
-- 자동 활용: 이후 같은 행사장으로 새 프로젝트 생성 시 lib/ai/venueProfile.ts가 specs_text를
-  자동으로 읽어 추천 Gemini 프롬프트에 [행사장 특징] 블록으로 주입 → 추천 결과에 반영됨.
-- 즉 텍스트화는 1회·이후 모든 추천은 학습 결과 자동 사용 (별도 호출 X).`,
+- 동작: Gemini Vision으로 시설가이드 텍스트화 + VenueFacilityGuide 스키마(lib/types.ts)에 맞춰 구조화 JSON 출력.
+- 출력 필드:
+  · install_allowed[] (카테고리·status: allowed/conditional/denied·max_width_mm·max_height_mm·standard_width_mm·standard_height_mm·note)
+  · warnings[] (type·description) — 주의사항·금지조건
+  · mount_methods (taka·magnet·adhesive·hanger·rope) — 설치 방법
+  · rigging (available·grid_lines·max_load_kg·note) — 천장 행잉·하중
+  · safety (fire·fall·electric·weather) — 안전 기준
+  · digital_signage (allowed_locations·led_size_limit·content_review·note)
+  · special_notes[] — 행사장 특이사항
+- 저장:
+  · venues.facility_guide_json = 구조화 JSON (machine readable)
+  · venues.specs_text = 사람용 요약 텍스트
+
+[자동 활용 채널 3종 — 별도 호출 X·DB 한 번 채우면 모두 작동]
+1. 추천 Gemini 프롬프트:
+   - lib/ai/venueProfile.ts가 facility_guide_json + specs_text를 [행사장 프로필] 블록으로 자동 주입
+   - 새 프로젝트마다 같은 행사장 데이터 자동 반영
+2. 시설 가이드 패널 (FacilityGuidePanel):
+   - getFacilityGuideAsync()가 facility_guide_json을 우선 읽어 모달 본문 자동 표시
+   - 행사장별 다른 본문 자동 분기 (install_allowed·warnings·mount_methods·rigging·safety·digital_signage)
+3. 주의사항 자동 알림 (facilityValidator.ts):
+   - install_denied → 경고 (해당 카테고리 설치 불가)
+   - install_conditional → 조건부 안내
+   - rigging.available=false → 천정배너 행잉 불가 경고
+   - max_width_mm·max_height_mm 초과 → 규격 초과 경고
+   - 위반 시 EditorLayout이 FacilityGuideAlert 자동 발동 + RightPanel 위반 사항 자동 표시`,
     status: 'coming',
   },
 }

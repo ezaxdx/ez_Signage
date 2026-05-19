@@ -5,7 +5,7 @@
 // v3 (2026-05-18): 노션 컴펌 본 §5 행사장 학습 8 행사장 누적값 시드 추가.
 
 import { createClient } from '@/lib/supabase/server'
-import { getFacilityGuide } from '@/lib/data/venueFacilityGuide'
+import { getFacilityGuide, getFacilityGuideAsync } from '@/lib/data/venueFacilityGuide'
 
 /**
  * 노션 컴펌 본 §5 행사장 학습 시드 (5/18 페이지 36148589-8ea1-81d7-8b55-d1bd771a40a1)
@@ -59,8 +59,15 @@ export async function buildVenueProfile(venueName: string | null | undefined): P
     lines.push(`- 같은 행사장 누적 평균 수량: ${history}`)
   }
 
-  // ① 시드 시설 가이드 (venueFacilityGuide.ts)
-  const guide = getFacilityGuide(venueName)
+  // ① 시설 가이드 (5/21 사용자 명시 = DB venues.facility_guide_json 우선 → 없으면 시드 폴백)
+  //    step5 행사장 특징 분석 AI가 채운 facility_guide_json도 자동 활용
+  let guide
+  try {
+    const supabase = createClient()
+    guide = await getFacilityGuideAsync(venueName, supabase)
+  } catch {
+    guide = getFacilityGuide(venueName)
+  }
   if (guide) {
     hasData = true
     if (guide.install_allowed?.length) {
