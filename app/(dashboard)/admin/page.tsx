@@ -140,6 +140,14 @@ export default async function AdminOpsPage() {
       .pop()
     const lastEditorName = lastEditor ? lastEditor.split('@')[0] : '—'
 
+    // 5/21 회의 정합 = 상태 3단계로 단순화 (프로젝트 생성·진행 중·완료)
+    // - 완료: finalized_at 있고 모든 항목 완료
+    // - 진행 중: design_items 수정 또는 다운로드 1회 이상 (item_count > 0 또는 마지막 편집자 있음)
+    // - 프로젝트 생성: 그 외 (생성만 하고 미수정·미다운로드)
+    const isCompleted = pFinalized === pTotal && pTotal > 0
+    const isInProgress = !isCompleted && (pTotal > 0 || !!lastEditor)
+    const simpleStage = isCompleted ? '완료' : isInProgress ? '진행 중' : '프로젝트 생성'
+
     return {
       no: String(idx + 1).padStart(2, '0'),
       id: p.id,
@@ -147,13 +155,13 @@ export default async function AdminOpsPage() {
       pm: pmName,
       event_name: p.name,
       event_venue: p.event_venue ?? '—',
-      stage: p.stage ?? p.status ?? '준비중',
+      stage: simpleStage,
       order_date: orderDate ? new Date(orderDate).toISOString().slice(0, 10) : '—',
       confirm_rate: confirmRate,
       item_count: pTotal,
       ai_accuracy: pAccuracy,
       manager: lastEditorName,
-      note: pFinalized === pTotal && pTotal > 0 ? '발주 완료' : '',
+      note: isCompleted ? '발주 완료' : '',
       event_date: p.event_date,
     }
   })
