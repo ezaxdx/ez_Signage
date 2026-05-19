@@ -12,7 +12,7 @@ export type FacilityCheckMode = 'verbose' | 'silent_icon' | 'off'
 const MODES: Array<{ id: FacilityCheckMode; label: string; description: string; icon: React.ReactNode }> = [
   { id: 'verbose',     label: '아이콘 + 위반사항 안내', description: '그리드 ⚠️ 아이콘 + 우측 패널 위반사항 안내 (기본)', icon: <BellRing className="w-3.5 h-3.5" /> },
   { id: 'silent_icon', label: '위반사항 안내만',        description: '아이콘 없이 우측 패널 안내만',                       icon: <Bell className="w-3.5 h-3.5" /> },
-  { id: 'off',         label: '모두 끄기',              description: '아이콘·안내 모두 끄기 (요약만 1회)',                 icon: <BellOff className="w-3.5 h-3.5" /> },
+  { id: 'off',         label: '모두 끄기',              description: '아이콘·안내 모두 끄기',                              icon: <BellOff className="w-3.5 h-3.5" /> },
 ]
 
 interface Props {
@@ -65,9 +65,7 @@ export function FacilityCheckModeToggle({ mode, onChange }: Props) {
               <p className="text-[10px] text-slate-500 mt-0.5 ml-5">{m.description}</p>
             </button>
           ))}
-          <p className="px-3 py-2 text-[10px] text-slate-400 bg-slate-50 border-t border-slate-200">
-            ※ 다운로드 직전 일괄 요약은 모드와 무관하게 안전망으로 유지됩니다.
-          </p>
+          {/* 5/22 사용자 명시 = "요약만" 안내 삭제 */}
         </div>
       )}
     </div>
