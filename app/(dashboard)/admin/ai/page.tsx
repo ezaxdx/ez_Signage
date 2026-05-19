@@ -19,16 +19,16 @@ export default async function AdminAiPage() {
   if (!user) redirect('/login')
   if (!(await isAdmin(supabase))) redirect('/dashboard')
 
-  // usage_logs에서 추천·다운로드 액션 조회 (Gemini 호출 추적)
-  const [logsRes] = await Promise.all([
-    supabase
-      .from('usage_logs')
-      .select('id, user_id, project_id, action, metadata, created_at')
-      .in('action', ['recommend', 'export_excel', 'export_pptx'])
-      .order('created_at', { ascending: false })
-      .limit(5000)
-      .then(r => r, () => ({ data: [], error: null })),
-  ])
+  // 5/22 P4-C 사용자 명시 = silent fail 제거. RLS 차단·테이블 부재 시 console.error 명시.
+  const logsRes = await supabase
+    .from('usage_logs')
+    .select('id, user_id, project_id, action, metadata, created_at')
+    .in('action', ['recommend', 'export_excel', 'export_pptx'])
+    .order('created_at', { ascending: false })
+    .limit(5000)
+  if (logsRes.error) {
+    console.error('[admin/ai] usage_logs SELECT failed:', logsRes.error.message, logsRes.error.code, logsRes.error.details)
+  }
 
   type Log = {
     id: string

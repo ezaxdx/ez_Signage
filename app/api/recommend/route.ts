@@ -24,17 +24,26 @@ export async function POST(req: NextRequest) {
 
   try {
     const result = await recommendSignage(body)
-    // 5/22 사용자 명시 = AI 호출수 0건 = usage_logs INSERT 누락 원인. 추천 성공 시 자동 카운트
-    void supabase.from('usage_logs').insert({
-      user_id: user.id,
-      project_id: null,
-      action: 'recommend',
-      metadata: {
-        venue: body.venue,
-        event_name: body.eventName,
-        item_count: result.items?.length ?? 0,
-      },
-    }).then(() => {}, () => {})
+    // 5/22 P4-B 사용자 명시 = silent fail 제거. INSERT 실패 시 console.error 명시 (Vercel Functions Logs 영역에서 확인).
+    try {
+      const { error: logError } = await supabase.from('usage_logs').insert({
+        user_id: user.id,
+        project_id: null,
+        action: 'recommend',
+        metadata: {
+          venue: body.venue,
+          event_name: body.eventName,
+          item_count: result.items?.length ?? 0,
+        },
+      })
+      if (logError) {
+        console.error('[usage_logs] INSERT failed:', logError.message, logError.code, logError.details)
+      } else {
+        console.log('[usage_logs] ✓ recommend INSERT')
+      }
+    } catch (logEx) {
+      console.error('[usage_logs] Exception:', logEx)
+    }
     return NextResponse.json(result)
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : '추천 생성 실패'
