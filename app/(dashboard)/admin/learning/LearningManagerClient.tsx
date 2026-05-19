@@ -2649,17 +2649,20 @@ export function LearningManagerClient({
                       return a.name.localeCompare(b.name, 'ko')
                     })
                     .map(pt => {
-                      // 5/22 사용자 명시 = 사용 행사 = SEED_EVENT_HISTORY에서 이 파트 사용된 행사 수
-                      const usageCount = SEED_EVENT_HISTORY.filter(e => (e.program_parts ?? []).includes(pt.code)).length
-                      // 사용된 환경장식물·평균 수량 = 이 파트 사용한 행사의 signage_breakdown 합산 → 평균
+                      // 5/22 사용자 명시 = 동의어 매핑 적용 영역 = resolveCategoryName 자동 변환 + signage_types.name 12 카테고리만
+                      // unifiedEventHistory (SEED + DB + user + custom) 영역 사용 = 행사 관리 영역 SOT 정합
+                      const usageCount = unifiedEventHistory.filter(e => (e.program_parts ?? []).includes(pt.code)).length
                       const sigUsage = new Map<string, number>()
-                      for (const e of SEED_EVENT_HISTORY) {
+                      const validTypeNames = new Set(signageTypeList.map(t => t.name))
+                      for (const e of unifiedEventHistory) {
                         if (!(e.program_parts ?? []).includes(pt.code)) continue
                         const breakdown = e.signage_breakdown && e.signage_breakdown.length > 0
                           ? e.signage_breakdown
                           : estimateSignageBreakdown(e.program_parts, e.analyzed_item_count)
                         for (const s of breakdown) {
-                          sigUsage.set(s.category, (sigUsage.get(s.category) ?? 0) + s.quantity)
+                          const standard = resolveCategoryName(s.category)
+                          if (!validTypeNames.has(standard)) continue  // 12 카테고리 외 영역 제외
+                          sigUsage.set(standard, (sigUsage.get(standard) ?? 0) + s.quantity)
                         }
                       }
                       const sigArr = Array.from(sigUsage.entries())

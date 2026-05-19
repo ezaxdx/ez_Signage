@@ -127,8 +127,8 @@ export const SEED_SYNONYMS: SynonymSeed[] = [
   { alias: 'MOU 현수막',     canonical_name: '가로 현수막',  note: '행사 현수막' },
   { alias: 'MOU',            canonical_name: '가로 현수막',  note: 'MOU 약어' },
   // 폼보드 재질 발주 — 12 카테고리 표준명(A4·A3·I배너) 매핑
-  { alias: 'L보드',          canonical_name: 'A4 가로',     note: 'L자형 안내판' },
-  { alias: '안내사인',       canonical_name: 'A4 가로',     note: '일반 안내판' },
+  { alias: 'L보드',          canonical_name: '폼보드',       note: '5/22 정합 = L자형 안내판 → 폼보드' },
+  { alias: '안내사인',       canonical_name: '폼보드',       note: '5/22 정합 = 일반 안내판 → 폼보드' },
 
   // 5/22 신규 5건 동의어 정합 (시상보드·Q방·디지털 사이니지·폼보드·피켓보드)
   // ── 시상보드 (award_board) ──
