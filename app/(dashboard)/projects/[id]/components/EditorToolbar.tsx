@@ -208,7 +208,7 @@ export function EditorToolbar({
             className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed text-white text-xs px-3 py-1.5 rounded-md transition font-medium"
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
-            {projectStatus === '완료' ? '완료됨' : '완료'}
+            {projectStatus === '완료' ? '완료' : '진행 중'}
           </button>
         )}
       </div>

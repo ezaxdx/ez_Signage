@@ -157,7 +157,7 @@ export function ProjectCard({ project, isOwner = true }: Props) {
           <Settings className="w-3.5 h-3.5" />
         </Link>
         {/* 5/22 사용자 명시 = 맨 처음 화면 = 삭제 불가능 (회의 §7 = 사용자 불가·관리자만). 삭제는 /admin 운영 대시보드에서만 */}
-        {/* 5/20 노션 §7 정합 = 완료 버튼 (PDF·설정 사이) */}
+        {/* 5/22 사용자 명시 = 진행 중·완료 라벨 분리 (회색 "완료" 버튼 = 완료된 것처럼 보이는 문제 해결) */}
         {isOwner && (
           <button
             onClick={handleComplete}
@@ -165,12 +165,12 @@ export function ProjectCard({ project, isOwner = true }: Props) {
             className={`flex items-center justify-center gap-1 text-xs font-medium py-2 px-3 rounded-lg transition-all ${
               completed
                 ? 'bg-emerald-100 text-emerald-700 cursor-default'
-                : 'bg-slate-50 hover:bg-emerald-50 text-slate-500 hover:text-emerald-700 disabled:opacity-50'
+                : 'bg-indigo-50 hover:bg-emerald-50 text-indigo-700 hover:text-emerald-700 disabled:opacity-50'
             }`}
-            title={completed ? '완료됨' : '프로젝트 완료 처리'}
+            title={completed ? '완료됨' : '클릭 시 완료 처리'}
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
-            {completed ? '완료' : completing ? '...' : '완료'}
+            {completed ? '완료' : completing ? '...' : '진행 중'}
           </button>
         )}
         <Link
