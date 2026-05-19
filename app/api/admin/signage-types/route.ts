@@ -13,15 +13,37 @@ export const runtime = 'nodejs'
 export async function GET() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: '인증 필요' }, { status: 401 })
+  if (!user) return NextResponse.json({ items: [], error: '인증 필요' }, { status: 200 })
 
-  const { data, error } = await supabase
-    .from('signage_types')
-    .select('id, name, default_width_mm, default_height_mm, default_material, category, layout, is_standard, sort_order, notes, updated_at')
-    .order('sort_order', { ascending: true })
+  // 5/22 fallback = v14 미적용 시 'layout'·'updated_at' 컬럼 부재 (42703) → 단순 컬럼 재시도. 테이블 부재 (42P01) → 빈 배열 200.
+  try {
+    const full = await supabase
+      .from('signage_types')
+      .select('id, name, default_width_mm, default_height_mm, default_material, category, layout, is_standard, sort_order, notes, updated_at, sample_image_url, hidden')
+      .order('sort_order', { ascending: true })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ items: data ?? [] })
+    if (!full.error) return NextResponse.json({ items: full.data ?? [] })
+
+    console.error('[signage-types] GET full failed:', full.error.message, full.error.code)
+    if (full.error.code === '42703') {
+      // 컬럼 부재 = 기본 컬럼만 재조회
+      const basic = await supabase
+        .from('signage_types')
+        .select('id, name, default_width_mm, default_height_mm, default_material, category, is_standard, sort_order, notes')
+        .order('sort_order', { ascending: true })
+      if (!basic.error) {
+        return NextResponse.json({ items: basic.data ?? [], partial: true, missing_columns: 'v14 (sample_image_url·layout·hidden·updated_at)' })
+      }
+      console.error('[signage-types] GET basic failed:', basic.error.message, basic.error.code)
+    }
+    if (full.error.code === '42P01') {
+      return NextResponse.json({ items: [], fallback: true, error: full.error.message, code: full.error.code }, { status: 200 })
+    }
+    return NextResponse.json({ items: [], error: full.error.message, code: full.error.code, fallback: true }, { status: 200 })
+  } catch (e) {
+    console.error('[signage-types] GET Exception:', e)
+    return NextResponse.json({ items: [], fallback: true, error: e instanceof Error ? e.message : 'unknown' }, { status: 200 })
+  }
 }
 
 export async function POST(req: NextRequest) {

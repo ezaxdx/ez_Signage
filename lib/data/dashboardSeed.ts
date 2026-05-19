@@ -152,46 +152,46 @@ export function estimateSignageBreakdown(parts: string[] | undefined | null, tot
   const has = (code: string) => parts.includes(code)
   // 전시·박람회·엑스포 (40.05 전시 포함)
   if (has('40.05')) {
-    result.push({ category: 'X배너', quantity: 10, sizes: '600×1800 (추정)' })
-    result.push({ category: '세로현수막', quantity: 5, sizes: '600×1800 (추정)' })
-    result.push({ category: '동선 배너', quantity: 3, sizes: '600×1800 (추정)' })
+    result.push({ category: 'X배너', quantity: 10, sizes: '600×1800' })
+    result.push({ category: '세로현수막', quantity: 5, sizes: '600×1800' })
+    result.push({ category: '동선 배너', quantity: 3, sizes: '600×1800' })
   }
   // 회의·포럼 (40.04 회의 포함)
   if (has('40.04')) {
-    result.push({ category: '포디움 타이틀', quantity: 2, sizes: '600×200 (추정)' })
-    result.push({ category: 'A4 가로', quantity: 5, sizes: '297×210 (추정)' })
-    result.push({ category: 'A3 가로', quantity: 3, sizes: '420×297 (추정)' })
+    result.push({ category: '포디움 타이틀', quantity: 2, sizes: '600×200' })
+    result.push({ category: 'A4 가로', quantity: 5, sizes: '297×210' })
+    result.push({ category: 'A3 가로', quantity: 3, sizes: '420×297' })
   }
   // 공식행사·기념식 (40.08)
   if (has('40.08')) {
-    result.push({ category: '통천', quantity: 1, sizes: '10000×7200 (추정)' })
-    result.push({ category: '가로 현수막', quantity: 2, sizes: '5000×900 (추정)' })
+    result.push({ category: '통천', quantity: 1, sizes: '10000×7200' })
+    result.push({ category: '가로 현수막', quantity: 2, sizes: '5000×900' })
   }
   // 등록·영접영송 (40.19·40.20)
   if (has('40.19') || has('40.20')) {
-    if (!result.find(r => r.category === 'X배너')) result.push({ category: 'X배너', quantity: 5, sizes: '600×1800 (추정)' })
-    result.push({ category: '동선 배너', quantity: 4, sizes: '600×1800 (추정)' })
+    if (!result.find(r => r.category === 'X배너')) result.push({ category: 'X배너', quantity: 5, sizes: '600×1800' })
+    result.push({ category: '동선 배너', quantity: 4, sizes: '600×1800' })
   }
   // 의전 (40.18)
   if (has('40.18')) {
-    if (!result.find(r => r.category === 'A3 가로')) result.push({ category: 'A3 가로', quantity: 3, sizes: '420×297 (추정)' })
-    result.push({ category: 'I배너', quantity: 2, sizes: '600×1800 (추정)' })
+    if (!result.find(r => r.category === 'A3 가로')) result.push({ category: 'A3 가로', quantity: 3, sizes: '420×297' })
+    result.push({ category: 'I배너', quantity: 2, sizes: '600×1800' })
   }
   // 비즈매칭·비즈프로그램 (40.06·40.07)
   if (has('40.06') || has('40.07')) {
-    if (!result.find(r => r.category === 'A4 가로')) result.push({ category: 'A4 가로', quantity: 4, sizes: '297×210 (추정)' })
+    if (!result.find(r => r.category === 'A4 가로')) result.push({ category: 'A4 가로', quantity: 4, sizes: '297×210' })
   }
   // 홍보 (40.17)
   if (has('40.17')) {
-    result.push({ category: '가로등 배너', quantity: 5, sizes: '600×1800 (추정)' })
+    result.push({ category: '가로등 배너', quantity: 5, sizes: '600×1800' })
   }
   // 체험·공모전 (40.10·40.09)
   if (has('40.10') || has('40.09')) {
-    if (!result.find(r => r.category === 'A4 가로')) result.push({ category: 'A4 가로', quantity: 3, sizes: '297×210 (추정)' })
+    if (!result.find(r => r.category === 'A4 가로')) result.push({ category: 'A4 가로', quantity: 3, sizes: '297×210' })
   }
   // 투어 (40.11)
   if (has('40.11')) {
-    result.push({ category: '가로 현수막', quantity: 2, sizes: '5000×900 (추정)' })
+    result.push({ category: '가로 현수막', quantity: 2, sizes: '5000×900' })
   }
   // 중복 카테고리 통합 (quantity 합산)
   const merged = new Map<string, { category: string; quantity: number; sizes?: string }>()

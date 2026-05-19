@@ -22,14 +22,23 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ items: [] }, { status: 200 })
 
-  const { data, error } = await supabase
-    .from('program_parts_overrides')
-    .select('*')
-  if (error) {
-    console.error('[program-parts] GET 실패:', error.message)
-    return NextResponse.json({ items: [], error: error.message })
+  // 5/22 fallback = v15 미적용 시 program_parts_overrides 테이블 부재 (42P01) → 빈 배열 200 (PROGRAM_PARTS 시드 영역 그대로 동작).
+  try {
+    const { data, error } = await supabase
+      .from('program_parts_overrides')
+      .select('*')
+    if (error) {
+      console.error('[program-parts] GET 실패:', error.message, error.code)
+      if (error.code === '42P01') {
+        return NextResponse.json({ items: [], fallback: true, error: error.message, code: error.code }, { status: 200 })
+      }
+      return NextResponse.json({ items: [], error: error.message, code: error.code, fallback: true }, { status: 200 })
+    }
+    return NextResponse.json({ items: (data ?? []) as ProgramPartOverride[] })
+  } catch (e) {
+    console.error('[program-parts] GET Exception:', e)
+    return NextResponse.json({ items: [], fallback: true, error: e instanceof Error ? e.message : 'unknown' }, { status: 200 })
   }
-  return NextResponse.json({ items: (data ?? []) as ProgramPartOverride[] })
 }
 
 export async function POST(req: NextRequest) {

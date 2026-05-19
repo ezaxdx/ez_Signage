@@ -2279,9 +2279,7 @@ export function LearningManagerClient({
                                   }
                                   return (
                                     <>
-                                      {isEstimate && (
-                                        <div className="text-[9px] text-amber-600 mb-1 italic">※ 추정값 — 프로그램 파트 기반 평균 패턴</div>
-                                      )}
+                                      {/* 5/22 사용자 명시 = "추정값" 안내 텍스트 제거 */}
                                       <table className="w-full text-[11px]">
                                         <thead>
                                           <tr className="text-slate-500 text-[10px]">
@@ -2376,7 +2374,7 @@ export function LearningManagerClient({
                     <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">행사장·홀</th>
                     <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">카테고리</th>
                     <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">주의사항</th>
-                    <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap" title="시설 가이드 6 정보(설치 가능 카테고리·설치 방법·리깅·안전 기준·주의사항·디지털 사이니지) 중 채워진 개수">정보 채움 (6 항목)</th>
+                    <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap" title="시설 가이드 정보 6 영역(설치 가능 영역·설치 방법·리깅·안전 기준·주의사항·디지털 사이니지) 중 채워진 영역. 환경장식물 종류 X.">가이드 정보</th>
                     <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">학습 시점</th>
                     <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">AI 추출</th>
                     {isAdmin && <th className="px-2 py-1.5 text-center font-semibold w-8"></th>}
