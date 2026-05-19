@@ -328,18 +328,28 @@ export async function exportToPPT(
     const slide = pptx.addSlide()
     slide.background = { color: 'F8FAFC' }
 
-    // ── 좌상단: 환경 제작물 / (행사명) ─────────────────────
-    slide.addText(
-      [
-        { text: '환경 제작물', options: { fontSize: 14, bold: true, color: '1E293B' } },
-        { text: '\n', options: { breakLine: true } },
-        { text: `(${project.name})`, options: { fontSize: 10, color: '64748B' } },
-      ],
-      {
-        x: MARGIN, y: TITLE_Y, w: TABLE_W * 0.65, h: 0.45,
-        fontFace: 'Malgun Gothic', valign: 'top',
-      }
-    )
+    // ── 좌상단: 환경 제작물 / (행사명) + 5/20 노션 §6 정합 = 행사 정보 (장소·일자·발주처) ──
+    const eventDateStr = project.event_date
+      ? new Date(project.event_date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
+      : ''
+    const headerLines: Array<{ text: string; options: { fontSize: number; bold?: boolean; color: string; breakLine?: boolean } }> = [
+      { text: '환경 제작물', options: { fontSize: 14, bold: true, color: '1E293B' } },
+      { text: '\n', options: { fontSize: 10, color: '64748B', breakLine: true } },
+      { text: `(${project.name})`, options: { fontSize: 10, color: '64748B', breakLine: true } },
+    ]
+    if (project.event_venue) {
+      headerLines.push({ text: `장소: ${project.event_venue}`, options: { fontSize: 9, color: '64748B', breakLine: true } })
+    }
+    if (eventDateStr) {
+      headerLines.push({ text: `일자: ${eventDateStr}`, options: { fontSize: 9, color: '64748B', breakLine: true } })
+    }
+    if (project.client_name) {
+      headerLines.push({ text: `발주처: ${project.client_name}`, options: { fontSize: 9, color: '64748B' } })
+    }
+    slide.addText(headerLines, {
+      x: MARGIN, y: TITLE_Y, w: TABLE_W * 0.65, h: 0.85,
+      fontFace: 'Malgun Gothic', valign: 'top',
+    })
 
     // ── 우상단: 행사 로고 ─────────────────────────────────
     if (logoText) {
