@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 import { explainStorageError } from '@/lib/services/storagePaths'
 import { REGION_ORDER, VENUE_HALLS, getHallsByVenueKey, getHallsByVenueName } from '@/lib/venueIntel'
 import { STANDARD_CATEGORY_BY_KEY, type StandardCategoryKey } from '@/lib/data/signageCategoryStandards'
-import { PROGRAM_PARTS, PROGRAM_PART_GROUPS, PROGRAM_PART_SIGNAGE_HINTS } from '@/lib/programParts'
+import { PROGRAM_PARTS, PROGRAM_PART_GROUPS, PROGRAM_PART_SIGNAGE_HINTS, PROGRAM_PART_BY_CODE } from '@/lib/programParts'
 import { SEED_EVENT_HISTORY } from '@/lib/data/dashboardSeed'
 // 5/21 사용자 명시 = NIST 4단·전체 학습 요약·향후 도입 로드맵 UI 표시 롤백.
 // 시드 (LEARNING_META_SEED·NIST_RMF_STAGES·VISION_ROADMAP) 자체는 lib/data·lib/ai에 보존
@@ -388,6 +388,8 @@ export function LearningManagerClient({
   const [signageTypeSamples, setSignageTypeSamples] = useState<Record<string, string>>({})
   const [stSampleFile, setStSampleFile] = useState<File | null>(null)
   const [stSamplePreview, setStSamplePreview] = useState<string>('')
+  // 5/22 P2-7 = 행사 관리 표 펼침 영역 (▶ 행 클릭 시 환경장식물별 분리 표시)
+  const [expandedEventKey, setExpandedEventKey] = useState<string | null>(null)
   useEffect(() => {
     try {
       const a = localStorage.getItem('mice_hidden_seed_aliases')
@@ -403,6 +405,40 @@ export function LearningManagerClient({
   const saveSignageTypeSample = (typeId: string, url: string) => {
     setSignageTypeSamples(prev => {
       const next = { ...prev, [typeId]: url }
+      try { localStorage.setItem('mice_signage_type_samples', JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
+  // 5/22 P1-2 = 이미지 교체·삭제 영역 신규 (Storage upload + sample localStorage 정합)
+  const replaceSignageTypeImage = async (t: SignageTypeRow) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.onchange = async () => {
+      const file = input.files?.[0]
+      if (!file) return
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) { alert('로그인이 필요합니다'); return }
+        const ext = file.name.split('.').pop() ?? 'png'
+        const path = `${user.id}/signage-samples/${t.id}-${Date.now()}.${ext}`
+        const { error } = await supabase.storage.from('design-images').upload(path, file, { upsert: true })
+        if (error) { alert('이미지 업로드 실패: ' + error.message); return }
+        const { data: { publicUrl } } = supabase.storage.from('design-images').getPublicUrl(path)
+        saveSignageTypeSample(t.id, publicUrl)
+        alert(`'${t.name}' 예시 이미지 교체 완료`)
+      } catch (e) {
+        alert('이미지 교체 실패: ' + (e instanceof Error ? e.message : 'unknown'))
+      }
+    }
+    input.click()
+  }
+  const deleteSignageTypeImage = (t: SignageTypeRow) => {
+    if (!confirm(`'${t.name}' 예시 이미지 삭제?`)) return
+    setSignageTypeSamples(prev => {
+      const next = { ...prev }
+      delete next[t.id]
       try { localStorage.setItem('mice_signage_type_samples', JSON.stringify(next)) } catch {}
       return next
     })
@@ -1404,14 +1440,30 @@ export function LearningManagerClient({
                       <td className="px-2 py-1 text-slate-500 text-[11px]">{t.category}</td>
                       {isAdmin && (
                         <td className="px-2 py-1 text-center whitespace-nowrap">
-                          {/* 5/22 사용자 명시 = 데이터 학습 관리자 편집 기능 추가 */}
+                          {/* 5/22 사용자 명시 = 편집·이미지 교체·삭제 일괄 */}
                           <button
                             onClick={() => editSignageType(t)}
-                            title="편집 (데이터 오류 보완)"
+                            title="편집 (종류명·규격·재질·분류·레이아웃)"
                             className="text-[11px] leading-none px-1 text-slate-400 hover:text-indigo-600"
                           >
                             ✎
                           </button>
+                          <button
+                            onClick={() => replaceSignageTypeImage(t)}
+                            title="예시 이미지 교체"
+                            className="text-[11px] leading-none px-1 ml-1 text-slate-400 hover:text-emerald-600"
+                          >
+                            📷
+                          </button>
+                          {signageTypeSamples[t.id] && (
+                            <button
+                              onClick={() => deleteSignageTypeImage(t)}
+                              title="예시 이미지 삭제"
+                              className="text-[11px] leading-none px-1 ml-1 text-slate-400 hover:text-rose-600"
+                            >
+                              🗑
+                            </button>
+                          )}
                           <button
                             onClick={() => hidden ? toggleHideSignageType(t.id) : deleteSignageType(t.name)}
                             title={hidden ? '복구' : '삭제·숨김'}
@@ -1574,14 +1626,30 @@ export function LearningManagerClient({
                       <td className="px-2 py-1 text-slate-500 text-[11px]">{t.category}</td>
                       {isAdmin && (
                         <td className="px-2 py-1 text-center whitespace-nowrap">
-                          {/* 5/22 사용자 명시 = 데이터 학습 관리자 편집 기능 추가 */}
+                          {/* 5/22 사용자 명시 = 편집·이미지 교체·삭제 일괄 */}
                           <button
                             onClick={() => editSignageType(t)}
-                            title="편집 (데이터 오류 보완)"
+                            title="편집 (종류명·규격·재질·분류·레이아웃)"
                             className="text-[11px] leading-none px-1 text-slate-400 hover:text-indigo-600"
                           >
                             ✎
                           </button>
+                          <button
+                            onClick={() => replaceSignageTypeImage(t)}
+                            title="예시 이미지 교체"
+                            className="text-[11px] leading-none px-1 ml-1 text-slate-400 hover:text-emerald-600"
+                          >
+                            📷
+                          </button>
+                          {signageTypeSamples[t.id] && (
+                            <button
+                              onClick={() => deleteSignageTypeImage(t)}
+                              title="예시 이미지 삭제"
+                              className="text-[11px] leading-none px-1 ml-1 text-slate-400 hover:text-rose-600"
+                            >
+                              🗑
+                            </button>
+                          )}
                           <button
                             onClick={() => hidden ? toggleHideSignageType(t.id) : deleteSignageType(t.name)}
                             title={hidden ? '복구' : '삭제·숨김'}
@@ -1897,8 +1965,7 @@ export function LearningManagerClient({
           </section>
         )}
 
-        {/* 5/22 사용자 명시 = 행사 관리 = 5대 영역(행사장·파트·환경장식물 종류·규격·수량) 정합
-            기존 행사 정보 활용·향후 AI 추천 매핑 SOT. 신규 프로젝트 INSERT 시 자동 누적·갱신. */}
+        {/* 5/22 P2-7 = 행사 관리 = 5대 영역·▶ 펼침 영역 환경장식물별 분리·정렬 1순위 최신 연도·2순위 가나다 */}
         {activeSection === 'events' && (
           <section className="bg-white border border-slate-200 rounded-xl p-5">
             <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
@@ -1909,35 +1976,83 @@ export function LearningManagerClient({
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr className="text-slate-600 text-[11px]">
+                    <th className="px-2 py-2 w-6"></th>
                     <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">행사명</th>
-                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="5대 영역 ①">행사장</th>
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">행사장</th>
                     <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">연도</th>
-                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="5대 영역 ② — 향후 누적">프로그램 파트</th>
-                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="5대 영역 ③ — 향후 누적">환경장식물 종류</th>
-                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="5대 영역 ④ — 향후 누적">평균 규격(mm)</th>
-                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="5대 영역 ⑤ = 분석 항목 수">총 수량</th>
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">프로그램 파트</th>
+                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">총 수량</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {SEED_EVENT_HISTORY.map(e => (
-                    <tr key={(e.project_code ?? '') + e.project_name} className="hover:bg-slate-50">
-                      <td className="px-2 py-1.5 text-slate-800 font-medium">{e.project_name}</td>
-                      <td className="px-2 py-1.5 text-slate-700">{e.venue}</td>
-                      <td className="px-2 py-1.5 text-right text-slate-600 font-mono">{e.year ?? '—'}</td>
-                      <td className="px-2 py-1.5 text-slate-300 text-[10px]">—</td>
-                      <td className="px-2 py-1.5 text-slate-300 text-[10px]">—</td>
-                      <td className="px-2 py-1.5 text-slate-300 text-[10px]">—</td>
-                      <td className="px-2 py-1.5 text-right font-mono text-emerald-600 font-semibold">
-                        {e.analyzed_item_count ?? <span className="text-slate-300">—</span>}
-                      </td>
-                    </tr>
-                  ))}
+                  {SEED_EVENT_HISTORY
+                    .slice()
+                    .sort((a, b) => {
+                      if ((b.year ?? 0) !== (a.year ?? 0)) return (b.year ?? 0) - (a.year ?? 0)
+                      return a.project_name.localeCompare(b.project_name, 'ko')
+                    })
+                    .map(e => {
+                      const key = (e.project_code ?? '') + e.project_name
+                      const isOpen = expandedEventKey === key
+                      const partNames = (e.program_parts ?? [])
+                        .map(code => PROGRAM_PART_BY_CODE.get(code)?.name ?? code)
+                      return (
+                        <React.Fragment key={key}>
+                          <tr className="hover:bg-slate-50 cursor-pointer" onClick={() => setExpandedEventKey(isOpen ? null : key)}>
+                            <td className="px-2 py-1.5 text-slate-400 text-[11px]">{isOpen ? '▼' : '▶'}</td>
+                            <td className="px-2 py-1.5 text-slate-800 font-medium">{e.project_name}</td>
+                            <td className="px-2 py-1.5 text-slate-700">{e.venue}</td>
+                            <td className="px-2 py-1.5 text-right text-slate-600 font-mono">{e.year ?? '—'}</td>
+                            <td className="px-2 py-1.5">
+                              {partNames.length === 0 ? <span className="text-slate-300 text-[10px]">—</span> : (
+                                <div className="flex flex-wrap gap-0.5">
+                                  {partNames.slice(0, 3).map((n, i) => (
+                                    <span key={i} className="inline-block px-1 py-0.5 bg-indigo-50 text-indigo-700 text-[9px] rounded">{n}</span>
+                                  ))}
+                                  {partNames.length > 3 && <span className="text-[9px] text-slate-400">+{partNames.length - 3}</span>}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-2 py-1.5 text-right font-mono text-emerald-600 font-semibold">
+                              {e.analyzed_item_count ?? <span className="text-slate-300">—</span>}
+                            </td>
+                          </tr>
+                          {isOpen && (
+                            <tr className="bg-slate-50">
+                              <td></td>
+                              <td colSpan={5} className="px-2 py-2">
+                                <div className="text-[10px] text-slate-600 mb-2 font-semibold">환경장식물별 분리</div>
+                                {(!e.signage_breakdown || e.signage_breakdown.length === 0) ? (
+                                  <div className="text-[10px] text-slate-400 italic">— 분석 데이터 누적 영역 (다음 사이클·parse_signage_lists 영역)</div>
+                                ) : (
+                                  <table className="w-full text-[11px]">
+                                    <thead>
+                                      <tr className="text-slate-500 text-[10px]">
+                                        <th className="px-2 py-1 text-left">환경장식물 종류</th>
+                                        <th className="px-2 py-1 text-left">규격(mm)</th>
+                                        <th className="px-2 py-1 text-right">수량</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {e.signage_breakdown.map((s, i) => (
+                                        <tr key={i} className="border-t border-slate-200">
+                                          <td className="px-2 py-1">{s.category}</td>
+                                          <td className="px-2 py-1 text-slate-500">{s.sizes ?? '—'}</td>
+                                          <td className="px-2 py-1 text-right font-mono">{s.quantity}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      )
+                    })}
                 </tbody>
               </table>
             </div>
-            <p className="text-[10px] text-slate-400 italic pt-3">
-              파트·종류·평균 규격은 분석 스크립트(parse_signage_lists)로 자동 추출 영역 = 후속 사이클. 현재는 신규 프로젝트 INSERT 시점부터 자동 누적·다음 AI 추천에 활용.
-            </p>
           </section>
         )}
 
