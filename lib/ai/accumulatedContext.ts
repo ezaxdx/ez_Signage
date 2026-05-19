@@ -10,7 +10,20 @@
 //   학습 신호로 신뢰 어려움. 정직 정합 = finalized_at만.
 
 import { createClient } from '@/lib/supabase/server'
-import { SEED_EVENT_HISTORY, estimateSignageBreakdown } from '@/lib/data/dashboardSeed'
+import { SEED_EVENT_HISTORY, estimateSignageBreakdown, SEED_SYNONYMS } from '@/lib/data/dashboardSeed'
+
+// 5/22 사용자 명시 = 모든 영역 = 동의어 → 표준명 자동 변환. AI 프롬프트 영역 표준화 영역 적용.
+function normalizeAliasKey(s: string): string {
+  return s.replace(/[\s\-_·\(\)\[\]]/g, '').toLowerCase()
+}
+const ALIAS_MAP = (() => {
+  const map = new Map<string, string>()
+  for (const a of SEED_SYNONYMS) map.set(normalizeAliasKey(a.alias), a.canonical_name)
+  return map
+})()
+function resolveCategoryStandard(raw: string): string {
+  return ALIAS_MAP.get(normalizeAliasKey(raw)) ?? raw
+}
 
 export interface AccumulatedContextOptions {
   venue: string
@@ -390,7 +403,8 @@ export async function buildSeedEventHistoryContext(venue: string, programParts?:
       : estimateSignageBreakdown(e.program_parts, e.analyzed_item_count ?? undefined)
     if (breakdown.length === 0) continue
     const totalQty = breakdown.reduce((s, b) => s + b.quantity, 0)
-    const top = breakdown.slice(0, 5).map(b => `${b.category}(${b.quantity}${b.sizes ? `·${b.sizes}` : ''})`).join(' / ')
+    // 5/22 사용자 명시 = 동의어 매핑 → 표준명 자동 변환·AI 영역 표준화
+    const top = breakdown.slice(0, 5).map(b => `${resolveCategoryStandard(b.category)}(${b.quantity}${b.sizes ? `·${b.sizes}` : ''})`).join(' / ')
     const sourceTag = e.source === 'manual' ? ' [사용자 추가]' : e.source === 'auto_project' ? ' [자동 누적]' : ' [SEED]'
     lines.push(`  - ${e.project_name} (${e.year ?? '?'}·${e.venue})${sourceTag}: 총 ${totalQty}건·${top}`)
     // 5/22 사용자 명시 = 프로그램 파트 영역 같은 형식·AI 영역에 동일 영역 정합

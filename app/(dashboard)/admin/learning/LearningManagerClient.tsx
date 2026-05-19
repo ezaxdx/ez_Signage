@@ -2580,8 +2580,6 @@ export function LearningManagerClient({
           </h2>
           <p className="text-[11px] text-slate-500 mb-3">
             행사장이 아닌 홀 단위로 표준 규격·제약·연락처·예약 시점을 학습합니다.
-            <br />
-            <span className="text-[10px] text-slate-400">※ 가이드 정보 ✎ 편집 = 외부 SOT 영역 (lib/data/venueFacilityGuide.ts·정합 영역 다음 사이클·v3 venues.facility_guide_json DB 영역)</span>
           </p>
           {facilityGuideStatus.length === 0 ? (
             <p className="text-slate-400 text-xs italic py-3 text-center">시설 가이드 시드 데이터가 비어있습니다.</p>
