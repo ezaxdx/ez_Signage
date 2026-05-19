@@ -637,12 +637,15 @@ export function LearningManagerClient({
   const [floorPlan, setFloorPlan] = useState<File | null>(null)
   // 5/22 사용자 명시 = 행사장 추가 시 시설 가이드북·매뉴얼 영역 첨부
   const [facilityGuideFile, setFacilityGuideFile] = useState<File | null>(null)
+  // 5/22 사용자 명시 = 도면 학습 X·venue 가이드 영역 시설 가이드 학습 현황 영역 자동 채움
+  const [allowedCategories, setAllowedCategories] = useState('')
+  const [warningsText, setWarningsText] = useState('')
   const [adding, setAdding] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
 
   const resetForm = () => {
     setName(''); setRegion(''); setVenueType(''); setHallSplit(false)
-    setEntranceNote(''); setAreaSqm(''); setFloorPlan(null); setFacilityGuideFile(null); setAddError(null)
+    setEntranceNote(''); setAreaSqm(''); setFloorPlan(null); setFacilityGuideFile(null); setAllowedCategories(''); setWarningsText(''); setAddError(null)
   }
 
   const addVenue = async () => {
@@ -686,6 +689,21 @@ export function LearningManagerClient({
         created_by: userId,
       }
       if (facilityGuideUrl) venueRow.facility_guide_url = facilityGuideUrl
+      // 5/22 사용자 명시 = 도면 학습 X·카테고리·주의사항 직접 입력 영역 = facility_guide_json 영역 채움
+      const catList = allowedCategories.split('\n').map(s => s.trim()).filter(s => s.length > 0)
+      const warnList = warningsText.split('\n').map(s => s.trim()).filter(s => s.length > 0)
+      if (catList.length > 0 || warnList.length > 0) {
+        venueRow.facility_guide_json = {
+          install_allowed: catList.map(category => ({ category, status: 'allowed' })),
+          warnings: warnList.map(description => ({ type: '주의사항', description })),
+          mount_methods: { taka: 'denied', magnet: 'denied', adhesive: 'denied', hanger: 'conditional', rope: 'conditional', note: '운영팀 협의 영역.' },
+          rigging: { available: true, note: '운영팀 도면 영역.' },
+          safety: { fire: '난연 2급 이상.', fall: '리깅 2점.', electric: '220V.', weather: '실내.', note: '비상구 가림 X.' },
+          digital_signage: { content_review: true, allowed_locations: [], note: '운영팀 영역.' },
+          last_updated: new Date().toISOString().slice(0, 10),
+          special_notes: [],
+        }
+      }
       const { data: venue, error: insErr } = await supabase.from('venues').insert(venueRow).select().single()
       if (insErr) {
         if (/relation .* does not exist/i.test(insErr.message)) {
@@ -2511,12 +2529,21 @@ export function LearningManagerClient({
               <input type="file" accept=".pdf,.docx,.hwp,image/*" onChange={e => setFacilityGuideFile(e.target.files?.[0] ?? null)} className="block w-full text-slate-400 text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-slate-50 file:text-slate-400 file:cursor-pointer" />
               {facilityGuideFile && <p className="text-slate-500 text-[10px] mt-1">{facilityGuideFile.name}</p>}
             </div>
+            {/* 5/22 사용자 명시 = 도면 학습 X·카테고리·주의사항 직접 입력 영역 */}
+            <div className="sm:col-span-2">
+              <label className="block text-slate-500 text-[11px] mb-1">설치 가능 환경장식물 카테고리 (1줄에 1건)</label>
+              <textarea value={allowedCategories} onChange={e => setAllowedCategories(e.target.value)} placeholder={'X배너\n세로 현수막\n가로 현수막\n포디움 타이틀'} rows={3} className="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-slate-900 text-xs" />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-slate-500 text-[11px] mb-1">주의사항 (1줄에 1건)</label>
+              <textarea value={warningsText} onChange={e => setWarningsText(e.target.value)} placeholder={'외벽 부착 운영팀 사전 승인 의무\n리깅 영역 = 코엑스 지정 리거 사용 의무'} rows={3} className="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-slate-900 text-xs" />
+            </div>
           </div>
           {addError && <div className="mt-3 text-red-700 text-xs bg-red-50 border border-red-300 rounded px-3 py-2">{addError}</div>}
           <div className="mt-4 flex justify-end">
             <button onClick={addVenue} disabled={adding || !name.trim()} className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-200 disabled:text-slate-500 text-white text-sm rounded transition">
               {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-              등록 + 학습 트리거
+              등록 + 시설 가이드 영역 자동 채움
             </button>
           </div>
         </section>
