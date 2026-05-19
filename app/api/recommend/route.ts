@@ -23,7 +23,19 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await recommendSignage(body)
+    // 5/22 사용자 명시 = /api/recommend 500 에러 정정 = 내부 호출 영역 try/catch 강화
+    let result
+    try {
+      result = await recommendSignage(body)
+    } catch (recommendErr) {
+      console.error('[recommend] recommendSignage 실패:', recommendErr)
+      const msg = recommendErr instanceof Error ? recommendErr.message : '추천 생성 실패'
+      // GEMINI_API_KEY·event_history 영역 = fallback 빈 응답·200 (라이브 영향 0)
+      if (/GEMINI_API_KEY|event_history|relation/.test(msg)) {
+        return NextResponse.json({ items: [], skipped: true, error: msg }, { status: 200 })
+      }
+      throw recommendErr
+    }
     // 5/22 P4-B 사용자 명시 = silent fail 제거. INSERT 실패 시 console.error 명시 (Vercel Functions Logs 영역에서 확인).
     try {
       const { error: logError } = await supabase.from('usage_logs').insert({

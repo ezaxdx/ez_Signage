@@ -35,20 +35,26 @@ interface EventHistoryRow {
 export async function GET() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 })
+  if (!user) return NextResponse.json({ items: [], error: '로그인이 필요합니다' }, { status: 200 })
 
-  const { data, error } = await supabase
-    .from('event_history')
-    .select('*')
-    .is('deleted_at', null)
-    .order('year', { ascending: false })
-    .limit(500)
+  try {
+    const { data, error } = await supabase
+      .from('event_history')
+      .select('*')
+      .is('deleted_at', null)
+      .order('year', { ascending: false })
+      .limit(500)
 
-  if (error) {
-    console.error('[event-history] GET 실패:', error.message)
-    return NextResponse.json({ items: [], error: error.message }, { status: 200 })
+    if (error) {
+      // 5/22 = 테이블 부재 (42P01) 또는 RLS 차단 = fallback (빈 배열·200·SEED 영역 그대로 동작)
+      console.error('[event-history] GET 실패:', error.message, error.code)
+      return NextResponse.json({ items: [], error: error.message, code: error.code, fallback: true }, { status: 200 })
+    }
+    return NextResponse.json({ items: (data ?? []) as EventHistoryRow[] })
+  } catch (e) {
+    console.error('[event-history] GET Exception:', e)
+    return NextResponse.json({ items: [], error: e instanceof Error ? e.message : 'unknown', fallback: true }, { status: 200 })
   }
-  return NextResponse.json({ items: (data ?? []) as EventHistoryRow[] })
 }
 
 export async function POST(req: NextRequest) {
@@ -77,17 +83,26 @@ export async function POST(req: NextRequest) {
     created_by: user.id,
   }
 
-  const { data, error } = await supabase
-    .from('event_history')
-    .insert(insertRow)
-    .select()
-    .single()
+  try {
+    const { data, error } = await supabase
+      .from('event_history')
+      .insert(insertRow)
+      .select()
+      .single()
 
-  if (error) {
-    console.error('[event-history] POST 실패:', error.message, error.code)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      // 테이블 부재 (42P01) = silent skip·200 (auto_project 영역 = 라이브 영향 0)
+      console.error('[event-history] POST 실패:', error.message, error.code)
+      if (error.code === '42P01' || error.code === '42501') {
+        return NextResponse.json({ skipped: true, error: error.message, code: error.code }, { status: 200 })
+      }
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 500 })
+    }
+    return NextResponse.json({ item: data })
+  } catch (e) {
+    console.error('[event-history] POST Exception:', e)
+    return NextResponse.json({ skipped: true, error: e instanceof Error ? e.message : 'unknown' }, { status: 200 })
   }
-  return NextResponse.json({ item: data })
 }
 
 export async function PATCH(req: NextRequest) {
@@ -102,47 +117,45 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'project_code 또는 id 영역 필수' }, { status: 400 })
   }
 
-  // 기존 row fetch
-  const queryEq = body.id ? { id: body.id } : { project_code: body.project_code as string }
-  const { data: existing } = await supabase
-    .from('event_history')
-    .select('*')
-    .match(queryEq)
-    .maybeSingle()
-  if (!existing) {
-    return NextResponse.json({ error: '해당 행사 영역 없음' }, { status: 404 })
+  try {
+    const queryEq = body.id ? { id: body.id } : { project_code: body.project_code as string }
+    const { data: existing, error: fetchErr } = await supabase
+      .from('event_history')
+      .select('*')
+      .match(queryEq)
+      .maybeSingle()
+    if (fetchErr) {
+      if (fetchErr.code === '42P01') {
+        return NextResponse.json({ skipped: true, error: fetchErr.message, code: fetchErr.code }, { status: 200 })
+      }
+      return NextResponse.json({ error: fetchErr.message, code: fetchErr.code }, { status: 500 })
+    }
+    if (!existing) {
+      return NextResponse.json({ error: '해당 행사 영역 없음' }, { status: 404 })
+    }
+
+    const newHistory = [...(existing.edit_history ?? []), {
+      edited_by: user.id,
+      edited_at: new Date().toISOString(),
+      before: { project_name: existing.project_name, venue: existing.venue, program_parts: existing.program_parts },
+      after: body.patch,
+    }]
+    const updateRow = { ...body.patch, edit_history: newHistory, updated_at: new Date().toISOString() }
+    const { data, error } = await supabase
+      .from('event_history')
+      .update(updateRow)
+      .match(queryEq)
+      .select()
+      .single()
+    if (error) {
+      console.error('[event-history] PATCH 실패:', error.message)
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 500 })
+    }
+    return NextResponse.json({ item: data })
+  } catch (e) {
+    console.error('[event-history] PATCH Exception:', e)
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'unknown' }, { status: 500 })
   }
-
-  // edit_history 영역 append
-  const newHistory = [...(existing.edit_history ?? []), {
-    edited_by: user.id,
-    edited_at: new Date().toISOString(),
-    before: {
-      project_name: existing.project_name,
-      venue: existing.venue,
-      program_parts: existing.program_parts,
-    },
-    after: body.patch,
-  }]
-
-  const updateRow = {
-    ...body.patch,
-    edit_history: newHistory,
-    updated_at: new Date().toISOString(),
-  }
-
-  const { data, error } = await supabase
-    .from('event_history')
-    .update(updateRow)
-    .match(queryEq)
-    .select()
-    .single()
-
-  if (error) {
-    console.error('[event-history] PATCH 실패:', error.message)
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-  return NextResponse.json({ item: data })
 }
 
 export async function DELETE(req: NextRequest) {
@@ -156,14 +169,22 @@ export async function DELETE(req: NextRequest) {
   const queryEq = body.id ? { id: body.id } : body.project_code ? { project_code: body.project_code } : null
   if (!queryEq) return NextResponse.json({ error: 'project_code 또는 id 영역 필수' }, { status: 400 })
 
-  const { error } = await supabase
-    .from('event_history')
-    .update({ deleted_at: new Date().toISOString() })
-    .match(queryEq)
+  try {
+    const { error } = await supabase
+      .from('event_history')
+      .update({ deleted_at: new Date().toISOString() })
+      .match(queryEq)
 
-  if (error) {
-    console.error('[event-history] DELETE 실패:', error.message)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      console.error('[event-history] DELETE 실패:', error.message)
+      if (error.code === '42P01') {
+        return NextResponse.json({ skipped: true, error: error.message, code: error.code }, { status: 200 })
+      }
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 500 })
+    }
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error('[event-history] DELETE Exception:', e)
+    return NextResponse.json({ skipped: true, error: e instanceof Error ? e.message : 'unknown' }, { status: 200 })
   }
-  return NextResponse.json({ ok: true })
 }
