@@ -303,6 +303,11 @@ export function LearningManagerClient({
   const [hiddenSeedAliases, setHiddenSeedAliases] = useState<string[]>([])
   const [hiddenSignageTypeIds, setHiddenSignageTypeIds] = useState<string[]>([])
   const [hiddenFacilityVenues, setHiddenFacilityVenues] = useState<string[]>([])
+  // 5/21 사용자 명시 = 환경장식물 종류 추가에 예시 사진 (노션 §10).
+  // 1차 = localStorage 보관 (DB signage_types.sample_image_url 컬럼은 컴펌 후 마이그레이션).
+  const [signageTypeSamples, setSignageTypeSamples] = useState<Record<string, string>>({})
+  const [stSampleFile, setStSampleFile] = useState<File | null>(null)
+  const [stSamplePreview, setStSamplePreview] = useState<string>('')
   useEffect(() => {
     try {
       const a = localStorage.getItem('mice_hidden_seed_aliases')
@@ -311,8 +316,17 @@ export function LearningManagerClient({
       if (s) setHiddenSignageTypeIds(JSON.parse(s))
       const f = localStorage.getItem('mice_hidden_facility_venues')
       if (f) setHiddenFacilityVenues(JSON.parse(f))
+      const samples = localStorage.getItem('mice_signage_type_samples')
+      if (samples) setSignageTypeSamples(JSON.parse(samples))
     } catch {}
   }, [])
+  const saveSignageTypeSample = (typeId: string, url: string) => {
+    setSignageTypeSamples(prev => {
+      const next = { ...prev, [typeId]: url }
+      try { localStorage.setItem('mice_signage_type_samples', JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
   const toggleHideSeedAlias = (alias: string) => {
     setHiddenSeedAliases(prev => {
       const next = prev.includes(alias) ? prev.filter(a => a !== alias) : [...prev, alias]
@@ -1132,11 +1146,52 @@ export function LearningManagerClient({
                   <input value={stMaterial} onChange={e => setStMaterial(e.target.value)} placeholder="예: PET, 현수막, 인쇄"
                     className="w-full border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
                 </div>
+                {/* 5/21 사용자 명시 = 예시 사진 입력 (노션 §10 환경장식물 종류 추가) */}
+                <div>
+                  <label className="text-[10px] text-slate-500 block mb-0.5">예시 이미지 (선택)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={e => {
+                      const f = e.target.files?.[0]
+                      if (!f) return
+                      setStSampleFile(f)
+                      const reader = new FileReader()
+                      reader.onload = ev => setStSamplePreview(ev.target?.result as string ?? '')
+                      reader.readAsDataURL(f)
+                    }}
+                    className="w-full text-[11px] text-slate-500 file:mr-2 file:px-2 file:py-0.5 file:rounded file:border file:border-slate-300 file:bg-slate-50 file:text-slate-600 file:text-[10px]"
+                  />
+                  {stSamplePreview && (
+                    <img src={stSamplePreview} alt="미리보기" className="mt-1.5 w-16 h-16 object-cover rounded border border-slate-200" />
+                  )}
+                </div>
                 {stError && <p className="text-[11px] text-red-600">{stError}</p>}
                 <div className="flex gap-2 justify-end">
-                  <button onClick={() => { setStShowForm(false); setStError(null) }}
+                  <button onClick={() => { setStShowForm(false); setStError(null); setStSampleFile(null); setStSamplePreview('') }}
                     className="text-[11px] text-slate-500 hover:text-slate-700 px-2 py-1">취소</button>
-                  <button onClick={addSignageType} disabled={stSaving}
+                  <button
+                    onClick={async () => {
+                      await addSignageType()
+                      if (stSampleFile && stName.trim()) {
+                        try {
+                          const supabase = createClient()
+                          const { data: { user } } = await supabase.auth.getUser()
+                          if (user) {
+                            const typeId = stName.trim().toLowerCase().replace(/[\s\-]/g, '_')
+                            const path = `${user.id}/signage-samples/${typeId}-${Date.now()}.${stSampleFile.name.split('.').pop()}`
+                            const { error } = await supabase.storage.from('design-images').upload(path, stSampleFile, { upsert: true })
+                            if (!error) {
+                              const { data: { publicUrl } } = supabase.storage.from('design-images').getPublicUrl(path)
+                              saveSignageTypeSample(typeId, publicUrl)
+                            }
+                          }
+                        } catch {}
+                        setStSampleFile(null)
+                        setStSamplePreview('')
+                      }
+                    }}
+                    disabled={stSaving}
                     className="flex items-center gap-1 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded disabled:opacity-50">
                     {stSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
                     추가
@@ -1253,11 +1308,52 @@ export function LearningManagerClient({
                   <input value={stMaterial} onChange={e => setStMaterial(e.target.value)} placeholder="예: PET, 현수막, 인쇄"
                     className="w-full border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
                 </div>
+                {/* 5/21 사용자 명시 = 예시 사진 입력 (노션 §10 환경장식물 종류 추가) */}
+                <div>
+                  <label className="text-[10px] text-slate-500 block mb-0.5">예시 이미지 (선택)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={e => {
+                      const f = e.target.files?.[0]
+                      if (!f) return
+                      setStSampleFile(f)
+                      const reader = new FileReader()
+                      reader.onload = ev => setStSamplePreview(ev.target?.result as string ?? '')
+                      reader.readAsDataURL(f)
+                    }}
+                    className="w-full text-[11px] text-slate-500 file:mr-2 file:px-2 file:py-0.5 file:rounded file:border file:border-slate-300 file:bg-slate-50 file:text-slate-600 file:text-[10px]"
+                  />
+                  {stSamplePreview && (
+                    <img src={stSamplePreview} alt="미리보기" className="mt-1.5 w-16 h-16 object-cover rounded border border-slate-200" />
+                  )}
+                </div>
                 {stError && <p className="text-[11px] text-red-600">{stError}</p>}
                 <div className="flex gap-2 justify-end">
-                  <button onClick={() => { setStShowForm(false); setStError(null) }}
+                  <button onClick={() => { setStShowForm(false); setStError(null); setStSampleFile(null); setStSamplePreview('') }}
                     className="text-[11px] text-slate-500 hover:text-slate-700 px-2 py-1">취소</button>
-                  <button onClick={addSignageType} disabled={stSaving}
+                  <button
+                    onClick={async () => {
+                      await addSignageType()
+                      if (stSampleFile && stName.trim()) {
+                        try {
+                          const supabase = createClient()
+                          const { data: { user } } = await supabase.auth.getUser()
+                          if (user) {
+                            const typeId = stName.trim().toLowerCase().replace(/[\s\-]/g, '_')
+                            const path = `${user.id}/signage-samples/${typeId}-${Date.now()}.${stSampleFile.name.split('.').pop()}`
+                            const { error } = await supabase.storage.from('design-images').upload(path, stSampleFile, { upsert: true })
+                            if (!error) {
+                              const { data: { publicUrl } } = supabase.storage.from('design-images').getPublicUrl(path)
+                              saveSignageTypeSample(typeId, publicUrl)
+                            }
+                          }
+                        } catch {}
+                        setStSampleFile(null)
+                        setStSamplePreview('')
+                      }
+                    }}
+                    disabled={stSaving}
                     className="flex items-center gap-1 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded disabled:opacity-50">
                     {stSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
                     추가
@@ -1374,15 +1470,15 @@ export function LearningManagerClient({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {/* DB 동의어 (사용자 추가) — 삭제 가능 */}
+                {/* 5/21 = DB 동의어·시드 동의어 양식 통일 (사용자 명시 = 위·아래 다른 양식 정합) */}
                 {aliasList
                   .filter(a => !synonymFilter || a.alias_name.includes(synonymFilter) || a.canonical_name.includes(synonymFilter))
                   .map(a => (
-                    <tr key={a.id} className="hover:bg-slate-50 bg-emerald-50/30">
+                    <tr key={a.id} className="hover:bg-slate-50">
                       <td className="px-2 py-1 text-slate-700 font-mono text-[11px]">{a.alias_name}</td>
                       <td className="px-2 py-1 text-indigo-700 font-medium">{a.canonical_name}</td>
                       <td className="px-2 py-1 text-slate-500 text-[11px] flex items-center justify-between gap-2">
-                        <span className="truncate">{a.note ?? '사용자 추가'}</span>
+                        <span>{a.note ?? '사용자 추가'}</span>
                         <button
                           onClick={async () => {
                             if (!confirm(`′${a.alias_name}′ 삭제할까요?`)) return
@@ -1390,7 +1486,7 @@ export function LearningManagerClient({
                             if (res.ok) setAliasList(prev => prev.filter(x => x.id !== a.id))
                             else alert('삭제 실패')
                           }}
-                          className="text-rose-500 hover:text-rose-700 text-[10px]"
+                          className="text-[11px] px-1.5 py-0.5 rounded transition text-rose-500 hover:bg-rose-50"
                           title="삭제"
                         >✕</button>
                       </td>
