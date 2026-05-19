@@ -220,6 +220,63 @@ function main() {
     return `대시 표기 ${dashCount}건 잔존 (X-배너·I-배너 → X배너·I배너 정정 필요)`
   })
 
+  // ── 7. v10.4 신규 = design_items.no 헬퍼 정합 검증 ──
+  console.log()
+  console.log('[7] design_items.no 채번 패턴 정합 (v10.4 헬퍼 통합)')
+  check('items.length+1 패턴 잔존 (헬퍼 미정합)', () => {
+    let count = 0
+    const samples = []
+    const files = [
+      'app/(dashboard)/projects/[id]/EditorLayout.tsx',
+      'app/(dashboard)/projects/[id]/components/ItemSidebar.tsx',
+      'app/(dashboard)/projects/[id]/components/SeriesGenerator.tsx',
+      'app/(dashboard)/projects/new/case-a/page.tsx',
+      'app/(dashboard)/projects/new/case-b/page.tsx',
+      'app/(dashboard)/projects/new/case-d/page.tsx',
+      'app/(dashboard)/projects/[id]/info/ProjectInfoClient.tsx',
+      'app/(dashboard)/dashboard/components/NewProjectButton.tsx',
+    ]
+    for (const f of files) {
+      const full = join(ROOT, f)
+      if (!existsSync(full)) continue
+      const content = readFileSync(full, 'utf-8')
+      if (/items\.length\s*\+\s*1[\s\S]{0,200}no:/m.test(content) ||
+          /currentItemCount\s*\+\s*1[\s\S]{0,200}no:/m.test(content)) {
+        count++
+        samples.push(f.split('/').pop())
+      }
+    }
+    if (count === 0) return true
+    return `WARN:채번 helper 미정합 ${count}건 (${samples.join(', ')}) — nextDesignItemNo 권장`
+  })
+
+  // ── 8. 'X-배너' 대시 잔존 활성 코드 grep ──
+  console.log()
+  console.log('[8] 활성 코드 X-배너·I-배너 대시 잔존 (5/19 SOT 정합)')
+  check('활성 코드 대시 표기 잔존', () => {
+    let count = 0
+    const samples = []
+    const targetFiles = [
+      'app/(dashboard)/projects/[id]/EditorLayout.tsx',
+      'app/(dashboard)/projects/[id]/components/ItemSidebar.tsx',
+      'app/(dashboard)/projects/[id]/components/EditorGrid.tsx',
+      'app/(dashboard)/projects/new/case-d/page.tsx',
+      'lib/services/itemService.ts',
+    ]
+    for (const f of targetFiles) {
+      const full = join(ROOT, f)
+      if (!existsSync(full)) continue
+      const content = readFileSync(full, 'utf-8')
+      const m = content.match(/(?:category|name):\s*['"]X-배너['"]|(?:category|name):\s*['"]I-배너['"]/g)
+      if (m) {
+        count += m.length
+        samples.push(`${f.split('/').pop()}:${m.length}`)
+      }
+    }
+    if (count === 0) return true
+    return `WARN:활성 코드 대시 ${count}건 = ${samples.join(', ')} (5/19 SOT 정합 위반)`
+  })
+
   // ── 요약 ──
   console.log()
   console.log('━━ 요약 ━━')
