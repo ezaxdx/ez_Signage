@@ -6,6 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { SEED_SIGNAGE_TYPES, type SignageTypeSeed } from '@/lib/data/dashboardSeed'
 
 interface DbRow {
+  id?: string
   name: string
   default_width_mm: number | null
   default_height_mm: number | null
@@ -14,11 +15,13 @@ interface DbRow {
   layout: string | null
   notes: string | null
   sort_order: number
+  sample_image_url?: string | null
+  hidden?: boolean | null
 }
 
-function dbRowToSeed(row: DbRow): SignageTypeSeed {
+function dbRowToSeed(row: DbRow): SignageTypeSeed & { sample_image_url?: string | null; hidden?: boolean } {
   return {
-    id: row.name.toLowerCase().replace(/[\s\-]/g, '_'),
+    id: row.id ?? row.name.toLowerCase().replace(/[\s\-]/g, '_'),
     name: row.name,
     width_mm: row.default_width_mm ?? 600,
     height_mm: row.default_height_mm ?? 1800,
@@ -26,6 +29,8 @@ function dbRowToSeed(row: DbRow): SignageTypeSeed {
     category: row.category ?? '기타',
     layout: (row.layout as SignageTypeSeed['layout']) ?? '세로',
     note: row.notes ?? undefined,
+    sample_image_url: row.sample_image_url ?? undefined,
+    hidden: row.hidden ?? false,
   }
 }
 
@@ -38,7 +43,7 @@ export async function loadSignageTypes(supabase: SupabaseClient): Promise<Signag
   try {
     const { data, error } = await supabase
       .from('signage_types')
-      .select('name, default_width_mm, default_height_mm, default_material, category, layout, notes, sort_order')
+      .select('id, name, default_width_mm, default_height_mm, default_material, category, layout, notes, sort_order, sample_image_url, hidden')
       .order('sort_order', { ascending: true })
 
     if (error || !data || data.length === 0) return SEED_SIGNAGE_TYPES
