@@ -175,14 +175,19 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
       for (const code of addedParts) {
         for (const id of PROGRAM_PART_SIGNAGE_HINTS[code] ?? []) newIds.add(id)
       }
-      const { data: existing } = await supabase.from('design_items').select('category').eq('project_id', project.id)
+      // 5/22 라이브 D-2 정정: design_items.no NOT NULL 위반 = 추가 시 저장 실패 원인
+      // 기존 no 최대값 + 1 부터 채움 (ItemSidebar·NewProjectButton·case-a 패턴 정합)
+      const { data: existing } = await supabase.from('design_items').select('no, category').eq('project_id', project.id)
+      const existingNos = (existing ?? []).map(r => parseInt((r.no as string) || '0', 10) || 0)
+      const startNo = existingNos.length > 0 ? Math.max(...existingNos) + 1 : 1
       const existingCats = new Set((existing ?? []).map(r => r.category as string))
       const toInsert = Array.from(newIds)
         .filter(id => !existingCats.has(id))
-        .map(id => {
+        .map((id, idx) => {
           const type = SEED_SIGNAGE_TYPES.find(t => t.id === id)
           return {
             project_id: project.id,
+            no: String(startNo + idx).padStart(2, '0'),
             category: id,
             material: type?.default_material ?? '인쇄',
             width_mm: type?.width_mm ?? 600,
