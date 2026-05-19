@@ -231,63 +231,86 @@ export function LearningManagerClient({
     setSignageTypeList(prev => prev.filter(t => t.name !== name))
   }
 
-  // 5/22 사용자 명시 = 데이터 학습 관리자 편집 = 모든 정보 다 수정 가능 (종류명·너비·높이·재질·분류·레이아웃)
-  // 이미지 교체·삭제는 별도 ▣ 버튼 영역 (다음 사이클 모달 UI)
-  const editSignageType = async (t: SignageTypeRow) => {
-    const newName = prompt('종류명', t.name)
-    if (newName === null) return
-    const newWidth = prompt('너비 (mm)', String(t.width_mm))
-    if (newWidth === null) return
-    const newHeight = prompt('높이 (mm)', String(t.height_mm))
-    if (newHeight === null) return
-    const newMat = prompt('기본 재질', t.default_material ?? '')
-    if (newMat === null) return
-    const newCat = prompt('분류', t.category ?? '')
-    if (newCat === null) return
-    const newLayout = prompt('레이아웃 (세로·가로·정사각)', t.layout ?? '세로')
-    if (newLayout === null) return
-    const normalizedLayout = ['세로', '가로', '정사각'].includes(newLayout.trim()) ? newLayout.trim() : t.layout
-
-    const widthNum = Number(newWidth)
-    const heightNum = Number(newHeight)
-    if (!Number.isFinite(widthNum) || widthNum <= 0 || !Number.isFinite(heightNum) || heightNum <= 0) {
+  // 5/22 사용자 명시 = prompt 알랏 형태 X·모달 창에서 수정. editingSignageType state로 모달 열림 제어.
+  const [editingSignageType, setEditingSignageType] = useState<SignageTypeRow | null>(null)
+  const editSignageType = (t: SignageTypeRow) => {
+    setEditingSignageType(t)
+  }
+  const saveSignageTypeEdit = async (t: SignageTypeRow, draft: { name: string; width_mm: number; height_mm: number; default_material: string; category: string; layout: string }) => {
+    if (!Number.isFinite(draft.width_mm) || draft.width_mm <= 0 || !Number.isFinite(draft.height_mm) || draft.height_mm <= 0) {
       alert('너비·높이는 양수만 입력 가능')
       return
     }
-    // 시드인지 DB인지 = DB row id가 UUID 형식이면 DB, 그 외(슬러그)면 시드
     const isDbRow = /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(t.id)
     if (isDbRow) {
       try {
         const res = await fetch(`/api/admin/signage-types/${t.id}`, {
           method: 'PATCH',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            name: newName.trim(),
-            width_mm: widthNum,
-            height_mm: heightNum,
-            default_material: newMat.trim(),
-            category: newCat.trim(),
-          }),
+          body: JSON.stringify({ name: draft.name, width_mm: draft.width_mm, height_mm: draft.height_mm, default_material: draft.default_material, category: draft.category }),
         })
         if (!res.ok) { const d = await res.json(); throw new Error(d.error || res.statusText) }
       } catch (e) { alert('수정 실패: ' + (e instanceof Error ? e.message : 'unknown')); return }
     }
-    // localStorage 오버라이드 (시드·DB 공통 — 화면 즉시 반영)
-    setSignageTypeList(prev => prev.map(row => row.id === t.id ? {
-      ...row,
-      name: newName.trim(),
-      width_mm: widthNum,
-      height_mm: heightNum,
-      default_material: newMat.trim(),
-      category: newCat.trim(),
-      layout: normalizedLayout,
-    } : row))
+    setSignageTypeList(prev => prev.map(row => row.id === t.id ? { ...row, ...draft, layout: draft.layout as '세로'|'가로'|'정사각' } : row))
     try {
       const key = 'mice_signage_type_overrides'
       const prev = JSON.parse(localStorage.getItem(key) ?? '{}')
-      prev[t.id] = { name: newName.trim(), width_mm: widthNum, height_mm: heightNum, default_material: newMat.trim(), category: newCat.trim(), layout: normalizedLayout }
+      prev[t.id] = draft
       localStorage.setItem(key, JSON.stringify(prev))
     } catch {}
+    setEditingSignageType(null)
+  }
+
+  // 5/22 P2-4 = 프로그램 파트 관리 편집·삭제·추가 (localStorage 오버라이드 패턴)
+  const [hiddenProgramPartCodes, setHiddenProgramPartCodes] = useState<string[]>([])
+  const [programPartOverrides, setProgramPartOverrides] = useState<Record<string, { name: string; hint: string }>>({})
+  const [customProgramParts, setCustomProgramParts] = useState<Array<{ code: string; name: string; hint: string; group: 'program'|'attendee'|'promotion' }>>([])
+  const [editingProgramPart, setEditingProgramPart] = useState<{ code: string; name: string; hint: string; group: 'program'|'attendee'|'promotion' } | null>(null)
+  useEffect(() => {
+    try {
+      const h = localStorage.getItem('mice_hidden_program_parts')
+      if (h) setHiddenProgramPartCodes(JSON.parse(h))
+      const o = localStorage.getItem('mice_program_part_overrides')
+      if (o) setProgramPartOverrides(JSON.parse(o))
+      const c = localStorage.getItem('mice_custom_program_parts')
+      if (c) setCustomProgramParts(JSON.parse(c))
+    } catch {}
+  }, [])
+  const toggleHideProgramPart = (code: string) => {
+    setHiddenProgramPartCodes(prev => {
+      const next = prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
+      try { localStorage.setItem('mice_hidden_program_parts', JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
+  const saveProgramPartEdit = (code: string, draft: { name: string; hint: string; group: 'program'|'attendee'|'promotion' }) => {
+    // 시드 = override, 신규 (custom_*) = customProgramParts 업데이트
+    const isCustom = code.startsWith('custom_')
+    if (isCustom) {
+      setCustomProgramParts(prev => {
+        const next = prev.map(p => p.code === code ? { ...p, ...draft } : p)
+        try { localStorage.setItem('mice_custom_program_parts', JSON.stringify(next)) } catch {}
+        return next
+      })
+    } else {
+      setProgramPartOverrides(prev => {
+        const next = { ...prev, [code]: { name: draft.name, hint: draft.hint } }
+        try { localStorage.setItem('mice_program_part_overrides', JSON.stringify(next)) } catch {}
+        return next
+      })
+    }
+    setEditingProgramPart(null)
+  }
+  const addCustomProgramPart = (draft: { name: string; hint: string; group: 'program'|'attendee'|'promotion' }) => {
+    if (!draft.name.trim()) { alert('파트명 필수'); return }
+    const code = 'custom_' + Date.now().toString(36)
+    setCustomProgramParts(prev => {
+      const next = [...prev, { code, ...draft }]
+      try { localStorage.setItem('mice_custom_program_parts', JSON.stringify(next)) } catch {}
+      return next
+    })
+    setEditingProgramPart(null)
   }
   const [venues, setVenues] = useState<Venue[]>(initialVenues)
   const [requests, setRequests] = useState<VenueRequest[]>(initialRequests)
@@ -1894,13 +1917,23 @@ export function LearningManagerClient({
         </section>
         )}
 
-        {/* 5/22 사용자 명시 = 프로그램 파트 관리 = 표 형태 + 정렬 룰 (1순위 최신·2순위 가나다 = 정적 시드라 가나다 적용) */}
+        {/* 5/22 P2-4 = 프로그램 파트 관리 = 표 형태·✎·✕·+ 영역 통합 */}
         {activeSection === 'program-parts' && (
           <section className="bg-white border border-slate-200 rounded-xl p-5">
-            <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
-              <Workflow className="w-4 h-4 text-indigo-500" />
-              프로그램 파트 관리 ({PROGRAM_PARTS.length})
-            </h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-slate-900 font-semibold text-sm flex items-center gap-2">
+                <Workflow className="w-4 h-4 text-indigo-500" />
+                프로그램 파트 관리 ({PROGRAM_PARTS.length + customProgramParts.length})
+              </h2>
+              {isAdmin && (
+                <button
+                  onClick={() => setEditingProgramPart({ code: '', name: '', hint: '', group: 'program' })}
+                  className="flex items-center gap-1 text-[11px] bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded"
+                >
+                  <Plus className="w-3 h-3" /> 파트 추가
+                </button>
+              )}
+            </div>
             <div className="overflow-x-auto border border-slate-200 rounded">
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200">
@@ -1908,12 +1941,19 @@ export function LearningManagerClient({
                     <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">분류</th>
                     <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">파트명</th>
                     <th className="px-2 py-2 text-left font-semibold">설명</th>
-                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">매칭 환경장식물</th>
-                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">매칭 수</th>
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">매칭 환경장식물 (실 사용 빈도)</th>
+                    {isAdmin && <th className="px-2 py-1.5 text-center font-semibold w-16"></th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {PROGRAM_PARTS
+                  {[...PROGRAM_PARTS, ...customProgramParts]
+                    .filter(pt => !hiddenProgramPartCodes.includes(pt.code))
+                    .map(pt => {
+                      const override = programPartOverrides[pt.code]
+                      const name = override?.name ?? pt.name
+                      const hint = override?.hint ?? pt.hint
+                      return { ...pt, name, hint }
+                    })
                     .slice()
                     .sort((a, b) => {
                       const ga = PROGRAM_PART_GROUPS.findIndex(g => g.group === a.group)
@@ -1923,6 +1963,8 @@ export function LearningManagerClient({
                     })
                     .map(pt => {
                       const matchedIds = PROGRAM_PART_SIGNAGE_HINTS[pt.code] ?? []
+                      // 5/22 P2-5 = 실 사용 빈도 = SEED_EVENT_HISTORY.program_parts에서 이 파트 사용된 행사 수 집계
+                      const usageCount = SEED_EVENT_HISTORY.filter(e => (e.program_parts ?? []).includes(pt.code)).length
                       const matchedLabels = matchedIds.map(id => {
                         const t = signageTypeList.find(s => s.id === id) ?? signageTypes.find(s => s.id === id)
                         return t?.name ?? id
@@ -1943,25 +1985,34 @@ export function LearningManagerClient({
                             {matchedLabels.length === 0 ? (
                               <span className="text-slate-300 text-[10px]">—</span>
                             ) : (
-                              <div className="flex flex-wrap gap-0.5">
+                              <div className="flex flex-wrap gap-0.5 items-center">
                                 {matchedLabels.map((label, i) => (
                                   <span key={i} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">{label}</span>
                                 ))}
+                                <span className="text-[9px] text-slate-400 ml-1">실 사용 {usageCount}회</span>
                               </div>
                             )}
                           </td>
-                          <td className="px-2 py-1.5 text-right font-mono text-emerald-600 font-semibold">
-                            {matchedLabels.length || <span className="text-slate-300">—</span>}
-                          </td>
+                          {isAdmin && (
+                            <td className="px-2 py-1.5 text-center whitespace-nowrap">
+                              <button
+                                onClick={() => setEditingProgramPart({ code: pt.code, name: pt.name, hint: pt.hint ?? '', group: pt.group })}
+                                title="편집"
+                                className="text-[11px] leading-none px-1 text-slate-400 hover:text-indigo-600"
+                              >✎</button>
+                              <button
+                                onClick={() => toggleHideProgramPart(pt.code)}
+                                title="삭제·숨김"
+                                className="text-[11px] leading-none px-1 ml-1 text-slate-300 hover:text-red-500"
+                              >✕</button>
+                            </td>
+                          )}
                         </tr>
                       )
                     })}
                 </tbody>
               </table>
             </div>
-            <p className="text-[10px] text-slate-400 italic mt-2">
-              실 사용 빈도 = 누적 프로젝트의 design_items 통계 자동 산출 (실 데이터 누적 후 표시).
-            </p>
           </section>
         )}
 
@@ -2481,6 +2532,137 @@ export function LearningManagerClient({
           </div>
         </div>
       </main>
+
+      {/* 5/22 P1-2 = 환경장식물 종류 편집 모달 (prompt 알랏 → 모달 창) */}
+      {editingSignageType && (
+        <SignageTypeEditModal
+          initial={editingSignageType}
+          onClose={() => setEditingSignageType(null)}
+          onSave={(draft) => saveSignageTypeEdit(editingSignageType, draft)}
+        />
+      )}
+      {/* 5/22 P2-4 = 프로그램 파트 편집·추가 모달 */}
+      {editingProgramPart && (
+        <ProgramPartEditModal
+          initial={editingProgramPart}
+          isNew={editingProgramPart.code === ''}
+          onClose={() => setEditingProgramPart(null)}
+          onSave={(draft) => {
+            if (editingProgramPart.code === '') addCustomProgramPart(draft)
+            else saveProgramPartEdit(editingProgramPart.code, draft)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+// 5/22 P1-2 = 환경장식물 종류 편집 모달
+function SignageTypeEditModal({ initial, onClose, onSave }: {
+  initial: SignageTypeRow
+  onClose: () => void
+  onSave: (draft: { name: string; width_mm: number; height_mm: number; default_material: string; category: string; layout: string }) => void
+}) {
+  const [name, setName] = useState(initial.name)
+  const [width, setWidth] = useState(String(initial.width_mm))
+  const [height, setHeight] = useState(String(initial.height_mm))
+  const [material, setMaterial] = useState(initial.default_material ?? '')
+  const [category, setCategory] = useState(initial.category ?? '')
+  const [layout, setLayout] = useState(initial.layout ?? '세로')
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[400] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl border-2 border-indigo-200 max-w-md w-full" onClick={e => e.stopPropagation()}>
+        <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-slate-900">환경장식물 종류 편집</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700"><XCircle className="w-4 h-4" /></button>
+        </div>
+        <div className="px-5 py-4 space-y-3">
+          <div>
+            <label className="text-[11px] text-slate-600 block mb-1">종류명</label>
+            <input value={name} onChange={e => setName(e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[11px] text-slate-600 block mb-1">너비 (mm)</label>
+              <input type="number" value={width} onChange={e => setWidth(e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm" />
+            </div>
+            <div>
+              <label className="text-[11px] text-slate-600 block mb-1">높이 (mm)</label>
+              <input type="number" value={height} onChange={e => setHeight(e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm" />
+            </div>
+          </div>
+          <div>
+            <label className="text-[11px] text-slate-600 block mb-1">기본 재질</label>
+            <input value={material} onChange={e => setMaterial(e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm" />
+          </div>
+          <div>
+            <label className="text-[11px] text-slate-600 block mb-1">분류</label>
+            <input value={category} onChange={e => setCategory(e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm" />
+          </div>
+          <div>
+            <label className="text-[11px] text-slate-600 block mb-1">레이아웃</label>
+            <select value={layout} onChange={e => setLayout(e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm">
+              <option value="세로">세로</option>
+              <option value="가로">가로</option>
+              <option value="정사각">정사각</option>
+            </select>
+          </div>
+        </div>
+        <div className="px-5 py-3 border-t border-slate-200 flex justify-end gap-2">
+          <button onClick={onClose} className="text-xs text-slate-500 hover:text-slate-700 px-3 py-1.5">취소</button>
+          <button
+            onClick={() => onSave({ name: name.trim(), width_mm: Number(width), height_mm: Number(height), default_material: material.trim(), category: category.trim(), layout })}
+            className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded"
+          >저장</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// 5/22 P2-4 = 프로그램 파트 편집·추가 모달
+function ProgramPartEditModal({ initial, isNew, onClose, onSave }: {
+  initial: { code: string; name: string; hint: string; group: 'program'|'attendee'|'promotion' }
+  isNew: boolean
+  onClose: () => void
+  onSave: (draft: { name: string; hint: string; group: 'program'|'attendee'|'promotion' }) => void
+}) {
+  const [name, setName] = useState(initial.name)
+  const [hint, setHint] = useState(initial.hint)
+  const [group, setGroup] = useState<'program'|'attendee'|'promotion'>(initial.group)
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[400] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl border-2 border-indigo-200 max-w-md w-full" onClick={e => e.stopPropagation()}>
+        <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-slate-900">{isNew ? '프로그램 파트 추가' : '프로그램 파트 편집'}</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700"><XCircle className="w-4 h-4" /></button>
+        </div>
+        <div className="px-5 py-4 space-y-3">
+          <div>
+            <label className="text-[11px] text-slate-600 block mb-1">분류</label>
+            <select value={group} onChange={e => setGroup(e.target.value as typeof group)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm">
+              <option value="program">프로그램</option>
+              <option value="attendee">참가자 응대</option>
+              <option value="promotion">홍보</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-[11px] text-slate-600 block mb-1">파트명</label>
+            <input value={name} onChange={e => setName(e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm" />
+          </div>
+          <div>
+            <label className="text-[11px] text-slate-600 block mb-1">설명 (hint)</label>
+            <input value={hint} onChange={e => setHint(e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm" />
+          </div>
+        </div>
+        <div className="px-5 py-3 border-t border-slate-200 flex justify-end gap-2">
+          <button onClick={onClose} className="text-xs text-slate-500 hover:text-slate-700 px-3 py-1.5">취소</button>
+          <button
+            onClick={() => onSave({ name: name.trim(), hint: hint.trim(), group })}
+            className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded"
+          >{isNew ? '추가' : '저장'}</button>
+        </div>
+      </div>
     </div>
   )
 }
