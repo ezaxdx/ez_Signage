@@ -6,6 +6,9 @@ import { STANDARD_CATEGORIES, computeVenueCategoryCoverage } from '@/lib/data/si
 import type { AccuracyRow } from './AccuracyTable'
 
 export const metadata = { title: '관리자 페이지 — AI 관리 | 제작물 리스트 가이드' }
+// 5/22 사용자 진단 #4 = 정적 prerender 회피·매 요청마다 usage_logs fresh fetch
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 // v9.39: 명세 재구조화 — KPI 3 (호출·토큰·비용) + AI 파이프라인 4 step + 카테고리 정확도 테이블
 // 명세: docs/ADMIN_REDESIGN_260513.md §1-4
