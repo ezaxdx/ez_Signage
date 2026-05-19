@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   GraduationCap, MapPin, Plus, Loader2,
   CheckCircle2, XCircle, AlertCircle, Clock, FileText, Inbox, Building2,
@@ -8,10 +8,11 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { explainStorageError } from '@/lib/services/storagePaths'
-import { REGION_ORDER, VENUE_HALLS, getHallsByVenueKey } from '@/lib/venueIntel'
+import { REGION_ORDER, VENUE_HALLS, getHallsByVenueKey, getHallsByVenueName } from '@/lib/venueIntel'
 import { PROGRAM_PARTS, PROGRAM_PART_GROUPS, PROGRAM_PART_SIGNAGE_HINTS } from '@/lib/programParts'
-import { LEARNING_META_SEED, NIST_RMF_STAGES } from '@/lib/data/v3/learningMetaSeed'
-import { VISION_ROADMAP } from '@/lib/ai/v3/visionRoadmap'
+// 5/21 사용자 명시 = NIST 4단·전체 학습 요약·향후 도입 로드맵 UI 표시 롤백.
+// 시드 (LEARNING_META_SEED·NIST_RMF_STAGES·VISION_ROADMAP) 자체는 lib/data·lib/ai에 보존
+// — 곽 이사 보고 자료 외부 영역 활용 가능. 관리자 페이지 UI는 ′응?′ 룰 정합 위해 노출 X.
 
 // ── 타입 ──────────────────────────────────────────────────────
 interface Venue {
@@ -292,6 +293,23 @@ export function LearningManagerClient({
   const [region, setRegion] = useState('')
   const [venueType, setVenueType] = useState('')
   const [hallSplit, setHallSplit] = useState(false)
+  // 5/21 사용자 명시 = 학습된 행사장 표 행 클릭 시 L2 홀 펼침
+  const [expandedVenueId, setExpandedVenueId] = useState<string | null>(null)
+  // 5/21 사용자 명시 = 시드 동의어 ✕ 삭제 + "없음" 표시 (localStorage hidden 보관)
+  const [hiddenSeedAliases, setHiddenSeedAliases] = useState<string[]>([])
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem('mice_hidden_seed_aliases')
+      if (s) setHiddenSeedAliases(JSON.parse(s))
+    } catch {}
+  }, [])
+  const toggleHideSeedAlias = (alias: string) => {
+    setHiddenSeedAliases(prev => {
+      const next = prev.includes(alias) ? prev.filter(a => a !== alias) : [...prev, alias]
+      try { localStorage.setItem('mice_hidden_seed_aliases', JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
   const [entranceNote, setEntranceNote] = useState('')
   const [areaSqm, setAreaSqm] = useState('')
   const [floorPlan, setFloorPlan] = useState<File | null>(null)
@@ -611,81 +629,8 @@ export function LearningManagerClient({
         </section>
         </>}
         {activeSection === 'venue-status' && <>
-        {/* ── 노션 컴펌 본 §4 전체 학습 요약 (5/18 정합) ── */}
-        <section className="bg-white border border-slate-200 rounded-xl p-5">
-          <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-indigo-500" />
-            전체 학습 요약 (노션 §4 정합)
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            {LEARNING_META_SEED.map(m => (
-              <div key={m.metric} className="border border-slate-200 rounded-lg p-3 bg-slate-50">
-                <p className="text-[10px] text-slate-500 leading-tight">{m.metric}</p>
-                <p className="text-base font-semibold text-slate-900 mt-1">{m.value}</p>
-                {m.note && <p className="text-[9px] text-slate-400 mt-0.5 leading-tight">{m.note}</p>}
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── NIST AI RMF 4단계 정합 (5/19 추가·노션 §1-3 정합) ── */}
-        <section className="bg-white border border-slate-200 rounded-xl p-5">
-          <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-emerald-500" />
-            AI 이상 답변 방지 4단 안전망 (NIST AI RMF 정합)
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            {NIST_RMF_STAGES.map((s, i) => (
-              <div key={s.stage} className="border border-emerald-200 rounded-lg p-3 bg-emerald-50/60">
-                <p className="text-[10px] text-emerald-700 font-semibold">단계 {i + 1}: {s.stage}</p>
-                <p className="text-sm font-semibold text-emerald-900 mt-1">{s.korean}</p>
-                <p className="text-[10px] text-slate-600 mt-1.5 leading-relaxed">{s.v3_implementation}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── 향후 도입 로드맵 (5/19 광범위 조사·visionRoadmap 시드) ── */}
-        <section className="bg-white border border-slate-200 rounded-xl p-5">
-          <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-500" />
-            향후 도입 로드맵 (5/19 광범위 조사 결과)
-          </h2>
-          <div className="overflow-x-auto border border-slate-200 rounded-lg">
-            <table className="w-full text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr className="text-slate-600 text-[11px]">
-                  <th className="px-2 py-2 text-left font-semibold">우선</th>
-                  <th className="px-2 py-2 text-left font-semibold">영역</th>
-                  <th className="px-2 py-2 text-left font-semibold">tech</th>
-                  <th className="px-2 py-2 text-left font-semibold">활용</th>
-                  <th className="px-2 py-2 text-left font-semibold">비용 추정</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {VISION_ROADMAP.map(r => {
-                  const colorMap: Record<string, string> = {
-                    immediate: 'bg-emerald-100 text-emerald-700',
-                    'd-7': 'bg-amber-100 text-amber-700',
-                    'd-30': 'bg-blue-100 text-blue-700',
-                    quarter: 'bg-slate-100 text-slate-700',
-                  }
-                  return (
-                    <tr key={r.id} className="hover:bg-slate-50/50">
-                      <td className="px-2 py-2 align-top">
-                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${colorMap[r.priority] ?? 'bg-slate-100'}`}>{r.priority}</span>
-                      </td>
-                      <td className="px-2 py-2 align-top font-medium text-slate-800">{r.area}</td>
-                      <td className="px-2 py-2 align-top text-slate-500 text-[10px]">{r.tech_stack.slice(0, 3).join(', ')}{r.tech_stack.length > 3 && '...'}</td>
-                      <td className="px-2 py-2 align-top text-slate-600 text-[10px] max-w-md">{r.use_case}</td>
-                      <td className="px-2 py-2 align-top text-slate-500 text-[10px]">{r.cost_estimate_krw ?? '—'}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        {/* 5/21 사용자 명시 = NIST 4단 안전망·전체 학습 요약·향후 도입 로드맵 표 3건 UI 표시 제거.
+            메타 표시 = ′응? 금지′ 룰 위반·사용자 UI 영역 불필요. 시드는 lib에 보존. */}
 
         {/* ── 0. 행사장별 학습 현황 — 점진적 정확도 가시화 (★ v9) ── */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
@@ -955,12 +900,10 @@ export function LearningManagerClient({
           )
         })()}
 
-        {/* ── 표준 행사장 계층 L1·L2 (노션 §9 정적 시드) ────────────
-            5/14 회의 결정 = "구역·홀 단위로 묶기 (계층 구조)".
-            추가/수정/삭제는 Supabase venue_halls (v6 마이그레이션 + 사용자 컴펌 후) 영역. */}
-        <VenueHierarchyTree />
+        {/* 5/21 사용자 명시 = 표준 행사장 계층 트리 + 학습된 행사장 표 = 한 표로 통합.
+            VenueHierarchyTree 별도 컴포넌트 제거. 학습된 행사장 표 행 클릭 시 하위 L2 홀 펼침. */}
 
-        {/* ── 학습된 행사장 현황 (queue 서브탭 보조 표시 — 도면 학습 결과 확인용) ── */}
+        {/* ── 학습된 행사장 현황 (L1 → L2 펼침 통합 — 노션 §9 정합) ── */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-4 flex items-center gap-2">
             <Building2 className="w-4 h-4 text-emerald-400" />
@@ -973,10 +916,11 @@ export function LearningManagerClient({
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-slate-500 border-b border-slate-200">
+                    <th className="text-left p-2 w-6"></th>
                     <th className="text-left p-2">이름</th>
                     <th className="text-left p-2">권역</th>
                     <th className="text-left p-2">유형</th>
-                    <th className="text-left p-2">홀 분리</th>
+                    <th className="text-left p-2">하위 홀 (L2)</th>
                     <th className="text-left p-2">도면</th>
                     <th className="text-left p-2">도면 학습</th>
                     <th className="text-left p-2">등록일</th>
@@ -989,8 +933,25 @@ export function LearningManagerClient({
                     const doneJob = venueJobs.find(j => j.status === 'done')
                     const pendingJob = venueJobs.find(j => j.status === 'queued' || j.status === 'processing')
                     const failedJob = venueJobs.find(j => j.status === 'failed')
+                    const halls = getHallsByVenueName(v.name)
+                    const isExpanded = expandedVenueId === v.id
+                    const canExpand = halls.length > 0
                     return (
-                    <tr key={v.id} className="border-b border-slate-200/40 hover:bg-slate-50/30">
+                    <React.Fragment key={v.id}>
+                    <tr className="border-b border-slate-200/40 hover:bg-slate-50/30">
+                      <td className="p-2 text-center">
+                        {canExpand ? (
+                          <button
+                            onClick={() => setExpandedVenueId(isExpanded ? null : v.id)}
+                            className="text-slate-400 hover:text-indigo-500 transition"
+                            title={isExpanded ? '접기' : '하위 홀 펼치기'}
+                          >
+                            <span className={`inline-block transition-transform ${isExpanded ? 'rotate-90' : ''}`}>▶</span>
+                          </button>
+                        ) : (
+                          <span className="text-slate-300 text-[9px]">·</span>
+                        )}
+                      </td>
                       <td className="p-2 text-slate-800 font-medium">
                         <div className="flex items-center gap-1.5">
                           <MapPin className="w-3 h-3 text-slate-500" />
@@ -999,7 +960,13 @@ export function LearningManagerClient({
                       </td>
                       <td className="p-2 text-slate-500">{v.region ?? '—'}</td>
                       <td className="p-2 text-slate-500">{v.venue_type ?? '—'}</td>
-                      <td className="p-2 text-slate-500">{v.has_hall_split ? '✓' : '—'}</td>
+                      <td className="p-2 text-slate-500">
+                        {halls.length > 0 ? (
+                          <span className="text-indigo-600 font-medium">{halls.length}개</span>
+                        ) : (
+                          <span className="text-slate-300">없음</span>
+                        )}
+                      </td>
                       <td className="p-2">
                         {v.floor_plan_url ? (
                           <a href={v.floor_plan_url} target="_blank" rel="noopener" className="text-indigo-400 hover:underline flex items-center gap-1">
@@ -1032,6 +999,24 @@ export function LearningManagerClient({
                         </button>
                       </td>
                     </tr>
+                    {isExpanded && halls.length > 0 && (
+                      <tr className="bg-slate-50/60">
+                        <td colSpan={9} className="px-6 py-3">
+                          <p className="text-[10px] text-slate-500 mb-2">하위 홀 (L2) — 노션 §9 정적 시드. 추가/수정/삭제는 Supabase venue_halls 마이그레이션 후 활성.</p>
+                          <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5">
+                            {halls.map((h, i) => (
+                              <li key={i} className="text-[11px] text-slate-700 bg-white border border-slate-200 rounded px-2 py-1 flex items-center justify-between">
+                                <span>{h.name}</span>
+                                {h.note && (
+                                  <span className="text-[9px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-1 ml-1.5">{h.note}</span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                     )
                   })}
                 </tbody>
@@ -1346,16 +1331,36 @@ export function LearningManagerClient({
                       </td>
                     </tr>
                   ))}
-                {/* 시드 동의어 (read-only) */}
+                {/* 시드 동의어 — 5/21 사용자 명시 = ✕ 삭제 + "없음" 표시 가능 (localStorage hidden) */}
                 {synonyms
                   .filter(s => !synonymFilter || s.alias.includes(synonymFilter) || s.canonical_name.includes(synonymFilter))
-                  .map(s => (
-                    <tr key={s.alias} className="hover:bg-slate-50">
-                      <td className="px-2 py-1 text-slate-700 font-mono text-[11px]">{s.alias}</td>
-                      <td className="px-2 py-1 text-indigo-700 font-medium">{s.canonical_name}</td>
-                      <td className="px-2 py-1 text-slate-500 text-[11px]">{s.note ?? '시드'}</td>
-                    </tr>
-                  ))}
+                  .map(s => {
+                    const hidden = hiddenSeedAliases.includes(s.alias)
+                    return (
+                      <tr key={s.alias} className={`hover:bg-slate-50 ${hidden ? 'opacity-50' : ''}`}>
+                        <td className="px-2 py-1 text-slate-700 font-mono text-[11px]">
+                          {hidden ? <span className="line-through text-slate-400">{s.alias}</span> : s.alias}
+                        </td>
+                        <td className="px-2 py-1 text-indigo-700 font-medium">
+                          {hidden ? <span className="text-slate-400">없음</span> : s.canonical_name}
+                        </td>
+                        <td className="px-2 py-1 text-slate-500 text-[11px] flex items-center justify-between gap-2">
+                          <span>{s.note ?? '시드'}</span>
+                          <button
+                            onClick={() => toggleHideSeedAlias(s.alias)}
+                            className={`text-[11px] px-1.5 py-0.5 rounded transition ${
+                              hidden
+                                ? 'text-indigo-600 hover:bg-indigo-50'
+                                : 'text-rose-500 hover:bg-rose-50'
+                            }`}
+                            title={hidden ? '복구' : '삭제 (없음으로 표시)'}
+                          >
+                            {hidden ? '↺' : '✕'}
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
               </tbody>
             </table>
           </div>
@@ -1469,12 +1474,15 @@ export function LearningManagerClient({
           })()}
         </section>
 
-        {/* ── 6. 시설 가이드 학습 현황 (§13-3 신규) ────────────── */}
+        {/* ── 6. 시설 가이드 학습 현황 — 홀(L2) 단위 (5/21 사용자 명시 정합) ──
+            venueFacilityGuide 시드 = 이미 홀별 분리 (킨텍스 1~4홀, 5홀, 2전시장 6~10홀 등).
+            UI 라벨도 홀 단위 명시. */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-rose-500" />
-            시설 가이드 학습 현황
+            시설 가이드 학습 현황 (홀 단위)
           </h2>
+          <p className="text-[11px] text-slate-500 mb-3">노션 §7 정합 = 행사장이 아닌 홀(L2) 단위로 표준 규격·제약·연락처·예약 시점 학습.</p>
           {facilityGuideStatus.length === 0 ? (
             <p className="text-slate-400 text-xs italic py-3 text-center">시설 가이드 시드 데이터가 비어있습니다.</p>
           ) : (
@@ -1482,7 +1490,7 @@ export function LearningManagerClient({
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr className="text-slate-600 text-[11px]">
-                    <th className="px-2 py-1.5 text-left font-semibold">행사장</th>
+                    <th className="px-2 py-1.5 text-left font-semibold">행사장·홀</th>
                     <th className="px-2 py-1.5 text-right font-semibold">카테고리</th>
                     <th className="px-2 py-1.5 text-right font-semibold">주의사항</th>
                     <th className="px-2 py-1.5 text-right font-semibold">완성도</th>

@@ -33,15 +33,13 @@ export const SEED_SIGNAGE_TYPES: SignageTypeSeed[] = [
   { id: 'horizontal_banner',  name: '가로 현수막',    width_mm: 5000, height_mm: 900,  default_material: '현수막',  category: '메인·외벽',  layout: '가로' },
   { id: 'vertical_banner',    name: '세로 현수막',    width_mm: 900,  height_mm: 5000, default_material: '현수막',  category: '로비·천장',  layout: '세로' },
   { id: 'chunchen_banner',    name: '통천',           width_mm: 1000, height_mm: 5000, default_material: '현수막',  category: '천장 대형',  layout: '세로' },
-  { id: 'backwall',           name: '백월',           width_mm: 6000, height_mm: 3000, default_material: '현수막',  category: '무대 배경',  layout: '가로', note: '시상식·기념식·런칭 무대 뒤 배경' },
   { id: 'podium',             name: '포디움 타이틀',  width_mm: 600,  height_mm: 200,  default_material: '스티커',  category: '연단',       layout: '가로' },
   { id: 'a4_portrait',        name: 'A4 세로',        width_mm: 210,  height_mm: 297,  default_material: '인쇄',    category: '소형 안내',  layout: '세로' },
   { id: 'a4_landscape',       name: 'A4 가로',        width_mm: 297,  height_mm: 210,  default_material: '인쇄',    category: '소형 안내',  layout: '가로' },
   { id: 'a3_portrait',        name: 'A3 세로',        width_mm: 297,  height_mm: 420,  default_material: '인쇄',    category: '중형 안내',  layout: '세로' },
   { id: 'a3_landscape',       name: 'A3 가로',        width_mm: 420,  height_mm: 297,  default_material: '인쇄',    category: '중형 안내',  layout: '가로' },
-  { id: 'foamboard',          name: '폼보드',         width_mm: 600,  height_mm: 900,  default_material: '폼보드 5T', category: '실내 안내', layout: '세로', note: '스탠드POP·L보드·큐방 포함. 세션룸 입구·데스크 안내' },
-  { id: 'sheet',              name: '시트지',         width_mm: 1650, height_mm: 920,  default_material: '시트지',  category: '출입구·유리', layout: '가로', note: '출입구 유리창 부착. 바닥스티커·유도사인 포함' },
-  // v3 (5/18 PO 정정 10 카테고리 SOT) 신규 — 실내 동선 분리 (5/14 회의 X배너 분리 결정)
+  // 5/21 사용자 명시 = 노션 §6-2 12 카테고리 정합. backwall·foamboard·sheet 3건 제거.
+  // 동의어 매핑은 폼보드 → A4·A3·I배너 등으로 재매핑 (아래 SEED_SYNONYMS 정정).
   { id: 'route_banner',       name: '동선 배너',      width_mm: 600,  height_mm: 1500, default_material: '현수막',  category: '실내 동선',  layout: '세로', note: 'v3 신규. 실내 유도·화살표·방향 안내 전용. 5/14 회의 X배너 분리 결정' },
 ]
 
@@ -118,22 +116,23 @@ export const SEED_SYNONYMS: SynonymSeed[] = [
   { alias: '웰컴보드',       canonical_name: 'A3 가로',      note: '노션 §8-1·대형 안내·a3_landscape' },
   { alias: 'MOU 현수막',     canonical_name: '가로 현수막',  note: '노션 §8-1·행사 현수막·horizontal_banner' },
   { alias: 'MOU',            canonical_name: '가로 현수막',  note: '노션 §8-1·MOU 약어·horizontal_banner' },
-  { alias: '안내폼보드',     canonical_name: '폼보드',       note: 'L보드 통칭' },
-  { alias: 'L보드',          canonical_name: '폼보드',       note: 'L자형 폼보드' },
-  { alias: '큐방',           canonical_name: '폼보드',       note: '안내용 큐방' },
-  { alias: '큐방시트',       canonical_name: '폼보드',       note: '큐방 시트 형태' },
-  { alias: '셔틀버스 큐방시트', canonical_name: '폼보드',    note: '셔틀버스용 큐방' },
-  { alias: '컨설팅폼보드',   canonical_name: '폼보드',       note: '4단계 안내용' },
-  { alias: '좌석배치도 안내사인', canonical_name: '폼보드',  note: '배치도 안내판' },
-  { alias: '시상보드',       canonical_name: '폼보드',       note: '시상식용 보드' },
-  { alias: '기념촬영보드',   canonical_name: '폼보드',       note: '포토존 보드' },
-  { alias: '화이트보드판',   canonical_name: '폼보드',       note: '하드보드 변형' },
-  { alias: '안내사인',       canonical_name: '폼보드',       note: '일반 안내판' },
-
-  // ── 바닥·시트지 (노션 §6-2 외·legacy 영역·완전 호환 보존) ──
-  { alias: '바닥스티커',     canonical_name: '시트지',       note: 'legacy·노션 §6-2 외·바닥 부착 호환' },
-  { alias: '바닥시트',       canonical_name: '시트지',       note: 'legacy·바닥 시트 약어 호환' },
-  // line 127 '유도사인' = line 108 동선 배너 매핑으로 일원화 (중복 제거·5/19 정정)
+  // 5/21 사용자 명시 = 노션 §8-1 정합. 폼보드 표준명 매핑 → 12 카테고리 표준명(A4·A3·I배너) 재매핑.
+  // 노션 §8-1 = "안내폼보드·L보드·안내사인" → A4 가로 또는 A3 가로(크기에 따라 선택, 기본 A4 가로).
+  //          = "큐방·큐방시트·셔틀버스 큐방시트" → A4 가로 (폼보드 재질 발주).
+  //          = "시상보드·기념촬영보드·컨설팅폼보드·좌석배치도 안내사인" → A3 가로.
+  //          = "스탠드POP" → I배너 (위에서 이미 매핑).
+  //          = 시트지·바닥스티커 = 12 카테고리 외 = 매핑 제거 (화이트보드판 동일).
+  { alias: '안내폼보드',     canonical_name: 'A4 가로',     note: '노션 §8-1·기본 A4 가로(크기에 따라 A3 가로 선택)' },
+  { alias: 'L보드',          canonical_name: 'A4 가로',     note: '노션 §8-1·L자형 안내판' },
+  { alias: '안내사인',       canonical_name: 'A4 가로',     note: '노션 §8-1·일반 안내판' },
+  { alias: '큐방',           canonical_name: 'A4 가로',     note: '노션 §8-1·폼보드 재질 발주' },
+  { alias: '큐방시트',       canonical_name: 'A4 가로',     note: '노션 §8-1·큐방 시트 형태' },
+  { alias: '셔틀버스 큐방시트', canonical_name: 'A4 가로',  note: '노션 §8-1·셔틀버스 큐방' },
+  { alias: '컨설팅폼보드',   canonical_name: 'A3 가로',     note: '노션 §8-1·4단계 안내' },
+  { alias: '좌석배치도 안내사인', canonical_name: 'A3 가로', note: '노션 §8-1·배치도 안내판' },
+  { alias: '시상보드',       canonical_name: 'A3 가로',     note: '노션 §8-1·시상식 안내' },
+  { alias: '기념촬영보드',   canonical_name: 'A3 가로',     note: '노션 §8-1·포토존 보드' },
+  // 5/21 = 화이트보드판·시트지·바닥스티커·바닥시트 매핑 제거 (노션 §6-2 외 12 카테고리 외 영역).
 ]
 
 // ── 3. 행사 폴더 → 행사 이력 (54개) ──────────────────────────

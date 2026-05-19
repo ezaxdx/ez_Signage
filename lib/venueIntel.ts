@@ -135,6 +135,23 @@ export function getHallsByVenueKey(parentKey: string): VenueHall[] {
   return VENUE_HALLS.filter(h => h.parent_key === parentKey)
 }
 
+/** venue.name (한글·영문 혼합) → L2 홀 목록. 학습된 행사장 표·시설 가이드 등에 사용. */
+const VENUE_NAME_TO_HALL_KEY: Record<string, string> = {
+  'COEX': '코엑스',
+  '코엑스': '코엑스',
+  'KINTEX': '킨텍스',
+  '킨텍스': '킨텍스',
+  'DDP': 'DDP',
+  '동대문디자인플라자': 'DDP',
+}
+
+export function getHallsByVenueName(venueName: string): VenueHall[] {
+  const key = VENUE_NAME_TO_HALL_KEY[venueName]
+    ?? (Object.keys(VENUE_NAME_TO_HALL_KEY).find(k => venueName.includes(k)))
+    ?? venueName
+  return VENUE_HALLS.filter(h => h.parent_key === (VENUE_NAME_TO_HALL_KEY[key] ?? key))
+}
+
 /**
  * 향후 구현될 행사장 기반 체크 로직 설계
  *

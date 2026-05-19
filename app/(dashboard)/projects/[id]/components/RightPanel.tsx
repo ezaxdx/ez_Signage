@@ -1,34 +1,34 @@
 'use client'
 
 /**
- * 우측 패널 (좌 8:우 2 분할의 우 2 영역)
+ * 우측 패널 — 5/21 사용자 명시 재구성.
  *
- * 노션 페이지 36148589-8ea1-81a3-b3e8-dd4a833c914c §3 결정:
- *   - 시안 입력 제거 (시안 업로드·미리보기·마스터 시안 입력) → CanvasBoard orphan 보존
- *   - 우측 상단 토글 = 예시 이미지 (환경 장식물 종류별 샘플) + 사이즈 비율 표시
- *   - 위반 사항 발생 시 우측 상단 절반에 표시 (없으면 자동 숨김)
- *   - 행을 선택하면 구분에 맞는 예시 사진 (데이터허브 실사 이미지)
+ * 구조:
+ *   - 상단 = 토글 버튼 2개 [예시 이미지] [규격 비율 시각화]
+ *   - 위반 사항 없을 때 = 우측 전체에 토글 컨텐츠 (선택된 것)
+ *   - 위반 사항 있을 때 = 위 절반 = 시설 가이드 위반·아래 절반 = 토글 컨텐츠
  *
- * 예시 이미지 출처:
- *   - 1차 = signageCategoriesSeedV3.sample_image_url (현재 비어있음 → placeholder)
- *   - 향후 = 관리자 페이지 "환경 장식물 종류" 메뉴에서 종류별 업로드 (B3 후속 영역)
+ * 노션 페이지 36148589-8ea1-81a3-b3e8-dd4a833c914c §3 정합.
  */
 
-import { useMemo } from 'react'
-import { ImageIcon, AlertTriangle, ExternalLink } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { ImageIcon, AlertTriangle, ExternalLink, Ruler } from 'lucide-react'
 import { classifyCategoryV3, getRatioLabel, type SignageCategoryV3 } from '@/lib/data/v3/signageCategoriesSeedV3'
 import type { DesignItem } from '@/lib/types'
 import type { ValidationIssue } from '@/lib/services/facilityValidator'
+
+type TabKey = 'sample' | 'ratio'
 
 interface Props {
   selectedItem: DesignItem | null
   facilityIssues: ValidationIssue[]
   venueName: string | null
-  /** 시설 가이드 출처 URL (노션 §3 = "시설 위반 원문 URL 표시"·향후 데이터허브 매뉴얼 링크) */
   guideSourceUrl?: string | null
 }
 
 export function RightPanel({ selectedItem, facilityIssues, venueName, guideSourceUrl }: Props) {
+  const [tab, setTab] = useState<TabKey>('sample')
+
   const matchedCategory: SignageCategoryV3 | null = useMemo(() => {
     if (!selectedItem?.category) return null
     return classifyCategoryV3(selectedItem.category)
@@ -39,150 +39,254 @@ export function RightPanel({ selectedItem, facilityIssues, venueName, guideSourc
   const infoCount = facilityIssues.filter(i => i.severity === 'info').length
 
   return (
-    <div className="h-full flex flex-col bg-slate-50 overflow-y-auto">
-      {/* ── 상단: 예시 이미지 + 사이즈 비율 ───────────────────── */}
-      <section className="p-4 border-b border-slate-200 bg-white">
-        <div className="flex items-center gap-2 mb-3">
-          <ImageIcon size={14} className="text-indigo-600" />
-          <h3 className="text-xs font-semibold text-slate-700">예시 이미지</h3>
-        </div>
+    <div className="h-full flex flex-col bg-slate-50 overflow-hidden">
+      {/* ── 상단: 토글 버튼 2개 (노션 §3 = 예시 이미지·규격 비율 시각화) ── */}
+      <div className="flex border-b border-slate-200 bg-white flex-shrink-0">
+        <button
+          onClick={() => setTab('sample')}
+          className={`flex-1 py-2 px-3 text-xs font-medium flex items-center justify-center gap-1.5 border-b-2 transition ${
+            tab === 'sample'
+              ? 'border-indigo-600 text-indigo-700 bg-indigo-50/40'
+              : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+          }`}
+        >
+          <ImageIcon size={13} />
+          예시 이미지
+        </button>
+        <button
+          onClick={() => setTab('ratio')}
+          className={`flex-1 py-2 px-3 text-xs font-medium flex items-center justify-center gap-1.5 border-b-2 transition ${
+            tab === 'ratio'
+              ? 'border-indigo-600 text-indigo-700 bg-indigo-50/40'
+              : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+          }`}
+        >
+          <Ruler size={13} />
+          규격 비율 시각화
+        </button>
+      </div>
 
-        {!selectedItem ? (
-          <div className="text-xs text-slate-400 py-8 text-center">
-            좌측 표에서 행을 선택하세요.
-          </div>
-        ) : !matchedCategory ? (
-          <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-3">
-            제작물 종류가 12 카테고리 표준에 매핑되지 않았습니다.
-            <br />
-            <span className="text-slate-500 mt-1 inline-block">현재 값: {selectedItem.category || '(미입력)'}</span>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {/* 예시 이미지 (실사 이미지·향후 데이터허브 연동) */}
-            {matchedCategory.sample_image_url ? (
-              <img
-                src={matchedCategory.sample_image_url}
-                alt={`${matchedCategory.label} 예시`}
-                className="w-full rounded border border-slate-200 object-cover max-h-48"
-              />
-            ) : (
-              <div className="w-full rounded border border-dashed border-slate-300 bg-slate-50 py-10 px-4 text-center">
-                <ImageIcon size={28} className="mx-auto text-slate-300 mb-2" />
-                <p className="text-[11px] text-slate-500 leading-relaxed">
-                  실사 예시 이미지 준비 중
-                  <br />
-                  <span className="text-slate-400">관리자 페이지 → 환경 장식물 종류에서 업로드</span>
-                </p>
-              </div>
-            )}
-
-            {/* 카테고리 메타 */}
-            <div className="text-xs space-y-1.5">
-              <div className="flex justify-between">
-                <span className="text-slate-500">표준명</span>
-                <span className="font-medium text-slate-800">{matchedCategory.label}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">분류</span>
-                <span className="text-slate-700">{matchedCategory.classification}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">기본 재질</span>
-                <span className="text-slate-700">{matchedCategory.material}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">규격 비율</span>
-                <span className="font-mono text-indigo-700">{getRatioLabel(matchedCategory)}</span>
-              </div>
-            </div>
-
-            {/* 시각 비율 박스 (노션 §3 "사이즈 비율 표시") */}
-            <div className="pt-2">
-              <div className="text-[10px] text-slate-400 mb-1.5">규격 비율 시각화</div>
-              <div className="flex items-center justify-center bg-slate-100 rounded p-3 min-h-[80px]">
-                <RatioBox cat={matchedCategory} />
-              </div>
-            </div>
-          </div>
+      {/* ── 본문 영역 ─────────────────────────────────────────
+          위반 있음 = 위 절반 위반·아래 절반 토글 컨텐츠
+          위반 없음 = 전체 토글 컨텐츠 */}
+      <div className="flex-1 flex flex-col min-h-0">
+        {hasViolations && (
+          <ViolationsSection
+            issues={facilityIssues}
+            warnCount={warnCount}
+            infoCount={infoCount}
+            venueName={venueName}
+            guideSourceUrl={guideSourceUrl}
+          />
         )}
-      </section>
 
-      {/* ── 하단: 위반 사항 (있을 때만 표시 — 노션 §3) ──────────── */}
-      {hasViolations && (
-        <section className="p-4 bg-white">
-          <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle size={14} className="text-rose-600" />
-            <h3 className="text-xs font-semibold text-slate-700">
-              시설 가이드 위반
-              <span className="ml-2 text-[10px] font-normal text-slate-500">
-                {warnCount > 0 && <span className="text-rose-600">경고 {warnCount}</span>}
-                {warnCount > 0 && infoCount > 0 && ' · '}
-                {infoCount > 0 && <span className="text-amber-700">조건부 {infoCount}</span>}
-              </span>
-            </h3>
-          </div>
+        <div className={`${hasViolations ? 'h-1/2 border-t border-slate-200' : 'flex-1'} overflow-y-auto bg-white`}>
+          {tab === 'sample' ? (
+            <SampleImageView selectedItem={selectedItem} matchedCategory={matchedCategory} />
+          ) : (
+            <RatioView selectedItem={selectedItem} matchedCategory={matchedCategory} />
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
-          <ul className="space-y-2">
-            {facilityIssues.map((issue, idx) => (
-              <li
-                key={idx}
-                className={`text-xs rounded border p-2.5 ${
-                  issue.severity === 'warn'
-                    ? 'bg-rose-50 border-rose-200 text-rose-900'
-                    : 'bg-amber-50 border-amber-200 text-amber-900'
-                }`}
-              >
-                <div className="font-medium mb-1">{issue.message}</div>
-                {(issue.standardValue || issue.userValue) && (
-                  <div className="text-[11px] space-y-0.5 mt-1.5 text-slate-600">
-                    {issue.standardValue && (
-                      <div>
-                        <span className="text-slate-400">표준:</span> {issue.standardValue}
-                      </div>
-                    )}
-                    {issue.userValue && (
-                      <div>
-                        <span className="text-slate-400">입력:</span> {issue.userValue}
-                      </div>
-                    )}
+/** 시설 가이드 위반 사항 = 위 절반 (노션 §3 "위반 사항 발생 시 우측 상단 절반에 표시") */
+function ViolationsSection({
+  issues,
+  warnCount,
+  infoCount,
+  venueName,
+  guideSourceUrl,
+}: {
+  issues: ValidationIssue[]
+  warnCount: number
+  infoCount: number
+  venueName: string | null
+  guideSourceUrl?: string | null
+}) {
+  return (
+    <section className="h-1/2 overflow-y-auto p-4 bg-rose-50/30 border-b border-rose-200">
+      <div className="flex items-center gap-2 mb-3">
+        <AlertTriangle size={14} className="text-rose-600" />
+        <h3 className="text-xs font-semibold text-slate-800">
+          시설 가이드 위반
+          <span className="ml-2 text-[10px] font-normal text-slate-500">
+            {warnCount > 0 && <span className="text-rose-600">경고 {warnCount}</span>}
+            {warnCount > 0 && infoCount > 0 && ' · '}
+            {infoCount > 0 && <span className="text-amber-700">조건부 {infoCount}</span>}
+          </span>
+        </h3>
+      </div>
+
+      <ul className="space-y-2">
+        {issues.map((issue, idx) => (
+          <li
+            key={idx}
+            className={`text-xs rounded border p-2.5 ${
+              issue.severity === 'warn'
+                ? 'bg-white border-rose-200 text-rose-900'
+                : 'bg-white border-amber-200 text-amber-900'
+            }`}
+          >
+            <div className="font-medium mb-1">{issue.message}</div>
+            {(issue.standardValue || issue.userValue) && (
+              <div className="text-[11px] space-y-0.5 mt-1.5 text-slate-600">
+                {issue.standardValue && (
+                  <div>
+                    <span className="text-slate-400">표준:</span> {issue.standardValue}
                   </div>
                 )}
-              </li>
-            ))}
-          </ul>
+                {issue.userValue && (
+                  <div>
+                    <span className="text-slate-400">입력:</span> {issue.userValue}
+                  </div>
+                )}
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
 
-          {/* 시설 가이드 출처 URL (노션 §3 = "시설 위반 원문 URL 표시") */}
-          {(guideSourceUrl || venueName) && (
-            <div className="mt-3 pt-3 border-t border-slate-100">
-              {guideSourceUrl ? (
-                <a
-                  href={guideSourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-1"
-                >
-                  <ExternalLink size={11} />
-                  {venueName ? `${venueName} 시설 가이드 원문` : '시설 가이드 원문 보기'}
-                </a>
-              ) : (
-                <p className="text-[11px] text-slate-400">
-                  ※ 시스템 정보가 오래됐을 수 있습니다. 행사장에 직접 확인 권장.
-                </p>
-              )}
-            </div>
+      {(guideSourceUrl || venueName) && (
+        <div className="mt-3 pt-3 border-t border-rose-100">
+          {guideSourceUrl ? (
+            <a
+              href={guideSourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-1"
+            >
+              <ExternalLink size={11} />
+              {venueName ? `${venueName} 시설 가이드 원문` : '시설 가이드 원문 보기'}
+            </a>
+          ) : (
+            <p className="text-[11px] text-slate-500">
+              ※ 시스템 정보가 오래됐을 수 있습니다. 행사장에 직접 확인 권장.
+            </p>
           )}
-        </section>
+        </div>
+      )}
+    </section>
+  )
+}
+
+/** 예시 이미지 뷰 (노션 §3 = 데이터허브 실사 이미지) */
+function SampleImageView({
+  selectedItem,
+  matchedCategory,
+}: {
+  selectedItem: DesignItem | null
+  matchedCategory: SignageCategoryV3 | null
+}) {
+  if (!selectedItem) {
+    return <div className="p-6 text-xs text-slate-400 text-center">좌측 표에서 행을 선택하세요.</div>
+  }
+  if (!matchedCategory) {
+    return (
+      <div className="p-4">
+        <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-3">
+          제작물 종류가 12 카테고리 표준에 매핑되지 않았습니다.
+          <br />
+          <span className="text-slate-500 mt-1 inline-block">현재 값: {selectedItem.category || '(미입력)'}</span>
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="p-4 h-full flex flex-col">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xs font-semibold text-slate-700">{matchedCategory.label}</span>
+        <span className="text-[10px] text-slate-500">{matchedCategory.classification}</span>
+      </div>
+      {matchedCategory.sample_image_url ? (
+        <img
+          src={matchedCategory.sample_image_url}
+          alt={`${matchedCategory.label} 예시`}
+          className="w-full rounded border border-slate-200 object-contain max-h-full"
+        />
+      ) : (
+        <div className="flex-1 rounded border border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center px-4 py-10">
+          <ImageIcon size={36} className="text-slate-300 mb-3" />
+          <p className="text-xs text-slate-500 text-center leading-relaxed">
+            실사 예시 이미지 준비 중
+            <br />
+            <span className="text-slate-400 text-[11px]">관리자 페이지 → 환경 장식물 종류에서 업로드</span>
+          </p>
+        </div>
       )}
     </div>
   )
 }
 
-/** 카테고리 규격 비율을 시각 박스로 표현 (가로·세로 비율 유지·최대 60×60) */
-function RatioBox({ cat }: { cat: SignageCategoryV3 }) {
-  const { width, height } = cat.default_size_mm
-  const maxSide = 60
-  const ratio = width / height
+/** 규격 비율 시각화 뷰 (노션 §3 = "사이즈 비율 표시 = 종류별 규격에 맞는 비율") */
+function RatioView({
+  selectedItem,
+  matchedCategory,
+}: {
+  selectedItem: DesignItem | null
+  matchedCategory: SignageCategoryV3 | null
+}) {
+  if (!selectedItem) {
+    return <div className="p-6 text-xs text-slate-400 text-center">좌측 표에서 행을 선택하세요.</div>
+  }
+  // 카테고리 매칭 실패해도 design_items.width_mm/height_mm 있으면 시각화 (실측 mm 기반)
+  const widthMm = selectedItem.width_mm ?? matchedCategory?.default_size_mm.width ?? 0
+  const heightMm = selectedItem.height_mm ?? matchedCategory?.default_size_mm.height ?? 0
+  if (widthMm === 0 || heightMm === 0) {
+    return (
+      <div className="p-4">
+        <div className="text-xs text-slate-500 bg-slate-100 border border-slate-200 rounded p-3">
+          규격이 입력되지 않았습니다. 좌측 표에서 너비·높이(mm)를 입력하세요.
+        </div>
+      </div>
+    )
+  }
+  const ratioLabel = matchedCategory ? getRatioLabel(matchedCategory) : `${widthMm} × ${heightMm} mm`
+
+  return (
+    <div className="p-4 h-full flex flex-col">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xs font-semibold text-slate-700">
+          {matchedCategory?.label ?? selectedItem.category ?? '(카테고리 미매핑)'}
+        </span>
+        <span className="text-[10px] text-slate-500 ml-auto font-mono">{ratioLabel}</span>
+      </div>
+
+      {/* 큰 비율 박스 — 우측 전체 영역 활용 */}
+      <div className="flex-1 flex items-center justify-center bg-slate-100/60 rounded border border-slate-200 p-6">
+        <RatioBox widthMm={widthMm} heightMm={heightMm} />
+      </div>
+
+      {/* 메타 */}
+      <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+        <Meta label="너비" value={`${widthMm.toLocaleString()} mm`} />
+        <Meta label="높이" value={`${heightMm.toLocaleString()} mm`} />
+        {matchedCategory && (
+          <>
+            <Meta label="기본 재질" value={matchedCategory.material} />
+            <Meta label="레이아웃" value={matchedCategory.layout === 'horizontal' ? '가로' : '세로'} />
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Meta({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-white border border-slate-200 rounded px-2 py-1.5">
+      <div className="text-[9px] text-slate-400">{label}</div>
+      <div className="text-slate-800 font-medium">{value}</div>
+    </div>
+  )
+}
+
+/** 규격 비율 박스 — 컨테이너 안에 최대 비율로 시각화 */
+function RatioBox({ widthMm, heightMm }: { widthMm: number; heightMm: number }) {
+  const maxSide = 220
+  const ratio = widthMm / heightMm
   let w: number
   let h: number
   if (ratio >= 1) {
@@ -193,10 +297,14 @@ function RatioBox({ cat }: { cat: SignageCategoryV3 }) {
     w = maxSide * ratio
   }
   return (
-    <div
-      className="bg-indigo-200 border border-indigo-400 rounded-sm"
-      style={{ width: `${w}px`, height: `${h}px`, minWidth: '8px', minHeight: '8px' }}
-      title={`${width} × ${height} mm`}
-    />
+    <div className="relative" style={{ width: `${w}px`, height: `${h}px` }}>
+      <div className="absolute inset-0 bg-indigo-200/70 border-2 border-indigo-500 rounded-sm" />
+      <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] text-indigo-700 font-mono whitespace-nowrap">
+        ↔ {widthMm.toLocaleString()} mm
+      </div>
+      <div className="absolute -right-1 top-1/2 -translate-y-1/2 translate-x-full text-[10px] text-indigo-700 font-mono whitespace-nowrap ml-1">
+        ↕ {heightMm.toLocaleString()} mm
+      </div>
+    </div>
   )
 }
