@@ -1826,58 +1826,74 @@ export function LearningManagerClient({
         </section>
         )}
 
-        {/* 5/22 사용자 명시 = 프로그램 파트 관리 — 코드(40.XX) 숨김·매칭 빈도·삭제·편집·추가 영역 = 후속 사이클 */}
+        {/* 5/22 사용자 명시 = 프로그램 파트 관리 = 표 형태 + 정렬 룰 (1순위 최신·2순위 가나다 = 정적 시드라 가나다 적용) */}
         {activeSection === 'program-parts' && (
           <section className="bg-white border border-slate-200 rounded-xl p-5">
             <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
               <Workflow className="w-4 h-4 text-indigo-500" />
               프로그램 파트 관리 ({PROGRAM_PARTS.length})
             </h2>
-            <p className="text-[11px] text-slate-500 mb-3">
-              프로그램 파트별 매칭 환경장식물 = AI 추천 1순위 기준. 매칭 빈도는 누적 프로젝트 데이터 기반 자동 갱신.
-            </p>
-            <div className="space-y-4">
-              {PROGRAM_PART_GROUPS.map(g => {
-                const groupParts = PROGRAM_PARTS.filter(p => p.group === g.group)
-                return (
-                <div key={g.group}>
-                  <h3 className="text-[11px] font-semibold text-slate-700 mb-2 uppercase tracking-wide">{g.label}</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {groupParts.map(pt => {
+            <div className="overflow-x-auto border border-slate-200 rounded">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr className="text-slate-600 text-[11px]">
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">분류</th>
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">파트명</th>
+                    <th className="px-2 py-2 text-left font-semibold">설명</th>
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">매칭 환경장식물</th>
+                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">매칭 수</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {PROGRAM_PARTS
+                    .slice()
+                    .sort((a, b) => {
+                      const ga = PROGRAM_PART_GROUPS.findIndex(g => g.group === a.group)
+                      const gb = PROGRAM_PART_GROUPS.findIndex(g => g.group === b.group)
+                      if (ga !== gb) return ga - gb
+                      return a.name.localeCompare(b.name, 'ko')
+                    })
+                    .map(pt => {
                       const matchedIds = PROGRAM_PART_SIGNAGE_HINTS[pt.code] ?? []
-                      // 5/22 사용자 명시 = x_banner 영문 키 X·X배너 한국어 라벨로 변환 (SEED_SIGNAGE_TYPES.name 매핑)
                       const matchedLabels = matchedIds.map(id => {
                         const t = signageTypeList.find(s => s.id === id) ?? signageTypes.find(s => s.id === id)
                         return t?.name ?? id
                       })
+                      const groupLabel = PROGRAM_PART_GROUPS.find(g => g.group === pt.group)?.label ?? pt.group
                       return (
-                        <div key={pt.code} className="border border-slate-200 rounded-lg p-3 bg-slate-50/50">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-semibold text-slate-900">{pt.name}</span>
-                          </div>
-                          {pt.hint && <p className="text-[10px] text-slate-500 mb-2">{pt.hint}</p>}
-                          <div className="flex flex-wrap gap-0.5">
-                            <span className="text-[10px] text-slate-600 mr-1">매칭 ({matchedLabels.length}):</span>
+                        <tr key={pt.code} className="hover:bg-slate-50">
+                          <td className="px-2 py-1.5">
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                              pt.group === 'program' ? 'bg-emerald-50 text-emerald-700' :
+                              pt.group === 'attendee' ? 'bg-indigo-50 text-indigo-700' :
+                              'bg-amber-50 text-amber-700'
+                            }`}>{groupLabel}</span>
+                          </td>
+                          <td className="px-2 py-1.5 text-slate-800 font-medium whitespace-nowrap">{pt.name}</td>
+                          <td className="px-2 py-1.5 text-slate-500 text-[10px]">{pt.hint ?? '—'}</td>
+                          <td className="px-2 py-1.5">
                             {matchedLabels.length === 0 ? (
-                              <span className="text-[10px] text-slate-300">—</span>
+                              <span className="text-slate-300 text-[10px]">—</span>
                             ) : (
-                              matchedLabels.slice(0, 6).map((label, i) => (
-                                <span key={i} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">{label}</span>
-                              ))
+                              <div className="flex flex-wrap gap-0.5">
+                                {matchedLabels.map((label, i) => (
+                                  <span key={i} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">{label}</span>
+                                ))}
+                              </div>
                             )}
-                            {matchedLabels.length > 6 && <span className="text-[9px] text-slate-400">+{matchedLabels.length - 6}</span>}
-                          </div>
-                        </div>
+                          </td>
+                          <td className="px-2 py-1.5 text-right font-mono text-emerald-600 font-semibold">
+                            {matchedLabels.length || <span className="text-slate-300">—</span>}
+                          </td>
+                        </tr>
                       )
                     })}
-                  </div>
-                </div>
-                )
-              })}
-              <div className="text-[10px] text-slate-400 italic pt-2 border-t border-slate-100">
-                실 사용 빈도 = 누적 프로젝트의 design_items 통계 자동 산출 (실 데이터 누적 후 표시).
-              </div>
+                </tbody>
+              </table>
             </div>
+            <p className="text-[10px] text-slate-400 italic mt-2">
+              실 사용 빈도 = 누적 프로젝트의 design_items 통계 자동 산출 (실 데이터 누적 후 표시).
+            </p>
           </section>
         )}
 
