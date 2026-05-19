@@ -236,8 +236,95 @@ export const VENUE_FACILITY_GUIDE_SEED: VenueFacilityGuide[] = [
   },
 
   // ══════════════════════════════════════════════════════════════
-  // 코엑스 (COEX) — 그랜드볼룸·아셈볼룸·D홀·컨퍼런스홀 등
+  // 5/22 P3-8 사용자 명시 = 코엑스 4건 분리 (그랜드볼룸·아셈볼룸·D홀·컨퍼런스홀)
   // ══════════════════════════════════════════════════════════════
+  {
+    venue_key: 'coex_grandballroom',
+    venue_name: '코엑스 그랜드볼룸',
+    install_allowed: [
+      { category: 'X배너', status: 'allowed', note: '물통형 권장 (카펫 위 안정성).' },
+      { category: '가로현수막', status: 'conditional', note: '입구 아치 구조물 내. 최대 4,000×1,200mm. 와이어 행거. 코엑스 운영팀(02-6000-0114) 사전 승인.', max_width_mm: 4000, max_height_mm: 1200 },
+      { category: '세로현수막', status: 'allowed', note: '롤업 배너 형태 (자립형).' },
+      { category: '통천 배너', status: 'conditional', note: '측면·후면 코엑스 지정 외벽 구역. 행사 2개월 전 마케팅팀(02-6000-0152) 신청.' },
+      { category: '천정배너', status: 'conditional', note: '천장 리깅 포인트. 포인트당 최대 50kg. 코엑스 지정 리거 의무.' },
+      { category: '포디움 타이틀', status: 'allowed', note: '600×200mm. 벨크로 부착.', standard_width_mm: 600, standard_height_mm: 200 },
+      { category: 'A4·A3 POP', status: 'allowed', note: '아크릴 스탠드. 접착 금지.' },
+    ],
+    mount_methods: { taka: 'denied', magnet: 'denied', adhesive: 'denied', hanger: 'conditional', rope: 'conditional', note: '타카·자석·접착제 금지. 행거·로프는 지정 리깅 포인트만.' },
+    rigging: { available: true, grid_lines: ['그랜드볼룸 리깅 포인트 도면 — 운영팀(02-6000-0114) 요청'], max_load_kg: 50, note: '코엑스 지정 리거 의무. D-45 이전 협의.' },
+    safety: { fire: '난연 2급 이상 KS 인증. 방염 확인서.', fall: '리깅 2점 이상. 흔들림 테스트.', electric: '220V. LED 추가 전기 별도 신청.', weather: '외부 우천 시 즉시 철거.', note: '비상구·소화전 1m 이내 설치 금지.' },
+    warnings: [
+      { type: '코엑스 지정 시공업체', description: '리깅·시공은 코엑스 지정 업체만. 외부 단독 불가.' },
+      { type: '난연 인증서 지참', description: '인증서 + 시험성적서 + 구매 영수증 3종 세트.' },
+    ],
+    digital_signage: { allowed_locations: ['그랜드볼룸 내부 스크린 (영상 삽입 가능)'], content_review: true, note: 'D-7 이전 MP4 1920×1080 제출.' },
+    last_updated: '2026-05-22',
+    special_notes: ['【리깅·시공 = 코엑스 지정 업체】 D-45 이전 견적 요청.', '【난연 인증서 의무】 서류 심사 강도 높음.'],
+  },
+  {
+    venue_key: 'coex_asembballroom',
+    venue_name: '코엑스 아셈볼룸',
+    install_allowed: [
+      { category: 'X배너', status: 'allowed', note: '물통형 권장.' },
+      { category: '가로현수막', status: 'conditional', note: '입구 부착 구역 별도 지정. 최대 3,000×1,000mm. 운영팀 현장 확인 후 결정.', max_width_mm: 3000, max_height_mm: 1000 },
+      { category: '세로현수막', status: 'allowed', note: '자립형 스탠드.' },
+      { category: '포디움 타이틀', status: 'allowed', note: '600×200mm. 벨크로 부착.', standard_width_mm: 600, standard_height_mm: 200 },
+      { category: 'A4·A3 POP', status: 'allowed', note: '아크릴 스탠드.' },
+    ],
+    mount_methods: { taka: 'denied', magnet: 'denied', adhesive: 'denied', hanger: 'conditional', rope: 'denied', note: '타카·자석·접착제 금지. 천장 리깅 영역 제한.' },
+    rigging: { available: false, note: '아셈볼룸 천장 리깅 미지원. 바닥 스탠드 방식만.' },
+    safety: { fire: '난연 2급 이상 KS 인증.', fall: '바닥 스탠드 안정성 확인.', electric: '220V.', weather: '실내 한정.', note: '비상구 1m 이내 설치 금지.' },
+    warnings: [
+      { type: '리깅 불가', description: '아셈볼룸 천장 행잉 불가. 바닥 스탠드 필수.' },
+    ],
+    digital_signage: { allowed_locations: ['아셈볼룸 입구 LED 사이니지 (협의)'], content_review: true, note: 'D-7 이전 제출.' },
+    last_updated: '2026-05-22',
+    special_notes: ['【천장 리깅 불가】 바닥 스탠드·물통배너 위주 발주.'],
+  },
+  {
+    venue_key: 'coex_d_hall',
+    venue_name: '코엑스 D홀 (D전시관)',
+    install_allowed: [
+      { category: 'X배너', status: 'allowed', note: '전시 부스 내·통로 모두 가능.' },
+      { category: '가로현수막', status: 'conditional', note: 'D전시관 외벽 지정 위치. 코엑스 지정 배너 프레임 사이즈 (운영팀 확인). 자체 부착 불가 — 코엑스 작업팀 시공만.' },
+      { category: '통천 배너', status: 'conditional', note: 'D홀 외벽 코엑스 지정 구역. 행사 2개월 전 마케팅팀(02-6000-0152) 신청.' },
+      { category: '천정배너', status: 'conditional', note: 'D홀 리깅 가능 구역 지정. D홀 운영팀 별도 도면 확인.' },
+      { category: '포디움 타이틀', status: 'allowed', note: '600×200mm.', standard_width_mm: 600, standard_height_mm: 200 },
+      { category: 'A4·A3 POP', status: 'allowed', note: '아크릴 스탠드.' },
+    ],
+    mount_methods: { taka: 'denied', magnet: 'denied', adhesive: 'denied', hanger: 'conditional', rope: 'conditional', note: '타카·자석·접착제 금지.' },
+    rigging: { available: true, grid_lines: ['D홀 리깅 구역 도면 — D홀 운영팀 요청'], max_load_kg: 50, note: 'D홀 코엑스 지정 리거 의무.' },
+    safety: { fire: '난연 2급 이상.', fall: '리깅 2점 이상.', electric: '220V.', weather: '외벽 시공 시 우천 강풍 즉시 철거.', note: '비상구·소화전 가림 금지.' },
+    warnings: [
+      { type: '외벽 광고 2개월 전 신청', description: 'D홀 외벽 통천·배너는 D-60 이전 마케팅팀(02-6000-0152) 신청.' },
+      { type: '코엑스 작업팀 시공', description: 'D전시관 외벽 부착 자체 시공 불가. 코엑스 지정 업체만.' },
+    ],
+    digital_signage: { allowed_locations: ['D2 로비 LED 사이니지 (협의 필수)', '코엑스 외부 전광판 (광고 신청 별도)'], content_review: true, note: 'D-7 이전 제출.' },
+    last_updated: '2026-05-22',
+    special_notes: ['【외벽 광고 D-60 이전 신청】 늦으면 외벽 사용 불가.', '【D홀 자체 시공 불가】 코엑스 작업팀 시공만.'],
+  },
+  {
+    venue_key: 'coex_conference_hall',
+    venue_name: '코엑스 컨퍼런스홀',
+    install_allowed: [
+      { category: 'X배너', status: 'allowed', note: '복도·입구 모두 가능. 자립형 스탠드.' },
+      { category: '세로현수막', status: 'allowed', note: '롤업 배너 형태.' },
+      { category: '천정배너', status: 'denied', note: '컨퍼런스홀 천장 행잉 불가. 바닥 스탠드 방식만 사용.' },
+      { category: '포디움 타이틀', status: 'allowed', note: '600×200mm.', standard_width_mm: 600, standard_height_mm: 200 },
+      { category: 'A4·A3 POP', status: 'allowed', note: '아크릴 스탠드.' },
+    ],
+    mount_methods: { taka: 'denied', magnet: 'denied', adhesive: 'denied', hanger: 'denied', rope: 'denied', note: '컨퍼런스홀 모든 부착 영역 금지. 바닥 스탠드만.' },
+    rigging: { available: false, note: '컨퍼런스홀 천장 행잉 불가.' },
+    safety: { fire: '난연 2급 이상.', fall: '바닥 스탠드 안정성.', electric: '220V.', weather: '실내 한정.', note: '비상구 가림 금지.' },
+    warnings: [
+      { type: '천장 행잉 전면 불가', description: '컨퍼런스홀 모든 천장 영역 행잉 X. 바닥 스탠드 방식 필수.' },
+    ],
+    digital_signage: { allowed_locations: ['컨퍼런스홀 내부 스크린 (영상 삽입)'], content_review: true, note: 'D-7 이전 제출.' },
+    last_updated: '2026-05-22',
+    special_notes: ['【천장 행잉 불가】 바닥 스탠드·물통배너만 발주.'],
+  },
+
+  // 코엑스 통합본 (legacy·기존 매칭 영역 보존)
   {
     venue_key: 'coex',
     venue_name: '코엑스 (그랜드볼룸·아셈볼룸·D홀 외)',

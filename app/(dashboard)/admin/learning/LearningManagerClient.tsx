@@ -1175,7 +1175,13 @@ export function LearningManagerClient({
                   </tr>
                 </thead>
                 <tbody>
-                  {venues.map(v => {
+                  {/* 5/22 P2-6 = 정렬 1순위 최신 created_at·2순위 가나다 */}
+                  {venues.slice().sort((a, b) => {
+                    const ad = a.created_at ? new Date(a.created_at).getTime() : 0
+                    const bd = b.created_at ? new Date(b.created_at).getTime() : 0
+                    if (ad !== bd) return bd - ad
+                    return a.name.localeCompare(b.name, 'ko')
+                  }).map(v => {
                     const venueJobs = jobs.filter(j => j.venue_id === v.id)
                     const doneJob = venueJobs.find(j => j.status === 'done')
                     const pendingJob = venueJobs.find(j => j.status === 'queued' || j.status === 'processing')
@@ -1447,7 +1453,13 @@ export function LearningManagerClient({
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {/* 5/21 = 시드 항목도 hidden 패턴으로 숨김·↺ 복구 가능 (데이터 오류 보완) */}
-                  {signageTypeList.map(t => {
+                  {/* 5/22 P2-6 = 정렬 1순위 최신 (id가 UUID = DB 신규 = 최신·시드는 뒤로)·2순위 가나다 */}
+                  {signageTypeList.slice().sort((a, b) => {
+                    const aDb = /^[0-9a-f]{8}-/.test(a.id) ? 1 : 0
+                    const bDb = /^[0-9a-f]{8}-/.test(b.id) ? 1 : 0
+                    if (aDb !== bDb) return bDb - aDb
+                    return a.name.localeCompare(b.name, 'ko')
+                  }).map(t => {
                     const hidden = hiddenSignageTypeIds.includes(t.id)
                     return (
                     <tr key={t.id} className={`hover:bg-slate-50 ${hidden ? 'opacity-50' : ''}`}>
@@ -1633,7 +1645,13 @@ export function LearningManagerClient({
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {/* 5/21 = 시드 항목도 hidden 패턴으로 숨김·↺ 복구 가능 (데이터 오류 보완) */}
-                  {signageTypeList.map(t => {
+                  {/* 5/22 P2-6 = 정렬 1순위 최신 (id가 UUID = DB 신규 = 최신·시드는 뒤로)·2순위 가나다 */}
+                  {signageTypeList.slice().sort((a, b) => {
+                    const aDb = /^[0-9a-f]{8}-/.test(a.id) ? 1 : 0
+                    const bDb = /^[0-9a-f]{8}-/.test(b.id) ? 1 : 0
+                    if (aDb !== bDb) return bDb - aDb
+                    return a.name.localeCompare(b.name, 'ko')
+                  }).map(t => {
                     const hidden = hiddenSignageTypeIds.includes(t.id)
                     return (
                     <tr key={t.id} className={`hover:bg-slate-50 ${hidden ? 'opacity-50' : ''}`}>
@@ -2176,7 +2194,13 @@ export function LearningManagerClient({
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {/* 5/21 = 시드 항목 hidden 패턴 추가 (데이터 오류 보완·복구 가능) */}
-                  {facilityGuideStatus.map(f => {
+                  {/* 5/22 P2-6 = 정렬 1순위 최신 last_updated·2순위 가나다 */}
+                  {facilityGuideStatus.slice().sort((a, b) => {
+                    const ad = a.last_updated ?? ''
+                    const bd = b.last_updated ?? ''
+                    if (ad !== bd) return bd.localeCompare(ad)
+                    return a.venue_name.localeCompare(b.venue_name, 'ko')
+                  }).map(f => {
                     const ratio = (f.completeness / 6)
                     const color = ratio >= 0.83 ? 'text-emerald-600' : ratio >= 0.5 ? 'text-amber-600' : 'text-rose-600'
                     const isExtracting = extractingVenueId === f.venue_id
