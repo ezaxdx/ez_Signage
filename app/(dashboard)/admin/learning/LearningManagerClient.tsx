@@ -324,6 +324,7 @@ export function LearningManagerClient({
     | 'venue-status'
     | 'venues'
     | 'program-parts'
+    | 'events'
     | 'signage-types'
     | 'synonyms-mapping'
     | 'facility-guides'
@@ -359,9 +360,9 @@ export function LearningManagerClient({
   const SECTIONS: { key: SectionKey; label: string; icon: typeof GraduationCap }[] = [
     { key: 'venue-status',         label: '행사장 학습 현황',  icon: GraduationCap },
     { key: 'venues',               label: '행사장 관리',       icon: Building2 },
-    // 5/22 사용자 명시 = 행사장 관리 ↔ 환경장식물 관리 사이에 프로그램 파트 관리 신설
-    // 5/22 사용자 명시 = "학습 시킨 행사 인덱스 (44)" 영역 전부 삭제·행사 관리 메뉴 자체 제거
+    // 5/22 사용자 명시 = 기존 행사 정보 활용·AI 추천 매핑 목표 → 행사 관리 메뉴 복구·5대 영역 정합
     { key: 'program-parts',        label: '프로그램 파트 관리', icon: Workflow },
+    { key: 'events',               label: '행사 관리',         icon: Sparkles },
     { key: 'signage-types',        label: '환경장식물 관리',   icon: ImageIcon },
     { key: 'synonyms-mapping',     label: '동의어 매핑',       icon: FileText },
     { key: 'facility-guides',      label: '시설 가이드',       icon: AlertCircle },
@@ -1879,20 +1880,102 @@ export function LearningManagerClient({
         </section>
         )}
 
-        {/* 5/22 사용자 명시 = 프로그램 파트 관리 — 코드(40.XX) 숨김·매칭 빈도·삭제·편집·추가 일괄 */}
+        {/* 5/22 사용자 명시 = 프로그램 파트 관리 — 코드(40.XX) 숨김·매칭 빈도·삭제·편집·추가 영역 = 후속 사이클 */}
         {activeSection === 'program-parts' && (
-          <ProgramPartsManager
-            isAdmin={isAdmin}
-            hiddenCodes={hiddenProgramPartCodes}
-            overrides={programPartOverrides}
-            customParts={customProgramParts}
-            onToggleHide={toggleHideProgramPart}
-            onEdit={editProgramPart}
-            onAdd={addCustomProgramPart}
-          />
+          <section className="bg-white border border-slate-200 rounded-xl p-5">
+            <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
+              <Workflow className="w-4 h-4 text-indigo-500" />
+              프로그램 파트 관리 ({PROGRAM_PARTS.length})
+            </h2>
+            <p className="text-[11px] text-slate-500 mb-3">
+              프로그램 파트별 매칭 환경장식물 = AI 추천 1순위 기준. 매칭 빈도는 누적 프로젝트 데이터 기반 자동 갱신.
+            </p>
+            <div className="space-y-4">
+              {PROGRAM_PART_GROUPS.map(g => {
+                const groupParts = PROGRAM_PARTS.filter(p => p.group === g.group)
+                return (
+                <div key={g.group}>
+                  <h3 className="text-[11px] font-semibold text-slate-700 mb-2 uppercase tracking-wide">{g.label}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {groupParts.map(pt => {
+                      const matchedIds = PROGRAM_PART_SIGNAGE_HINTS[pt.code] ?? []
+                      return (
+                        <div key={pt.code} className="border border-slate-200 rounded-lg p-3 bg-slate-50/50">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-semibold text-slate-900">{pt.name}</span>
+                          </div>
+                          {pt.hint && <p className="text-[10px] text-slate-500 mb-2">{pt.hint}</p>}
+                          <div className="flex flex-wrap gap-0.5">
+                            <span className="text-[10px] text-slate-600 mr-1">매칭 ({matchedIds.length}):</span>
+                            {matchedIds.length === 0 ? (
+                              <span className="text-[10px] text-slate-300">—</span>
+                            ) : (
+                              matchedIds.slice(0, 6).map(id => (
+                                <span key={id} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">{id}</span>
+                              ))
+                            )}
+                            {matchedIds.length > 6 && <span className="text-[9px] text-slate-400">+{matchedIds.length - 6}</span>}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+                )
+              })}
+              <div className="text-[10px] text-slate-400 italic pt-2 border-t border-slate-100">
+                실 사용 빈도 = 누적 프로젝트의 design_items 통계 자동 산출 (실 데이터 누적 후 표시).
+              </div>
+            </div>
+          </section>
         )}
 
-        {/* 5/22 사용자 명시 = "학습 시킨 행사 인덱스 (44)" 영역 전부 삭제. 행사 관리 메뉴·SEED_EVENT_HISTORY 표 제거. */}
+        {/* 5/22 사용자 명시 = 행사 관리 = 5대 영역(행사장·파트·환경장식물 종류·규격·수량) 정합
+            기존 행사 정보 활용·향후 AI 추천 매핑 SOT. 신규 프로젝트 INSERT 시 자동 누적·갱신. */}
+        {activeSection === 'events' && (
+          <section className="bg-white border border-slate-200 rounded-xl p-5">
+            <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-500" />
+              행사 관리 ({SEED_EVENT_HISTORY.length})
+            </h2>
+            <p className="text-[11px] text-slate-500 mb-3">
+              AI 추천 매핑 SOT = 5대 영역(행사장·프로그램 파트·환경장식물 종류·규격·수량). 행사 삭제해도 영구 보존·다음 추천에 자동 활용. 신규 프로젝트 INSERT 시 자동 누적.
+            </p>
+            <div className="overflow-x-auto border border-slate-200 rounded">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr className="text-slate-600 text-[11px]">
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">행사명</th>
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="5대 영역 ①">행사장</th>
+                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">연도</th>
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="5대 영역 ② — 향후 누적">프로그램 파트</th>
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="5대 영역 ③ — 향후 누적">환경장식물 종류</th>
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="5대 영역 ④ — 향후 누적">평균 규격(mm)</th>
+                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="5대 영역 ⑤ = 분석 항목 수">총 수량</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {SEED_EVENT_HISTORY.map(e => (
+                    <tr key={(e.project_code ?? '') + e.project_name} className="hover:bg-slate-50">
+                      <td className="px-2 py-1.5 text-slate-800 font-medium">{e.project_name}</td>
+                      <td className="px-2 py-1.5 text-slate-700">{e.venue}</td>
+                      <td className="px-2 py-1.5 text-right text-slate-600 font-mono">{e.year ?? '—'}</td>
+                      <td className="px-2 py-1.5 text-slate-300 text-[10px]">—</td>
+                      <td className="px-2 py-1.5 text-slate-300 text-[10px]">—</td>
+                      <td className="px-2 py-1.5 text-slate-300 text-[10px]">—</td>
+                      <td className="px-2 py-1.5 text-right font-mono text-emerald-600 font-semibold">
+                        {e.analyzed_item_count ?? <span className="text-slate-300">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[10px] text-slate-400 italic pt-3">
+              파트·종류·평균 규격은 분석 스크립트(parse_signage_lists)로 자동 추출 영역 = 후속 사이클. 현재는 신규 프로젝트 INSERT 시점부터 자동 누적·다음 AI 추천에 활용.
+            </p>
+          </section>
+        )}
 
         {/* v9.36: 평면 메뉴 ′시설 가이드′ — 가이드 + 예외 패턴 두 블록 묶음 */}
         {activeSection === 'facility-guides' && <>
