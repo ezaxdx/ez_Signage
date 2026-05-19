@@ -320,33 +320,35 @@ export const SEED_EVENT_HISTORY: EventHistorySeed[] = [
     { category: '환영리셉션', quantity: 4, sizes: '600×1800' },
   ] },
   // ICC JEJU·제주
-  // 5/22 김연아 대리님 피드백 = APEC 251004 = 6 venue 세분화 학습 (G:\ 드라이브 SOT 파일명 기반 분류)
-  // 파일명 분류:
-  //   탐라홀 = 입구상단·갈래천·포디움 (3건)
-  //   삼다홀 = 사각기둥배너 (1건)
-  //   이벤트홀 = 난간바톤 (1건)
-  //   ICC 공용 = 1·3·4번 기둥배너·1층 입구·3층 주출입구·5층 로비 천장 포이어·에스컬레이터 유리벽·글자박스 (8건)
-  //   롯데호텔 = 만찬통천·포토월·가로등배너·천장·포디움 2건·테이블배치도 (7건)
-  //   오설록 (부스) = 아모레부스 2건·피켓/보드 (3건)
-  //   인천공항 (영접) = 영접 X배너·영접A4 (2건)
+  // 5/22 김연아 대리님 피드백 = APEC 251004 = 5 venue 분리 학습 (사용자 명시: 오설록·인천공항 = 공용 통합)
+  // 폴더 = ICC 제주/[탐라홀·삼다홀·이벤트홀·공용·롯데호텔 제주(인근호텔)]/APEC 중소기업 장관회의 251004/
+  // 학습 = UI venue 단일 입력 영역 정합 = sub_venue 옵션 X·5건 venues_breakdown 합산
   { project_name: 'APEC 중소기업 장관회의',                       project_code: '251004',  year: 2025, venue: 'ICC JEJU 및 인근호텔',           category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.04', '40.08', '40.19', '40.20'],
     venues_breakdown: [
-      { venue: 'ICC JEJU 탐라홀', signage_breakdown: [
+      // 5/22 사용자 명시 = L2 명칭 = ICC JEJU prefix 제거·폴더 영역 일치 ("탐라홀"·"삼다홀"·"이벤트홀"·"공용")
+      { venue: '탐라홀', signage_breakdown: [
         { category: '가로 현수막', quantity: 1, sizes: '입구 상단' },
         { category: '통천 배너', quantity: 1, sizes: '갈래천' },
         { category: '포디움 타이틀', quantity: 1, sizes: '600×200' },
       ]},
-      { venue: 'ICC JEJU 삼다홀', signage_breakdown: [
+      { venue: '삼다홀', signage_breakdown: [
         { category: '세로 현수막', quantity: 1, sizes: '사각 기둥 배너' },
       ]},
-      { venue: 'ICC JEJU 이벤트홀', signage_breakdown: [
+      { venue: '이벤트홀', signage_breakdown: [
         { category: '가로 현수막', quantity: 1, sizes: '난간 바톤' },
       ]},
-      { venue: 'ICC JEJU (공용)', signage_breakdown: [
+      { venue: '공용', signage_breakdown: [
+        // ICC 일반 (8건)
         { category: '세로 현수막', quantity: 4, sizes: '원형·사각 기둥 배너 4건' },
         { category: '가로 현수막', quantity: 2, sizes: '1층 입구 상단·3층 주출입구' },
         { category: '통천 배너', quantity: 1, sizes: '5층 로비 천장 포이어' },
         { category: '포디움 타이틀', quantity: 1, sizes: '글자박스' },
+        // 오설록 협력사 부스 (3건) 통합
+        { category: 'X배너', quantity: 2, sizes: '아모레 부스 (오설록)' },
+        { category: '피켓보드', quantity: 1, sizes: '오설록 피켓·보드' },
+        // 인천공항 영접 (2건) 통합
+        { category: 'X배너', quantity: 1, sizes: '인천공항 영접' },
+        { category: '피켓보드', quantity: 1, sizes: '인천공항 A4 영접' },
       ]},
       { venue: '롯데호텔 제주', signage_breakdown: [
         { category: '통천 배너', quantity: 2, sizes: '만찬·천장' },
@@ -354,14 +356,6 @@ export const SEED_EVENT_HISTORY: EventHistorySeed[] = [
         { category: '가로등 배너', quantity: 1, sizes: '600×1800' },
         { category: '포디움 타이틀', quantity: 2, sizes: '600×200' },
         { category: '폼보드', quantity: 1, sizes: '테이블 배치도' },
-      ]},
-      { venue: '오설록 (협력사 부스)', signage_breakdown: [
-        { category: 'X배너', quantity: 2, sizes: '아모레 부스' },
-        { category: '피켓보드', quantity: 1, sizes: '피켓·보드' },
-      ]},
-      { venue: '인천공항 (영접)', signage_breakdown: [
-        { category: 'X배너', quantity: 1, sizes: '영접' },
-        { category: '피켓보드', quantity: 1, sizes: 'A4 영접' },
       ]},
     ],
   },

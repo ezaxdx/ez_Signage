@@ -28,10 +28,14 @@ const V3_CATEGORY_KEYS = [
 ]
 
 // 5/19 발견·정정 영역 (재발 회피)
-const DEPRECATED_KEYS = ['tongchun_banner', 'podium_title', 'i_banner', 'a4_portrait', 'a4_landscape', 'a3_portrait', 'a3_landscape']
+// 2026-05-19 정정 = i_banner·A4·A3 = v4.1 디자인 캔버스 orphan 정책 보존 (decisions.md 2026-05-07).
+//   해당 키는 lib/constants.ts·dashboardSeed.ts의 TEMPLATE_PRESETS·closest_standard 매핑 영역에만 잔존.
+//   v3 SOT 카테고리는 노션 §6-2 (5/22 김연아 대리님 명시)만 반영 = i_banner·A4·A3 X.
+//   잔존 키 검사는 v2 LEGACY 영역만 (tongchun_banner·podium_title).
+const DEPRECATED_KEYS = ['tongchun_banner', 'podium_title']
 const DEPRECATED_LABELS = ['X-배너', 'I-배너', '통천 배너 (이전 = 통천)', '동선 배너 (이전·5/22 동선 안내 배너 변경)']
 
-// v3 활성 영역 파일 (v2 LEGACY 제외·glob 대신 직접 walk)
+// v3 활성 영역 파일 (v2 LEGACY·v4.1 orphan 제외·glob 대신 직접 walk)
 const V3_ACTIVE_DIRS = [
   'lib/data/v3',
   'lib/ai/v3',
@@ -41,11 +45,11 @@ const V3_ACTIVE_FILES = [
   'lib/ai/recommendSignage.ts',
   'lib/ai/agentPipeline.ts',
   'lib/ai/venueProfile.ts',
-  'lib/data/dashboardSeed.ts',
   'lib/data/venueFacilityGuide.ts',
   'lib/data/signageCategoryStandards.ts',
   'lib/programParts.ts',
-  'lib/constants.ts',
+  // 'lib/constants.ts' 제외 = v4.1 디자인 캔버스 orphan 보존 (decisions.md 2026-05-07)
+  // 'lib/data/dashboardSeed.ts' 제외 = closest_standard 매핑·통계 코멘트 잔존 정상 (실사용 X)
   'lib/services/itemService.ts',
   'lib/services/ExportService.ts',
   'supabase/migration_v11_notion_12cat_alignment.sql',

@@ -223,6 +223,34 @@ export const VENUE_HALLS: VenueHall[] = [
   { parent_key: 'DDP', name: '디자인올레' },
   { parent_key: 'DDP', name: '디자인전시관' },
   { parent_key: 'DDP', name: '어울림광장' },
+  // ICC JEJU (제주국제컨벤션센터) — G드라이브 L1_행사장/ICC 제주 폴더 기반 (2026-05-19)
+  // 사용자 결정: 오설록(협력사 부스)·인천공항(영접) = 별도 L2 X·"공용" L2에 통합
+  { parent_key: 'ICC JEJU', name: '탐라홀' },
+  { parent_key: 'ICC JEJU', name: '삼다홀' },
+  { parent_key: 'ICC JEJU', name: '이벤트홀' },
+  { parent_key: 'ICC JEJU', name: '영주홀' },
+  { parent_key: 'ICC JEJU', name: '백록홀' },
+  { parent_key: 'ICC JEJU', name: '한라홀' },
+  { parent_key: 'ICC JEJU', name: '대회의실' },
+  { parent_key: 'ICC JEJU', name: '중회의실' },
+  { parent_key: 'ICC JEJU', name: '소회의실' },
+  { parent_key: 'ICC JEJU', name: '전시장' },
+  { parent_key: 'ICC JEJU', name: '공용' },                          // 오설록·인천공항·기둥배너·에스컬레이터 등 행사 운영 공용 영역 (사용자 결정·2026-05-19)
+  { parent_key: 'ICC JEJU', name: '롯데호텔 제주(인근호텔)' },        // APEC 중소기업 장관회의 251004 인근호텔 영역
+  // 그랜드하얏트 서울 — G드라이브 L2_그랜드볼룸_포이어_살롱_남산홀 기반
+  { parent_key: '그랜드하얏트 서울', name: '그랜드볼룸' },
+  { parent_key: '그랜드하얏트 서울', name: '포이어' },
+  { parent_key: '그랜드하얏트 서울', name: '살롱' },
+  { parent_key: '그랜드하얏트 서울', name: '남산홀' },
+  // 더플라자 호텔 서울 — G드라이브 L2_그랜드볼룸 기반
+  { parent_key: '더플라자 호텔 서울', name: '그랜드볼룸' },
+  // BEXCO — G드라이브 도면 폴더 기반 (누리마루·오디토리움·전시장·컨벤션홀·하이브리드)
+  { parent_key: 'BEXCO', name: '제1전시장' },
+  { parent_key: 'BEXCO', name: '제2전시장' },
+  { parent_key: 'BEXCO', name: '오디토리움' },
+  { parent_key: 'BEXCO', name: '컨벤션홀·회의실' },
+  { parent_key: 'BEXCO', name: '하이브리드행사장' },
+  { parent_key: 'BEXCO', name: '누리마루 APEC하우스' },
 ]
 
 /** parent_key 기준 L2 홀 목록 조회 */
@@ -238,6 +266,16 @@ const VENUE_NAME_TO_HALL_KEY: Record<string, string> = {
   '킨텍스': '킨텍스',
   'DDP': 'DDP',
   '동대문디자인플라자': 'DDP',
+  // 2026-05-19 신규 (폴더 L2 기반)
+  'ICC JEJU': 'ICC JEJU',
+  'ICC 제주': 'ICC JEJU',
+  '제주국제컨벤션센터': 'ICC JEJU',
+  '그랜드하얏트 서울': '그랜드하얏트 서울',
+  '그랜드하얏트서울': '그랜드하얏트 서울',
+  '더플라자 호텔 서울': '더플라자 호텔 서울',
+  '더 플라자 호텔 서울': '더플라자 호텔 서울',
+  'BEXCO': 'BEXCO',
+  '벡스코': 'BEXCO',
 }
 
 export function getHallsByVenueName(venueName: string): VenueHall[] {
