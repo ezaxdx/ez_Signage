@@ -189,14 +189,14 @@ export function EditorToolbar({
 
         {/* 구역 패널 토글 — 사용자 결정으로 숨김 (2026-05-11) */}
 
-        {/* 프로젝트 설정 */}
+        {/* 프로젝트 정보 변경 (5/21 회의 = "설정" 워딩 모호·정확화) */}
         <Link
           href={`/projects/${project.id}/info`}
-          title="프로젝트 정보 / 팀원 / 기본 양식 설정"
+          title="프로젝트 정보 / 팀원 / 기본 양식 변경"
           className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-200 text-slate-500 hover:text-slate-800 text-xs px-3 py-1.5 rounded-md transition"
         >
           <Settings className="w-3.5 h-3.5" />
-          설정
+          프로젝트 정보 변경
         </Link>
 
         {/* 5/21 사용자 명시 = 설정 우측 완료 버튼 (노션 §7 = 다운로드 클릭 → 완료 버튼) */}
