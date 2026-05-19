@@ -9,7 +9,7 @@ import { PURPOSE_PRESETS } from '@/lib/constants'
 import type { ProjectStatus, Profile } from '@/lib/types'
 import { SEED_PERFLIST, recommendByProbability, getSelectionRates } from '@/lib/data/dashboardSeed'
 import { fetchLiveStats, invalidateLiveStatsCache, type LiveStats } from '@/lib/data/liveStats'
-import { VENUE_LIST, groupVenuesByRegion } from '@/lib/venueIntel'
+import { VENUE_LIST, groupVenuesByRegion, getHallsByVenueName } from '@/lib/venueIntel'
 import { PROGRAM_PARTS, PROGRAM_PART_GROUPS, recommendSignageByParts, pickPartForFormat, programPartName } from '@/lib/programParts'
 import { VenueRequestModal } from './VenueRequestModal'
 
@@ -849,6 +849,28 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                                 </optgroup>
                               ))}
                             </select>
+                            {/* 5/21 사용자 명시 = L2 홀 단위 선택 (노션 §9). 매칭 venue면 hall dropdown. */}
+                            {(() => {
+                              const halls = getHallsByVenueName(info.event_venue)
+                              if (halls.length === 0) return null
+                              return (
+                                <select
+                                  onChange={e => {
+                                    const hall = e.target.value
+                                    if (!hall) return
+                                    const base = info.event_venue.replace(/\s+\S+(?:홀|볼룸|관|광장|올레|컨퍼런스룸|오디토리움)?$/, '').trim()
+                                    setInfo(p => ({ ...p, event_venue: `${base || info.event_venue} ${hall}`.trim() }))
+                                  }}
+                                  className={`${inputCls} mt-1.5`}
+                                  defaultValue=""
+                                >
+                                  <option value="">↳ 세부 홀 선택 (선택 사항)</option>
+                                  {halls.map(h => (
+                                    <option key={h.name} value={h.name}>{h.name}{h.note ? ` (${h.note})` : ''}</option>
+                                  ))}
+                                </select>
+                              )
+                            })()}
                             <button
                               type="button"
                               onClick={() => setVenueRequestOpen(true)}
