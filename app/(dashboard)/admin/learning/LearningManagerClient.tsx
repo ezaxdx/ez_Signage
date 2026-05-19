@@ -213,6 +213,60 @@ export function LearningManagerClient({
     if (target) toggleHideSignageType(target.id)
     setSignageTypeList(prev => prev.filter(t => t.name !== name))
   }
+
+  // 5/22 사용자 명시 = 데이터 학습 관리자 편집 기능 추가 (오류 보완)
+  const editSignageType = async (t: SignageTypeRow) => {
+    const newName = prompt('종류명', t.name)
+    if (newName === null) return
+    const newWidth = prompt('너비 (mm)', String(t.width_mm))
+    if (newWidth === null) return
+    const newHeight = prompt('높이 (mm)', String(t.height_mm))
+    if (newHeight === null) return
+    const newMat = prompt('기본 재질', t.default_material ?? '')
+    if (newMat === null) return
+    const newCat = prompt('분류', t.category ?? '')
+    if (newCat === null) return
+
+    const widthNum = Number(newWidth)
+    const heightNum = Number(newHeight)
+    if (!Number.isFinite(widthNum) || widthNum <= 0 || !Number.isFinite(heightNum) || heightNum <= 0) {
+      alert('너비·높이는 양수만 입력 가능')
+      return
+    }
+    // 시드인지 DB인지 = DB row id가 UUID 형식이면 DB, 그 외(슬러그)면 시드
+    const isDbRow = /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(t.id)
+    if (isDbRow) {
+      try {
+        const res = await fetch(`/api/admin/signage-types/${t.id}`, {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            name: newName.trim(),
+            width_mm: widthNum,
+            height_mm: heightNum,
+            default_material: newMat.trim(),
+            category: newCat.trim(),
+          }),
+        })
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error || res.statusText) }
+      } catch (e) { alert('수정 실패: ' + (e instanceof Error ? e.message : 'unknown')); return }
+    }
+    // localStorage 오버라이드 (시드·DB 공통 — 화면 즉시 반영)
+    setSignageTypeList(prev => prev.map(row => row.id === t.id ? {
+      ...row,
+      name: newName.trim(),
+      width_mm: widthNum,
+      height_mm: heightNum,
+      default_material: newMat.trim(),
+      category: newCat.trim(),
+    } : row))
+    try {
+      const key = 'mice_signage_type_overrides'
+      const prev = JSON.parse(localStorage.getItem(key) ?? '{}')
+      prev[t.id] = { name: newName.trim(), width_mm: widthNum, height_mm: heightNum, default_material: newMat.trim(), category: newCat.trim() }
+      localStorage.setItem(key, JSON.stringify(prev))
+    } catch {}
+  }
   const [venues, setVenues] = useState<Venue[]>(initialVenues)
   const [requests, setRequests] = useState<VenueRequest[]>(initialRequests)
   const [jobs, setJobs] = useState<LearningJob[]>(initialJobs)
@@ -1230,11 +1284,19 @@ export function LearningManagerClient({
                       <td className="px-2 py-1 text-slate-600 text-[11px]">{t.default_material}</td>
                       <td className="px-2 py-1 text-slate-500 text-[11px]">{t.category}</td>
                       {isAdmin && (
-                        <td className="px-2 py-1 text-center">
+                        <td className="px-2 py-1 text-center whitespace-nowrap">
+                          {/* 5/22 사용자 명시 = 데이터 학습 관리자 편집 기능 추가 */}
+                          <button
+                            onClick={() => editSignageType(t)}
+                            title="편집 (데이터 오류 보완)"
+                            className="text-[11px] leading-none px-1 text-slate-400 hover:text-indigo-600"
+                          >
+                            ✎
+                          </button>
                           <button
                             onClick={() => hidden ? toggleHideSignageType(t.id) : deleteSignageType(t.name)}
-                            title={hidden ? '복구' : '삭제·숨김 (데이터 오류 보완)'}
-                            className={`text-[11px] leading-none px-1 ${hidden ? 'text-indigo-600 hover:bg-indigo-50' : 'text-slate-300 hover:text-red-500'}`}
+                            title={hidden ? '복구' : '삭제·숨김'}
+                            className={`text-[11px] leading-none px-1 ml-1 ${hidden ? 'text-indigo-600 hover:bg-indigo-50' : 'text-slate-300 hover:text-red-500'}`}
                           >
                             {hidden ? '↺' : '✕'}
                           </button>
@@ -1392,11 +1454,19 @@ export function LearningManagerClient({
                       <td className="px-2 py-1 text-slate-600 text-[11px]">{t.default_material}</td>
                       <td className="px-2 py-1 text-slate-500 text-[11px]">{t.category}</td>
                       {isAdmin && (
-                        <td className="px-2 py-1 text-center">
+                        <td className="px-2 py-1 text-center whitespace-nowrap">
+                          {/* 5/22 사용자 명시 = 데이터 학습 관리자 편집 기능 추가 */}
+                          <button
+                            onClick={() => editSignageType(t)}
+                            title="편집 (데이터 오류 보완)"
+                            className="text-[11px] leading-none px-1 text-slate-400 hover:text-indigo-600"
+                          >
+                            ✎
+                          </button>
                           <button
                             onClick={() => hidden ? toggleHideSignageType(t.id) : deleteSignageType(t.name)}
-                            title={hidden ? '복구' : '삭제·숨김 (데이터 오류 보완)'}
-                            className={`text-[11px] leading-none px-1 ${hidden ? 'text-indigo-600 hover:bg-indigo-50' : 'text-slate-300 hover:text-red-500'}`}
+                            title={hidden ? '복구' : '삭제·숨김'}
+                            className={`text-[11px] leading-none px-1 ml-1 ${hidden ? 'text-indigo-600 hover:bg-indigo-50' : 'text-slate-300 hover:text-red-500'}`}
                           >
                             {hidden ? '↺' : '✕'}
                           </button>
@@ -1470,7 +1540,7 @@ export function LearningManagerClient({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {/* 5/21 = DB 동의어·시드 동의어 양식 통일 (사용자 명시 = 위·아래 다른 양식 정합) */}
+                {/* 5/21 = DB 동의어·시드 동의어 양식 통일·5/22 ✎ 편집 추가 */}
                 {aliasList
                   .filter(a => !synonymFilter || a.alias_name.includes(synonymFilter) || a.canonical_name.includes(synonymFilter))
                   .map(a => (
@@ -1479,20 +1549,42 @@ export function LearningManagerClient({
                       <td className="px-2 py-1 text-indigo-700 font-medium">{a.canonical_name}</td>
                       <td className="px-2 py-1 text-slate-500 text-[11px] flex items-center justify-between gap-2">
                         <span>{a.note ?? '사용자 추가'}</span>
-                        <button
-                          onClick={async () => {
-                            if (!confirm(`′${a.alias_name}′ 삭제할까요?`)) return
-                            const res = await fetch(`/api/admin/aliases?id=${a.id}`, { method: 'DELETE' })
-                            if (res.ok) setAliasList(prev => prev.filter(x => x.id !== a.id))
-                            else alert('삭제 실패')
-                          }}
-                          className="text-[11px] px-1.5 py-0.5 rounded transition text-rose-500 hover:bg-rose-50"
-                          title="삭제"
-                        >✕</button>
+                        <span className="flex items-center gap-1">
+                          <button
+                            onClick={async () => {
+                              const newAlias = prompt('별칭', a.alias_name)
+                              if (newAlias === null) return
+                              const newCanon = prompt('→ 표준명', a.canonical_name)
+                              if (newCanon === null) return
+                              try {
+                                const res = await fetch(`/api/admin/aliases?id=${a.id}`, {
+                                  method: 'PATCH',
+                                  headers: { 'content-type': 'application/json' },
+                                  body: JSON.stringify({ alias_name: newAlias.trim(), canonical_name: newCanon.trim() }),
+                                })
+                                if (res.ok) {
+                                  setAliasList(prev => prev.map(x => x.id === a.id ? { ...x, alias_name: newAlias.trim(), canonical_name: newCanon.trim() } : x))
+                                } else alert('수정 실패 (API 미지원)')
+                              } catch { alert('수정 실패') }
+                            }}
+                            className="text-[11px] px-1 text-slate-400 hover:text-indigo-600"
+                            title="편집"
+                          >✎</button>
+                          <button
+                            onClick={async () => {
+                              if (!confirm(`′${a.alias_name}′ 삭제할까요?`)) return
+                              const res = await fetch(`/api/admin/aliases?id=${a.id}`, { method: 'DELETE' })
+                              if (res.ok) setAliasList(prev => prev.filter(x => x.id !== a.id))
+                              else alert('삭제 실패')
+                            }}
+                            className="text-[11px] px-1.5 py-0.5 rounded transition text-rose-500 hover:bg-rose-50"
+                            title="삭제"
+                          >✕</button>
+                        </span>
                       </td>
                     </tr>
                   ))}
-                {/* 시드 동의어 — 5/21 사용자 명시 = ✕ 삭제 + "없음" 표시 가능 (localStorage hidden) */}
+                {/* 시드 동의어 = ✕ 숨김(localStorage hidden)·시드는 편집 X (시드 보호) */}
                 {synonyms
                   .filter(s => !synonymFilter || s.alias.includes(synonymFilter) || s.canonical_name.includes(synonymFilter))
                   .map(s => {
@@ -1507,17 +1599,39 @@ export function LearningManagerClient({
                         </td>
                         <td className="px-2 py-1 text-slate-500 text-[11px] flex items-center justify-between gap-2">
                           <span>{s.note ?? '시드'}</span>
-                          <button
-                            onClick={() => toggleHideSeedAlias(s.alias)}
-                            className={`text-[11px] px-1.5 py-0.5 rounded transition ${
-                              hidden
-                                ? 'text-indigo-600 hover:bg-indigo-50'
-                                : 'text-rose-500 hover:bg-rose-50'
-                            }`}
-                            title={hidden ? '복구' : '삭제 (없음으로 표시)'}
-                          >
-                            {hidden ? '↺' : '✕'}
-                          </button>
+                          <span className="flex items-center gap-1">
+                            <button
+                              onClick={() => {
+                                // 시드 편집 = DB 동의어로 신규 추가 (시드 위에 덮어쓰는 형태)
+                                const newAlias = prompt('별칭', s.alias)
+                                if (newAlias === null) return
+                                const newCanon = prompt('→ 표준명', s.canonical_name)
+                                if (newCanon === null) return
+                                fetch('/api/admin/aliases', {
+                                  method: 'POST',
+                                  headers: { 'content-type': 'application/json' },
+                                  body: JSON.stringify({ alias_name: newAlias.trim(), canonical_name: newCanon.trim() }),
+                                }).then(async res => {
+                                  if (res.ok) {
+                                    const data = await res.json()
+                                    setAliasList(prev => [...prev, data.item ?? data])
+                                    toggleHideSeedAlias(s.alias) // 원본 시드 숨기기
+                                  } else alert('편집 실패 (관리자 권한 필요)')
+                                }).catch(() => alert('편집 실패'))
+                              }}
+                              className="text-[11px] px-1 text-slate-400 hover:text-indigo-600"
+                              title="편집 (시드 → DB 사용자 추가로 덮어쓰기)"
+                            >✎</button>
+                            <button
+                              onClick={() => toggleHideSeedAlias(s.alias)}
+                              className={`text-[11px] px-1.5 py-0.5 rounded transition ${
+                                hidden ? 'text-indigo-600 hover:bg-indigo-50' : 'text-rose-500 hover:bg-rose-50'
+                              }`}
+                              title={hidden ? '복구' : '삭제 (없음으로 표시)'}
+                            >
+                              {hidden ? '↺' : '✕'}
+                            </button>
+                          </span>
                         </td>
                       </tr>
                     )
