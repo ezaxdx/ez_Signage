@@ -360,10 +360,11 @@ function Section({ icon, title, highlight, children }: { icon: React.ReactNode; 
 }
 
 function Row({ label, value }: { label: string; value: string }) {
+  // 5/22 사용자 명시 = "LED 크기 한도" 같은 긴 라벨 줄 바꿔지는 문제 해결
   return (
     <div className="flex gap-2">
-      <dt className="text-slate-500 w-20 flex-shrink-0">{label}</dt>
-      <dd className="text-slate-800">{value}</dd>
+      <dt className="text-slate-500 w-28 flex-shrink-0 whitespace-nowrap">{label}</dt>
+      <dd className="text-slate-800 break-words min-w-0">{value}</dd>
     </div>
   )
 }

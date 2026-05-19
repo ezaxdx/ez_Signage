@@ -203,12 +203,12 @@ export function EditorToolbar({
         {onMarkCompleted && (
           <button
             onClick={() => { void onMarkCompleted() }}
-            disabled={projectStatus === 'completed'}
+            disabled={projectStatus === '완료'}
             title="다운로드 완료 후 클릭. 프로젝트를 완료 상태로 표시합니다."
             className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed text-white text-xs px-3 py-1.5 rounded-md transition font-medium"
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
-            {projectStatus === 'completed' ? '완료됨' : '완료'}
+            {projectStatus === '완료' ? '완료됨' : '완료'}
           </button>
         )}
       </div>

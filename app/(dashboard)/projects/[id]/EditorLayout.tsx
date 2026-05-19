@@ -40,7 +40,8 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
 
   const [items, setItems] = useState<DesignItem[]>(initialItems)
   const [selectedItemId, setSelectedItemId] = useState<string>(initialItems[0]?.id ?? '')
-  const [projectStatus, setProjectStatus] = useState<string>(project.status ?? 'in_progress')
+  // 5/22 = DB schema CHECK constraint 정합 (status IN '준비중'·'진행중'·'완료')
+  const [projectStatus, setProjectStatus] = useState<string>(project.status ?? '진행중')
   // 5/21 사용자 명시 = 레이아웃 토글 기능 삭제 + 좌 8:우 2 고정 (노션 §3).
   // splitMode·splitPos·드래그·localStorage 모두 제거.
   const [allContents, setAllContents] = useState<Record<string, ContentsMap>>({})
@@ -560,14 +561,16 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
 
   // ── 완료 처리 (노션 §7 = 다운로드 클릭 → 완료 버튼 클릭) ────
   const handleMarkCompleted = useCallback(async () => {
-    if (projectStatus === 'completed') return
+    // 5/22 사용자 보고 = projects_status_check 위반 = 허용 값 '준비중·진행중·완료' (한국어).
+    // 'completed' → '완료'로 정정 (DB schema CHECK constraint 정합)
+    if (projectStatus === '완료') return
     const ok = window.confirm('이 프로젝트를 완료 상태로 표시하시겠습니까?\n발주·다운로드가 끝난 뒤에만 클릭하세요.')
     if (!ok) return
-    setProjectStatus('completed')
-    const { error } = await supabase.from('projects').update({ status: 'completed' }).eq('id', project.id)
+    setProjectStatus('완료')
+    const { error } = await supabase.from('projects').update({ status: '완료' }).eq('id', project.id)
     if (error) {
       alert('완료 처리 실패: ' + error.message)
-      setProjectStatus(project.status ?? 'in_progress')
+      setProjectStatus(project.status ?? '진행중')
     }
   }, [projectStatus, project.id, project.status, supabase])
 

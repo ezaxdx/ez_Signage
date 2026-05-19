@@ -35,12 +35,13 @@ export function validateAgainstFacility(
     const allowed = guide.install_allowed.find(a =>
       normCat(a.category) === itemCatNorm || itemCatNorm.includes(normCat(a.category))
     )
+    // 5/22 사용자 명시 = message·standardValue 중복 제거. message = 간결 사실·standardValue = 상세 note.
     if (allowed && allowed.status === 'denied') {
       issues.push({
         itemId: item.id,
         field: 'category',
         rule: 'install_denied',
-        message: `${guide.venue_name}에서는 '${item.category}' 설치가 불가합니다.`,
+        message: `${guide.venue_name}에서는 '${item.category}' 설치 불가`,
         standardValue: allowed.note ?? '설치 불가',
         userValue: item.category,
         severity: 'warn',
@@ -50,7 +51,7 @@ export function validateAgainstFacility(
         itemId: item.id,
         field: 'category',
         rule: 'install_conditional',
-        message: `${guide.venue_name}에서 '${item.category}'는 조건부 설치 (${allowed.note ?? '매뉴얼 확인 필요'}).`,
+        message: `${guide.venue_name}에서 '${item.category}'는 조건부 설치`,
         standardValue: allowed.note,
         userValue: item.category,
         severity: 'info',
