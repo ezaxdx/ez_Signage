@@ -15,7 +15,7 @@
 // 표시명·desc는 어드민 시각화 카드용. body는 Gemini SYSTEM_INSTRUCTION 본문용.
 
 export interface PipelineBlock {
-  num: 1 | 2 | 3 | 4 | 5
+  num: 1 | 2 | 3 | 4 | 5 | 6
   /** 어드민 카드 + 프롬프트 헤더 공통 표시명 */
   title: string
   /** 어드민 카드 한 줄 설명 (시각화 전용) */
@@ -26,7 +26,8 @@ export interface PipelineBlock {
   status: 'active' | 'coming'
 }
 
-export const PIPELINE_BLOCKS: Record<'step1' | 'step2' | 'step3' | 'step4' | 'step5', PipelineBlock> = {
+// 5/22 사용자 명시 = event_history DB SOT 영역 = AI 파이프라인 신규 step6 추가
+export const PIPELINE_BLOCKS: Record<'step1' | 'step2' | 'step3' | 'step4' | 'step5' | 'step6', PipelineBlock> = {
   // 5/21 사용자 명시 = "기본값 사용 시 실제 Gemini에 전달되는 명령어 그대로 노출"
   // 각 step body = recommendSignage.ts buildSystemInstruction()이 합성하는 실제 본문.
   step1: {
@@ -117,13 +118,37 @@ export const PIPELINE_BLOCKS: Record<'step1' | 'step2' | 'step3' | 'step4' | 'st
    - 위반 시 EditorLayout이 FacilityGuideAlert 자동 발동 + RightPanel 위반 사항 자동 표시`,
     status: 'coming',
   },
+  // 5/22 사용자 명시 = event_history DB SOT 영역 = AI 파이프라인 신규 step6
+  step6: {
+    num: 6,
+    title: '행사 관리 SOT 영역 grep',
+    desc: 'event_history DB 영역 → venue·programParts 매칭 5건 signage_breakdown 영역 AI 프롬프트 자동 주입. SEED + 사용자 편집 + 자동 누적 통합.',
+    body: `[event_history DB 영역 자동 주입 — 매 추천 호출 시]
+- 소스: event_history 테이블 (SEED + 사용자 편집 + 자동 누적 통합 영역)
+- 동작: accumulatedContext.ts buildSeedEventHistoryContext()가 venue + programParts 영역 매칭 5건 SELECT
+- 매칭 영역:
+  · venue 부분 매칭 (양방향 includes) — "코엑스 그랜드볼룸" ↔ "코엑스 D2" 영역 매칭
+  · program_parts 교집합 ≥1건
+- 우선 영역: DB 영역 ≥1건 = DB 영역만 사용·없으면 SEED fallback
+- 프롬프트 출력 영역:
+  · 행사명·연도·행사장
+  · 환경장식물별 수량·규격 (signage_breakdown 또는 estimateSignageBreakdown 영역)
+  · source 태그 = [SEED] / [사용자 추가] / [자동 누적]
+  · 추정 영역 = [추정] 태그
+- AI 활용 영역:
+  · 추천 수량·종류·규격 산정 시 영역 = 과거 사례 기반
+  · 같은 행사장·파트 영역에서 빈번 환경장식물 우선 반영
+  · 사용자 편집 영역 = 즉시 반영 (다음 추천부터)`,
+    status: 'active',
+  },
 }
 
-/** 어드민 카드 등에서 순서대로 순회용 — step1 → step4 */
+/** 어드민 카드 등에서 순서대로 순회용 — step1 → step6 */
 export const PIPELINE_BLOCK_LIST: PipelineBlock[] = [
   PIPELINE_BLOCKS.step1,
   PIPELINE_BLOCKS.step2,
   PIPELINE_BLOCKS.step3,
+  PIPELINE_BLOCKS.step6,
   PIPELINE_BLOCKS.step4,
 ]
 
@@ -177,7 +202,7 @@ export interface StepPersonaOverride {
   system_prompt?: string
 }
 
-export type StepOverridesMap = Partial<Record<'step1' | 'step2' | 'step3' | 'step4' | 'step5', StepPersonaOverride>>
+export type StepOverridesMap = Partial<Record<'step1' | 'step2' | 'step3' | 'step4' | 'step5' | 'step6', StepPersonaOverride>>
 
 /** v9.51 — 카드 단위 키. recommend = step1+2+3 통합, floor_plan_vision = step4 단독 */
 export type CardKey = 'recommend' | 'floor_plan_vision' | 'venue_text_analysis'

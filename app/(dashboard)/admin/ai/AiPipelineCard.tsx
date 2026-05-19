@@ -2,16 +2,17 @@
 // 데이터 소스: `lib/ai/agentPipeline.ts` (PIPELINE_BLOCK_LIST — 동일 SOT를 SYSTEM_INSTRUCTION과 공유)
 // 향후 어드민 편집 UI 추가 시 PIPELINE_BLOCKS만 변경하면 프롬프트·카드 양쪽에 즉시 반영됨.
 
-import { Layers, ShieldAlert, Calculator, Camera, FileText } from 'lucide-react'
+import { Layers, ShieldAlert, Calculator, Camera, FileText, Database } from 'lucide-react'
 import { PIPELINE_BLOCK_LIST } from '@/lib/ai/agentPipeline'
 
-// step num → 아이콘 매핑 (5/20 노션 §1 정합 = 5번째 step5 행사장 특징 분석 추가)
+// step num → 아이콘 매핑 (5/22 = step6 = event_history DB SOT 영역 신규)
 const STEP_ICONS = {
   1: Layers,
   2: ShieldAlert,
   3: Calculator,
   4: Camera,
   5: FileText,
+  6: Database,
 } as const
 
 export function AiPipelineCard() {
