@@ -1,0 +1,7 @@
+[
+  {"name":"동선 안내 배너","category":"배너","default_width_mm":600,"default_height_mm":1500,"default_material":"현수막","is_standard":true,"sort_order":7,"layout":"세로","notes":"실내 유도·화살표·방향 안내 (5/22 SOT)"},
+  {"name":"시상보드","category":"기타","default_width_mm":1200,"default_height_mm":1800,"default_material":"폼보드 5T","is_standard":true,"sort_order":14,"layout":"세로","notes":"공식행사·공모전형 영역 (5/22 SOT)"},
+  {"name":"Q방","category":"기타","default_width_mm":600,"default_height_mm":1800,"default_material":"폼보드","is_standard":true,"sort_order":15,"layout":"세로","notes":"등록·대기 영역 안내 (5/22 SOT)"},
+  {"name":"디지털 사이니지","category":"기타","default_width_mm":1080,"default_height_mm":1920,"default_material":"LED","is_standard":true,"sort_order":16,"layout":"세로","notes":"로비·외벽 디지털 영역 (5/22 SOT)"},
+  {"name":"피켓보드","category":"기타","default_width_mm":300,"default_height_mm":450,"default_material":"폼보드 3T","is_standard":true,"sort_order":17,"layout":"세로","notes":"영접영송·입출국 일자 고려 영역 (5/22 SOT)"}
+]

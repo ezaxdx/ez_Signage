@@ -2925,6 +2925,46 @@ export function LearningManagerClient({
 
         {/* v9.36: 평면 메뉴 ′시설 가이드′ — 가이드 + 예외 패턴 두 블록 묶음 */}
         {activeSection === 'facility-guides' && <>
+        {/* 5/22 사용자 명시 = 시설 가이드 요약 = 최상단 이동 */}
+        <section className="bg-white border border-slate-200 rounded-xl p-5">
+          <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-indigo-500" />
+            시설 가이드 요약
+          </h2>
+          {(() => {
+            const totalVenues = facilityGuideStatus.length
+            const fullyDocumented = facilityGuideStatus.filter(f => f.completeness >= 5).length
+            const totalCategories = facilityGuideStatus.reduce((sum, f) => sum + f.categories_count, 0)
+            const totalWarnings = facilityGuideStatus.reduce((sum, f) => sum + f.warnings_count, 0)
+            const avgCompleteness = totalVenues === 0 ? 0 : Math.round(
+              (facilityGuideStatus.reduce((sum, f) => sum + f.completeness, 0) / totalVenues) * 100 / 6
+            )
+            return (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+                  <p className="text-[10px] text-slate-500">등록 행사장</p>
+                  <p className="text-xl font-bold text-slate-900">{totalVenues}<span className="text-xs text-slate-400 ml-1">개</span></p>
+                  <p className="text-[10px] text-emerald-600 mt-0.5">{fullyDocumented}개 정보 5/6↑</p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+                  <p className="text-[10px] text-slate-500">카테고리 제약 누계</p>
+                  <p className="text-xl font-bold text-indigo-600">{totalCategories}<span className="text-xs text-slate-400 ml-1">건</span></p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+                  <p className="text-[10px] text-slate-500">주의사항 누계</p>
+                  <p className="text-xl font-bold text-amber-600">{totalWarnings}<span className="text-xs text-slate-400 ml-1">건</span></p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+                  <p className="text-[10px] text-slate-500">평균 정보 채움</p>
+                  <p className={`text-xl font-bold ${avgCompleteness >= 80 ? 'text-emerald-600' : avgCompleteness >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>
+                    {avgCompleteness}<span className="text-xs text-slate-400 ml-1">%</span>
+                  </p>
+                </div>
+              </div>
+            )
+          })()}
+        </section>
+
         {/* 5/22 사용자 명시 = 행사장 규칙 추가 영역 = 시설 가이드 메뉴 영역 이동.
             "이거 학습시켜주세요" = "행사장 규칙 추가해주세요" = 동일 영역. */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
@@ -3039,45 +3079,7 @@ export function LearningManagerClient({
           )}
         </section>
         )}
-        {/* ── 시설 가이드 KPI 요약 ───────────── */}
-        <section className="bg-white border border-slate-200 rounded-xl p-5">
-          <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-indigo-500" />
-            시설 가이드 요약
-          </h2>
-          {(() => {
-            const totalVenues = facilityGuideStatus.length
-            const fullyDocumented = facilityGuideStatus.filter(f => f.completeness >= 5).length
-            const totalCategories = facilityGuideStatus.reduce((sum, f) => sum + f.categories_count, 0)
-            const totalWarnings = facilityGuideStatus.reduce((sum, f) => sum + f.warnings_count, 0)
-            const avgCompleteness = totalVenues === 0 ? 0 : Math.round(
-              (facilityGuideStatus.reduce((sum, f) => sum + f.completeness, 0) / totalVenues) * 100 / 6
-            )
-            return (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
-                  <p className="text-[10px] text-slate-500">등록 행사장</p>
-                  <p className="text-xl font-bold text-slate-900">{totalVenues}<span className="text-xs text-slate-400 ml-1">개</span></p>
-                  <p className="text-[10px] text-emerald-600 mt-0.5">{fullyDocumented}개 정보 5/6↑</p>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
-                  <p className="text-[10px] text-slate-500">카테고리 제약 누계</p>
-                  <p className="text-xl font-bold text-indigo-600">{totalCategories}<span className="text-xs text-slate-400 ml-1">건</span></p>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
-                  <p className="text-[10px] text-slate-500">주의사항 누계</p>
-                  <p className="text-xl font-bold text-amber-600">{totalWarnings}<span className="text-xs text-slate-400 ml-1">건</span></p>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
-                  <p className="text-[10px] text-slate-500">평균 정보 채움</p>
-                  <p className={`text-xl font-bold ${avgCompleteness >= 80 ? 'text-emerald-600' : avgCompleteness >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>
-                    {avgCompleteness}<span className="text-xs text-slate-400 ml-1">%</span>
-                  </p>
-                </div>
-              </div>
-            )
-          })()}
-        </section>
+        {/* 5/22: 시설 가이드 요약 = 최상단 이동 (옛 위치 제거) */}
 
         {/* ── 6. 시설 가이드 학습 현황 — 홀(L2) 단위 (5/21 사용자 명시 정합) ──
             venueFacilityGuide 시드 = 이미 홀별 분리 (킨텍스 1~4홀, 5홀, 2전시장 6~10홀 등).

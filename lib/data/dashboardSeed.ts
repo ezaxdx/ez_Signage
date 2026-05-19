@@ -20,14 +20,14 @@ export interface SignageTypeSeed {
   note?: string
 }
 
-// v9.34: 영문 ID는 코드용 키로 보존, name(한글 라벨)을 사용자 명시 표기로 통일.
-// 사용자 명시 라벨 (2026-05-13, 조기흠 사원):
-//   x_banner → X-배너 / i_banner → I-배너 / streetlight_banner → 가로등 배너
+// 5/22 김연아 대리님 검토 = 엑셀 SOT `구분` 컬럼 12 카테고리 SOT.
+// 사용자 명시 라벨 (2026-05-22, 조기흠 사원):
+//   x_banner → X배너 / streetlight_banner → 가로등 배너
 //   horizontal_banner → 가로 현수막 / vertical_banner → 세로 현수막
-//   chunchen_banner → 통천 / podium → 포디움 타이틀 / backwall → 백월
-//   a4_portrait → A4 세로 / a4_landscape → A4 가로 / a3_portrait → A3 세로 / a3_landscape → A3 가로
-// 5/22 김연아 대리님 명시 = 엑셀 SOT `구분` 컬럼 12 영역만 기본 영역.
-// I배너·A4 세로/가로·A3 세로/가로 = 엑셀 영역 X → 삭제 (5건). 동의어 매핑 = 가장 가까운 영역 (foam_board·picket_board 등) 영역 정정.
+//   chunchen_banner → 통천 배너 / podium → 포디움 타이틀 / route_banner → 동선 안내 배너
+//   award_board → 시상보드 / q_room → Q방 / digital_signage → 디지털 사이니지
+//   foam_board → 폼보드 / picket_board → 피켓보드
+// I배너·A4 세로/가로·A3 세로/가로 = 엑셀 SOT X → 삭제 (5건). 동의어·NON_STANDARD = picket_board·foam_board 영역 매핑 정정.
 export const SEED_SIGNAGE_TYPES: SignageTypeSeed[] = [
   { id: 'x_banner',           name: 'X배너',          width_mm: 600,  height_mm: 1800, default_material: 'PET',     category: '입구·등록',  layout: '세로' },
   { id: 'streetlight_banner', name: '가로등 배너',    width_mm: 600,  height_mm: 1800, default_material: '현수막',  category: '외부 동선',  layout: '세로' },
@@ -217,8 +217,8 @@ export function estimateSignageBreakdown(parts: string[] | undefined | null, tot
   // 회의·포럼 (40.04 회의 포함)
   if (has('40.04')) {
     result.push({ category: '포디움 타이틀', quantity: 2, sizes: '600×200' })
-    result.push({ category: 'A4 가로', quantity: 5, sizes: '297×210' })
-    result.push({ category: 'A3 가로', quantity: 3, sizes: '420×297' })
+    result.push({ category: '폼보드', quantity: 5, sizes: '600×900' })
+    result.push({ category: '피켓보드', quantity: 3, sizes: '300×450' })
   }
   // 공식행사·기념식 (40.08)
   if (has('40.08')) {
@@ -230,22 +230,22 @@ export function estimateSignageBreakdown(parts: string[] | undefined | null, tot
     if (!result.find(r => r.category === 'X배너')) result.push({ category: 'X배너', quantity: 5, sizes: '600×1800' })
     result.push({ category: '동선 배너', quantity: 4, sizes: '600×1800' })
   }
-  // 의전 (40.18)
+  // 의전 (40.18) — 영접영송 영역 = 피켓보드·시상보드 영역 매핑 (5/22 SOT 정합)
   if (has('40.18')) {
-    if (!result.find(r => r.category === 'A3 가로')) result.push({ category: 'A3 가로', quantity: 3, sizes: '420×297' })
-    result.push({ category: 'I배너', quantity: 2, sizes: '600×1800' })
+    if (!result.find(r => r.category === '피켓보드')) result.push({ category: '피켓보드', quantity: 3, sizes: '300×450' })
+    result.push({ category: '시상보드', quantity: 2, sizes: '1200×1800' })
   }
-  // 비즈매칭·비즈프로그램 (40.06·40.07)
+  // 비즈매칭·비즈프로그램 (40.06·40.07) — 안내 영역 = 폼보드 영역 매핑
   if (has('40.06') || has('40.07')) {
-    if (!result.find(r => r.category === 'A4 가로')) result.push({ category: 'A4 가로', quantity: 4, sizes: '297×210' })
+    if (!result.find(r => r.category === '폼보드')) result.push({ category: '폼보드', quantity: 4, sizes: '600×900' })
   }
   // 홍보 (40.17)
   if (has('40.17')) {
     result.push({ category: '가로등 배너', quantity: 5, sizes: '600×1800' })
   }
-  // 체험·공모전 (40.10·40.09)
+  // 체험·공모전 (40.10·40.09) — 부스 안내 영역 = 폼보드 영역 매핑
   if (has('40.10') || has('40.09')) {
-    if (!result.find(r => r.category === 'A4 가로')) result.push({ category: 'A4 가로', quantity: 3, sizes: '297×210' })
+    if (!result.find(r => r.category === '폼보드')) result.push({ category: '폼보드', quantity: 3, sizes: '600×900' })
   }
   // 투어 (40.11)
   if (has('40.11')) {
@@ -613,8 +613,8 @@ export interface NonStandardMapping {
 }
 
 export const NON_STANDARD_MAPPINGS: NonStandardMapping[] = [
-  { size: '510×740',   width_mm: 510,  height_mm: 740,  count: 8, inferred_type: '명패·표지판',     inferred_category: '명찰류',      closest_standard: 'a3_portrait',    note: 'A3 변형. 좌석 명패 또는 룸사인' },
-  { size: '100×125',   width_mm: 100,  height_mm: 125,  count: 5, inferred_type: '명찰',            inferred_category: '명찰류',      closest_standard: 'a4_portrait',    note: '소형 ID 카드' },
+  { size: '510×740',   width_mm: 510,  height_mm: 740,  count: 8, inferred_type: '명패·표지판',     inferred_category: '명찰류',      closest_standard: 'foam_board',     note: '좌석 명패 또는 룸사인 = 폼보드 영역 매핑 (5/22 SOT 정합)' },
+  { size: '100×125',   width_mm: 100,  height_mm: 125,  count: 5, inferred_type: '명찰',            inferred_category: '명찰류',      closest_standard: 'picket_board',   note: '소형 ID 카드 = 피켓보드 영역 매핑 (5/22 SOT 정합)' },
   { size: '700×150',   width_mm: 700,  height_mm: 150,  count: 5, inferred_type: '포디움 부속',     inferred_category: '포디움 변형',  closest_standard: 'podium',         note: '포디움 사이드 또는 로고 띠' },
   { size: '950×2300',  width_mm: 950,  height_mm: 2300, count: 4, inferred_type: '대형 X배너',      inferred_category: '현수막 변형',  closest_standard: 'x_banner',       note: 'X배너 확장 (높이 2300)' },
   { size: '660×200',   width_mm: 660,  height_mm: 200,  count: 4, inferred_type: '포디움 변형',     inferred_category: '포디움 변형',  closest_standard: 'podium',         note: '폭 660 변형' },
@@ -625,9 +625,9 @@ export const NON_STANDARD_MAPPINGS: NonStandardMapping[] = [
   { size: '500×90',    width_mm: 500,  height_mm: 90,   count: 2, inferred_type: '포디움 슬림',     inferred_category: '포디움 변형',  closest_standard: 'podium',         note: '소형 포디움' },
   { size: '1920×1080', width_mm: 1920, height_mm: 1080, count: 2, inferred_type: 'PDP 송출용',      inferred_category: '디스플레이',   note: '16:9 화면 비율 — 표준 종류 외' },
   { size: '1100×4500', width_mm: 1100, height_mm: 4500, count: 2, inferred_type: '세로 현수막 변형', inferred_category: '현수막 변형',  closest_standard: 'vertical_banner', note: '폭 1100 변형' },
-  { size: '4920×2640', width_mm: 4920, height_mm: 2640, count: 2, inferred_type: '백월 변형',       inferred_category: '백월 변형',    closest_standard: 'backwall',       note: '4.9m × 2.6m' },
-  { size: '4000×2980', width_mm: 4000, height_mm: 2980, count: 2, inferred_type: '백월 변형',       inferred_category: '백월 변형',    closest_standard: 'backwall',       note: '4m × 3m' },
-  { size: '5000×3750', width_mm: 5000, height_mm: 3750, count: 2, inferred_type: '백월 변형',       inferred_category: '백월 변형',    closest_standard: 'backwall',       note: '5m × 3.75m' },
+  { size: '4920×2640', width_mm: 4920, height_mm: 2640, count: 2, inferred_type: '대형 패널',       inferred_category: '백월 변형',    closest_standard: 'digital_signage', note: '4.9m × 2.6m = 디지털 사이니지 영역 매핑 (5/22 SOT 정합)' },
+  { size: '4000×2980', width_mm: 4000, height_mm: 2980, count: 2, inferred_type: '대형 패널',       inferred_category: '백월 변형',    closest_standard: 'digital_signage', note: '4m × 3m = 디지털 사이니지 영역 매핑 (5/22 SOT 정합)' },
+  { size: '5000×3750', width_mm: 5000, height_mm: 3750, count: 2, inferred_type: '대형 패널',       inferred_category: '백월 변형',    closest_standard: 'digital_signage', note: '5m × 3.75m = 디지털 사이니지 영역 매핑 (5/22 SOT 정합)' },
   { size: '1200×6000', width_mm: 1200, height_mm: 6000, count: 2, inferred_type: '통천 변형',       inferred_category: '현수막 변형',  closest_standard: 'chunchen_banner', note: '폭 1200 변형' },
   { size: '5×5',       width_mm: 5,    height_mm: 5,    count: 5, inferred_type: '데이터 입력 오류', inferred_category: '데이터 오류',   note: '엑셀 파싱 오류 추정' },
 ]
@@ -648,8 +648,8 @@ export function suggestStandardType(width: number, height: number): { closest: s
   if (height >= 5000 && ratio > 0.15 && ratio < 0.3) return { closest: 'chunchen_banner', rationale: '통천 변형 (높이 5m+)' }
   if (height >= 1500 && ratio < 0.5) return { closest: 'x_banner', rationale: 'X배너 변형' }
   if (width <= 700 && height <= 250) return { closest: 'podium', rationale: '포디움 변형' }
-  if (width <= 200 && height <= 200) return { closest: 'a4_portrait', rationale: '소형 인쇄물 (명찰류)' }
-  if (width <= 500 && height <= 500) return { closest: 'a3_portrait', rationale: '중형 인쇄물' }
+  if (width <= 200 && height <= 200) return { closest: 'picket_board', rationale: '소형 인쇄물 → 피켓보드 (5/22 SOT 정합)' }
+  if (width <= 500 && height <= 500) return { closest: 'foam_board', rationale: '중형 인쇄물 → 폼보드 (5/22 SOT 정합)' }
   return { closest: null, rationale: '표준 종류에 흡수 어려움 — 별도 검토 필요' }
 }
 
