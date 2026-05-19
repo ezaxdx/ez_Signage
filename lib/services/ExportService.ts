@@ -54,9 +54,9 @@ const DEFAULT_LABELS: Record<string, string> = {
   supplier: '수급업체',
 }
 
-// v9.19: 사용자 요청 순서 21컬럼
+// 5/22 사용자 명시 = 사용 목적 컬럼 삭제 (purpose 영역 영역 제거)·발주 담당자 기본 숨김 (EditorGrid 영역 정합)
 const DEFAULT_ORDER: EditorColumnId[] = [
-  'no', 'part', 'bigarea', 'location', 'purpose', 'category', 'language',
+  'no', 'part', 'bigarea', 'location', 'category', 'language',
   'size', 'material', 'quantity', 'content',
   'design_vendor', 'print_vendor',
   'install_date', 'install_time', 'usage_period',

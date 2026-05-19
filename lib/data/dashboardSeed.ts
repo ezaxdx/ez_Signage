@@ -32,7 +32,7 @@ export const SEED_SIGNAGE_TYPES: SignageTypeSeed[] = [
   { id: 'streetlight_banner', name: '가로등 배너',    width_mm: 600,  height_mm: 1800, default_material: '현수막',  category: '외부 동선',  layout: '세로' },
   { id: 'horizontal_banner',  name: '가로 현수막',    width_mm: 5000, height_mm: 900,  default_material: '현수막',  category: '메인·외벽',  layout: '가로' },
   { id: 'vertical_banner',    name: '세로 현수막',    width_mm: 900,  height_mm: 5000, default_material: '현수막',  category: '로비·천장',  layout: '세로' },
-  { id: 'chunchen_banner',    name: '통천',           width_mm: 1000, height_mm: 5000, default_material: '현수막',  category: '천장 대형',  layout: '세로' },
+  { id: 'chunchen_banner',    name: '통천 배너',      width_mm: 1000, height_mm: 5000, default_material: '현수막',  category: '천장 대형',  layout: '세로' },
   { id: 'podium',             name: '포디움 타이틀',  width_mm: 600,  height_mm: 200,  default_material: '스티커',  category: '연단',       layout: '가로' },
   { id: 'a4_portrait',        name: 'A4 세로',        width_mm: 210,  height_mm: 297,  default_material: '인쇄',    category: '소형 안내',  layout: '세로' },
   { id: 'a4_landscape',       name: 'A4 가로',        width_mm: 297,  height_mm: 210,  default_material: '인쇄',    category: '소형 안내',  layout: '가로' },
@@ -40,7 +40,7 @@ export const SEED_SIGNAGE_TYPES: SignageTypeSeed[] = [
   { id: 'a3_landscape',       name: 'A3 가로',        width_mm: 420,  height_mm: 297,  default_material: '인쇄',    category: '중형 안내',  layout: '가로' },
   // 5/21 사용자 명시 = 노션 §6-2 12 카테고리 정합. backwall·foamboard·sheet 3건 제거.
   // 동의어 매핑은 폼보드 → A4·A3·I배너 등으로 재매핑 (아래 SEED_SYNONYMS 정정).
-  { id: 'route_banner',       name: '동선 배너',      width_mm: 600,  height_mm: 1500, default_material: '현수막',  category: '실내 동선',  layout: '세로', note: 'v3 신규. 실내 유도·화살표·방향 안내 전용. 5/14 회의 X배너 분리 결정' },
+  { id: 'route_banner',       name: '동선 안내 배너', width_mm: 600,  height_mm: 1500, default_material: '현수막',  category: '실내 동선',  layout: '세로', note: '5/22 엑셀 SOT 영역 정합 (동선 배너 → 동선 안내 배너). 실내 유도·화살표·방향 안내 전용.' },
   // 5/22 김연아 대리님 명시 = 엑셀 SOT 영역 추가 5건 (시상보드·Q방·디지털 사이니지·폼보드·피켓보드)
   { id: 'award_board',        name: '시상보드',       width_mm: 1200, height_mm: 1800, default_material: '폼보드 5T', category: '시상·공식행사', layout: '세로', note: '5/22 엑셀 SOT 영역 추가. 공식행사·공모전형 영역 시상 영역.' },
   { id: 'q_room',             name: 'Q방',           width_mm: 600,  height_mm: 1800, default_material: '폼보드',   category: '등록·안내',  layout: '세로', note: '5/22 엑셀 SOT 영역 추가. 등록·대기 영역 안내 영역.' },
@@ -78,12 +78,12 @@ export const SEED_SYNONYMS: SynonymSeed[] = [
   { alias: '상단 배너',      canonical_name: '가로 현수막',  note: '상단 부착 가로형' },
 
   // ── 천장형 (통천 배너) — 신규 다수 발견 ──
-  { alias: '천장배너',       canonical_name: '통천',    note: '천장 매다는 대형' },
-  { alias: '천정배너',       canonical_name: '통천',    note: '천정 매다는 형태 (천장 동일)' },
-  { alias: '장폭_천정배너_단면', canonical_name: '통천', note: '장폭 천정 단면 인쇄' },
-  { alias: '장폭_천정배너_양면', canonical_name: '통천', note: '장폭 천정 양면 인쇄' },
-  { alias: '행잉 배너',      canonical_name: '통천',    note: '천장 매달기 영문 표현' },
-  { alias: '출입구 천정 배너', canonical_name: '통천',  note: '출입구 V자형 천장 배너' },
+  { alias: '천장배너',       canonical_name: '통천 배너',    note: '천장 매다는 대형' },
+  { alias: '천정배너',       canonical_name: '통천 배너',    note: '천정 매다는 형태 (천장 동일)' },
+  { alias: '장폭_천정배너_단면', canonical_name: '통천 배너', note: '장폭 천정 단면 인쇄' },
+  { alias: '장폭_천정배너_양면', canonical_name: '통천 배너', note: '장폭 천정 양면 인쇄' },
+  { alias: '행잉 배너',      canonical_name: '통천 배너',    note: '천장 매달기 영문 표현' },
+  { alias: '출입구 천정 배너', canonical_name: '통천 배너',  note: '출입구 V자형 천장 배너' },
 
   // ── 가로등 배너 ──
   { alias: '빵빠레배너',     canonical_name: '가로등 배너',  note: '외부 동선용' },
@@ -109,10 +109,10 @@ export const SEED_SYNONYMS: SynonymSeed[] = [
   { alias: '스탠드POP',      canonical_name: 'I배너',         note: '폼보드형 스탠드 POP' },
 
   // ── 동선 배너 동의어 (노션 §6-2 v3 신규 카테고리·§8-1 정합) ──
-  { alias: '유도사인',       canonical_name: '동선 배너',     note: '실내 동선·유도 안내' },
-  { alias: '동선안내',       canonical_name: '동선 배너',     note: '실내 동선 안내' },
-  { alias: '화살표',         canonical_name: '동선 배너',     note: '방향 안내 화살표' },
-  { alias: '방향 안내',      canonical_name: '동선 배너',     note: '동선 방향 안내' },
+  { alias: '유도사인',       canonical_name: '동선 안내 배너',     note: '실내 동선·유도 안내' },
+  { alias: '동선안내',       canonical_name: '동선 안내 배너',     note: '실내 동선 안내' },
+  { alias: '화살표',         canonical_name: '동선 안내 배너',     note: '방향 안내 화살표' },
+  { alias: '방향 안내',      canonical_name: '동선 안내 배너',     note: '동선 방향 안내' },
 
   // 손피켓·명패·웰컴 영역 (가로 기본 — 5/7 결정)
   { alias: '명패',           canonical_name: 'A4 가로',      note: '소형 명패' },
