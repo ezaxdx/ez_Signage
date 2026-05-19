@@ -84,11 +84,20 @@ interface FacilityGuideRow {
   categories_count: number
   warnings_count: number
   completeness: number   // 0~6
-  last_updated?: string
+  last_updated?: string | null
   /** DB에서 매칭된 venue id (AI 추출 버튼에서 사용) */
   venue_id?: string
   /** specs_text 존재 여부 (AI 추출 버튼 활성화 조건) */
   has_specs_text?: boolean
+  /** 5/22 사용자 명시 = 3 댑스 펼침 영역 (L3 학습 내용 표시) */
+  source?: 'seed' | 'db'
+  install_allowed?: Array<{ category?: string; status?: string; note?: string; max_width_mm?: number; max_height_mm?: number; standard_width_mm?: number; standard_height_mm?: number }>
+  warnings?: Array<{ type?: string; description?: string }>
+  mount_methods?: unknown
+  rigging?: { available?: boolean; note?: string; max_load_kg?: number } | null
+  safety?: unknown
+  digital_signage?: unknown
+  special_notes?: string[]
 }
 
 interface CorrectionRequest {
@@ -432,6 +441,9 @@ export function LearningManagerClient({
   const [expandedEventKey, setExpandedEventKey] = useState<string | null>(null)
   // 5/22 사용자 명시 = 행사장 학습 현황 표 ▶ 화살표 펼침 (코엑스 휘하 행사 목록)
   const [expandedVenueLearningKey, setExpandedVenueLearningKey] = useState<string | null>(null)
+  // 5/22 사용자 명시 = 시설 가이드 학습 현황 3 댑스 (L1 코엑스 → L2 그랜드볼룸 → L3 학습 내용)
+  const [expandedFacilityVenueKey, setExpandedFacilityVenueKey] = useState<string | null>(null)
+  const [expandedFacilityGroup, setExpandedFacilityGroup] = useState<string | null>(null)
   // 5/22 사용자 명시 = 유기 연동. event_history DB 영역 fetch → SEED + DB 통합 SOT.
   // 행사 삭제 (deleted_at) = 즉시 모든 영역 (행사장 학습 현황·프로그램 파트 매칭·환경장식물 빈도·AI) 반영.
   const [dbEventHistory, setDbEventHistory] = useState<typeof SEED_EVENT_HISTORY>([])
@@ -2672,9 +2684,13 @@ export function LearningManagerClient({
             <p className="text-slate-400 text-xs italic py-3 text-center">시설 가이드 시드 데이터가 비어있습니다.</p>
           ) : (
             <div className="overflow-x-auto border border-slate-200 rounded">
+              <p className="px-2 py-1 text-[10px] text-slate-500 bg-slate-50 border-b border-slate-200">
+                3 댑스 펼침 = L1 행사장 그룹(코엑스·킨텍스 등) → L2 세부 홀(그랜드볼룸·아셈볼룸 등) → L3 학습 내용 (카테고리·주의사항·리깅·안전·디지털 사이니지)
+              </p>
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr className="text-slate-600 text-[11px]">
+                    <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap w-6"></th>
                     <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">행사장·홀</th>
                     <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">카테고리</th>
                     <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">주의사항</th>
@@ -2686,23 +2702,67 @@ export function LearningManagerClient({
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {/* 5/21 = 시드 항목 hidden 패턴 추가 (데이터 오류 보완·복구 가능) */}
-                  {/* 5/22 P2-6 = 정렬 1순위 최신 last_updated·2순위 가나다 */}
-                  {facilityGuideStatus.slice().sort((a, b) => {
-                    const ad = a.last_updated ?? ''
-                    const bd = b.last_updated ?? ''
-                    if (ad !== bd) return bd.localeCompare(ad)
-                    return a.venue_name.localeCompare(b.venue_name, 'ko')
-                  }).map(f => {
-                    const ratio = (f.completeness / 6)
-                    const color = ratio >= 0.83 ? 'text-emerald-600' : ratio >= 0.5 ? 'text-amber-600' : 'text-rose-600'
-                    const isExtracting = extractingVenueId === f.venue_id
-                    const isSuccess = extractSuccessId === f.venue_id
-                    const hidden = hiddenFacilityVenues.includes(f.venue_key)
-                    return (
-                      <tr key={f.venue_key} className={`hover:bg-slate-50 ${hidden ? 'opacity-50' : ''}`}>
-                        <td className="px-2 py-1.5 text-slate-800 font-medium whitespace-nowrap">
-                          {hidden ? <span className="line-through text-slate-400">{f.venue_name}</span> : f.venue_name}
-                        </td>
+                  {/* 5/22 = 3 댑스 (L1 그룹·L2 venue 행·L3 펼침 학습 내용). 사용자 명시 = "코엑스 / 그랜드볼룸 / 하위 학습 내용 기재" */}
+                  {(() => {
+                    const sorted = facilityGuideStatus.slice().sort((a, b) => {
+                      const ad = a.last_updated ?? ''
+                      const bd = b.last_updated ?? ''
+                      if (ad !== bd) return bd.localeCompare(ad)
+                      return a.venue_name.localeCompare(b.venue_name, 'ko')
+                    })
+                    // L1 그룹 = venue_name 첫 단어 (코엑스·킨텍스·송도 등). 매칭 X 영역 = 단독 그룹.
+                    const groups = new Map<string, typeof sorted>()
+                    for (const f of sorted) {
+                      const groupName = f.venue_name.split(' ')[0] || f.venue_name
+                      if (!groups.has(groupName)) groups.set(groupName, [])
+                      groups.get(groupName)!.push(f)
+                    }
+                    const adminColCount = isAdmin ? 8 : 7
+                    const out: React.ReactNode[] = []
+                    Array.from(groups.entries()).forEach(([groupName, items]) => {
+                      const isGroupOpen = expandedFacilityGroup === groupName
+                      const groupCategories = items.reduce((s, x) => s + x.categories_count, 0)
+                      const groupWarnings = items.reduce((s, x) => s + x.warnings_count, 0)
+                      const avgCompleteness = items.length > 0 ? Math.round((items.reduce((s, x) => s + x.completeness, 0) / items.length) * 10) / 10 : 0
+                      // L1 = 그룹 행 (코엑스·킨텍스 등)
+                      out.push(
+                        <tr key={`L1-${groupName}`} className="bg-indigo-50/60 hover:bg-indigo-50 font-semibold border-t-2 border-indigo-100">
+                          <td className="px-2 py-1.5 text-indigo-700 text-center">
+                            <button onClick={() => setExpandedFacilityGroup(isGroupOpen ? null : groupName)} className="hover:underline">
+                              {isGroupOpen ? '▼' : '▶'}
+                            </button>
+                          </td>
+                          <td className="px-2 py-1.5 text-indigo-900 whitespace-nowrap">
+                            {groupName} <span className="text-[10px] text-indigo-500 ml-1 font-normal">({items.length}건)</span>
+                          </td>
+                          <td className="px-2 py-1.5 text-right text-indigo-700 font-mono text-[11px]">{groupCategories}</td>
+                          <td className="px-2 py-1.5 text-right text-indigo-700 font-mono text-[11px]">{groupWarnings}</td>
+                          <td className="px-2 py-1.5 text-right text-indigo-700 font-mono text-[11px]">평균 {avgCompleteness}/6</td>
+                          <td className="px-2 py-1.5 text-indigo-500 text-[11px]" colSpan={isAdmin ? 3 : 2}>L1 행사장 그룹</td>
+                        </tr>
+                      )
+                      if (!isGroupOpen) return
+                      // L2 = venue 세부 행 (각 그룹 하위)
+                      items.forEach(f => {
+                        const ratio = (f.completeness / 6)
+                        const color = ratio >= 0.83 ? 'text-emerald-600' : ratio >= 0.5 ? 'text-amber-600' : 'text-rose-600'
+                        const isExtracting = extractingVenueId === f.venue_id
+                        const isSuccess = extractSuccessId === f.venue_id
+                        const hidden = hiddenFacilityVenues.includes(f.venue_key)
+                        const isOpen = expandedFacilityVenueKey === f.venue_key
+                        // L2 = venue 행 - 메인
+                        const subName = f.venue_name.startsWith(groupName + ' ') ? f.venue_name.slice(groupName.length + 1) : f.venue_name
+                        out.push(
+                          <tr key={`L2-${f.venue_key}`} className={`hover:bg-slate-50 ${hidden ? 'opacity-50' : ''}`}>
+                            <td className="px-2 py-1.5 text-slate-500 text-center">
+                              <button onClick={() => setExpandedFacilityVenueKey(isOpen ? null : f.venue_key)} className="hover:text-indigo-600">
+                                {isOpen ? '▼' : '▶'}
+                              </button>
+                            </td>
+                            <td className="px-2 py-1.5 text-slate-800 whitespace-nowrap pl-6">
+                              {hidden ? <span className="line-through text-slate-400">{subName}</span> : subName}
+                              {f.source === 'db' && <span className="ml-1 text-[9px] px-1 py-0 rounded bg-emerald-100 text-emerald-700">DB</span>}
+                            </td>
                         <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{f.categories_count}</td>
                         <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{f.warnings_count}</td>
                         <td className={`px-2 py-1.5 text-right font-mono font-semibold ${color}`}>{f.completeness}/6</td>
@@ -2780,7 +2840,80 @@ export function LearningManagerClient({
                         )}
                       </tr>
                     )
-                  })}
+                    // L3 = 펼침 시 학습 내용 (install_allowed·warnings·mount_methods·rigging·safety·digital_signage)
+                    if (isOpen) {
+                      out.push(
+                        <tr key={`L3-${f.venue_key}`} className="bg-slate-50/70">
+                          <td></td>
+                          <td colSpan={adminColCount - 1} className="px-3 py-2">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
+                              {Array.isArray(f.install_allowed) && f.install_allowed.length > 0 && (
+                                <div className="border border-emerald-200 bg-white rounded p-2">
+                                  <p className="font-semibold text-emerald-700 mb-1">설치 가능 카테고리 ({f.install_allowed.length})</p>
+                                  <ul className="space-y-0.5 text-slate-700">
+                                    {f.install_allowed.map((ia, i) => (
+                                      <li key={i} className="flex gap-1">
+                                        <span className={`inline-block w-2 h-2 mt-1 rounded-full ${ia.status === 'allowed' ? 'bg-emerald-500' : ia.status === 'denied' ? 'bg-rose-500' : 'bg-amber-500'}`}></span>
+                                        <span><span className="font-semibold">{ia.category ?? '미지정'}</span>{ia.note && <span className="text-slate-500"> — {ia.note}</span>}{(ia.standard_width_mm || ia.standard_height_mm) && <span className="text-indigo-600 font-mono ml-1">[{ia.standard_width_mm}×{ia.standard_height_mm}mm]</span>}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              {Array.isArray(f.warnings) && f.warnings.length > 0 && (
+                                <div className="border border-rose-200 bg-white rounded p-2">
+                                  <p className="font-semibold text-rose-700 mb-1">주의사항 ({f.warnings.length})</p>
+                                  <ul className="space-y-0.5 text-slate-700">
+                                    {f.warnings.map((w, i) => (
+                                      <li key={i}>• {w.description ?? w.type ?? '미지정'}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              {f.rigging != null && (
+                                <div className="border border-slate-200 bg-white rounded p-2">
+                                  <p className="font-semibold text-slate-700 mb-1">리깅 (천정 설치)</p>
+                                  <p className="text-slate-700">{f.rigging.available === true ? '가능' : f.rigging.available === false ? '불가' : '확인 필요'}{f.rigging.max_load_kg && ` · 최대 ${f.rigging.max_load_kg}kg`}{f.rigging.note && ` · ${f.rigging.note}`}</p>
+                                </div>
+                              )}
+                              {f.mount_methods != null && (
+                                <div className="border border-slate-200 bg-white rounded p-2">
+                                  <p className="font-semibold text-slate-700 mb-1">설치 방법</p>
+                                  <pre className="text-slate-600 text-[10px] whitespace-pre-wrap break-words">{typeof f.mount_methods === 'string' ? f.mount_methods : JSON.stringify(f.mount_methods, null, 2)}</pre>
+                                </div>
+                              )}
+                              {f.safety != null && (
+                                <div className="border border-slate-200 bg-white rounded p-2">
+                                  <p className="font-semibold text-slate-700 mb-1">안전 기준</p>
+                                  <pre className="text-slate-600 text-[10px] whitespace-pre-wrap break-words">{typeof f.safety === 'string' ? f.safety : JSON.stringify(f.safety, null, 2)}</pre>
+                                </div>
+                              )}
+                              {f.digital_signage != null && (
+                                <div className="border border-slate-200 bg-white rounded p-2">
+                                  <p className="font-semibold text-slate-700 mb-1">디지털 사이니지</p>
+                                  <pre className="text-slate-600 text-[10px] whitespace-pre-wrap break-words">{typeof f.digital_signage === 'string' ? f.digital_signage : JSON.stringify(f.digital_signage, null, 2)}</pre>
+                                </div>
+                              )}
+                              {Array.isArray(f.special_notes) && f.special_notes.length > 0 && (
+                                <div className="border border-amber-200 bg-amber-50/60 rounded p-2 md:col-span-2">
+                                  <p className="font-semibold text-amber-700 mb-1">특이사항 ({f.special_notes.length})</p>
+                                  <ul className="space-y-0.5 text-amber-900">
+                                    {f.special_notes.map((n, i) => <li key={i}>• {n}</li>)}
+                                  </ul>
+                                </div>
+                              )}
+                              {(!Array.isArray(f.install_allowed) || f.install_allowed.length === 0) && (!Array.isArray(f.warnings) || f.warnings.length === 0) && f.rigging == null && f.mount_methods == null && f.safety == null && f.digital_signage == null && (
+                                <p className="text-slate-400 italic md:col-span-2 text-center">학습 내용이 비어있습니다. ✎ 편집으로 정보를 추가하거나 시설 가이드 시드를 확장하세요.</p>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    }
+                  })
+                })
+                return out
+                  })()}
                 </tbody>
               </table>
             </div>

@@ -193,24 +193,78 @@ export default async function LearningManagerPage() {
     .sort((a, b) => b.item_count - a.item_count)
 
   // 시설 가이드 학습 현황 (§13-3 신규)
-  const facilityGuideStatus = VENUE_FACILITY_GUIDE_SEED.map(g => {
-    const completeness = [
-      g.install_allowed && g.install_allowed.length > 0,
-      g.mount_methods != null,
-      g.rigging && g.rigging.available != null,
-      g.safety != null,
-      g.warnings && g.warnings.length > 0,
-      g.digital_signage != null,
-    ].filter(Boolean).length
-    return {
-      venue_key: g.venue_key,
-      venue_name: g.venue_name,
-      categories_count: g.install_allowed?.length ?? 0,
-      warnings_count: g.warnings?.length ?? 0,
-      completeness,            // 0~6 (정보 종류 채워진 개수)
-      last_updated: g.last_updated,
-    }
-  })
+  // 5/22 사용자 명시 = 3 댑스 (L1 venue → L2 halls/세부 → L3 학습 내용)
+  // 시드(VENUE_FACILITY_GUIDE_SEED) + venues.facility_guide_json (사용자 편집 영역) 합산
+  type VenuesRow = { id?: string; name?: string; facility_guide_json?: unknown; updated_at?: string }
+  const venuesWithGuide = ((venuesRes.data ?? []) as VenuesRow[]).filter(v => v && v.facility_guide_json)
+
+  const facilityGuideStatus = [
+    ...VENUE_FACILITY_GUIDE_SEED.map(g => {
+      const completeness = [
+        g.install_allowed && g.install_allowed.length > 0,
+        g.mount_methods != null,
+        g.rigging && g.rigging.available != null,
+        g.safety != null,
+        g.warnings && g.warnings.length > 0,
+        g.digital_signage != null,
+      ].filter(Boolean).length
+      return {
+        venue_key: g.venue_key,
+        venue_name: g.venue_name,
+        categories_count: g.install_allowed?.length ?? 0,
+        warnings_count: g.warnings?.length ?? 0,
+        completeness,
+        last_updated: g.last_updated,
+        source: 'seed' as const,
+        // 5/22 = L3 raw 데이터 (3 댑스 펼침 영역)
+        install_allowed: g.install_allowed ?? [],
+        warnings: g.warnings ?? [],
+        mount_methods: g.mount_methods ?? null,
+        rigging: g.rigging ?? null,
+        safety: g.safety ?? null,
+        digital_signage: g.digital_signage ?? null,
+        special_notes: g.special_notes ?? [],
+      }
+    }),
+    // venues.facility_guide_json (사용자 추가 영역)
+    ...venuesWithGuide.map(v => {
+      const j = (v.facility_guide_json ?? {}) as {
+        install_allowed?: Array<{ category?: string; status?: string; note?: string }>
+        warnings?: Array<{ type?: string; description?: string }>
+        mount_methods?: unknown
+        rigging?: { available?: boolean; note?: string }
+        safety?: unknown
+        digital_signage?: unknown
+        special_notes?: string[]
+      }
+      const ia = Array.isArray(j.install_allowed) ? j.install_allowed : []
+      const wn = Array.isArray(j.warnings) ? j.warnings : []
+      const completeness = [
+        ia.length > 0,
+        j.mount_methods != null,
+        j.rigging?.available != null,
+        j.safety != null,
+        wn.length > 0,
+        j.digital_signage != null,
+      ].filter(Boolean).length
+      return {
+        venue_key: `db_${v.id ?? v.name ?? ''}`,
+        venue_name: v.name ?? '미상',
+        categories_count: ia.length,
+        warnings_count: wn.length,
+        completeness,
+        last_updated: v.updated_at ?? null,
+        source: 'db' as const,
+        install_allowed: ia,
+        warnings: wn,
+        mount_methods: j.mount_methods ?? null,
+        rigging: j.rigging ?? null,
+        safety: j.safety ?? null,
+        digital_signage: j.digital_signage ?? null,
+        special_notes: Array.isArray(j.special_notes) ? j.special_notes : [],
+      }
+    }),
+  ]
 
   const signageTypesForClient = loadedSignageTypes.map(t => ({
     id: t.id, name: t.name, width_mm: t.width_mm, height_mm: t.height_mm,
