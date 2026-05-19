@@ -1429,7 +1429,16 @@ export function LearningManagerClient({
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-4 flex items-center gap-2">
             <Building2 className="w-4 h-4 text-emerald-400" />
-            학습된 행사장 — 과거 진행 내역 ({venues.length})
+            {/* 5/22 사용자 명시 = venues + unifiedEventHistory venue 자동 보강 합산 카운트 */}
+            학습된 행사장 — 과거 진행 내역 ({(() => {
+              const set = new Set<string>()
+              for (const v of venues) if (v.name) set.add(v.name.trim())
+              for (const ev of unifiedEventHistory) {
+                const vname = (ev.venue ?? '').trim()
+                if (vname && vname !== '미정' && vname !== '미상') set.add(vname)
+              }
+              return set.size
+            })()})
           </h2>
           <p className="text-[10px] text-slate-500 mb-3">행사장별 과거 진행 행사·환경장식물 사용 내역 = AI 추천 영역에 학습 데이터로 자동 주입. 행사장의 규칙(설치 가능 카테고리·주의사항·도면)은 <span className="text-indigo-600 font-medium">시설 가이드</span> 메뉴 영역에서 관리.</p>
           {venues.length === 0 && unifiedEventHistory.length === 0 ? (
