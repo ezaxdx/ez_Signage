@@ -710,7 +710,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
     // 라이브 통계 캐시 무효화 — 다음 모달 열 때 새 프로젝트 반영
     invalidateLiveStatsCache()
 
-    // 5/22 사용자 명시 = AI 추천 받기 버튼 대신·새 프로젝트 만들기 자동 추천 + 진단 영역: handleCreate 흐름 차단 회피 (router.push 후 background fire-and-forget)
+    // 5/22 P3-11 = AI 자동 호출 = feature flag (default ON·관리자 토글 가능). localStorage 'mice_auto_recommend_enabled'
     const projectId = project.id
     const recommendBody = {
       eventName: info.name,
@@ -722,6 +722,16 @@ export function NewProjectButton({ userId, userEmail }: Props) {
     setIsLoading(false)
     isCreatingRef.current = false
     router.push(`/projects/${projectId}`)
+
+    // feature flag 점검 = localStorage 'mice_auto_recommend_enabled' === 'false'면 자동 호출 X
+    let autoRecommendEnabled = true
+    try {
+      autoRecommendEnabled = localStorage.getItem('mice_auto_recommend_enabled') !== 'false'
+    } catch {}
+    if (!autoRecommendEnabled) {
+      console.log('[AI 자동 추천] feature flag OFF·호출 영역 skip')
+      return
+    }
 
     // background에서 AI 추천 호출 → design_items 자동 INSERT. UX 차단 영역 X.
     void (async () => {
