@@ -90,11 +90,10 @@ export default async function AdminAiPage() {
     ? (monthPromptTokens / 1000) * INPUT_USD_PER_1K + (monthOutputTokens / 1000) * OUTPUT_USD_PER_1K
     : (monthTokens / 1000) * INPUT_USD_PER_1K
 
-  // 무료 tier 영역 여부 = GEMINI_API_KEY 영역 AI Studio 영역 = 청구 0원
-  // (production 영역 점검 X·현 시점 모든 호출 무료 tier 가정·향후 유료 영역 전환 시 BILLING_ENABLED env 영역 도입)
-  const isFreeTier = true
-  const todayCostKrwActual = isFreeTier ? 0 : todayCostUsd * KRW_PER_USD
-  const monthCostKrwActual = isFreeTier ? 0 : monthCostUsd * KRW_PER_USD
+  // 5/22 사용자 명시: 무료 tier 0원 분기 영역 삭제 = 실제 단가 적용 비용 영역만 표시.
+  // (무료 tier 영역 청구 0원 사실 영역은 사용자가 별도 인지·UI 영역은 토큰 × 단가 = 실측 영역)
+  const todayCostKrw = todayCostUsd * KRW_PER_USD
+  const monthCostKrw = monthCostUsd * KRW_PER_USD
 
   // ── 일자별 추이 (최근 30일) ────────────────────────────────
   const dailyMap = new Map<string, number>()
@@ -212,14 +211,11 @@ export default async function AdminAiPage() {
         monthCalls,
         todayTokens,
         monthTokens,
-        // 5/22 사용자 명시: 실제 청구 영역 = 무료 tier 영역 0원·근데 추정 비용 영역 (유료 전환 시 정확) 분리 표시
+        // 5/22 사용자 명시: 실제 단가 적용 비용 영역 단일 표시 (무료 tier 분기 영역 삭제)
         todayCostUsd,
         monthCostUsd,
-        todayCostKrw: todayCostKrwActual,
-        monthCostKrw: monthCostKrwActual,
-        todayCostKrwEstimated: todayCostUsd * KRW_PER_USD,
-        monthCostKrwEstimated: monthCostUsd * KRW_PER_USD,
-        isFreeTier,
+        todayCostKrw,
+        monthCostKrw,
         todayPromptTokens,
         todayOutputTokens,
         monthPromptTokens,

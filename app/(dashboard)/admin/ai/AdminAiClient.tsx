@@ -346,24 +346,8 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <UsageCard label="오늘 호출" value={stats.todayCalls} unit="회" sub={`토큰 ${stats.todayTokens.toLocaleString()}`} color="text-indigo-600" />
             <UsageCard label="이번 달 호출" value={stats.monthCalls} unit="회" sub={`토큰 ${stats.monthTokens.toLocaleString()}`} color="text-blue-600" />
-            <UsageCard
-              label={stats.isFreeTier ? '오늘 비용 (무료 tier)' : '오늘 비용'}
-              value={stats.isFreeTier ? '₩0' : `$${stats.todayCostUsd.toFixed(4)}`}
-              unit=""
-              sub={stats.isFreeTier
-                ? `유료 전환 시 ₩${Math.round(stats.todayCostKrwEstimated ?? 0).toLocaleString()}`
-                : `₩${Math.round(stats.todayCostKrw).toLocaleString()}`}
-              color="text-amber-600"
-            />
-            <UsageCard
-              label={stats.isFreeTier ? '이번 달 비용 (무료 tier)' : '이번 달 비용'}
-              value={stats.isFreeTier ? '₩0' : `$${stats.monthCostUsd.toFixed(4)}`}
-              unit=""
-              sub={stats.isFreeTier
-                ? `유료 전환 시 ₩${Math.round(stats.monthCostKrwEstimated ?? 0).toLocaleString()}`
-                : `₩${Math.round(stats.monthCostKrw).toLocaleString()}`}
-              color="text-emerald-600"
-            />
+            <UsageCard label="오늘 비용" value={`$${stats.todayCostUsd.toFixed(4)}`} unit="" sub={`₩${Math.round(stats.todayCostKrwEstimated ?? stats.todayCostKrw).toLocaleString()}`} color="text-amber-600" />
+            <UsageCard label="이번 달 비용" value={`$${stats.monthCostUsd.toFixed(4)}`} unit="" sub={`₩${Math.round(stats.monthCostKrwEstimated ?? stats.monthCostKrw).toLocaleString()}`} color="text-emerald-600" />
           </div>
         </section>
 
