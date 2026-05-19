@@ -156,7 +156,7 @@ export function ProjectCard({ project, isOwner = true }: Props) {
         >
           <Settings className="w-3.5 h-3.5" />
         </Link>
-        <DeleteProjectButton projectId={project.id} projectName={project.name} isOwner={isOwner} />
+        {/* 5/22 사용자 명시 = 맨 처음 화면 = 삭제 불가능 (회의 §7 = 사용자 불가·관리자만). 삭제는 /admin 운영 대시보드에서만 */}
         {/* 5/20 노션 §7 정합 = 완료 버튼 (PDF·설정 사이) */}
         {isOwner && (
           <button

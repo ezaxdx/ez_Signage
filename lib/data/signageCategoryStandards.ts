@@ -18,15 +18,19 @@
 
 import { findVenueKey, VENUE_FACILITY_GUIDE_SEED } from '@/lib/data/venueFacilityGuide'
 import { SEED_CEILING_BANNER_PATTERNS } from '@/lib/data/dashboardSeed'
+import { SIGNAGE_CATEGORIES_V3, classifyCategoryV3 } from '@/lib/data/v3/signageCategoriesSeedV3'
 import rawVenueSignageMap from '@/lib/data/_venue_signage_map.json' assert { type: 'json' }
 
+// 5/22 사용자 명시 = 6대 표준은 구 정보. v3 환경장식물 종류 12 카테고리로 일괄 변경
+// type union = legacy 6 + v3 12 동시 보유 (다른 함수 호환·옛 데이터 처리)
 export type StandardCategoryKey =
-  | 'outer_wall'      // 외벽 (가로현수막 외벽·통천 외벽 등 대형 외부 사인)
-  | 'gate'            // 게이트 (출입구 광고면)
-  | 'streetlight'     // 가로등 배너 (외부 동선)
-  | 'x_banner'        // X배너 (입구·등록데스크)
-  | 'ceiling'         // 천정배너 (행잉·통천 내부)
-  | 'support'         // 부속시설 (포디움·룸사인·A4/A3 POP·라운지 안내)
+  // v3 12 카테고리 (SOT 5/22)
+  | 'x_banner' | 'i_banner' | 'streetlight_banner' | 'horizontal_banner'
+  | 'vertical_banner' | 'chunchen_banner' | 'podium'
+  | 'a4_portrait' | 'a4_landscape' | 'a3_portrait' | 'a3_landscape'
+  | 'route_banner'
+  // legacy 6 (호환 유지·새 표시 영역 X)
+  | 'outer_wall' | 'gate' | 'streetlight' | 'ceiling' | 'support'
 
 export interface StandardCategoryDef {
   key: StandardCategoryKey
@@ -40,89 +44,25 @@ export interface StandardCategoryDef {
   typical_size?: string
 }
 
-export const STANDARD_CATEGORIES: StandardCategoryDef[] = [
-  {
-    key: 'outer_wall',
-    label: '외벽',
-    description: '가로현수막(외벽)·통천현수막·대형 외부 사인·기둥 부착·홍보탑. 행사장별 표준 규격 매뉴얼 명시.',
-    // v9.23 보강 (발주엑셀 13건 실측 표기 추가):
-    // 행사 현수막 100회 / 통천현수막 33회 / 가로현수막 26회 / 기둥현수막·홍보탑·무지배너
-    match_keywords: [
-      '외벽', '통천', '통천현수막', '가로현수막', '행사 현수막', '행사현수막',
-      '대형 현수막', '외부 광고', '아치', '대형 배너', '기둥현수막', '기둥 현수막',
-      '홍보탑', '무지배너',
-    ],
-    priority: 1,
-    typical_size: '7600×2000mm (킨텍스 5홀) ~ 8000×5000mm (킨텍스 2전시장)',
-  },
-  {
-    key: 'gate',
-    label: '게이트',
-    description: '출입구 광고면·게이트당 부착 사인·차량 게이트·공항 영접 게이트.',
-    // v9.23 보강: 발주엑셀 실측 — "차량 게이트" / "인천공항" 영접 게이트
-    match_keywords: [
-      '게이트', 'gate', '출입구 광고', '입구 아치', '차량 게이트', '공항 게이트',
-      '진입 아치',
-    ],
-    priority: 2,
-    typical_size: '킨텍스 Gate1 38×1.5m / Gate2 36×1.5m / Gate4 30×1.5m',
-  },
-  {
-    key: 'streetlight',
-    label: '가로등 배너',
-    description: '외부 가로등 폴 부착 세로현수막·폴대배너·물통배너. D-30 이전 폴 예약 필수.',
-    // v9.23 보강: 세로현수막 233회 / 폴대배너 15회 / 물통배너 7회 — 외부 폴 부착 표기 일관화
-    match_keywords: [
-      '가로등', '폴대', '폴 배너', '폴대배너', '폴배너', '세로현수막',
-      '폴 클램프', '셔틀', '주차장', '물통배너', '물통 배너',
-    ],
-    priority: 2,
-    typical_size: '600×1800mm 표준 (조 단위 발주)',
-  },
-  {
-    key: 'x_banner',
-    label: 'X배너',
-    description: 'X배너·롤업배너·롤배너·A배너·I배너. 자체 스탠드 사용, 거의 모든 행사장 allowed.',
-    // v9.23 보강: X배너 114회 / A배너·롤배너·I배너 추가
-    match_keywords: [
-      'x배너', 'x-배너', '엑스배너', '롤업', '롤업배너', '롤배너',
-      '스프링배너', '배너스탠드', 'a배너', 'i배너',
-    ],
-    priority: 3,
-    typical_size: '600×1800mm',
-  },
-  {
-    key: 'ceiling',
-    label: '천정배너 (행잉)',
-    description: '천장 매다는 대형 배너·구름다리·드롭배너. 행사장별 리깅 가능 여부 차이 큼.',
-    // v9.23 보강: 천정배너 10회 + 드롭배너(천장 매다는 형태)
-    match_keywords: [
-      '천정', '천장', '행잉', '리깅', '구름다리', 'hanging', '드롭배너',
-      '드롭 배너',
-    ],
-    priority: 1,
-    typical_size: '5500×4000mm (킨텍스 5홀 메인) ~ 3500×3000mm (라운지·컨퍼런스장)',
-  },
-  {
-    key: 'support',
-    label: '부속시설',
-    description: '포디움·룸사인·A4/A3 POP·라운지 안내·등록·바닥스티커·영접피켓·시상보드·포토월.',
-    // v9.23 보강 (발주엑셀 실측 표기 대량 추가):
-    // 거리두기 스티커 370회 / 발자국 스티커 60회 / 유도사인 32회 / 행사 룸사인 17회
-    // 영접피켓 10회 / 큐방·Q방 / 시트지 / 안내 룸사인 / 현황판 / 개회식 배치도
-    // 기념촬영보드 / 시상보드 / 포토월·포토존
-    match_keywords: [
-      '포디움', '룸사인', 'a4', 'a3', '폼보드', 'l보드', '라운지', '등록',
-      '비표', 'pop', '유도사인', '명패', '거리두기 스티커', '발자국 스티커',
-      '바닥스티커', '바닥 스티커', '바닥시트', '바닥 시트', '시트지',
-      '안내 룸사인', '행사 룸사인', '현황판', '영접피켓', '영접 피켓',
-      '큐방', 'q방', '스탠드 pop', '안내폼보드', '안내 폼보드',
-      '개회식 배치도', '배치도', '기념촬영보드', '시상보드', '포토존', '포토월',
-    ],
-    priority: 3,
-    typical_size: '포디움 600×200mm / A4 210×297mm / A3 297×420mm',
-  },
-]
+// 5/22 사용자 명시 = v3 SIGNAGE_CATEGORIES_V3 12 카테고리에서 자동 생성 (SOT 단일화)
+// priority: 우선순위 1 = 행사장별 규격 차이 큰 외벽·천정 영역 (통천·가로현수막·세로현수막)
+//          우선순위 2 = 외부 동선·게이트 (가로등 배너)
+//          우선순위 3 = 거의 모든 행사장 표준 (X배너·I배너·포디움·A4·A3·동선)
+const PRIORITY_MAP: Partial<Record<StandardCategoryKey, 1 | 2 | 3>> = {
+  chunchen_banner: 1, horizontal_banner: 1, vertical_banner: 1,
+  streetlight_banner: 2,
+  x_banner: 3, i_banner: 3, podium: 3, route_banner: 3,
+  a4_portrait: 3, a4_landscape: 3, a3_portrait: 3, a3_landscape: 3,
+}
+
+export const STANDARD_CATEGORIES: StandardCategoryDef[] = SIGNAGE_CATEGORIES_V3.map(c => ({
+  key: c.key as StandardCategoryKey,
+  label: c.label,
+  description: c.description,
+  match_keywords: c.match_keywords,
+  priority: PRIORITY_MAP[c.key as StandardCategoryKey] ?? 3,
+  typical_size: `${c.default_size_mm.width}×${c.default_size_mm.height}mm`,
+}))
 
 export const STANDARD_CATEGORY_BY_KEY: ReadonlyMap<StandardCategoryKey, StandardCategoryDef> =
   new Map(STANDARD_CATEGORIES.map(c => [c.key, c]))
@@ -139,21 +79,16 @@ export const STANDARD_CATEGORY_BY_KEY: ReadonlyMap<StandardCategoryKey, Standard
  */
 export function classifyCategory(categoryText: string | null | undefined): StandardCategoryKey | null {
   if (!categoryText) return null
-  const t = categoryText.toLowerCase()
-  // 외벽 우선 매칭 (천정·가로등·게이트와 키워드 겹칠 수 있음)
-  const orderedKeys: StandardCategoryKey[] = ['gate', 'ceiling', 'streetlight', 'outer_wall', 'x_banner', 'support']
-  for (const key of orderedKeys) {
-    const def = STANDARD_CATEGORY_BY_KEY.get(key)!
-    if (def.match_keywords.some(kw => t.includes(kw))) return key
-  }
-  return null
+  // 5/22 = v3 classifyCategoryV3 직접 사용 (12 카테고리 매칭 정합)
+  const v3 = classifyCategoryV3(categoryText)
+  return v3 ? (v3.key as StandardCategoryKey) : null
 }
 
 export interface VenueCategoryCoverage {
   venue_key: string
   venue_name: string
-  /** 6대 카테고리별 학습 데이터 보유 여부 */
-  has_data: Record<StandardCategoryKey, boolean>
+  /** 카테고리별 학습 데이터 보유 여부 (5/22 = 12 카테고리 + legacy 호환·Partial) */
+  has_data: Partial<Record<StandardCategoryKey, boolean>>
   /** 채워진 카테고리 수 (0~6) */
   filled_count: number
   /** 우선순위 1 카테고리(외벽·천정) 누락 여부 */
@@ -234,6 +169,10 @@ function computeMapCoverageByVenueKey(): Map<string, Record<StandardCategoryKey,
         result.set(venueKey, {
           outer_wall: false, gate: false, streetlight: false,
           x_banner: false, ceiling: false, support: false,
+          i_banner: false, streetlight_banner: false, horizontal_banner: false,
+          vertical_banner: false, chunchen_banner: false, podium: false,
+          a4_portrait: false, a4_landscape: false, a3_portrait: false, a3_landscape: false,
+          route_banner: false,
         })
       }
       const entry = result.get(venueKey)!
@@ -259,7 +198,7 @@ export function computeVenueCategoryCoverage(): VenueCategoryCoverage[] {
   const mapCoverage = computeMapCoverageByVenueKey()
 
   return VENUE_FACILITY_GUIDE_SEED.map(guide => {
-    const has: Record<StandardCategoryKey, boolean> = {
+    const has: Partial<Record<StandardCategoryKey, boolean>> = {
       outer_wall: false, gate: false, streetlight: false,
       x_banner: false, ceiling: false, support: false,
     }
@@ -304,7 +243,7 @@ export function computeVenueCategoryCoverage(): VenueCategoryCoverage[] {
 export function buildCoverageForUnregisteredVenue(venueName: string): VenueCategoryCoverage | null {
   if (!venueName?.trim()) return null
 
-  const has: Record<StandardCategoryKey, boolean> = {
+  const has: Partial<Record<StandardCategoryKey, boolean>> = {
     outer_wall: false, gate: false, streetlight: false,
     x_banner: false, ceiling: false, support: false,
   }

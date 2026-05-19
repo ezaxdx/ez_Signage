@@ -50,8 +50,8 @@ export function AiPipelineCard() {
                 {step.desc}
               </p>
               {isComing && (
-                <span className="absolute top-2 right-2 text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">
-                  커밍순
+                <span className="absolute top-2 right-2 text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">
+                  —
                 </span>
               )}
             </div>

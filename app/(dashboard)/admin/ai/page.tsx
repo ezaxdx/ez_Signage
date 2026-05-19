@@ -162,7 +162,7 @@ export default async function AdminAiPage() {
   const accuracySummary = {
     venue_avg: venueAvg,
     part_avg: venueAvg, // 현 사이클은 동일 데이터 (파트별 분리는 후속 사이클)
-    floor_plan_status: '커밍순', // 도면 Vision 학습 미가동 — IA 명시
+    floor_plan_status: '—', // 5/22 사용자 명시 = "커밍순" 워딩 빼고 "—"
   }
 
   // ② 총 API 호출 수 — usage_logs 전체 recommend 카운트 (월 한정 X, IA의 ′총′ 의미)
