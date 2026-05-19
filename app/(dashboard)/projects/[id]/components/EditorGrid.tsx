@@ -492,8 +492,8 @@ export function EditorGrid({ items, allContents, selectedItemId, onSelectItem, o
         if (ar && (ar.ko || ar.en)) tags.push('화살표')
         const qr = contents['qr_code']
         if (qr && (qr.ko || qr.en || (qr.images && qr.images.length > 0))) tags.push('QR')
-        // v8: 시설 가이드 위반 ⚠️ 아이콘 (§11-6 - silent_icon·verbose 모드에서 표시)
-        const itemIssues = facilityCheckMode !== 'off' ? facilityIssueMap?.[item.id] : undefined
+        // 5/22 사용자 명시 = 비고 "시설 확인" 배지 = verbose 모드만 노출 (silent_icon = 우측 패널 안내만)
+        const itemIssues = facilityCheckMode === 'verbose' ? facilityIssueMap?.[item.id] : undefined
         const hasWarn = itemIssues?.some(i => i.severity === 'warn')
         return (
           <span className="text-[10px] flex items-center gap-1 flex-wrap">

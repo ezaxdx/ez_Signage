@@ -767,13 +767,13 @@ async function exportToExcelDynamic(
   titleRow[0] = `환경 제작물  (${project.name})`
   if (headers.length >= 2) titleRow[headers.length - 1] = logoText
 
-  // 5/22 사용자 명시 = "우리 회사명" 워딩 부적합 → "발주 PM" 명확화 + 협력사 필드 제거(향후 빠지기로 함)
-  // 형식: A=라벨 / B=값 (1행 발주 PM·2행 행사명·3행 설치 장소·4행 행사일)
+  // 5/22 사용자 명시 = "발주 PM" → "발주사" 정정 (협력사 필드 향후 빠지기로 함)
+  // 형식: A=라벨 / B=값 (1행 발주사·2행 행사명·3행 설치 장소·4행 행사일)
   const eventDateStr = project.event_date
     ? new Date(project.event_date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
     : ''
   const infoRow1: (string | number)[] = new Array(headers.length).fill('')
-  infoRow1[0] = '발주 PM'; infoRow1[1] = 'EZPMP'
+  infoRow1[0] = '발주사'; infoRow1[1] = 'EZPMP'
   const infoRow2: (string | number)[] = new Array(headers.length).fill('')
   infoRow2[0] = '행사명'; infoRow2[1] = project.name ?? ''
   const infoRow3: (string | number)[] = new Array(headers.length).fill('')

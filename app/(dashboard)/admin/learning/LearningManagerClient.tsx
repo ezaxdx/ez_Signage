@@ -760,7 +760,6 @@ export function LearningManagerClient({
                     <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">전체 항목</th>
                     <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="실제 다운로드·발주가 완료된 항목 수 (학습 신호)">발주 완료</th>
                     <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="전체 항목 중 발주 완료 비율 (학습 풀 비중)">완료율 %</th>
-                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="외벽·게이트·가로등·X배너·천정·부속시설 학습 현황">학습 카테고리</th>
                     <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="이 행사장 프로젝트에 사용된 프로그램 파트">프로그램 파트</th>
                   </tr>
                 </thead>
@@ -802,37 +801,7 @@ export function LearningManagerClient({
                             )
                           })()}
                         </td>
-                        <td className="px-2 py-1.5 text-left">
-                          {!cov ? (
-                            <span className="text-slate-300 text-[10px]">시설 가이드 미등록</span>
-                          ) : (
-                            <div className="flex flex-col gap-0.5">
-                              <span className="text-[10px] text-slate-600 font-mono">
-                                <span className="text-emerald-600 font-semibold">{cov.filled.length}</span>
-                                /6 학습
-                              </span>
-                              {cov.filled.length > 0 && (
-                                <div className="flex flex-wrap gap-0.5">
-                                  {cov.filled.map(c => (
-                                    <span key={c} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">{c}</span>
-                                  ))}
-                                </div>
-                              )}
-                              {cov.missing.length > 0 && (
-                                <div className="flex flex-wrap gap-0.5">
-                                  {cov.missing.map(c => {
-                                    const isP1 = cov.priority_1_missing.includes(c)
-                                    return (
-                                      <span key={c} className={`inline-block px-1 py-0.5 text-[9px] rounded ${isP1 ? 'bg-rose-50 text-rose-700 font-semibold' : 'bg-slate-100 text-slate-500'}`} title={isP1 ? '우선순위 1 — 보강 필요' : '미학습'}>
-                                        {isP1 ? '!' : ''}{c}
-                                      </span>
-                                    )
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </td>
+                        {/* 5/22 사용자 명시 = "X/6 학습" 영문 키 컬럼 자체 삭제 (옛 6대 표준 = v3 12 카테고리 정합 후 잔존) */}
                         <td className="px-2 py-1.5 text-left">
                           {parts.length === 0 ? (
                             <span className="text-slate-300 text-[10px]">미입력</span>
