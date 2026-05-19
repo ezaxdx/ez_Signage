@@ -2928,17 +2928,14 @@ export function LearningManagerClient({
           </div>
         </section>
 
-        {/* 5/22 사용자 명시 = "이거 학습시켜주세요" = "행사장 규칙 추가해주세요" = 동일.
-            도면 학습 큐 영역 = 제거 (Vision 분석 = 자동 백그라운드 처리·UI 노출 X). */}
+        {/* 5/22 사용자 명시 = 행사장 규칙 추가 요청 = pendingRequests 영역 있을 때만 표시 (비어있을 때 노이즈 회피) */}
+        {pendingRequests.length > 0 && (
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-4 flex items-center gap-2">
             <Inbox className="w-4 h-4 text-amber-400" />
             행사장 규칙 추가 요청 ({pendingRequests.length})
           </h2>
-          <p className="text-[10px] text-slate-500 mb-3">사용자(사원·대리)가 새 프로젝트 만들 때 "이 행사장 없는데 등록 요청" 영역 = 곧 행사장 규칙(시설 가이드) 추가 요청. 승인 시 위 행사장 추가 영역 데이터로 즉시 변환.</p>
-          {pendingRequests.length === 0 ? (
-            <p className="text-slate-400 text-xs italic">대기 중인 요청이 없습니다.</p>
-          ) : (
+          {pendingRequests.length === 0 ? null : (
             <div className="space-y-2">
               {pendingRequests.map(req => (
                 <div key={req.id} className="flex items-start justify-between gap-3 bg-slate-50/40 border border-slate-300/60 rounded-lg p-3">
@@ -2972,6 +2969,7 @@ export function LearningManagerClient({
             </div>
           )}
         </section>
+        )}
         {/* ── 시설 가이드 KPI 요약 ───────────── */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
