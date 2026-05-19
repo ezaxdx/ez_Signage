@@ -27,35 +27,58 @@ export interface PipelineBlock {
 }
 
 export const PIPELINE_BLOCKS: Record<'step1' | 'step2' | 'step3' | 'step4' | 'step5', PipelineBlock> = {
+  // 5/21 사용자 명시 = "기본값 사용 시 실제 Gemini에 전달되는 명령어 그대로 노출"
+  // 각 step body = recommendSignage.ts buildSystemInstruction()이 합성하는 실제 본문.
   step1: {
     num: 1,
     title: '파트 후보 추출',
     desc: '선택된 프로그램 파트 다중 → 권장 환경장식물 ID 풀',
-    body: `1순위: 프로그램 파트별 환경장식물 후보 추출
-       (입력: 선택된 파트 다중)`,
+    body: `[1순위] 프로그램 파트별 환경장식물 후보 추출
+- 입력: 사용자가 선택한 프로그램 파트 다중 ({{parts}}). 예: 등록·전시·홍보·의전·영접영송.
+- 동작: lib/programParts.ts의 PROGRAM_PART_SIGNAGE_HINTS 매핑에서 파트별 권장 환경장식물 ID 풀 추출.
+- 매칭률 ≥ 30% 후보만 1차 채택 (그 외 후보는 제외).
+- 각 항목 = program_part 한글명 명시 (엑셀 "파트" 컬럼 자동 채움).
+- 12 카테고리 표준명만 사용 (백월·폼보드·시트지 등 외 영역 제외).`,
     status: 'active',
   },
   step2: {
     num: 2,
     title: '시설 가이드 제약',
     desc: '행사장별 설치 불가 카테고리 후보 제외',
-    body: `2순위: 행사장 시설 가이드 제약 — 못 설치 카테고리 후보 제외
-       (입력: 행사 장소)`,
+    body: `[2순위] 행사장 시설 가이드 제약 — 설치 불가·조건부 검사
+- 입력: 사용자가 입력한 행사 장소 ({{venue}}) + 매칭된 시설 가이드 ({{facility_guide}}).
+- 동작: venueFacilityGuide[venue].install_allowed의 각 카테고리 status 검사.
+  · status='allowed' = 정상 추천
+  · status='conditional' = note 메시지 함께 표기
+  · status='denied' = quantity 0 처리·rationale에 "[설치 불가 — 행사장 제약]" 표기
+- max_width_mm·max_height_mm 초과 시 warn 알림 부착.
+- 시설 가이드 미등록 행사장 = no_data_flag=true 표기 후 사용자 결정 위임.`,
     status: 'active',
   },
   step3: {
     num: 3,
     title: '표준 수량 산정',
     desc: '행사장 시설 가이드 표준 규격·수량 적용',
-    body: `3순위: 행사장 시설 가이드 표준 수량 — 각 후보 quantity 지정
-       (입력: 행사 장소)`,
+    body: `[3순위] 행사장 시설 가이드 표준 수량 — 각 후보 quantity 지정
+- 입력: 행사 장소 ({{venue}}) + 과거 사례 ({{past_events}}).
+- 동작: standard_width_mm·standard_height_mm 기반 규격 결정. 행사장 누적 데이터 빈도 기준 quantity 산출.
+- 면적·천장고·참가자·세션 수 기반 계산식 적용:
+  · X배너: max(2, ceil(참가자÷300) + 1)
+  · 포디움: 세션 수 × 2 (사회자·연사)
+  · 가로등 배너: 면적÷50 (외부 동선)
+- 학습 데이터 없는 카테고리 = "[추천 없음 — 학습 데이터 부재]" rationale 강제 prepend + no_data_flag=true.`,
     status: 'active',
   },
   step4: {
     num: 4,
     title: '도면 Vision 보강',
     desc: '행사장 배치도 분석 → 동선·설치 위치 컨텍스트',
-    body: `[보강] 행사장 배치도 Vision 분석 → 동선·설치 위치 컨텍스트`,
+    body: `[보강 — 도면 첨부 시만 호출]
+- 입력: 행사장 배치도 이미지 ({{floor_plan}}).
+- 동작: Gemini Vision 호출 (lib/ai/visionFloorPlan.ts analyzeFloorPlan).
+- 추출: 출입구·동선·설치 가능 영역·간섭 구간.
+- 결과: 각 추천 항목의 location 필드에 도면 기반 컨텍스트 자동 주입.
+- 미첨부 시 호출 안 함 (이 step skip).`,
     status: 'active',
   },
   // 5/20 노션 §1 (AI 호출 3종) 정합 = 행사장 특징 분석 AI = 신규 행사장 등록 시 시설가이드 텍스트화

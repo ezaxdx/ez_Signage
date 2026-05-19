@@ -116,19 +116,19 @@ export function FacilityGuidePanel({ venueName, open, onClose, focusSection }: P
         onClick={onClose}
         aria-label="가이드 닫기"
       />
-      {/* 5/20 노션 §4 정합 = 우측 → 중앙 정렬·스크롤 없이 읽히게 max-h 85vh */}
+      {/* 5/21 사용자 명시 = 시설 가이드 더 크게 노출. max-w-4xl + 폰트·여백 확대 */}
       <div
-        className="relative w-full max-w-2xl max-h-[85vh] bg-white border border-slate-200 rounded-lg shadow-2xl overflow-y-auto pointer-events-auto"
+        className="relative w-full max-w-4xl max-h-[90vh] bg-white border border-slate-200 rounded-lg shadow-2xl overflow-y-auto pointer-events-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 = 중앙 정렬 모달 정합 (rounded top) */}
-        <div className="sticky top-0 bg-white border-b border-slate-200 rounded-t-lg px-5 py-3 flex items-center justify-between">
+        <div className="sticky top-0 bg-white border-b border-slate-200 rounded-t-lg px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-slate-900 text-sm font-bold">행사장 시설 가이드</h2>
-            <p className="text-slate-500 text-xs">{guide?.venue_name ?? venueName ?? '행사장 미지정'}</p>
+            <h2 className="text-slate-900 text-base font-bold">행사장 시설 가이드</h2>
+            <p className="text-slate-500 text-sm mt-0.5">{guide?.venue_name ?? venueName ?? '행사장 미지정'}</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 transition">
-            <X className="w-4 h-4" />
+          <button onClick={onClose} className="p-2 rounded hover:bg-slate-100 text-slate-500 transition">
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -146,7 +146,7 @@ export function FacilityGuidePanel({ venueName, open, onClose, focusSection }: P
             </div>
           </div>
         ) : (
-          <div className="px-5 py-4 space-y-5 text-xs">
+          <div className="px-6 py-5 space-y-6 text-sm">
             {/* v9.34: 데이터 수집 현황 섹션 삭제 (FacilityGuidePanel — 일반 사용자 화면).
                 어드민 학습 관리자(LearningManagerClient)에는 보존. */}
 
@@ -349,10 +349,10 @@ export function FacilityGuidePanel({ venueName, open, onClose, focusSection }: P
 
 function Section({ icon, title, highlight, children }: { icon: React.ReactNode; title: string; highlight?: boolean; children: React.ReactNode }) {
   return (
-    <section className={highlight ? 'ring-2 ring-indigo-300 rounded-lg p-2 -m-2 transition' : ''}>
-      <div className="flex items-center gap-1.5 mb-2 text-slate-700">
+    <section className={highlight ? 'ring-2 ring-indigo-300 rounded-lg p-3 -m-3 transition' : ''}>
+      <div className="flex items-center gap-2 mb-3 text-slate-700">
         {icon}
-        <h3 className="font-semibold text-[12px]">{title}</h3>
+        <h3 className="font-semibold text-sm">{title}</h3>
       </div>
       {children}
     </section>

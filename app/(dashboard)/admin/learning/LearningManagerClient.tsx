@@ -701,8 +701,22 @@ export function LearningManagerClient({
                         <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{v.project_count}</td>
                         <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{v.item_count}</td>
                         <td className="px-2 py-1.5 text-right text-emerald-600 font-mono font-semibold">{v.stage.finalized}</td>
-                        <td className={`px-2 py-1.5 text-right font-mono font-semibold ${color}`}>
-                          {v.item_count > 0 ? Math.round((v.stage.finalized / v.item_count) * 100) : 0}%
+                        <td className={`px-2 py-1.5 font-mono font-semibold ${color}`}>
+                          {(() => {
+                            const pct = v.item_count > 0 ? Math.round((v.stage.finalized / v.item_count) * 100) : 0
+                            // 5/21 = 학습 누적 게이지 (회원권 시각화·학습 진행도 시각 표시)
+                            return (
+                              <div className="flex items-center gap-2 justify-end">
+                                <div className="flex-1 max-w-[80px] bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full ${pct >= 70 ? 'bg-emerald-500' : pct >= 40 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                                <span className="whitespace-nowrap min-w-[3em] text-right">{pct}%</span>
+                              </div>
+                            )
+                          })()}
                         </td>
                         <td className="px-2 py-1.5 text-left">
                           {!cov ? (

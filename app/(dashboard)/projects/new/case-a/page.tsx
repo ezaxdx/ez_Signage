@@ -14,6 +14,7 @@ import { SEED_PERFLIST } from '@/lib/data/dashboardSeed'
 import { formatNoteText } from '@/lib/text/normalizeAiText'
 import { STANDARD_CATEGORY_BY_KEY, type StandardCategoryKey } from '@/lib/data/signageCategoryStandards'
 import { PROGRAM_PARTS, PROGRAM_PART_GROUPS } from '@/lib/programParts'
+import { getHallsByVenueName } from '@/lib/venueIntel'
 
 // 과거 수행실적에서 발주처·주관기관 후보 추출 (자동완성용)
 const KNOWN_CLIENTS = Array.from(new Set(SEED_PERFLIST.map(p => p.client))).sort()
@@ -373,6 +374,28 @@ export default function CaseAPage() {
                 <datalist id="known-venues">
                   {KNOWN_VENUES.map(v => <option key={v} value={v} />)}
                 </datalist>
+                {/* 5/21 사용자 명시 = L2 홀 단위 선택 (노션 §9 정합). 매칭 venue면 hall dropdown 노출. */}
+                {(() => {
+                  const halls = getHallsByVenueName(venue)
+                  if (halls.length === 0) return null
+                  return (
+                    <select
+                      onChange={e => {
+                        const hall = e.target.value
+                        if (!hall) return
+                        const base = venue.replace(/\s+\S+(?:홀|볼룸|관|광장|올레|컨퍼런스룸|오디토리움)?$/, '').trim()
+                        setVenue(`${base || venue} ${hall}`.trim())
+                      }}
+                      className={`${inputCls} mt-1.5`}
+                      defaultValue=""
+                    >
+                      <option value="">↳ 세부 홀 선택 (선택 사항)</option>
+                      {halls.map(h => (
+                        <option key={h.name} value={h.name}>{h.name}{h.note ? ` (${h.note})` : ''}</option>
+                      ))}
+                    </select>
+                  )
+                })()}
               </Field>
               {/* 명세 6.2.4 — 입력된 장소의 과거 행사 매칭 알림 */}
               {(() => {
