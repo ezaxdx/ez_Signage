@@ -645,34 +645,41 @@ export function LearningManagerClient({
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr className="text-slate-600 text-[11px]">
+                    {/* 5/21 사용자 결정 = 발주 완료(finalized_at)만 학습 신호로 사용 →
+                        입력만·중간 수정·컨펌 3컬럼 제거. 발주 완료만 표시. */}
                     <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">행사장·홀</th>
                     <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">프로젝트</th>
                     <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">전체 항목</th>
-                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="위치·목적 미입력 단계">입력만</th>
-                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="위치·목적 일부 입력">중간 수정</th>
-                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="사용자 컨펌 완료">컨펌</th>
-                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="발주·다운로드 완료">발주 완료</th>
-                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">정확도 %</th>
+                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="실제 다운로드·발주가 완료된 항목 수 (학습 신호)">발주 완료</th>
+                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="전체 항목 중 발주 완료 비율 (학습 풀 비중)">완료율 %</th>
                     <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="외벽·게이트·가로등·X배너·천정·부속시설 학습 현황">학습 카테고리</th>
                     <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="이 행사장 프로젝트에 사용된 프로그램 파트">프로그램 파트</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {venueLearningStatus.map(v => {
+                  {/* 5/21 사용자 명시 = 정보 없는 행(발주 완료 0건 + 학습 카테고리 0건)·
+                      의미 없는 venue 이름(미정·복합·온라인+오프라인 등) 제외. */}
+                  {venueLearningStatus
+                    .filter(v => {
+                      const noLearn = v.stage.finalized === 0 && (!v.category_coverage || v.category_coverage.filled.length === 0)
+                      const stubName = ['미정', '복합', '온라인+오프라인', '온라인', '미상'].includes(v.venue?.trim() ?? '')
+                      return !(noLearn || stubName)
+                    })
+                    .map(v => {
                     const acc = v.accuracy_estimate
                     const color = acc >= 70 ? 'text-emerald-600' : acc >= 40 ? 'text-amber-600' : 'text-rose-600'
                     const parts = v.program_parts ?? []
                     const cov = v.category_coverage
                     return (
                       <tr key={v.venue} className="hover:bg-slate-50">
-                        <td className="px-2 py-1.5 text-slate-800 font-medium truncate max-w-[160px]" title={v.venue}>{v.venue}</td>
+                        {/* 5/21 = 입력/중간/컨펌 3컬럼 제거. 발주 완료 + 완료율만 표시. */}
+                        <td className="px-2 py-1.5 text-slate-800 font-medium whitespace-nowrap" title={v.venue}>{v.venue}</td>
                         <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{v.project_count}</td>
                         <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{v.item_count}</td>
-                        <td className="px-2 py-1.5 text-right text-slate-500 font-mono">{v.stage.input}</td>
-                        <td className="px-2 py-1.5 text-right text-amber-600 font-mono">{v.stage.mid}</td>
-                        <td className="px-2 py-1.5 text-right text-indigo-600 font-mono">{v.stage.confirmed}</td>
                         <td className="px-2 py-1.5 text-right text-emerald-600 font-mono font-semibold">{v.stage.finalized}</td>
-                        <td className={`px-2 py-1.5 text-right font-mono font-semibold ${color}`}>{acc}%</td>
+                        <td className={`px-2 py-1.5 text-right font-mono font-semibold ${color}`}>
+                          {v.item_count > 0 ? Math.round((v.stage.finalized / v.item_count) * 100) : 0}%
+                        </td>
                         <td className="px-2 py-1.5 text-left">
                           {!cov ? (
                             <span className="text-slate-300 text-[10px]">시설 가이드 미등록</span>

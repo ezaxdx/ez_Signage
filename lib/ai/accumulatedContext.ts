@@ -1,14 +1,13 @@
 // 점진적 정확도 향상 — 핵심 철학 구현
 // 사용자가 ′특정 장소 + 특정 행사 유형′을 선택하면,
-// 앱이 누적해온 데이터(프로젝트 입력·중간수정·컨펌·발주완료)를 가중치별로 모아
+// 앱이 누적해온 데이터(발주 완료된 프로젝트)를 모아
 // AI(Gemini)에 컨텍스트로 주입한다.
 //
-// 가중치 (decisions.md 2026-05-11 — 입력 데이터 축적: 단계별 분리 + 신뢰도 가중치):
-//   ① 입력 단계    10% — 집계 통계만
-//   ② 중간 수정    30% — 수정 패턴 추출
-//   ③ 사용자 컨펌  70% — 항목별 추천 가중치
-//   ④ 발주·다운로드 완료 100% — 정답 풀
-//   시설 가이드 검증 통과 +20%
+// 5/21 사용자 결정 = 발주 완료(finalized_at)만 학습 신호로 사용.
+//   이전 4단계 가중치(입력 10%·중간 30%·컨펌 70%·완료 100%)는 실제 운영 메커니즘이
+//   불완전했음 — confirmed/finalized_at이 ExportService.ts:483에서 동시에 set 되어
+//   70% 단계 분기가 dead code였고, input/mid는 location/purpose 입력 정황 추정이라
+//   학습 신호로 신뢰 어려움. 정직 정합 = finalized_at만.
 
 import { createClient } from '@/lib/supabase/server'
 
@@ -27,7 +26,8 @@ export interface AccumulatedItem {
   location: string | null
   purpose: string | null
   quantity: number | null
-  weight: number      // 누적 가중치 (10·30·70·100)
+  // 5/21 = 발주 완료(finalized_at) 항목만 누적되므로 weight 항상 100. 호환 보존.
+  weight: 100
 }
 
 // 시설 가이드 예외 패턴 — 알람 무시하고 완료한 케이스 (가이드 데이터가 틀렸을 신호)
@@ -67,6 +67,7 @@ export interface AdminFacilityGuide {
 export interface AccumulatedContext {
   matched_projects: number
   total_items: number
+  // 5/21 = finalized만 사용. input/mid/confirmed는 표시용 0 유지(호환).
   by_stage: { input: number; mid: number; confirmed: number; finalized: number }
   category_distribution: Array<{ category: string; weighted_count: number }>
   top_items: AccumulatedItem[]   // 상위 8건 — 프롬프트 직접 주입
@@ -77,8 +78,6 @@ export interface AccumulatedContext {
   admin_facility_guide: AdminFacilityGuide | null
   note: string
 }
-
-const STAGE_WEIGHT = { input: 10, mid: 30, confirmed: 70, finalized: 100 } as const
 
 function tokenize(s: string): string[] {
   return s.toLowerCase().split(/[\s,.,()/]+/).filter(Boolean)
@@ -140,16 +139,17 @@ export async function buildAccumulatedContext(
     if (matched.length === 0) return { ...empty, exception_patterns: [], note: '같은 행사장 누적 데이터 없음 — seed 데이터만 사용' }
     // (admin_master_* 필드는 empty에 이미 채워져 있음)
 
-    // 2) 해당 프로젝트들의 design_items 모두 끌어오기
+    // 2) 해당 프로젝트들의 design_items 중 발주 완료(finalized_at)만 끌어오기
+    //    5/21 사용자 결정 = 미완료 데이터는 학습 풀에서 제외 (신뢰할 수 있는 신호만).
     const pids = matched.map(p => p.id)
     const { data: items, error: iErr } = await supabase
       .from('design_items')
-      .select('project_id, category, width_mm, height_mm, material, location, purpose, quantity, confirmed, finalized_at')
+      .select('project_id, category, width_mm, height_mm, material, location, purpose, quantity, finalized_at')
       .in('project_id', pids)
+      .not('finalized_at', 'is', null)
 
     if (iErr || !items) return empty
 
-    // 3) 단계 분류 + 가중치 부여
     type RawItem = {
       project_id: string
       category: string | null
@@ -159,21 +159,16 @@ export async function buildAccumulatedContext(
       location: string | null
       purpose: string | null
       quantity: number | null
-      confirmed: boolean | null
       finalized_at: string | null
     }
 
     const stageCount = { input: 0, mid: 0, confirmed: 0, finalized: 0 }
     const weighted: AccumulatedItem[] = []
 
+    // 3) 발주 완료 항목만 누적 (weight 항상 100)
     for (const raw of items as RawItem[]) {
-      let weight: number
-      if (raw.finalized_at) { weight = STAGE_WEIGHT.finalized; stageCount.finalized++ }
-      else if (raw.confirmed) { weight = STAGE_WEIGHT.confirmed; stageCount.confirmed++ }
-      else if (raw.location || raw.purpose) { weight = STAGE_WEIGHT.mid; stageCount.mid++ }
-      else { weight = STAGE_WEIGHT.input; stageCount.input++ }
-
-      if (!raw.category) continue
+      if (!raw.finalized_at || !raw.category) continue
+      stageCount.finalized++
       weighted.push({
         category: raw.category,
         width_mm: raw.width_mm,
@@ -182,11 +177,11 @@ export async function buildAccumulatedContext(
         location: raw.location,
         purpose: raw.purpose,
         quantity: raw.quantity,
-        weight,
+        weight: 100,
       })
     }
 
-    // 4) 카테고리별 가중치 합계 — Gemini가 ′이 행사장에선 어떤 게 자주 나오는지′ 파악
+    // 4) 카테고리별 빈도 (가중치 모두 100이므로 빈도 카운트와 동일)
     const catMap = new Map<string, number>()
     for (const it of weighted) {
       catMap.set(it.category, (catMap.get(it.category) ?? 0) + it.weight)
@@ -195,8 +190,8 @@ export async function buildAccumulatedContext(
       .sort((a, b) => b[1] - a[1])
       .map(([category, weighted_count]) => ({ category, weighted_count }))
 
-    // 5) 상위 8건 (가중치 높은 순)
-    const topItems = weighted.sort((a, b) => b.weight - a.weight).slice(0, 8)
+    // 5) 상위 8건
+    const topItems = weighted.slice(0, 8)
 
     // 6) 시설 가이드 예외 패턴 수집 (같은 행사장 venue 기준 — 알람 무시 후 완료한 케이스)
     // 완료된 프로젝트의 exception이 "실제로 그렇게 해도 됐다"는 학습 신호 (결정 2026-05-12)
@@ -251,7 +246,7 @@ export async function buildAccumulatedContext(
       admin_signage_types: empty.admin_signage_types,
       admin_synonyms: empty.admin_synonyms,
       admin_facility_guide: empty.admin_facility_guide,
-      note: `누적 ${matched.length}개 프로젝트 · ${weighted.length}건 항목 (입력 ${stageCount.input}/중간 ${stageCount.mid}/컨펌 ${stageCount.confirmed}/완료 ${stageCount.finalized})`,
+      note: `누적 ${matched.length}개 프로젝트 · 발주 완료 항목 ${weighted.length}건 (미완료 데이터 학습 제외)`,
     }
   } catch {
     return empty
@@ -334,18 +329,17 @@ export function formatAccumulatedContext(ctx: AccumulatedContext): string {
     const size = it.width_mm && it.height_mm ? ` ${it.width_mm}×${it.height_mm}mm` : ''
     const mat = it.material ? ` / ${it.material}` : ''
     const loc = it.location ? ` @${it.location}` : ''
-    return `${i + 1}. [${it.weight}%] ${it.category}${size}${mat}${loc}`
+    return `${i + 1}. ${it.category}${size}${mat}${loc}`
   }).join('\n')
 
   const lines = [
     '',
-    '[앱 누적 데이터 — 같은 행사장 사용 기록 (가중치 적용)]',
+    '[앱 누적 데이터 — 같은 행사장 발주 완료 기록]',
     `※ ${ctx.note}`,
-    `카테고리 가중치 분포: ${dist}`,
-    '상위 항목 (단계별 가중치 표기):',
+    `카테고리 빈도 분포: ${dist}`,
+    '상위 항목 (실제 발주 완료):',
     tops,
-    '→ 가중치 70% 이상(컨펌·완료) 항목은 ′이 행사장에서 실제로 채택된′ 정답에 가까움. 우선 반영.',
-    '→ 가중치 10~30%는 패턴 참고용. 동일 항목이 반복되면 채택률이 상승 중이라는 신호.',
+    '→ 모든 항목 = 실제로 다운로드·발주가 완료된 정답 신호. 우선 반영.',
   ]
 
   // 시설 가이드 예외 패턴 — 완료된 예외는 "실제로 허용된 것"으로 추천 시 반영
