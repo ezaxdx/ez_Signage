@@ -707,56 +707,63 @@ export function NewProjectButton({ userId, userEmail }: Props) {
       }
     }
 
-    // 5/22 사용자 명시 = AI 추천 받기 버튼 대신·새 프로젝트 만들기 자동 추천. design_items에 추가 INSERT
-    try {
-      const recommendRes = await fetch('/api/recommend', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          eventName: info.name,
-          venue: info.event_venue || '미정',
-          programParts: programPartsArr,
-          eventDate: info.event_date || null,
-          clientName: info.client_name || null,
-        }),
-      })
-      if (recommendRes.ok) {
+    // 라이브 통계 캐시 무효화 — 다음 모달 열 때 새 프로젝트 반영
+    invalidateLiveStatsCache()
+
+    // 5/22 사용자 명시 = AI 추천 받기 버튼 대신·새 프로젝트 만들기 자동 추천 + 진단 영역: handleCreate 흐름 차단 회피 (router.push 후 background fire-and-forget)
+    const projectId = project.id
+    const recommendBody = {
+      eventName: info.name,
+      venue: info.event_venue || '미정',
+      programParts: programPartsArr,
+      eventDate: info.event_date || null,
+      clientName: info.client_name || null,
+    }
+    setIsLoading(false)
+    isCreatingRef.current = false
+    router.push(`/projects/${projectId}`)
+
+    // background에서 AI 추천 호출 → design_items 자동 INSERT. UX 차단 영역 X.
+    void (async () => {
+      try {
+        const recommendRes = await fetch('/api/recommend', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(recommendBody),
+        })
+        if (!recommendRes.ok) {
+          console.warn('[AI 자동 추천] API 응답 실패', recommendRes.status)
+          return
+        }
         const recommendData = await recommendRes.json()
         const aiItems = (recommendData.items ?? []) as Array<{
           program_part?: string; program_part_name?: string;
           category_label?: string; location?: string; purpose?: string;
           quantity?: number; material?: string; width_mm?: number; height_mm?: number;
         }>
-        if (aiItems.length > 0) {
-          const aiInsertRows = aiItems.map((it, i) => ({
-            project_id: project.id,
-            no: String(idx + i).padStart(2, '0'),
-            part: it.program_part_name ?? null,
-            category: it.category_label ?? '미정',
-            location: it.location ?? null,
-            purpose: it.purpose ?? null,
-            quantity: it.quantity ?? 1,
-            material: it.material ?? null,
-            width_mm: it.width_mm ?? null,
-            height_mm: it.height_mm ?? null,
-          }))
-          const { data: createdAi } = await supabase.from('design_items').insert(aiInsertRows).select('id')
-          if (createdAi) allItemIds.push(...createdAi.map((i: { id: string }) => i.id))
-          console.log(`[AI 자동 추천] ✓ ${aiItems.length}개 항목 추가`)
-        }
-      } else {
-        console.warn('[AI 자동 추천] API 응답 실패 (정상 프로젝트 생성은 진행)', recommendRes.status)
+        if (aiItems.length === 0) return
+        // 현 시점 idx = handleCreate 영역 외부 영역 X. design_items 최신 no 영역 = 별도 query.
+        const { data: existing } = await supabase.from('design_items').select('no').eq('project_id', projectId).order('no', { ascending: false }).limit(1)
+        const startNo = existing?.[0]?.no ? parseInt(existing[0].no, 10) + 1 : 1
+        const aiInsertRows = aiItems.map((it, i) => ({
+          project_id: projectId,
+          no: String(startNo + i).padStart(2, '0'),
+          part: it.program_part_name ?? null,
+          category: it.category_label ?? '미정',
+          location: it.location ?? null,
+          purpose: it.purpose ?? null,
+          quantity: it.quantity ?? 1,
+          material: it.material ?? null,
+          width_mm: it.width_mm ?? null,
+          height_mm: it.height_mm ?? null,
+        }))
+        const { error } = await supabase.from('design_items').insert(aiInsertRows)
+        if (error) console.warn('[AI 자동 추천] design_items INSERT 실패:', error.message)
+        else console.log(`[AI 자동 추천] ✓ ${aiItems.length}개 항목 추가`)
+      } catch (err) {
+        console.warn('[AI 자동 추천] 호출 실패:', err)
       }
-    } catch (err) {
-      console.warn('[AI 자동 추천] 호출 실패 (정상 프로젝트 생성은 진행):', err)
-    }
-
-    // 라이브 통계 캐시 무효화 — 다음 모달 열 때 새 프로젝트 반영
-    invalidateLiveStatsCache()
-
-    setIsLoading(false)
-    isCreatingRef.current = false
-    router.push(`/projects/${project.id}`)
+    })()
   }
 
   return (
