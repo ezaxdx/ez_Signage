@@ -1014,119 +1014,113 @@ export function LearningManagerClient({
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr className="text-slate-600 text-[11px]">
-                    {/* 5/22 사용자 명시 = ▶ 화살표 펼침 (코엑스 누르면 휘하 정보) */}
+                    {/* 5/22 사용자 명시 = ▶ 펼침 = 휘하 홀 영역 (코엑스 → 그랜드볼룸·아셈볼룸 등). 헤더 = 휘하 영역 정합. */}
                     <th className="px-2 py-2 w-6"></th>
-                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">행사장·홀</th>
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">행사장 / 휘하 홀</th>
                     <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">프로젝트</th>
                     <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">전체 항목</th>
                     <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="실제 다운로드·발주가 완료된 항목 수 (학습 신호)">발주 완료</th>
-                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="현재 = 학습 진행도 (발주 완료 비율). 향후 = 정확도 (AI 추천값 vs 사용자 최종값 비교·migration_v16 영역 누적 후)">학습 진행도 %</th>
-                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="이 행사장에서 사용된 환경장식물 종류 (event_history.signage_breakdown 합산·signage_types.name 매칭만)">환경장식물 종류</th>
-                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="이 행사장에서 진행한 프로그램 파트">프로그램 파트</th>
+                    <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="AI 추천 정확도 = 사용자가 수정하지 않은 비율. 초기 100%·수정 시마다 감점·item_edit_log 영역 누적 후 정확 측정. 현재는 발주 완료 비율로 임시 대체.">AI 추천 정확도 %</th>
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="이 휘하 홀에서 사용된 환경장식물 종류 (event_history.signage_breakdown 합산·signage_types.name 매칭만)">환경장식물 종류</th>
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="이 휘하 홀에서 진행한 프로그램 파트">프로그램 파트</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {/* 5/21 사용자 명시 = 정보 없는 행(발주 완료 0건 + 학습 카테고리 0건)·
-                      의미 없는 venue 이름(미정·복합·온라인+오프라인 등) 제외. */}
-                  {venueLearningStatus
-                    .filter(v => {
+                  {/* 5/22 사용자 명시 = 행사장별 그룹핑 (코엑스·킨텍스 등 L1)·▶ 펼침 = 휘하 L2 홀 (그랜드볼룸·아셈볼룸·D홀 등). 휘하 행사 펼침 X. */}
+                  {(() => {
+                    const filtered = venueLearningStatus.filter(v => {
                       const noLearn = v.stage.finalized === 0 && (!v.category_coverage || v.category_coverage.filled.length === 0)
                       const stubName = ['미정', '복합', '온라인+오프라인', '온라인', '미상'].includes(v.venue?.trim() ?? '')
                       return !(noLearn || stubName)
                     })
-                    .map(v => {
-                    const acc = v.accuracy_estimate
-                    const color = acc >= 70 ? 'text-emerald-600' : acc >= 40 ? 'text-amber-600' : 'text-rose-600'
-                    const parts = v.program_parts ?? []
-                    // 5/22 사용자 명시 = ▶ 화살표 펼침 영역 (코엑스 누르면 휘하 행사 목록)
-                    const isOpen = expandedVenueLearningKey === v.venue
-                    const subEvents = unifiedEventHistory.filter(e => e.venue === v.venue || (e.venue ?? '').includes(v.venue))
-                    return (
-                      <React.Fragment key={v.venue}>
-                      <tr className="hover:bg-slate-50 cursor-pointer" onClick={() => setExpandedVenueLearningKey(isOpen ? null : v.venue)}>
-                        <td className="px-2 py-1.5 text-slate-400 text-[11px]">{subEvents.length > 0 ? (isOpen ? '▼' : '▶') : ''}</td>
-                        <td className="px-2 py-1.5 text-slate-800 font-medium whitespace-nowrap" title={v.venue}>{v.venue}</td>
-                        <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{v.project_count}</td>
-                        <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{v.item_count}</td>
-                        <td className="px-2 py-1.5 text-right text-emerald-600 font-mono font-semibold">{v.stage.finalized}</td>
-                        <td className={`px-2 py-1.5 font-mono font-semibold ${color}`}>
-                          {(() => {
-                            const pct = v.item_count > 0 ? Math.round((v.stage.finalized / v.item_count) * 100) : 0
-                            // 5/21 = 학습 누적 게이지 (회원권 시각화·학습 진행도 시각 표시)
-                            return (
+                    // L1 그룹 = venue 이름 첫 단어 (코엑스·킨텍스·송도 등)
+                    const groups = new Map<string, typeof filtered>()
+                    for (const v of filtered) {
+                      const g = (v.venue ?? '').split(' ')[0] || v.venue
+                      if (!groups.has(g)) groups.set(g, [])
+                      groups.get(g)!.push(v)
+                    }
+                    const out: React.ReactNode[] = []
+                    Array.from(groups.entries()).forEach(([groupName, members]) => {
+                      const isGroupOpen = expandedVenueLearningKey === groupName
+                      const groupProjects = members.reduce((s, m) => s + m.project_count, 0)
+                      const groupItems = members.reduce((s, m) => s + m.item_count, 0)
+                      const groupFinalized = members.reduce((s, m) => s + m.stage.finalized, 0)
+                      const groupPct = groupItems > 0 ? Math.round((groupFinalized / groupItems) * 100) : 0
+                      const groupColor = groupPct >= 70 ? 'text-emerald-600' : groupPct >= 40 ? 'text-amber-600' : 'text-rose-600'
+                      // L1 = 행사장 그룹 행
+                      out.push(
+                        <tr key={`L1-${groupName}`} className="bg-indigo-50/60 hover:bg-indigo-50 cursor-pointer border-t-2 border-indigo-100"
+                            onClick={() => setExpandedVenueLearningKey(isGroupOpen ? null : groupName)}>
+                          <td className="px-2 py-1.5 text-indigo-700 text-center font-semibold">{isGroupOpen ? '▼' : '▶'}</td>
+                          <td className="px-2 py-1.5 text-indigo-900 font-semibold whitespace-nowrap">
+                            {groupName} <span className="text-[10px] text-indigo-500 ml-1 font-normal">(휘하 홀 {members.length})</span>
+                          </td>
+                          <td className="px-2 py-1.5 text-right text-indigo-700 font-mono">{groupProjects}</td>
+                          <td className="px-2 py-1.5 text-right text-indigo-700 font-mono">{groupItems}</td>
+                          <td className="px-2 py-1.5 text-right text-emerald-700 font-mono">{groupFinalized}</td>
+                          <td className={`px-2 py-1.5 text-right font-mono font-semibold ${groupColor}`}>{groupPct}%</td>
+                          <td colSpan={2} className="px-2 py-1.5 text-indigo-500 text-[10px]">L1 행사장 그룹</td>
+                        </tr>
+                      )
+                      if (!isGroupOpen) return
+                      // L2 = 휘하 홀 (그랜드볼룸·아셈볼룸 등)
+                      members.forEach(v => {
+                        const acc = v.accuracy_estimate
+                        const color = acc >= 70 ? 'text-emerald-600' : acc >= 40 ? 'text-amber-600' : 'text-rose-600'
+                        const parts = v.program_parts ?? []
+                        const pct = v.item_count > 0 ? Math.round((v.stage.finalized / v.item_count) * 100) : 0
+                        // L2 = 그룹명 제외한 휘하 홀 이름 (예: "코엑스 그랜드볼룸" → "그랜드볼룸")
+                        const subName = v.venue.startsWith(groupName + ' ') ? v.venue.slice(groupName.length + 1) : v.venue
+                        out.push(
+                          <tr key={`L2-${v.venue}`} className="hover:bg-slate-50">
+                            <td className="px-2 py-1.5 text-slate-300 text-[11px] text-center">·</td>
+                            <td className="px-2 py-1.5 text-slate-800 whitespace-nowrap pl-6" title={v.venue}>{subName}</td>
+                            <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{v.project_count}</td>
+                            <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{v.item_count}</td>
+                            <td className="px-2 py-1.5 text-right text-emerald-600 font-mono font-semibold">{v.stage.finalized}</td>
+                            <td className={`px-2 py-1.5 font-mono font-semibold ${color}`}>
                               <div className="flex items-center gap-2 justify-end">
                                 <div className="flex-1 max-w-[80px] bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full ${pct >= 70 ? 'bg-emerald-500' : pct >= 40 ? 'bg-amber-500' : 'bg-rose-500'}`}
-                                    style={{ width: `${pct}%` }}
-                                  />
+                                  <div className={`h-full rounded-full ${pct >= 70 ? 'bg-emerald-500' : pct >= 40 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${pct}%` }} />
                                 </div>
                                 <span className="whitespace-nowrap min-w-[3em] text-right">{pct}%</span>
                               </div>
-                            )
-                          })()}
-                        </td>
-                        {/* 5/22 사용자 명시 = 행사장에서 사용된 환경장식물 종류 = unifiedEventHistory venue 그룹핑·signage_types.name 매칭만 */}
-                        <td className="px-2 py-1.5 text-left">
-                          {(() => {
-                            const validNames = new Set(signageTypeList.map(s => s.name))
-                            const venueAgg = venueAggregateByName.get(v.venue)
-                            const fromAgg = venueAgg ? Array.from(venueAgg.signage.keys()) : []
-                            const fromLive = (v.signage_breakdown ?? []).map(s => s.category)
-                            const usedTypes = Array.from(new Set([...fromAgg, ...fromLive].filter(c => validNames.has(c))))
-                            if (usedTypes.length === 0) {
-                              return <span className="text-slate-300 text-[10px]">—</span>
-                            }
-                            return (
-                              <div className="flex flex-wrap gap-0.5">
-                                {usedTypes.map(name => (
-                                  <span key={name} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">{name}</span>
-                                ))}
-                              </div>
-                            )
-                          })()}
-                        </td>
-                        <td className="px-2 py-1.5 text-left">
-                          {(() => {
-                            // 5/22 사용자 명시 = venue 영역에서 진행한 프로그램 파트 = unifiedEventHistory + parts 합산
-                            const venueAgg = venueAggregateByName.get(v.venue)
-                            const fromAgg = venueAgg ? Array.from(venueAgg.program_parts).map(code => PROGRAM_PART_BY_CODE.get(code)?.name ?? code) : []
-                            const allParts = Array.from(new Set([...fromAgg, ...parts]))
-                            if (allParts.length === 0) return <span className="text-slate-300 text-[10px]">미입력</span>
-                            return (
-                              <div className="flex flex-wrap gap-0.5">
-                                {allParts.map(pt => (
-                                  <span key={pt} className="inline-block px-1 py-0.5 bg-indigo-50 text-indigo-700 text-[9px] rounded">{pt}</span>
-                                ))}
-                              </div>
-                            )
-                          })()}
-                        </td>
-                      </tr>
-                      {isOpen && subEvents.length > 0 && (
-                        <tr className="bg-slate-50">
-                          <td></td>
-                          <td colSpan={7} className="px-2 py-2">
-                            <div className="text-[10px] text-slate-600 mb-2 font-semibold">{v.venue} 휘하 행사 ({subEvents.length}건)</div>
-                            <table className="w-full text-[11px]">
-                              <thead><tr className="text-slate-500 text-[10px]"><th className="px-2 py-1 text-left">행사명</th><th className="px-2 py-1 text-right">연도</th><th className="px-2 py-1 text-right">총 수량</th><th className="px-2 py-1 text-left">파트</th></tr></thead>
-                              <tbody>
-                                {subEvents.map((se, i) => (
-                                  <tr key={i} className="border-t border-slate-200">
-                                    <td className="px-2 py-1">{se.project_name}</td>
-                                    <td className="px-2 py-1 text-right font-mono">{se.year ?? '—'}</td>
-                                    <td className="px-2 py-1 text-right font-mono">{se.analyzed_item_count ?? '—'}</td>
-                                    <td className="px-2 py-1 text-[10px] text-slate-500">{(se.program_parts ?? []).map(c => PROGRAM_PART_BY_CODE.get(c)?.name ?? c).join(' · ') || '—'}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </td>
-                        </tr>
-                      )}
-                      </React.Fragment>
-                    )
-                  })}
+                            </td>
+                            <td className="px-2 py-1.5 text-left">
+                              {(() => {
+                                const validNames = new Set(signageTypeList.map(s => s.name))
+                                const venueAgg = venueAggregateByName.get(v.venue)
+                                const fromAgg = venueAgg ? Array.from(venueAgg.signage.keys()) : []
+                                const fromLive = (v.signage_breakdown ?? []).map(s => s.category)
+                                const usedTypes = Array.from(new Set([...fromAgg, ...fromLive].filter(c => validNames.has(c))))
+                                if (usedTypes.length === 0) return <span className="text-slate-300 text-[10px]">—</span>
+                                return (
+                                  <div className="flex flex-wrap gap-0.5">
+                                    {usedTypes.map(name => <span key={name} className="inline-block px-1 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded">{name}</span>)}
+                                  </div>
+                                )
+                              })()}
+                            </td>
+                            <td className="px-2 py-1.5 text-left">
+                              {(() => {
+                                const venueAgg = venueAggregateByName.get(v.venue)
+                                const fromAgg = venueAgg ? Array.from(venueAgg.program_parts).map(code => PROGRAM_PART_BY_CODE.get(code)?.name ?? code) : []
+                                const allParts = Array.from(new Set([...fromAgg, ...parts]))
+                                if (allParts.length === 0) return <span className="text-slate-300 text-[10px]">미입력</span>
+                                return (
+                                  <div className="flex flex-wrap gap-0.5">
+                                    {allParts.map(pt => <span key={pt} className="inline-block px-1 py-0.5 bg-indigo-50 text-indigo-700 text-[9px] rounded">{pt}</span>)}
+                                  </div>
+                                )
+                              })()}
+                            </td>
+                          </tr>
+                        )
+                      })
+                    })
+                    return out
+                  })()}
                 </tbody>
               </table>
             </div>
@@ -1390,45 +1384,238 @@ export function LearningManagerClient({
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="text-slate-500 border-b border-slate-200">
+                  <tr className="text-slate-500 border-b border-slate-200 text-[11px]">
+                    {/* 5/22 사용자 명시 = 행사장 학습 현황과 동일 댑스. L1 행사장 그룹 → L2 휘하 홀. 헤더 = 휘하 영역 정합. */}
                     <th className="text-left p-2 w-6"></th>
-                    <th className="text-left p-2">이름</th>
+                    <th className="text-left p-2">행사장 / 휘하 홀</th>
                     <th className="text-left p-2">권역</th>
                     <th className="text-left p-2">유형</th>
-                    <th className="text-left p-2">하위 홀 (L2)</th>
+                    <th className="text-right p-2">휘하 행사</th>
+                    <th className="text-right p-2">환경장식물</th>
                     <th className="text-left p-2">도면</th>
-                    <th className="text-left p-2">도면 학습</th>
-                    <th className="text-left p-2">등록일</th>
                     <th className="text-right p-2">행위</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {/* 5/22 P2-6 = 정렬 1순위 최신 created_at·2순위 가나다 */}
-                  {venues.slice().sort((a, b) => {
-                    const ad = a.created_at ? new Date(a.created_at).getTime() : 0
-                    const bd = b.created_at ? new Date(b.created_at).getTime() : 0
-                    if (ad !== bd) return bd - ad
-                    return a.name.localeCompare(b.name, 'ko')
-                  }).map(v => {
+                  {/* 5/22 사용자 명시 = 행사장 학습 현황과 동일 댑스. L1 그룹 (코엑스·킨텍스 등) + ▶ 펼침 = L2 휘하 홀 행. */}
+                  {(() => {
+                    const sortedVenues = venues.slice().sort((a, b) => {
+                      const ad = a.created_at ? new Date(a.created_at).getTime() : 0
+                      const bd = b.created_at ? new Date(b.created_at).getTime() : 0
+                      if (ad !== bd) return bd - ad
+                      return a.name.localeCompare(b.name, 'ko')
+                    })
+                    const venueGroups = new Map<string, typeof sortedVenues>()
+                    for (const v of sortedVenues) {
+                      const g = (v.name ?? '').split(' ')[0] || v.name
+                      if (!venueGroups.has(g)) venueGroups.set(g, [])
+                      venueGroups.get(g)!.push(v)
+                    }
+                    const out: React.ReactNode[] = []
+                    const validTypeNames = new Set(signageTypeList.map(s => s.name))
+                    const typeByName = new Map(signageTypeList.map(s => [s.name, s] as const))
+                    Array.from(venueGroups.entries()).forEach(([groupName, members]) => {
+                      const isGroupOpen = expandedVenueId === groupName
+                      // 그룹 통계
+                      let groupEventCount = 0
+                      let groupSigQty = 0
+                      for (const v of members) {
+                        const venueEvents = unifiedEventHistory.filter(ev => {
+                          const vname = (ev.venue ?? '').trim()
+                          if (!vname) return false
+                          return vname === v.name || vname.includes(v.name) || v.name.includes(vname)
+                        })
+                        groupEventCount += venueEvents.length
+                        for (const ev of venueEvents) {
+                          for (const s of ev.signage_breakdown ?? []) {
+                            if (validTypeNames.has(s.category)) groupSigQty += s.quantity
+                          }
+                        }
+                      }
+                      // L1 = 행사장 그룹 행
+                      out.push(
+                        <tr key={`L1-${groupName}`} className="bg-indigo-50/60 hover:bg-indigo-50 cursor-pointer border-t-2 border-indigo-100"
+                            onClick={() => setExpandedVenueId(isGroupOpen ? null : groupName)}>
+                          <td className="p-2 text-indigo-700 text-center font-semibold">{isGroupOpen ? '▼' : '▶'}</td>
+                          <td className="p-2 text-indigo-900 font-semibold">
+                            <div className="flex items-center gap-1.5">
+                              <Building2 className="w-3 h-3 text-indigo-500" />
+                              {groupName} <span className="text-[10px] text-indigo-500 ml-1 font-normal">(휘하 홀 {members.length})</span>
+                            </div>
+                          </td>
+                          <td className="p-2 text-indigo-500 text-[10px]">—</td>
+                          <td className="p-2 text-indigo-500 text-[10px]">—</td>
+                          <td className="p-2 text-right text-emerald-700 font-mono">{groupEventCount}건</td>
+                          <td className="p-2 text-right text-amber-700 font-mono">{groupSigQty}개</td>
+                          <td colSpan={2} className="p-2 text-indigo-500 text-[10px]">L1 행사장 그룹</td>
+                        </tr>
+                      )
+                      if (!isGroupOpen) return
+                      // L2 = 휘하 홀 (각 venue 행)
+                      members.forEach(v => {
+                        let halls = getHallsByVenueName(v.name)
+                        const isComplexVenue = /[·\/]|외$|외\s/.test(v.name)
+                        if (halls.length === 0 && isComplexVenue) {
+                          const split = extractL1L2FromComplexVenue(v.name)
+                          if (split.l1Info) halls = getHallsByVenueName(split.l1Info.displayName)
+                        }
+                        const venueEvents = unifiedEventHistory.filter(ev => {
+                          const vname = (ev.venue ?? '').trim()
+                          if (!vname) return false
+                          return vname === v.name || vname.includes(v.name) || v.name.includes(vname)
+                        })
+                        // 5/22 사용자 명시 = 환경장식물별 사용 확률·평균 수량·가장 많이 사용한 규격 영역
+                        const sigCountMap = new Map<string, number>()          // 종류 → 총 수량
+                        const sigEventMap = new Map<string, number>()          // 종류 → 사용 행사 수
+                        const sigSizeFreqMap = new Map<string, Map<string, number>>() // 종류 → (규격 → 빈도)
+                        for (const ev of venueEvents) {
+                          const seenInEvent = new Set<string>()
+                          for (const s of ev.signage_breakdown ?? []) {
+                            if (!validTypeNames.has(s.category)) continue
+                            sigCountMap.set(s.category, (sigCountMap.get(s.category) ?? 0) + s.quantity)
+                            if (!seenInEvent.has(s.category)) {
+                              sigEventMap.set(s.category, (sigEventMap.get(s.category) ?? 0) + 1)
+                              seenInEvent.add(s.category)
+                            }
+                            if (s.sizes) {
+                              const fm = sigSizeFreqMap.get(s.category) ?? new Map<string, number>()
+                              s.sizes.split('·').forEach(z => {
+                                const k = z.trim()
+                                if (k) fm.set(k, (fm.get(k) ?? 0) + s.quantity)
+                              })
+                              sigSizeFreqMap.set(s.category, fm)
+                            }
+                          }
+                        }
+                        const sigSorted = Array.from(sigCountMap.entries()).sort((a, b) => b[1] - a[1])
+                        const totalSigQty = Array.from(sigCountMap.values()).reduce((a, b) => a + b, 0)
+                        const isVenueOpen = expandedVenueId === `L2-${v.id}`
+                        const subName = v.name.startsWith(groupName + ' ') ? v.name.slice(groupName.length + 1) : v.name
+                        out.push(
+                          <tr key={`L2-row-${v.id}`} className="hover:bg-slate-50/50 cursor-pointer"
+                              onClick={() => setExpandedVenueId(isVenueOpen ? null : `L2-${v.id}`)}>
+                            <td className="p-2 text-slate-400 text-[11px] text-center">{isVenueOpen ? '▽' : '▷'}</td>
+                            <td className="p-2 text-slate-800 pl-6">
+                              <div className="flex items-center gap-1">
+                                <MapPin className="w-3 h-3 text-slate-400" />
+                                {subName}
+                                {halls.length > 0 && <span className="text-[9px] text-indigo-500 ml-1">(노션 §9 매칭 {halls.length})</span>}
+                              </div>
+                            </td>
+                            <td className="p-2 text-slate-500 text-[10px]">{v.region ?? '—'}</td>
+                            <td className="p-2 text-slate-500 text-[10px]">{v.venue_type ?? '—'}</td>
+                            <td className="p-2 text-right text-emerald-600 font-mono">{venueEvents.length > 0 ? `${venueEvents.length}건` : <span className="text-slate-300">—</span>}</td>
+                            <td className="p-2 text-right">
+                              <div className="text-amber-700 font-mono text-[11px]">{sigCountMap.size}<span className="text-[9px] text-slate-400 ml-0.5">종</span></div>
+                              <div className="text-slate-500 font-mono text-[9px]">{totalSigQty}개</div>
+                            </td>
+                            <td className="p-2">
+                              {v.floor_plan_url ? (
+                                <a href={v.floor_plan_url} target="_blank" rel="noopener" onClick={e => e.stopPropagation()} className="text-indigo-500 hover:underline flex items-center gap-1 text-[10px]">
+                                  <FileText className="w-3 h-3" /> 보기
+                                </a>
+                              ) : (
+                                <span className="text-slate-300 text-[10px]">없음</span>
+                              )}
+                            </td>
+                            <td className="p-2 text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                              <button
+                                onClick={async () => {
+                                  const newName = prompt('행사장 이름', v.name)
+                                  if (newName === null) return
+                                  const newRegion = prompt('권역', v.region ?? '')
+                                  if (newRegion === null) return
+                                  const newType = prompt('유형', v.venue_type ?? '')
+                                  if (newType === null) return
+                                  try {
+                                    const res = await fetch(`/api/admin/venues/${v.id}`, {
+                                      method: 'PATCH',
+                                      headers: { 'content-type': 'application/json' },
+                                      body: JSON.stringify({ name: newName.trim(), region: newRegion.trim() || null, venue_type: newType.trim() || null }),
+                                    })
+                                    if (!res.ok) { const d = await res.json(); throw new Error(d.error || res.statusText) }
+                                    setVenues(prev => prev.map(x => x.id === v.id ? { ...x, name: newName.trim(), region: newRegion.trim() || null, venue_type: newType.trim() || null } : x))
+                                  } catch (e) { alert('수정 실패: ' + (e instanceof Error ? e.message : 'unknown')) }
+                                }}
+                                title="편집"
+                                className="text-[11px] text-slate-400 hover:text-indigo-600"
+                              >✎</button>
+                            </td>
+                          </tr>
+                        )
+                        // L2 펼침 = 환경장식물 종류·규격·평균 수량 표 (사용자 명시 = 환경장식물 규격 영역 제공)
+                        if (isVenueOpen) {
+                          out.push(
+                            <tr key={`L2-detail-${v.id}`} className="bg-slate-50/60">
+                              <td></td>
+                              <td colSpan={7} className="px-4 py-3">
+                                <div className="text-[10px] text-slate-600 font-semibold mb-2">{subName} — 환경장식물 사용 내역 (종류·규격·수량)</div>
+                                {sigSorted.length === 0 ? (
+                                  <div className="text-[10px] text-slate-400 italic">— 매칭된 행사·환경장식물 사용 내역 없음</div>
+                                ) : (
+                                  <table className="w-full text-[11px]">
+                                    <thead>
+                                      <tr className="text-slate-500 text-[10px] border-b border-slate-200">
+                                        <th className="px-2 py-1 text-left">환경장식물 종류</th>
+                                        <th className="px-2 py-1 text-right" title="해당 행사장에서 진행한 행사 중 이 환경장식물을 사용한 비율">사용 확률</th>
+                                        <th className="px-2 py-1 text-right" title="사용한 행사 1건당 평균 수량">평균 수량/행사</th>
+                                        <th className="px-2 py-1 text-left" title="실제 발주에서 가장 많이 사용된 규격 (빈도 1위)">가장 많이 사용 규격</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {sigSorted.map(([name, qty], i) => {
+                                        const usedEvents = sigEventMap.get(name) ?? 0
+                                        const probability = venueEvents.length > 0 ? Math.round((usedEvents / venueEvents.length) * 100) : 0
+                                        const avg = usedEvents > 0 ? (qty / usedEvents).toFixed(1) : '—'
+                                        const freqMap = sigSizeFreqMap.get(name)
+                                        const topSize = freqMap && freqMap.size > 0
+                                          ? Array.from(freqMap.entries()).sort((a, b) => b[1] - a[1])[0][0]
+                                          : null
+                                        const t = typeByName.get(name)
+                                        const fallbackSize = t ? `${t.width_mm}×${t.height_mm}` : '—'
+                                        const probColor = probability >= 70 ? 'text-emerald-700' : probability >= 30 ? 'text-amber-700' : 'text-slate-500'
+                                        return (
+                                          <tr key={i} className="border-t border-slate-200">
+                                            <td className="px-2 py-1 text-slate-800">{name}</td>
+                                            <td className={`px-2 py-1 text-right font-mono ${probColor}`}>{probability}%<span className="text-[9px] text-slate-400 ml-0.5">({usedEvents}/{venueEvents.length})</span></td>
+                                            <td className="px-2 py-1 text-right font-mono text-emerald-700">{avg}개</td>
+                                            <td className="px-2 py-1 text-slate-700 font-mono text-[10px]">
+                                              {topSize ? (
+                                                <span className="inline-block px-1 py-0 bg-indigo-50 text-indigo-700 rounded">{topSize}mm</span>
+                                              ) : (
+                                                <span className="text-slate-400">{fallbackSize}mm <span className="text-[9px]">(기본 규격)</span></span>
+                                              )}
+                                            </td>
+                                          </tr>
+                                        )
+                                      })}
+                                    </tbody>
+                                  </table>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        }
+                      })
+                    })
+                    return out
+                  })()}
+                  {/* 기존 통합 관리표 영역 제거 = 단순 댑스 패턴 정합 */}
+                  {false && venues.slice().map(v => {
                     const venueJobs = jobs.filter(j => j.venue_id === v.id)
                     const doneJob = venueJobs.find(j => j.status === 'done')
                     const pendingJob = venueJobs.find(j => j.status === 'queued' || j.status === 'processing')
                     const failedJob = venueJobs.find(j => j.status === 'failed')
-                    // 5/22 사용자 명시 = 복합 venue 영역 자동 분리·L1 매칭 영역에서 휘하 L2 표시
                     let halls = getHallsByVenueName(v.name)
                     const isComplexVenue = /[·\/]|외$|외\s/.test(v.name)
                     let extractedL2: string[] = []
                     if (halls.length === 0 && isComplexVenue) {
                       const split = extractL1L2FromComplexVenue(v.name)
-                      if (split.l1Info) {
-                        halls = getHallsByVenueName(split.l1Info.displayName)
-                      }
+                      if (split.l1Info) halls = getHallsByVenueName(split.l1Info.displayName)
                       extractedL2 = split.l2
                     }
                     const isExpanded = expandedVenueId === v.id
-                    // 5/22 사용자 명시 = 행사장별 통합 관리표 = 항상 펼침 가능 (휘하 행사·시설 가이드·KPI 영역 포함)
                     const canExpand = true
-                    // 5/22 = 휘하 행사·환경장식물 영역 = unifiedEventHistory 매칭
                     const venueEvents = unifiedEventHistory.filter(ev => {
                       const vname = (ev.venue ?? '').trim()
                       if (!vname) return false
@@ -1445,7 +1632,6 @@ export function LearningManagerClient({
                     }
                     const totalSigQty = Array.from(sigCountMap.values()).reduce((a, b) => a + b, 0)
                     const sigSorted = Array.from(sigCountMap.entries()).sort((a, b) => b[1] - a[1])
-                    // 시설 가이드 매칭
                     const matchedGuide = facilityGuideStatus.find(f => f.venue_name === v.name || v.name.includes(f.venue_name) || f.venue_name.includes(v.name))
                     return (
                     <React.Fragment key={v.id}>
@@ -2780,16 +2966,16 @@ export function LearningManagerClient({
           ) : (
             <div className="overflow-x-auto border border-slate-200 rounded">
               <p className="px-2 py-1 text-[10px] text-slate-500 bg-slate-50 border-b border-slate-200">
-                3 댑스 펼침 = L1 행사장 그룹(코엑스·킨텍스 등) → L2 세부 홀(그랜드볼룸·아셈볼룸 등) → L3 학습 내용 (카테고리·주의사항·리깅·안전·디지털 사이니지)
+                행사장 학습 현황과 동일 댑스 = L1 행사장 그룹 펼침 → L2 휘하 홀 표시·홀 행 펼침 → 가이드 학습 내용 (설치 가능 카테고리·주의사항·리깅·안전·디지털 사이니지)
               </p>
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr className="text-slate-600 text-[11px]">
                     <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap w-6"></th>
-                    <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">행사장·홀</th>
-                    <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">카테고리</th>
+                    <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">행사장 / 휘하 홀</th>
+                    <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">설치 가능 카테고리</th>
                     <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">주의사항</th>
-                    <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap" title="시설 가이드 정보 6 영역(설치 가능 영역·설치 방법·리깅·안전 기준·주의사항·디지털 사이니지) 중 채워진 영역. 환경장식물 종류 X.">가이드 정보</th>
+                    <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap" title="시설 가이드 정보 6 영역(설치 가능 영역·설치 방법·리깅·안전 기준·주의사항·디지털 사이니지) 중 채워진 영역">가이드 정보</th>
                     <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">학습 시점</th>
                     <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">AI 추출</th>
                     {isAdmin && <th className="px-2 py-1.5 text-center font-semibold w-8"></th>}
