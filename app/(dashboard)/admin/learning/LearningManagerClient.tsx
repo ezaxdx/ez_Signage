@@ -2443,6 +2443,12 @@ export function LearningManagerClient({
 
         {/* v9.36: 평면 메뉴 ′시설 가이드′ — 가이드 + 예외 패턴 두 블록 묶음 */}
         {activeSection === 'facility-guides' && <>
+        {/* 5/22 사용자 명시 = 도면 학습 큐·사용자 요청 대기·도면 첨부 영역 = 시설 가이드 메뉴 영역 이동 안내 */}
+        <section className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+          <p className="text-[11px] text-amber-800">
+            도면·시설 가이드북 첨부·도면 학습 큐·사용자 요청 대기 영역 = 시설 가이드 메뉴 영역 통합 영역. 현재 = 행사장 관리 메뉴 영역에서도 노출 영역 (다음 사이클 = 행사장 영역에서 제거).
+          </p>
+        </section>
         {/* ── 시설 가이드 KPI 요약 ───────────── */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
