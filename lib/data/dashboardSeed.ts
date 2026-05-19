@@ -336,25 +336,26 @@ export const SEED_EVENT_HISTORY: EventHistorySeed[] = [
   { project_name: 'BIXPO 2018 행사 (본계약)',                     project_code: '183300-1',year: 2018, venue: '광주 김대중컨벤션센터',          category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.04', '40.19'] },
   { project_name: '제13회 광주비엔날레',                          project_code: '201100',  year: 2020, venue: '광주비엔날레전시관',             category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.17', '40.19'] },
   { project_name: '중소기업 스마트 제조혁신 전략보고회',          project_code: '182120',  year: 2018, venue: '경남도청 대회의실',              category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.04', '40.08'] },
-  { project_name: '2025년 APEC 경제행사 대행 용역',               project_code: '251014',  year: 2025, venue: '경주',                          category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.04', '40.08', '40.18', '40.11'] },
+  // 5/22 사용자 명시 = 경주 = 지역 영역·정확 행사장명 영역 = HICO 경주화백컨벤션센터
+  { project_name: '2025년 APEC 경제행사 대행 용역',               project_code: '251014',  year: 2025, venue: 'HICO (경주화백컨벤션센터)',      category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.04', '40.08', '40.18', '40.11'] },
   { project_name: '4차 산업혁명시대, 관광과 박물관',              project_code: '193910',  year: 2019, venue: '국립중앙박물관',                category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.04', '40.05'] },
   // 광화문 광장
-  { project_name: '2018 실패박람회',                              project_code: '182040',  year: 2018, venue: '광화문 광장',                    category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.10', '40.17', '40.19'] },
-  { project_name: '2019 실패박람회',                              project_code: '192400',  year: 2019, venue: '광화문 광장',                    category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.10', '40.17', '40.19'] },
-  { project_name: '제100주년 3.1절 중앙기념식',                   project_code: '192000',  year: 2019, venue: '광화문 광장·세종로공원',         category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 52, program_parts: ['40.08', '40.18', '40.19'], signage_breakdown: [
+  { project_name: '2018 실패박람회',                              project_code: '182040',  year: 2018, venue: '광화문광장 (서울)',                    category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.10', '40.17', '40.19'] },
+  { project_name: '2019 실패박람회',                              project_code: '192400',  year: 2019, venue: '광화문광장 (서울)',                    category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.10', '40.17', '40.19'] },
+  { project_name: '제100주년 3.1절 중앙기념식',                   project_code: '192000',  year: 2019, venue: '광화문광장·세종로공원 (서울)',         category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 52, program_parts: ['40.08', '40.18', '40.19'], signage_breakdown: [
     { category: '행사장 (등록·음수대·방한용품·물품보관소)', quantity: 46, sizes: '2종 표준' },
     { category: '야외 (주차장·주차장·운영요원)', quantity: 28, sizes: '5×5m·기타' },
     { category: '실내', quantity: 4, sizes: '600×1800' },
   ] },
   // DDP·서울스퀘어
   { project_name: '제1회 대한민국 정부혁신박람회',                project_code: '191400',  year: 2019, venue: '동대문디자인플라자 (DDP) 알림1·2관', category_tag: '일반', has_excel: true,  has_image: true, analyzed_item_count: 22, program_parts: ['40.05', '40.08', '40.10', '40.17', '40.19'] },
-  { project_name: '농식품 청년해외개척단 8기 발대식',             project_code: '191600',  year: 2019, venue: '서울스퀘어',                     category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.08', '40.18'] },
+  { project_name: '농식품 청년해외개척단 8기 발대식',             project_code: '191600',  year: 2019, venue: '서울스퀘어 (서울)',                     category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.08', '40.18'] },
   // aT
   { project_name: '2019 대한민국 식품대전',                       project_code: '191200',  year: 2019, venue: 'aT센터',                         category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.19', '40.17'] },
   // 오스코
   { project_name: '2025 대한민국 정부 박람회',                    project_code: '252006',  year: 2025, venue: '오스코 (OSCO)',                  category_tag: '일반', has_excel: true,  has_image: true, program_parts: ['40.05', '40.08', '40.19', '40.17'] },
   // 핵심 폴더
-  { project_name: '2020 평창평화포럼',                            project_code: '193960',  year: 2020, venue: '평창 알펜시아',                  category_tag: '핵심', has_excel: true,  has_image: true, analyzed_item_count: 251, program_parts: ['40.04', '40.18', '40.19'], signage_breakdown: [
+  { project_name: '2020 평창평화포럼',                            project_code: '193960',  year: 2020, venue: '알펜시아 리조트 (평창)',         category_tag: '핵심', has_excel: true,  has_image: true, analyzed_item_count: 251, program_parts: ['40.04', '40.18', '40.19'], signage_breakdown: [
     { category: '세로현수막', quantity: 174, sizes: '600×1800·700×1800·600×2000' },
     { category: 'X배너', quantity: 30, sizes: '600×1800' },
     { category: '가로현수막', quantity: 15, sizes: '10000×900·12000×1500' },
