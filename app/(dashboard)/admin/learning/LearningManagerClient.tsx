@@ -239,13 +239,13 @@ export function LearningManagerClient({
   // 개요·프로그램 파트 메뉴는 시안에 없어 제거. 부연 desc도 제거.
   // v9.47 (2026-05-14): IA SOT(김연아 대리님 노션) 정렬 검증 완료 — v9.36 6 평면 메뉴와 100% 일치.
   //   사이드바 추가 변경 없음. dead state(venueSubTab·synonymSubTab) 단순화만 진행.
+  // 5/20 노션 §12 정합 = correction-requests 별도 메뉴 제거 → 시설 가이드 아래로 통합
   type SectionKey =
     | 'venue-status'
     | 'venues'
     | 'signage-types'
     | 'synonyms-mapping'
     | 'facility-guides'
-    | 'correction-requests'
   const [activeSection, setActiveSection] = useState<SectionKey>('venue-status')
   // v9.47: VenueSubKey/SynonymSubKey 타입과 venueSubTab/synonymSubTab state는 dead code (v9.36에서
   //   섹션 내 서브탭 가로바 제거 후 사용처 0건). VENUE_SUBTABS 상수도 동일 — 타입 단순화 위해 모두 제거.
@@ -261,10 +261,9 @@ export function LearningManagerClient({
       .finally(() => setExceptionLoading(false))
   }, [activeSection])
 
-  // v9.36: 수정요청 메뉴 진입 시 API 조회
-  // v9.37: admin 통합 API(/api/admin/correction-requests) 사용 + ′all′ 상태 조회
+  // 5/20 노션 §12 정합 = facility-guides 진입 시 수정 요청도 함께 조회 (통합)
   useEffect(() => {
-    if (activeSection !== 'correction-requests') return
+    if (activeSection !== 'facility-guides') return
     setCorrectionLoading(true)
     fetch('/api/admin/correction-requests?status=all')
       .then(r => r.json())
@@ -282,7 +281,7 @@ export function LearningManagerClient({
     { key: 'signage-types',        label: '환경장식물 종류',   icon: ImageIcon },
     { key: 'synonyms-mapping',     label: '동의어 매핑',       icon: FileText },
     { key: 'facility-guides',      label: '시설 가이드',       icon: AlertCircle },
-    { key: 'correction-requests',  label: '수정요청',          icon: Flag },
+    // 5/20 노션 §12 정합 = correction-requests 별도 메뉴 제거 → facility-guides 내부 통합
   ]
 
   // v9.47: VENUE_SUBTABS 상수 제거 — v9.36에서 가로 서브탭 바를 제거하고 블록을 세로 동시 표시로
@@ -1634,10 +1633,7 @@ export function LearningManagerClient({
           )}
         </section>
 
-        </>}
-
-        {/* v9.31: correction-requests 사이드바 항목 제거 → 행사장 대섹션의 ′수정 요청′ 서브탭 */}
-        {activeSection === 'correction-requests' && (
+        {/* 5/20 노션 §12 정합 = 시설 가이드 아래 수정 요청 통합 */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
             <Flag className="w-4 h-4 text-rose-500" />
@@ -1747,7 +1743,8 @@ export function LearningManagerClient({
             </div>
           )}
         </section>
-        )}
+
+        </>}
 
         {/* v9.32 신규 — 프로그램 파트 메뉴 (4번): PROGRAM_PARTS 12종을 그룹별 카드로 표시.
             편집·추가·삭제는 추후 사이클 (현재 read-only). NewProjectButton·case-a 위자드에서 사용. */}
