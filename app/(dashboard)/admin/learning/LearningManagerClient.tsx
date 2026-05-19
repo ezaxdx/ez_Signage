@@ -3492,6 +3492,8 @@ export function LearningManagerClient({
         venueName={facilityPanelVenue}
         open={facilityPanelVenue !== null}
         onClose={() => setFacilityPanelVenue(null)}
+        adminMode={isAdmin}
+        venueId={facilityPanelVenue ? (venues.find(v => v.name === facilityPanelVenue)?.id ?? null) : null}
       />
     </div>
   )

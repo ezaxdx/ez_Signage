@@ -74,10 +74,20 @@ export function FacilityGuidePanel({ venueName, open, onClose, focusSection, adm
   const [correctionOpen, setCorrectionOpen] = useState(false)
   const [correctionText, setCorrectionText] = useState('')
   const [correctionDone, setCorrectionDone] = useState(false)
-  // 5/22 사용자 명시 = admin 영역 직접 수정 영역 (카테고리·주의사항 textarea)
+  // 5/22 사용자 명시 = admin 영역 = 6 영역 모두 직접 수정 영역 (카테고리·주의사항·설치 방법·리깅·안전·디지털 사이니지)
   const [editMode, setEditMode] = useState(false)
   const [editCategories, setEditCategories] = useState('')
   const [editWarnings, setEditWarnings] = useState('')
+  const [editMountNote, setEditMountNote] = useState('')
+  const [editRiggingAvail, setEditRiggingAvail] = useState<'true'|'false'|'unknown'>('unknown')
+  const [editRiggingLoad, setEditRiggingLoad] = useState('')
+  const [editRiggingNote, setEditRiggingNote] = useState('')
+  const [editSafetyFire, setEditSafetyFire] = useState('')
+  const [editSafetyFall, setEditSafetyFall] = useState('')
+  const [editSafetyElectric, setEditSafetyElectric] = useState('')
+  const [editSafetyWeather, setEditSafetyWeather] = useState('')
+  const [editDigitalNote, setEditDigitalNote] = useState('')
+  const [editSpecialNotes, setEditSpecialNotes] = useState('')
   const [editSaving, setEditSaving] = useState(false)
   const [editSaved, setEditSaved] = useState(false)
 
@@ -85,6 +95,16 @@ export function FacilityGuidePanel({ venueName, open, onClose, focusSection, adm
     if (!guide) return
     setEditCategories((guide.install_allowed ?? []).map(i => i.category + (i.note ? ` — ${i.note}` : '')).join('\n'))
     setEditWarnings((guide.warnings ?? []).map(w => w.description ?? w.type ?? '').join('\n'))
+    setEditMountNote(guide.mount_methods?.note ?? '')
+    setEditRiggingAvail(guide.rigging?.available === true ? 'true' : guide.rigging?.available === false ? 'false' : 'unknown')
+    setEditRiggingLoad(guide.rigging?.max_load_kg ? String(guide.rigging.max_load_kg) : '')
+    setEditRiggingNote(guide.rigging?.note ?? '')
+    setEditSafetyFire(guide.safety?.fire ?? '')
+    setEditSafetyFall(guide.safety?.fall ?? '')
+    setEditSafetyElectric(guide.safety?.electric ?? '')
+    setEditSafetyWeather(guide.safety?.weather ?? '')
+    setEditDigitalNote(guide.digital_signage?.note ?? '')
+    setEditSpecialNotes((guide.special_notes ?? []).join('\n'))
     setEditMode(true)
   }
 
@@ -97,7 +117,27 @@ export function FacilityGuidePanel({ venueName, open, onClose, focusSection, adm
         return { category: cat, status: 'allowed' as const, note: rest.length > 0 ? rest.join('—') : undefined }
       })
       const warnList = editWarnings.split('\n').map(s => s.trim()).filter(Boolean).map(d => ({ type: '주의사항', description: d }))
-      const newJson = { ...(guide ?? {}), install_allowed: catList, warnings: warnList, last_updated: new Date().toISOString().slice(0, 10) }
+      const newJson = {
+        ...(guide ?? {}),
+        install_allowed: catList,
+        warnings: warnList,
+        mount_methods: { ...(guide?.mount_methods ?? {}), note: editMountNote.trim() || undefined },
+        rigging: {
+          ...(guide?.rigging ?? {}),
+          available: editRiggingAvail === 'true' ? true : editRiggingAvail === 'false' ? false : undefined,
+          max_load_kg: editRiggingLoad.trim() ? Number(editRiggingLoad) : undefined,
+          note: editRiggingNote.trim() || undefined,
+        },
+        safety: {
+          fire: editSafetyFire.trim() || undefined,
+          fall: editSafetyFall.trim() || undefined,
+          electric: editSafetyElectric.trim() || undefined,
+          weather: editSafetyWeather.trim() || undefined,
+        },
+        digital_signage: { ...(guide?.digital_signage ?? {}), note: editDigitalNote.trim() || undefined },
+        special_notes: editSpecialNotes.split('\n').map(s => s.trim()).filter(Boolean),
+        last_updated: new Date().toISOString().slice(0, 10),
+      }
       const res = await fetch(`/api/admin/venues/${venueId}`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
@@ -190,20 +230,60 @@ export function FacilityGuidePanel({ venueName, open, onClose, focusSection, adm
           </div>
         </div>
 
-        {/* 5/22 사용자 명시 = admin 편집 모드 영역 = 카테고리·주의사항 textarea 직접 편집 */}
+        {/* 5/22 사용자 명시 = admin 편집 모드 영역 = 6 영역 모두 직접 편집 */}
         {adminMode && editMode && (
           <div className="px-6 py-5 space-y-4 bg-amber-50/40 border-b border-amber-200">
             <div>
-              <label className="block text-sm text-slate-700 font-semibold mb-1">설치 가능 환경장식물 카테고리</label>
-              <p className="text-[10px] text-slate-500 mb-1.5">1줄 1건·′카테고리 — 상세 메모′ 영역 영역 (예: ′X배너 — 컨벤션홀 자립형′)</p>
-              <textarea value={editCategories} onChange={e => setEditCategories(e.target.value)} rows={8} className="w-full text-xs border border-slate-300 rounded px-2 py-1.5 font-mono" />
+              <label className="block text-sm text-slate-700 font-semibold mb-1">① 설치 가능 환경장식물 카테고리</label>
+              <p className="text-[10px] text-slate-500 mb-1.5">1줄 1건·′카테고리 — 상세 메모′ (예: ′X배너 — 컨벤션홀 자립형′)</p>
+              <textarea value={editCategories} onChange={e => setEditCategories(e.target.value)} rows={6} className="w-full text-xs border border-slate-300 rounded px-2 py-1.5 font-mono" />
             </div>
             <div>
-              <label className="block text-sm text-slate-700 font-semibold mb-1">주의사항</label>
-              <p className="text-[10px] text-slate-500 mb-1.5">1줄 1건 영역 (예: ′외벽 부착 = 운영팀 사전 협의 의무′)</p>
-              <textarea value={editWarnings} onChange={e => setEditWarnings(e.target.value)} rows={5} className="w-full text-xs border border-slate-300 rounded px-2 py-1.5" />
+              <label className="block text-sm text-slate-700 font-semibold mb-1">② 주의사항</label>
+              <p className="text-[10px] text-slate-500 mb-1.5">1줄 1건 (예: ′외벽 부착 = 운영팀 사전 협의 의무′)</p>
+              <textarea value={editWarnings} onChange={e => setEditWarnings(e.target.value)} rows={4} className="w-full text-xs border border-slate-300 rounded px-2 py-1.5" />
             </div>
-            <p className="text-[10px] text-slate-500">※ 설치 방법·리깅·안전 기준·디지털 사이니지 영역 = 다음 사이클 영역 (현재 = 카테고리·주의사항만 영역 직접 편집).</p>
+            <div>
+              <label className="block text-sm text-slate-700 font-semibold mb-1">③ 설치 방법 메모</label>
+              <p className="text-[10px] text-slate-500 mb-1.5">타카·자석·접착제·행거·로프 영역 공통 메모 (예: ′리깅 영역 운영팀 협의′)</p>
+              <input value={editMountNote} onChange={e => setEditMountNote(e.target.value)} className="w-full text-xs border border-slate-300 rounded px-2 py-1.5" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-sm text-slate-700 font-semibold mb-1">④ 리깅 가능</label>
+                <select value={editRiggingAvail} onChange={e => setEditRiggingAvail(e.target.value as 'true'|'false'|'unknown')} className="w-full text-xs border border-slate-300 rounded px-2 py-1.5">
+                  <option value="unknown">확인 필요</option>
+                  <option value="true">가능</option>
+                  <option value="false">불가</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-slate-700 font-semibold mb-1">최대 하중 (kg)</label>
+                <input type="number" value={editRiggingLoad} onChange={e => setEditRiggingLoad(e.target.value)} placeholder="50" className="w-full text-xs border border-slate-300 rounded px-2 py-1.5" />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-700 font-semibold mb-1">리깅 메모</label>
+                <input value={editRiggingNote} onChange={e => setEditRiggingNote(e.target.value)} placeholder="예: 운영팀 도면 영역" className="w-full text-xs border border-slate-300 rounded px-2 py-1.5" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm text-slate-700 font-semibold mb-1">⑤ 안전 기준</label>
+              <div className="grid grid-cols-2 gap-2">
+                <input value={editSafetyFire} onChange={e => setEditSafetyFire(e.target.value)} placeholder="화재 (예: 난연 2급 이상)" className="text-xs border border-slate-300 rounded px-2 py-1.5" />
+                <input value={editSafetyFall} onChange={e => setEditSafetyFall(e.target.value)} placeholder="낙하 (예: 리깅 2점)" className="text-xs border border-slate-300 rounded px-2 py-1.5" />
+                <input value={editSafetyElectric} onChange={e => setEditSafetyElectric(e.target.value)} placeholder="전기 (예: 220V)" className="text-xs border border-slate-300 rounded px-2 py-1.5" />
+                <input value={editSafetyWeather} onChange={e => setEditSafetyWeather(e.target.value)} placeholder="기상 (예: 실내 영역)" className="text-xs border border-slate-300 rounded px-2 py-1.5" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm text-slate-700 font-semibold mb-1">⑥ 디지털 사이니지 메모</label>
+              <input value={editDigitalNote} onChange={e => setEditDigitalNote(e.target.value)} placeholder="예: 컨벤션홀 LED 영역" className="w-full text-xs border border-slate-300 rounded px-2 py-1.5" />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-700 font-semibold mb-1">특이사항</label>
+              <p className="text-[10px] text-slate-500 mb-1.5">1줄 1건 (예: ′리조트 영업팀 D-30 이전 협의′)</p>
+              <textarea value={editSpecialNotes} onChange={e => setEditSpecialNotes(e.target.value)} rows={3} className="w-full text-xs border border-slate-300 rounded px-2 py-1.5" />
+            </div>
           </div>
         )}
 
