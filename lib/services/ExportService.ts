@@ -564,6 +564,10 @@ export async function exportSingleToPPT(
 // PDF 인쇄용 출력 — 실물 mm 규격 + 300dpi (BANNER_GENERATOR_DESIGN.md 7항)
 // ══════════════════════════════════════════════════════════
 
+/**
+ * 5/22 사용자 명시 = PDF → PPT 양식 변환. 16:9 (338.84×190.5mm)·헤더 메타 표·하단 디자인 영역·표지 페이지.
+ * exportToPPT와 동일 구조. 실물 mm 영역 = 정확한 mm 출력은 별도 PNG export 영역 (다음 사이클).
+ */
 export async function exportToPDF(
   project: Project,
   items: DesignItem[],
@@ -571,34 +575,102 @@ export async function exportToPDF(
 ): Promise<void> {
   const { jsPDF } = await import('jspdf')
 
-  // 첫 아이템 규격으로 PDF 시작 (각 페이지마다 규격 다를 수 있어 동적 생성)
-  const first = items[0]
-  if (!first) return
+  // PPT 영역과 동일 16:9 (13.3"×7.5" = 338.84×190.5mm)
+  const PAGE_W = 338.84
+  const PAGE_H = 190.5
+  const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [PAGE_W, PAGE_H], compress: true })
 
-  const pdf = new jsPDF({
-    orientation: (first.width_mm ?? 0) > (first.height_mm ?? 0) ? 'landscape' : 'portrait',
-    unit: 'mm',
-    format: [first.width_mm ?? 600, first.height_mm ?? 1800],
-    compress: true,
-  })
+  // ── 표지 페이지 ──
+  const dateCtx = getMilestoneDates(project)
+  pdf.setFontSize(28)
+  pdf.setTextColor(31, 41, 55)
+  pdf.text(project.name ?? '제작물 리스트', PAGE_W / 2, 40, { align: 'center' })
+  pdf.setFontSize(12)
+  pdf.setTextColor(100, 116, 139)
+  const eventDateStr = project.event_date
+    ? new Date(project.event_date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
+    : ''
+  const coverLines = [
+    ['행사명', project.name ?? ''],
+    ['장소', project.event_venue ?? ''],
+    ['일자', eventDateStr],
+    ['발주사', 'EZPMP'],
+    ['총 항목 수', String(items.length)],
+    ...(dateCtx.installDate ? [['설치일자', dateCtx.installDate]] : []),
+    ...(dateCtx.uninstallDate ? [['철거일자', dateCtx.uninstallDate]] : []),
+    ...(dateCtx.orderDate ? [['발주일', dateCtx.orderDate]] : []),
+  ]
+  let yCursor = 70
+  for (const [label, value] of coverLines) {
+    pdf.setTextColor(100, 116, 139)
+    pdf.text(label, PAGE_W / 2 - 50, yCursor)
+    pdf.setTextColor(31, 41, 55)
+    pdf.text(value, PAGE_W / 2 - 20, yCursor)
+    yCursor += 9
+  }
 
+  // ── 각 제작물 페이지 ──
   for (let pageIdx = 0; pageIdx < items.length; pageIdx++) {
+    pdf.addPage([PAGE_W, PAGE_H], 'landscape')
     const item = items[pageIdx]
     const widthMm = item.width_mm ?? 600
     const heightMm = item.height_mm ?? 1800
     const contents = allContents[item.id] ?? {}
 
-    if (pageIdx > 0) {
-      pdf.addPage(
-        [widthMm, heightMm],
-        widthMm > heightMm ? 'landscape' : 'portrait'
-      )
+    // 상단 메타 표 (PPT 14컬럼 영역)
+    const META_Y = 12
+    const META_H = 33
+    pdf.setDrawColor(217, 217, 217)
+    pdf.setFillColor(217, 217, 217)
+    pdf.rect(8, META_Y, PAGE_W - 16, 7, 'F')
+    pdf.setFontSize(7)
+    pdf.setTextColor(31, 41, 55)
+    const headers = ['NO', '파트', '구분', '장소', '사용목적', '품목', '언어', '규격', '재질', '수량', '내용']
+    const colWidths = [12, 22, 24, 28, 30, 28, 16, 24, 24, 12, 100]
+    let xCursor = 8
+    for (let i = 0; i < headers.length; i++) {
+      pdf.text(headers[i], xCursor + colWidths[i] / 2, META_Y + 5, { align: 'center' })
+      xCursor += colWidths[i]
+    }
+    // 데이터 행
+    pdf.setFontSize(8)
+    pdf.setDrawColor(229, 231, 235)
+    pdf.rect(8, META_Y + 7, PAGE_W - 16, 7)
+    xCursor = 8
+    const values = [
+      item.no ?? String(pageIdx + 1).padStart(2, '0'),
+      item.part ?? '',
+      item.category ?? '',
+      item.location ?? '',
+      item.purpose ?? '',
+      item.category ?? '',
+      item.language ?? '',
+      `${widthMm}×${heightMm}`,
+      item.material ?? '',
+      String(item.quantity ?? 1),
+      Object.values(contents).map(s => [s.ko, s.en].filter(Boolean).join(' / ')).filter(Boolean).join(' · '),
+    ]
+    for (let i = 0; i < values.length; i++) {
+      const text = String(values[i] ?? '')
+      const truncated = text.length > 30 ? text.substring(0, 28) + '..' : text
+      pdf.text(truncated, xCursor + 1, META_Y + 12, { maxWidth: colWidths[i] - 2 })
+      xCursor += colWidths[i]
     }
 
-    // 배경 이미지 (있다면 채우기)
+    // 하단 디자인 영역 (PPT 영역과 동일 비율 유지)
+    const DESIGN_Y = META_Y + 14 + 5
+    const DESIGN_MAX_H = PAGE_H - DESIGN_Y - 8
+    const DESIGN_MAX_W = PAGE_W - 16
+    const aspect = widthMm / heightMm
+    let finalW = DESIGN_MAX_W
+    let finalH = finalW / aspect
+    if (finalH > DESIGN_MAX_H) {
+      finalH = DESIGN_MAX_H
+      finalW = finalH * aspect
+    }
+    const designX = (PAGE_W - finalW) / 2
     if (item.image_url) {
       try {
-        // CORS 회피를 위해 fetch + base64 변환
         const res = await fetch(item.image_url)
         const blob = await res.blob()
         const reader = new FileReader()
@@ -606,27 +678,37 @@ export async function exportToPDF(
           reader.onload = () => resolve(reader.result as string)
           reader.readAsDataURL(blob)
         })
-        pdf.addImage(dataUrl, 'WEBP', 0, 0, widthMm, heightMm, undefined, 'FAST')
+        const fmt = (blob.type.includes('png') ? 'PNG' : blob.type.includes('webp') ? 'WEBP' : 'JPEG') as 'PNG' | 'WEBP' | 'JPEG'
+        pdf.addImage(dataUrl, fmt, designX, DESIGN_Y, finalW, finalH, undefined, 'FAST')
       } catch (err) {
         console.warn('PDF image load failed for', item.id, err)
       }
+    } else {
+      // 시안 영역 없을 때 dashed placeholder
+      pdf.setDrawColor(203, 213, 225)
+      pdf.setLineDashPattern([2, 2], 0)
+      pdf.rect(designX, DESIGN_Y, finalW, finalH)
+      pdf.setLineDashPattern([], 0)
+      pdf.setFontSize(10)
+      pdf.setTextColor(148, 163, 184)
+      pdf.text('디자이너 작업 영역', PAGE_W / 2, DESIGN_Y + finalH / 2, { align: 'center' })
     }
 
-    // 슬롯 텍스트 — % 좌표 → mm 변환
+    // 슬롯 텍스트 영역 (이미지 위에 텍스트 박스)
     pdf.setTextColor(255, 255, 255)
     for (const [, slot] of Object.entries(contents)) {
       const text = [slot.ko, slot.en].filter(Boolean).join('\n')
       if (!text) continue
-      const xMm = (slot.x / 100) * widthMm
-      const yMm = (slot.y / 100) * heightMm
-      const fontSizeMm = ((slot.fontSize || 16) * 0.3528)  // pt → mm
-      pdf.setFontSize(slot.fontSize || 16)
-      pdf.text(text, xMm, yMm + fontSizeMm, { align: 'center', maxWidth: ((slot.w ?? 70) / 100) * widthMm })
+      const xMm = designX + (slot.x / 100) * finalW
+      const yMm = DESIGN_Y + (slot.y / 100) * finalH
+      pdf.setFontSize(slot.fontSize ? Math.min(slot.fontSize * 0.6, 18) : 10)
+      pdf.text(text, xMm, yMm + 4, { align: 'center', maxWidth: ((slot.w ?? 70) / 100) * finalW })
     }
   }
 
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
   pdf.save(`${project.name}_제작물_${dateStr}.pdf`)
+  void logUsage('export_excel', { project_id: project.id, item_count: items.length, action_kind: 'pdf' })
 }
 
 // ══════════════════════════════════════════════════════════
