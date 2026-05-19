@@ -83,6 +83,59 @@ export function matchVenue(eventVenue: string | null): VenueInfo | null {
 }
 
 /**
+ * L2 (상세 행사장 / 홀) — 노션 페이지 1 §9 시드.
+ *
+ * 출처: 노션 페이지 36148589-8ea1-81a3-b3e8-dd4a833c914c §9 행사장 관리.
+ * 5/14 회의 결정 = "구역·홀 단위로 묶기 (계층 구조)".
+ *
+ * 현재 = 정적 시드. 향후 = Supabase venue_halls 테이블 (v6 마이그레이션) + 관리자 UI 추가/수정/삭제.
+ */
+export interface VenueHall {
+  /** 부모 VenueInfo.key */
+  parent_key: string
+  /** 홀 이름 (예: "그랜드볼룸", "제1전시장 1·2홀") */
+  name: string
+  /** 비고 (정식 명칭 확인·면적·운영실 별도 등) */
+  note?: string
+}
+
+export const VENUE_HALLS: VenueHall[] = [
+  // COEX (코엑스) — 그랜드볼룸·아셈볼룸·오디토리움·컨퍼런스룸(북·남)·A~E홀
+  { parent_key: '코엑스', name: '그랜드볼룸' },
+  { parent_key: '코엑스', name: '아셈볼룸' },
+  { parent_key: '코엑스', name: '오디토리움' },
+  { parent_key: '코엑스', name: '컨퍼런스룸 (북)' },
+  { parent_key: '코엑스', name: '컨퍼런스룸 (남)' },
+  { parent_key: '코엑스', name: 'A홀' },
+  { parent_key: '코엑스', name: 'B홀' },
+  { parent_key: '코엑스', name: 'C홀' },
+  { parent_key: '코엑스', name: 'D홀' },
+  { parent_key: '코엑스', name: 'E홀' },
+  // KINTEX (킨텍스) — 제1전시장 / 제2전시장 / 그랜드볼룸
+  { parent_key: '킨텍스', name: '제1전시장 1·2홀' },
+  { parent_key: '킨텍스', name: '제1전시장 3·4·5홀' },
+  { parent_key: '킨텍스', name: '제1전시장 6·7·8홀' },
+  { parent_key: '킨텍스', name: '제1전시장 9·10홀' },
+  { parent_key: '킨텍스', name: '제2전시장 7A홀' },
+  { parent_key: '킨텍스', name: '제2전시장 8홀' },
+  { parent_key: '킨텍스', name: '제2전시장 9A홀' },
+  { parent_key: '킨텍스', name: '제2전시장 9B홀' },
+  { parent_key: '킨텍스', name: '제2전시장 10홀' },
+  { parent_key: '킨텍스', name: '그랜드볼룸' },
+  // DDP (동대문디자인플라자)
+  { parent_key: 'DDP', name: '알림1관', note: '정식 명칭 확인 필요' },
+  { parent_key: 'DDP', name: '알림2관', note: '정식 명칭 확인 필요' },
+  { parent_key: 'DDP', name: '디자인올레' },
+  { parent_key: 'DDP', name: '디자인전시관' },
+  { parent_key: 'DDP', name: '어울림광장' },
+]
+
+/** parent_key 기준 L2 홀 목록 조회 */
+export function getHallsByVenueKey(parentKey: string): VenueHall[] {
+  return VENUE_HALLS.filter(h => h.parent_key === parentKey)
+}
+
+/**
  * 향후 구현될 행사장 기반 체크 로직 설계
  *
  * 1단계 (현재): matchVenue → 알려진 행사장 여부 뱃지 표시
