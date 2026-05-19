@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   GraduationCap, MapPin, Plus, Loader2,
   CheckCircle2, XCircle, AlertCircle, Clock, FileText, Inbox, Building2,
@@ -430,6 +430,8 @@ export function LearningManagerClient({
   const [stSamplePreview, setStSamplePreview] = useState<string>('')
   // 5/22 P2-7 = 행사 관리 표 펼침 영역 (▶ 행 클릭 시 환경장식물별 분리 표시)
   const [expandedEventKey, setExpandedEventKey] = useState<string | null>(null)
+  // 5/22 사용자 명시 = 행사장 학습 현황 표 ▶ 화살표 펼침 (코엑스 휘하 행사 목록)
+  const [expandedVenueLearningKey, setExpandedVenueLearningKey] = useState<string | null>(null)
   // 5/22 사용자 명시 = 유기 연동. event_history DB 영역 fetch → SEED + DB 통합 SOT.
   // 행사 삭제 (deleted_at) = 즉시 모든 영역 (행사장 학습 현황·프로그램 파트 매칭·환경장식물 빈도·AI) 반영.
   const [dbEventHistory, setDbEventHistory] = useState<typeof SEED_EVENT_HISTORY>([])
@@ -462,6 +464,21 @@ export function LearningManagerClient({
   const unifiedEventHistory = dbEventHistory.length > 0 && !eventHistoryFallback
     ? dbEventHistory
     : SEED_EVENT_HISTORY
+
+  // 5/22 사용자 명시 = venue별 program_parts·signage_breakdown 영역 집계 (행사장 학습 현황 영역)
+  const venueAggregateByName = useMemo(() => {
+    const map = new Map<string, { program_parts: Set<string>; signage: Map<string, number> }>()
+    for (const e of unifiedEventHistory) {
+      const venueNorm = e.venue
+      if (!map.has(venueNorm)) map.set(venueNorm, { program_parts: new Set(), signage: new Map() })
+      const slot = map.get(venueNorm)!
+      for (const p of e.program_parts ?? []) slot.program_parts.add(p)
+      for (const s of e.signage_breakdown ?? []) {
+        slot.signage.set(s.category, (slot.signage.get(s.category) ?? 0) + s.quantity)
+      }
+    }
+    return map
+  }, [unifiedEventHistory])
   // 5/22 사용자 명시 = 프로그램 파트 관리 = 화살표 펼침 영역 (행사 관리와 동일 패턴)
   const [expandedPartCode, setExpandedPartCode] = useState<string | null>(null)
   // 5/22 사용자 명시 = 행사 관리 편집·삭제·추가 (localStorage 오버라이드 패턴)
@@ -932,15 +949,15 @@ export function LearningManagerClient({
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr className="text-slate-600 text-[11px]">
-                    {/* 5/21 사용자 결정 = 발주 완료(finalized_at)만 학습 신호로 사용 →
-                        입력만·중간 수정·컨펌 3컬럼 제거. 발주 완료만 표시. */}
+                    {/* 5/22 사용자 명시 = ▶ 화살표 펼침 (코엑스 누르면 휘하 정보) */}
+                    <th className="px-2 py-2 w-6"></th>
                     <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">행사장·홀</th>
                     <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">프로젝트</th>
                     <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">전체 항목</th>
                     <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="실제 다운로드·발주가 완료된 항목 수 (학습 신호)">발주 완료</th>
                     <th className="px-2 py-2 text-right font-semibold whitespace-nowrap" title="전체 항목 중 발주 완료 비율 (학습 누적 진행도)">학습 진행도 %</th>
-                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="시설 가이드에서 학습된 환경장식물 종류">환경장식물 종류</th>
-                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="이 행사장 프로젝트에 사용된 프로그램 파트">프로그램 파트</th>
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="이 행사장에서 사용된 환경장식물 종류 (event_history.signage_breakdown 합산·signage_types.name 매칭만)">환경장식물 종류</th>
+                    <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" title="이 행사장에서 진행한 프로그램 파트">프로그램 파트</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -956,10 +973,13 @@ export function LearningManagerClient({
                     const acc = v.accuracy_estimate
                     const color = acc >= 70 ? 'text-emerald-600' : acc >= 40 ? 'text-amber-600' : 'text-rose-600'
                     const parts = v.program_parts ?? []
-                    const cov = v.category_coverage
+                    // 5/22 사용자 명시 = ▶ 화살표 펼침 영역 (코엑스 누르면 휘하 행사 목록)
+                    const isOpen = expandedVenueLearningKey === v.venue
+                    const subEvents = unifiedEventHistory.filter(e => e.venue === v.venue || (e.venue ?? '').includes(v.venue))
                     return (
-                      <tr key={v.venue} className="hover:bg-slate-50">
-                        {/* 5/21 = 입력/중간/컨펌 3컬럼 제거. 발주 완료 + 완료율만 표시. */}
+                      <React.Fragment key={v.venue}>
+                      <tr className="hover:bg-slate-50 cursor-pointer" onClick={() => setExpandedVenueLearningKey(isOpen ? null : v.venue)}>
+                        <td className="px-2 py-1.5 text-slate-400 text-[11px]">{subEvents.length > 0 ? (isOpen ? '▼' : '▶') : ''}</td>
                         <td className="px-2 py-1.5 text-slate-800 font-medium whitespace-nowrap" title={v.venue}>{v.venue}</td>
                         <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{v.project_count}</td>
                         <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{v.item_count}</td>
@@ -981,13 +1001,14 @@ export function LearningManagerClient({
                             )
                           })()}
                         </td>
-                        {/* 5/22 사용자 명시 = 환경장식물 종류 메뉴 (signage_types.name) 영역에 있는 종류명만 사용 */}
+                        {/* 5/22 사용자 명시 = 행사장에서 사용된 환경장식물 종류 = unifiedEventHistory venue 그룹핑·signage_types.name 매칭만 */}
                         <td className="px-2 py-1.5 text-left">
                           {(() => {
                             const validNames = new Set(signageTypeList.map(s => s.name))
-                            const usedTypes = Array.from(new Set((v.signage_breakdown ?? [])
-                              .map(s => s.category)
-                              .filter(c => validNames.has(c))))
+                            const venueAgg = venueAggregateByName.get(v.venue)
+                            const fromAgg = venueAgg ? Array.from(venueAgg.signage.keys()) : []
+                            const fromLive = (v.signage_breakdown ?? []).map(s => s.category)
+                            const usedTypes = Array.from(new Set([...fromAgg, ...fromLive].filter(c => validNames.has(c))))
                             if (usedTypes.length === 0) {
                               return <span className="text-slate-300 text-[10px]">—</span>
                             }
@@ -1001,17 +1022,44 @@ export function LearningManagerClient({
                           })()}
                         </td>
                         <td className="px-2 py-1.5 text-left">
-                          {parts.length === 0 ? (
-                            <span className="text-slate-300 text-[10px]">미입력</span>
-                          ) : (
-                            <div className="flex flex-wrap gap-0.5">
-                              {parts.map(pt => (
-                                <span key={pt} className="inline-block px-1 py-0.5 bg-indigo-50 text-indigo-700 text-[9px] rounded">{pt}</span>
-                              ))}
-                            </div>
-                          )}
+                          {(() => {
+                            // 5/22 사용자 명시 = venue 영역에서 진행한 프로그램 파트 = unifiedEventHistory + parts 합산
+                            const venueAgg = venueAggregateByName.get(v.venue)
+                            const fromAgg = venueAgg ? Array.from(venueAgg.program_parts).map(code => PROGRAM_PART_BY_CODE.get(code)?.name ?? code) : []
+                            const allParts = Array.from(new Set([...fromAgg, ...parts]))
+                            if (allParts.length === 0) return <span className="text-slate-300 text-[10px]">미입력</span>
+                            return (
+                              <div className="flex flex-wrap gap-0.5">
+                                {allParts.map(pt => (
+                                  <span key={pt} className="inline-block px-1 py-0.5 bg-indigo-50 text-indigo-700 text-[9px] rounded">{pt}</span>
+                                ))}
+                              </div>
+                            )
+                          })()}
                         </td>
                       </tr>
+                      {isOpen && subEvents.length > 0 && (
+                        <tr className="bg-slate-50">
+                          <td></td>
+                          <td colSpan={7} className="px-2 py-2">
+                            <div className="text-[10px] text-slate-600 mb-2 font-semibold">{v.venue} 휘하 행사 ({subEvents.length}건)</div>
+                            <table className="w-full text-[11px]">
+                              <thead><tr className="text-slate-500 text-[10px]"><th className="px-2 py-1 text-left">행사명</th><th className="px-2 py-1 text-right">연도</th><th className="px-2 py-1 text-right">총 수량</th><th className="px-2 py-1 text-left">파트</th></tr></thead>
+                              <tbody>
+                                {subEvents.map((se, i) => (
+                                  <tr key={i} className="border-t border-slate-200">
+                                    <td className="px-2 py-1">{se.project_name}</td>
+                                    <td className="px-2 py-1 text-right font-mono">{se.year ?? '—'}</td>
+                                    <td className="px-2 py-1 text-right font-mono">{se.analyzed_item_count ?? '—'}</td>
+                                    <td className="px-2 py-1 text-[10px] text-slate-500">{(se.program_parts ?? []).map(c => PROGRAM_PART_BY_CODE.get(c)?.name ?? c).join(' · ') || '—'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </td>
+                        </tr>
+                      )}
+                      </React.Fragment>
                     )
                   })}
                 </tbody>
