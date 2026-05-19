@@ -1,6 +1,9 @@
+'use client'
 import Link from 'next/link'
-import { Calendar, MapPin, Package, ArrowRight, Settings, AlertTriangle } from 'lucide-react'
+import { useState } from 'react'
+import { Calendar, MapPin, Package, ArrowRight, Settings, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import type { ProjectWithCount, ProjectStatus, ProjectStage } from '@/lib/types'
+import { createClient } from '@/lib/supabase/client'
 import { DeleteProjectButton } from './DeleteProjectButton'
 
 const STAGES: ProjectStage[] = ['의뢰서작성', '발주완료', '시안검수', '수정중', '확정', '납품완료']
@@ -47,6 +50,29 @@ export function ProjectCard({ project, isOwner = true }: Props) {
   const status = STATUS[project.status] ?? STATUS['준비중']
   const itemCount = project.design_items?.[0]?.count ?? 0
   const dday = calcDday(project.event_date)
+  const [completing, setCompleting] = useState(false)
+  const [completed, setCompleted] = useState(project.status === '완료')
+
+  // 5/20 노션 §7 정합 = 다운로드 ≠ 완료·별도 완료 버튼 클릭 시 status·finalized_at 갱신
+  const handleComplete = async () => {
+    if (!isOwner) {
+      alert('프로젝트 소유자만 완료 처리할 수 있습니다.')
+      return
+    }
+    if (!confirm(`'${project.name}' 프로젝트를 완료 처리하시겠습니까?`)) return
+    setCompleting(true)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('projects')
+      .update({ status: '완료' })
+      .eq('id', project.id)
+    if (error) {
+      alert('완료 처리 실패: ' + error.message)
+    } else {
+      setCompleted(true)
+    }
+    setCompleting(false)
+  }
   const formattedDate = project.event_date
     ? new Date(project.event_date).toLocaleDateString('ko-KR', {
         year: 'numeric',
@@ -131,6 +157,22 @@ export function ProjectCard({ project, isOwner = true }: Props) {
           <Settings className="w-3.5 h-3.5" />
         </Link>
         <DeleteProjectButton projectId={project.id} projectName={project.name} isOwner={isOwner} />
+        {/* 5/20 노션 §7 정합 = 완료 버튼 (PDF·설정 사이) */}
+        {isOwner && (
+          <button
+            onClick={handleComplete}
+            disabled={completing || completed}
+            className={`flex items-center justify-center gap-1 text-xs font-medium py-2 px-3 rounded-lg transition-all ${
+              completed
+                ? 'bg-emerald-100 text-emerald-700 cursor-default'
+                : 'bg-slate-50 hover:bg-emerald-50 text-slate-500 hover:text-emerald-700 disabled:opacity-50'
+            }`}
+            title={completed ? '완료됨' : '프로젝트 완료 처리'}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            {completed ? '완료' : completing ? '...' : '완료'}
+          </button>
+        )}
         <Link
           href={`/projects/${project.id}`}
           className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-2 rounded-lg transition-all ${
