@@ -166,6 +166,9 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
     }
     const { error } = await supabase.from('projects').update(updatePayload).eq('id', project.id)
     // 5/22 = 추가/제거 영역 처리
+    // 5/22 사용자 명시 = 저장 X 문제 영역 정정 = INSERT/DELETE 영역 await 완전 보장
+    let insertCount = 0
+    let deleteCount = 0
     if (addRecommend && addedParts.length > 0) {
       // 추가 파트별 환경장식물 ID 영역 = design_items 영역 INSERT
       const newIds = new Set<string>()
@@ -190,12 +193,36 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
           }
         })
       if (toInsert.length > 0) {
-        await supabase.from('design_items').insert(toInsert).then(r => r, () => null)
+        // 5/22 사용자 명시 = 추가 = 저장 X 영역 정정. program_part 컬럼 미적용 영역 fallback (migration_v6 X 환경)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let { error: insertErr } = await supabase.from('design_items').insert(toInsert as any)
+        if (insertErr && /program_part|column/i.test(insertErr.message)) {
+          // program_part 컬럼 영역 X 영역 → 영역 제거 후 재시도
+          const fallback = toInsert.map(item => {
+            const { program_part: _unused, ...rest } = item
+            void _unused
+            return rest
+          })
+          const retry = await supabase.from('design_items').insert(fallback)
+          insertErr = retry.error
+        }
+        if (insertErr) {
+          alert('환경장식물 추가 실패: ' + insertErr.message + '\n(권한·DB 마이그레이션 영역 확인 의무)')
+          setIsSavingInfo(false)
+          return
+        }
+        insertCount = toInsert.length
       }
     }
     if (removeItems && removedParts.length > 0) {
       // 제거 파트 영역 = design_items 영역 DELETE (program_part 매칭)
-      await supabase.from('design_items').delete().eq('project_id', project.id).in('program_part', removedParts).then(r => r, () => null)
+      const { error: delErr, count } = await supabase.from('design_items').delete({ count: 'exact' }).eq('project_id', project.id).in('program_part', removedParts)
+      if (delErr) {
+        alert('환경장식물 삭제 실패: ' + delErr.message)
+        setIsSavingInfo(false)
+        return
+      }
+      deleteCount = count ?? 0
     }
     // program_parts 컬럼 미적용(마이그레이션 v6 미실행) 시 기본 필드만 재시도
     if (error && /program_parts|attendees_count/i.test(error.message)) {
@@ -210,9 +237,11 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
     }
     setIsSavingInfo(false)
     setInfoSaved(true)
-    setTimeout(() => setInfoSaved(false), 1500)
-    // 5/22 사용자 명시 UX = 저장 후 자동 = 편집 창으로 복귀 (1회성 영역·1 클릭 절감)
-    setTimeout(() => router.push(`/projects/${project.id}`), 1500)
+    // 5/22 사용자 명시 = INSERT/DELETE 완료 후 = 즉시 편집 창 복귀 (setTimeout X·저장 보장)
+    // 알림 메시지 + 즉시 이동 (1.5초 대기 시 INSERT 영역 race 영역 가능성 영역 회피)
+    const msg = (insertCount > 0 ? `환경장식물 ${insertCount}개 추가·` : '') + (deleteCount > 0 ? `${deleteCount}개 삭제·` : '') + '저장 완료'
+    if (insertCount > 0 || deleteCount > 0) alert(msg)
+    router.push(`/projects/${project.id}`)
   }
 
   // ── 멤버 관리 ────────────────────────────────────────────
