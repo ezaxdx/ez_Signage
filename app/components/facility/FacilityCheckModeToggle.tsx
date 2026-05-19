@@ -1,7 +1,7 @@
 'use client'
 
-// 시설 가이드 알림 강도 3단 토글 (§11-6 - v7)
-// verbose: 알랏 + 아이콘 / silent_icon: 아이콘만 / off: 둘 다 끄기
+// 시설 가이드 알림 강도 3단 토글 — 5/22 사용자 명시 = 알랏 제거·모드 3종 변경
+// verbose: 아이콘 + 위반사항 안내 (기본) / silent_icon: 위반사항 안내만 / off: 모두 끄기
 // 어떤 모드든 다운로드 직전 일괄 요약은 안전망으로 유지
 
 import { useState, useRef, useEffect } from 'react'
@@ -10,9 +10,9 @@ import { Bell, BellRing, BellOff, ChevronDown, Check } from 'lucide-react'
 export type FacilityCheckMode = 'verbose' | 'silent_icon' | 'off'
 
 const MODES: Array<{ id: FacilityCheckMode; label: string; description: string; icon: React.ReactNode }> = [
-  { id: 'verbose',     label: '알림 + 아이콘',  description: '첫 위반 알랏 + 그리드 ⚠️ 아이콘 (기본)', icon: <BellRing className="w-3.5 h-3.5" /> },
-  { id: 'silent_icon', label: '아이콘만',       description: '알랏 끄기, 그리드 ⚠️ 아이콘만',           icon: <Bell className="w-3.5 h-3.5" /> },
-  { id: 'off',         label: '모두 끄기',      description: '알랏·아이콘 모두 끄기 (요약만 1회)',      icon: <BellOff className="w-3.5 h-3.5" /> },
+  { id: 'verbose',     label: '아이콘 + 위반사항 안내', description: '그리드 ⚠️ 아이콘 + 우측 패널 위반사항 안내 (기본)', icon: <BellRing className="w-3.5 h-3.5" /> },
+  { id: 'silent_icon', label: '위반사항 안내만',        description: '아이콘 없이 우측 패널 안내만',                       icon: <Bell className="w-3.5 h-3.5" /> },
+  { id: 'off',         label: '모두 끄기',              description: '아이콘·안내 모두 끄기 (요약만 1회)',                 icon: <BellOff className="w-3.5 h-3.5" /> },
 ]
 
 interface Props {

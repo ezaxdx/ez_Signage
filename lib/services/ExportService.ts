@@ -292,11 +292,26 @@ export async function exportToPPT(
 
   const headerOpts = (text: string) => ({
     text,
-    options: { fill: 'D9D9D9', bold: true, align: 'center' as const, fontSize: 7, fontFace: 'Malgun Gothic' },
+    options: {
+      fill: { color: 'D9D9D9' },
+      bold: true,
+      align: 'center' as const,
+      fontSize: 7,
+      fontFace: 'Malgun Gothic',
+      valign: 'middle' as const,
+    },
   })
+  // 5/22 사용자 명시 = 표 밖 글자 오버플로우 정정 = autoFit·wrap·valign 추가
   const cellOpts = (text: string, align: 'center' | 'left' = 'center') => ({
     text,
-    options: { align, fontSize: 8, fontFace: 'Malgun Gothic' },
+    options: {
+      align,
+      fontSize: 8,
+      fontFace: 'Malgun Gothic',
+      autoFit: true,
+      wrap: true,
+      valign: 'middle' as const,
+    },
   })
 
   // 행사 로고 텍스트 (header_brand 슬롯의 ko 텍스트)
@@ -318,6 +333,53 @@ export async function exportToPPT(
 
   // 날짜 자동 채움 (project.event_date 기반)
   const dateCtx = getMilestoneDates(project.id, project.event_date)
+
+  // 5/22 사용자 명시 = PPT 첫 페이지 표지 슬라이드 (회의록 §6 = 전체 다운로드 시에만 표지 노출)
+  {
+    const coverSlide = pptx.addSlide()
+    coverSlide.background = { color: 'FFFFFF' }
+    const eventDateStr = project.event_date
+      ? new Date(project.event_date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
+      : '[행사일 미입력]'
+    // 표지 상단 = 행사명 (큰 글자)
+    coverSlide.addText('환경 제작물 발주 가이드', {
+      x: 0.7, y: 1.0, w: SLIDE_W - 1.4, h: 0.6,
+      fontFace: 'Malgun Gothic', fontSize: 24, bold: true, color: '1E293B', align: 'center',
+    })
+    coverSlide.addText(project.name, {
+      x: 0.7, y: 1.7, w: SLIDE_W - 1.4, h: 0.7,
+      fontFace: 'Malgun Gothic', fontSize: 20, color: '475569', align: 'center',
+    })
+    // 표지 중앙 = 행사 기본 정보 (텍스트 라인으로 표현·pptxgenjs Table 타입 호환)
+    coverSlide.addText([
+      { text: '행사명: ', options: { bold: true, color: '475569' } },
+      { text: project.name, options: { color: '1E293B', breakLine: true } },
+      { text: '장소: ', options: { bold: true, color: '475569' } },
+      { text: project.event_venue ?? '[행사장 미입력]', options: { color: '1E293B', breakLine: true } },
+      { text: '일자: ', options: { bold: true, color: '475569' } },
+      { text: eventDateStr, options: { color: '1E293B', breakLine: true } },
+      { text: '발주처: ', options: { bold: true, color: '475569' } },
+      { text: project.client_name ?? '[발주처 미입력]', options: { color: '1E293B', breakLine: true } },
+      { text: '총 항목 수: ', options: { bold: true, color: '475569' } },
+      { text: `${items.length}건`, options: { color: '1E293B' } },
+    ], {
+      x: 1.5, y: 3.0, w: SLIDE_W - 3.0, h: 2.5,
+      fontFace: 'Malgun Gothic', fontSize: 14, align: 'left', valign: 'top',
+    })
+    // 일정 데드라인 (회의록 §6 = 첫 페이지에 일정 데드라인 노출)
+    if (dateCtx) {
+      const dateLines: string[] = []
+      if (dateCtx.installDate) dateLines.push(`설치 시작: ${dateCtx.installDate}`)
+      if (dateCtx.orderDate) dateLines.push(`발주 마감: ${dateCtx.orderDate}`)
+      if (dateCtx.uninstallDate) dateLines.push(`철거: ${dateCtx.uninstallDate}`)
+      if (dateLines.length > 0) {
+        coverSlide.addText(`주요 일정\n${dateLines.join(' · ')}\n\n※ 본 일정은 추정 일정입니다. 협력사 확인 후 변경될 수 있습니다.`, {
+          x: 1.5, y: SLIDE_H - 1.6, w: SLIDE_W - 3.0, h: 1.2,
+          fontFace: 'Malgun Gothic', fontSize: 10, color: '475569', align: 'center', valign: 'middle',
+        })
+      }
+    }
+  }
 
   for (const item of items) {
     const contents = allContents[item.id] ?? {}
@@ -705,15 +767,20 @@ async function exportToExcelDynamic(
   titleRow[0] = `환경 제작물  (${project.name})`
   if (headers.length >= 2) titleRow[headers.length - 1] = logoText
 
-  // 5/20 노션 §6-2 정합 = 상단 정보 영역 (전체 다운로드 시 표지 = 1~3행 행사 정보)
-  // 형식: A=라벨 / B=값 (1행 회사명·2행 협력사명·3행 설치 장소)
+  // 5/22 사용자 명시 = "우리 회사명" 워딩 부적합 → "발주 PM" 명확화 + 협력사 필드 제거(향후 빠지기로 함)
+  // 형식: A=라벨 / B=값 (1행 발주 PM·2행 행사명·3행 설치 장소·4행 행사일)
+  const eventDateStr = project.event_date
+    ? new Date(project.event_date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
+    : ''
   const infoRow1: (string | number)[] = new Array(headers.length).fill('')
-  infoRow1[0] = '우리 회사명'; infoRow1[1] = 'EZPMP'
+  infoRow1[0] = '발주 PM'; infoRow1[1] = 'EZPMP'
   const infoRow2: (string | number)[] = new Array(headers.length).fill('')
-  infoRow2[0] = '협력사명'; infoRow2[1] = (project as { partner_name?: string }).partner_name ?? ''
+  infoRow2[0] = '행사명'; infoRow2[1] = project.name ?? ''
   const infoRow3: (string | number)[] = new Array(headers.length).fill('')
   infoRow3[0] = '설치 장소'; infoRow3[1] = project.event_venue ?? ''
-  // 4행 = 구분선 (───)
+  const infoRow4: (string | number)[] = new Array(headers.length).fill('')
+  infoRow4[0] = '행사일'; infoRow4[1] = eventDateStr
+  // 5행 = 구분선 (───)
   const separatorRow: (string | number)[] = new Array(headers.length).fill('─').map((_, i) => i === 1 ? '환경 장식물 리스트 구분선' : '───')
 
   // v4.1 질문 5: 시트 정렬 — 파트 한글 가나다순 → 종류명 가나다순
@@ -738,7 +805,7 @@ async function exportToExcelDynamic(
   })
 
   // 5/20 노션 §6 정합 = titleRow + 상단 3행 + 구분선 + headers + 데이터
-  const ws = XLSX.utils.aoa_to_sheet([titleRow, infoRow1, infoRow2, infoRow3, separatorRow, headers, ...dataRows])
+  const ws = XLSX.utils.aoa_to_sheet([titleRow, infoRow1, infoRow2, infoRow3, infoRow4, separatorRow, headers, ...dataRows])
 
   // 좌상단·우상단 병합 (행 0 = 환경 제작물 / 행 5 = headers 시작)
   if (headers.length >= 3) {

@@ -285,15 +285,8 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
       setItems(curr => curr.map(item => item.id === id ? { ...item, ...patch } : item))
       await supabase.from('design_items').update(patch).eq('id', id)
 
-      // v8: 시설 가이드 검증 — 첫 위반 시 알랏 (verbose 모드만)
-      if (next && facilityCheckMode === 'verbose' && !alertedItemsRef.current.has(id)) {
-        const issues = validateAgainstFacility(next as DesignItem, facilityGuide)
-        const warnIssue = issues.find(i => i.severity === 'warn')
-        if (warnIssue) {
-          alertedItemsRef.current.add(id)
-          setActiveAlert(warnIssue)
-        }
-      }
+      // 5/22 사용자 명시 = 위반 알랏 자체 제거. 모드 3종 = 아이콘+안내·안내만·끄기.
+      // 위반 사항은 RightPanel에 자동 노출됨 (facilityIssueMap[selectedItemId])
 
       // v8 §11-2: 입력 데이터 단계별 축적 — 중간 수정 로그 (학습 가중치 30%)
       // 변경된 필드만 item_edit_log에 기록 (best-effort, RLS 정책에 의해 자동 권한 체크)
@@ -693,7 +686,8 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
       />
 
       {/* v8: 시설 가이드 자동 알랏 (§11-6-1) — 첫 위반 1회 */}
-      <FacilityGuideAlert
+      {/* 5/22 사용자 명시 = FacilityGuideAlert 자체 제거. 우측 패널 위반 사항 안내로 통합 */}
+      {false && <FacilityGuideAlert
         open={activeAlert !== null}
         message={activeAlert?.message ?? ''}
         standardValue={activeAlert?.standardValue}
@@ -734,7 +728,7 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
           setActiveAlert(null)
           setFacilityGuideOpen(true)
         }}
-      />
+      />}
 
       {/* 5/21 사용자 명시 = 레이아웃 토글바 통째 삭제. 좌 8:우 2 고정. */}
 
