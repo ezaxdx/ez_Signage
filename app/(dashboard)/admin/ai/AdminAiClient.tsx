@@ -332,6 +332,17 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
 
         {/* ── v9.43: AI 추천 파이프라인 카드 제거 — 프롬프트(SYSTEM_INSTRUCTION) 조립에만 사용 ── */}
 
+        {/* ── 5/22 사용자 명시 = 상세 사용량 영역 = 환경장식물 종류별 추천 정확도(AccuracyTable) 위로 이동 ── */}
+        <section>
+          <h2 className="text-slate-700 text-sm font-semibold mb-3">상세 사용량</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <UsageCard label="오늘 호출" value={stats.todayCalls} unit="회" sub={`토큰 ${stats.todayTokens.toLocaleString()}`} color="text-indigo-600" />
+            <UsageCard label="이번 달 호출" value={stats.monthCalls} unit="회" sub={`토큰 ${stats.monthTokens.toLocaleString()}`} color="text-blue-600" />
+            <UsageCard label="오늘 비용" value={`$${stats.todayCostUsd.toFixed(4)}`} unit="" sub={`₩${Math.round(stats.todayCostKrw).toLocaleString()}`} color="text-amber-600" />
+            <UsageCard label="이번 달 비용" value={`$${stats.monthCostUsd.toFixed(4)}`} unit="" sub={`₩${Math.round(stats.monthCostKrw).toLocaleString()}`} color="text-emerald-600" />
+          </div>
+        </section>
+
         {/* ── v9.39: 카테고리별 정확도 테이블 (도면 학습 = 커밍순) ── */}
         <AccuracyTable rows={accuracyRows} />
 
@@ -464,15 +475,52 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
         </section>
 
         {/* 5/21 사용자 명시 = "호출당 예상 비용·NIST 4단 안전망" 메타 안내 박스 2건 삭제 (불필요 정보) */}
+        {/* 5/22 사용자 명시 = 상세 사용량 영역 = 위로 이동 (AccuracyTable 직전)·여기 영역 = 운영 설정 영역으로 대체 */}
 
-        {/* ── v9.27 보존: 일별 상세 사용량 4카드 (오늘/이번 달 호출·비용) ── */}
+        {/* ── 운영 설정 — 호출 한도·예산·알림 (5/22 사용자 명시: 카드별 페르소나 설정 아래로 이동) ────────── */}
         <section>
-          <h2 className="text-slate-700 text-sm font-semibold mb-3">상세 사용량</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <UsageCard label="오늘 호출" value={stats.todayCalls} unit="회" sub={`토큰 ${stats.todayTokens.toLocaleString()}`} color="text-indigo-600" />
-            <UsageCard label="이번 달 호출" value={stats.monthCalls} unit="회" sub={`토큰 ${stats.monthTokens.toLocaleString()}`} color="text-blue-600" />
-            <UsageCard label="오늘 비용" value={`$${stats.todayCostUsd.toFixed(4)}`} unit="" sub={`₩${Math.round(stats.todayCostKrw).toLocaleString()}`} color="text-amber-600" />
-            <UsageCard label="이번 달 비용" value={`$${stats.monthCostUsd.toFixed(4)}`} unit="" sub={`₩${Math.round(stats.monthCostKrw).toLocaleString()}`} color="text-emerald-600" />
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-slate-700 text-sm font-semibold">운영 설정 — 호출 한도·예산</h2>
+            <div className="flex items-center gap-2">
+              {savedMsg && <span className="text-emerald-600 text-xs">{savedMsg}</span>}
+              <button onClick={resetSettings} className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1">
+                <RefreshCw className="w-3 h-3" /> 기본값
+              </button>
+              <button onClick={saveSettings} className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded-md flex items-center gap-1">
+                <Save className="w-3 h-3" /> 저장
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Field label="최대 출력 토큰" hint="응답 길이 상한">
+                <input
+                  type="number" min={1000} max={32000} step={1000}
+                  value={settings.max_output_tokens}
+                  onChange={e => setSettings(s => ({ ...s, max_output_tokens: parseInt(e.target.value) || 8000 }))}
+                  className="w-full text-sm border border-slate-200 rounded-md px-2 py-1.5"
+                />
+              </Field>
+
+              <Field label="월 예산 한도 ($)" hint="초과 시 알림 표시">
+                <input
+                  type="number" min={0} step={1}
+                  value={settings.budget_monthly_usd}
+                  onChange={e => setSettings(s => ({ ...s, budget_monthly_usd: parseFloat(e.target.value) || 0 }))}
+                  className="w-full text-sm border border-slate-200 rounded-md px-2 py-1.5"
+                />
+              </Field>
+
+              <Field label="과도 사용자 임계값 (회)" hint="동일 프로젝트 N회 이상 재호출 시 알림">
+                <input
+                  type="number" min={2} max={50} step={1}
+                  value={settings.abnormal_repeat_threshold}
+                  onChange={e => setSettings(s => ({ ...s, abnormal_repeat_threshold: parseInt(e.target.value) || 5 }))}
+                  className="w-full text-sm border border-slate-200 rounded-md px-2 py-1.5"
+                />
+              </Field>
+            </div>
           </div>
         </section>
 
@@ -564,53 +612,7 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
           </div>
         </section>
 
-        {/* ── 운영 설정 — 호출 한도·예산·알림 (v9.48 슬림화) ────────── */}
-        {/* 모델·Temperature·시스템 프롬프트는 위의 step별 페르소나 설정으로 일원화. */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-slate-700 text-sm font-semibold">운영 설정 — 호출 한도·예산</h2>
-            <div className="flex items-center gap-2">
-              {savedMsg && <span className="text-emerald-600 text-xs">{savedMsg}</span>}
-              <button onClick={resetSettings} className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1">
-                <RefreshCw className="w-3 h-3" /> 기본값
-              </button>
-              <button onClick={saveSettings} className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded-md flex items-center gap-1">
-                <Save className="w-3 h-3" /> 저장
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Field label="최대 출력 토큰" hint="응답 길이 상한">
-                <input
-                  type="number" min={1000} max={32000} step={1000}
-                  value={settings.max_output_tokens}
-                  onChange={e => setSettings(s => ({ ...s, max_output_tokens: parseInt(e.target.value) || 8000 }))}
-                  className="w-full text-sm border border-slate-200 rounded-md px-2 py-1.5"
-                />
-              </Field>
-
-              <Field label="월 예산 한도 ($)" hint="초과 시 알림 표시">
-                <input
-                  type="number" min={0} step={1}
-                  value={settings.budget_monthly_usd}
-                  onChange={e => setSettings(s => ({ ...s, budget_monthly_usd: parseFloat(e.target.value) || 0 }))}
-                  className="w-full text-sm border border-slate-200 rounded-md px-2 py-1.5"
-                />
-              </Field>
-
-              <Field label="과도 사용자 임계값 (회)" hint="동일 프로젝트 N회 이상 재호출 시 알림">
-                <input
-                  type="number" min={2} max={50} step={1}
-                  value={settings.abnormal_repeat_threshold}
-                  onChange={e => setSettings(s => ({ ...s, abnormal_repeat_threshold: parseInt(e.target.value) || 5 }))}
-                  className="w-full text-sm border border-slate-200 rounded-md px-2 py-1.5"
-                />
-              </Field>
-            </div>
-          </div>
-        </section>
+        {/* 5/22 사용자 명시 = 운영 설정 영역 = 카드별 페르소나 설정 직후로 이동 (중복 제거) */}
 
       </main>
     </div>

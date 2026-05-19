@@ -1051,6 +1051,20 @@ export function LearningManagerClient({
                       const groupFinalized = members.reduce((s, m) => s + m.stage.finalized, 0)
                       const groupPct = groupItems > 0 ? Math.round((groupFinalized / groupItems) * 100) : 0
                       const groupColor = groupPct >= 70 ? 'text-emerald-600' : groupPct >= 40 ? 'text-amber-600' : 'text-rose-600'
+                      // 5/22 사용자 명시 = 행사장 학습 현황 L1 = 휘하 합산 (환경장식물·프로그램 파트 영역 다 써줘)
+                      const validNames = new Set(signageTypeList.map(s => s.name))
+                      const groupSig = new Set<string>()
+                      const groupParts = new Set<string>()
+                      for (const m of members) {
+                        const venueAgg = venueAggregateByName.get(m.venue)
+                        if (venueAgg) {
+                          Array.from(venueAgg.signage.keys()).forEach(k => { if (validNames.has(k)) groupSig.add(k) })
+                          Array.from(venueAgg.program_parts).forEach(p => groupParts.add(p))
+                        }
+                        for (const s of m.signage_breakdown ?? []) if (validNames.has(s.category)) groupSig.add(s.category)
+                        for (const p of m.program_parts ?? []) groupParts.add(p)
+                      }
+                      const groupPartNames = Array.from(groupParts).map(c => PROGRAM_PART_BY_CODE.get(c)?.name ?? c)
                       // L1 = 행사장 그룹 행
                       out.push(
                         <tr key={`L1-${groupName}`} className="bg-indigo-50/60 hover:bg-indigo-50 cursor-pointer border-t-2 border-indigo-100"
@@ -1063,7 +1077,20 @@ export function LearningManagerClient({
                           <td className="px-2 py-1.5 text-right text-indigo-700 font-mono">{groupItems}</td>
                           <td className="px-2 py-1.5 text-right text-emerald-700 font-mono">{groupFinalized}</td>
                           <td className={`px-2 py-1.5 text-right font-mono font-semibold ${groupColor}`}>{groupPct}%</td>
-                          <td colSpan={2} className="px-2 py-1.5"></td>
+                          <td className="px-2 py-1.5 text-left">
+                            {groupSig.size === 0 ? <span className="text-indigo-300 text-[10px]">—</span> : (
+                              <div className="flex flex-wrap gap-0.5">
+                                {Array.from(groupSig).map(name => <span key={name} className="inline-block px-1 py-0.5 bg-emerald-100 text-emerald-800 text-[9px] rounded font-medium">{name}</span>)}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-2 py-1.5 text-left">
+                            {groupPartNames.length === 0 ? <span className="text-indigo-300 text-[10px]">—</span> : (
+                              <div className="flex flex-wrap gap-0.5">
+                                {groupPartNames.map(pt => <span key={pt} className="inline-block px-1 py-0.5 bg-indigo-100 text-indigo-800 text-[9px] rounded font-medium">{pt}</span>)}
+                              </div>
+                            )}
+                          </td>
                         </tr>
                       )
                       if (!isGroupOpen) return
@@ -2993,16 +3020,10 @@ export function LearningManagerClient({
             <AlertCircle className="w-4 h-4 text-rose-500" />
             시설 가이드 학습 현황 (홀 단위)
           </h2>
-          <p className="text-[11px] text-slate-500 mb-3">
-            행사장이 아닌 홀 단위로 표준 규격·제약·연락처·예약 시점을 학습합니다.
-          </p>
           {facilityGuideStatus.length === 0 ? (
             <p className="text-slate-400 text-xs italic py-3 text-center">시설 가이드 시드 데이터가 비어있습니다.</p>
           ) : (
             <div className="overflow-x-auto border border-slate-200 rounded">
-              <p className="px-2 py-1 text-[10px] text-slate-500 bg-slate-50 border-b border-slate-200">
-                행사장 학습 현황과 동일 댑스 = L1 행사장 그룹 펼침 → L2 휘하 홀 표시·홀 행 펼침 → 가이드 학습 내용 (설치 가능 카테고리·주의사항·리깅·안전·디지털 사이니지)
-              </p>
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr className="text-slate-600 text-[11px]">
