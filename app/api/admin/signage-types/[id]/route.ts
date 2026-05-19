@@ -51,6 +51,9 @@ export async function PATCH(req: NextRequest, { params }: RouteCtx) {
     if (!Number.isFinite(s)) return NextResponse.json({ error: 'sort_order 숫자 필수' }, { status: 400 })
     patch.sort_order = s
   }
+  // 5/22 사용자 명시 = sample_image_url·hidden 영역 DB 영역 정합 (migration_v14 영역)
+  if (typeof body.sample_image_url === 'string' || body.sample_image_url === null) patch.sample_image_url = body.sample_image_url
+  if (typeof body.hidden === 'boolean') patch.hidden = body.hidden
   if (!existing.is_standard && typeof body.name === 'string') {
     const n = body.name.trim()
     if (!n) return NextResponse.json({ error: '이름 빈 값 불가' }, { status: 400 })
