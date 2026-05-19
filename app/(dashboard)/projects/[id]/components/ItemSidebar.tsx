@@ -5,6 +5,7 @@ import { Plus, Image as ImageIcon, Trash2, AlertTriangle, Copy, CheckCircle2, Ci
 import { SeriesGenerator } from './SeriesGenerator'
 import { createClient } from '@/lib/supabase/client'
 import { insertDefaultSlotsForItem } from '@/lib/services/itemService'
+import { nextDesignItemNo } from '@/lib/services/designItemNo'
 import type { DesignItem } from '@/lib/types'
 
 interface Props {
@@ -16,7 +17,8 @@ interface Props {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  'X-배너': 'bg-indigo-500/20 text-indigo-300',
+  'X배너': 'bg-indigo-500/20 text-indigo-300',
+  'X-배너': 'bg-indigo-500/20 text-indigo-300',  // 호환 = 5/19 SOT 정정 전 데이터
   'X-Banner': 'bg-indigo-500/20 text-indigo-300',
   '현수막': 'bg-emerald-500/20 text-emerald-300',
   '폼보드': 'bg-amber-500/20 text-amber-300',
@@ -55,14 +57,16 @@ export function ItemSidebar({ items, selectedItemId, onSelect, projectId, onItem
     setIsAdding(true)
     try {
       const supabase = createClient()
-      const nextNo = String(items.length + 1).padStart(2, '0')
+      // v10.4: items.length+1 = 삭제 후 추가 시 중복 위험. nextDesignItemNo(max+1) 사용.
+      // 'X-배너' → 'X배너' = 노션 §6-2 SOT 정합 (대시 표기 5/19 SOT 정정).
+      const nextNo = nextDesignItemNo(items)
 
       const { data, error } = await supabase
         .from('design_items')
         .insert({
           project_id: projectId,
           no: nextNo,
-          category: 'X-배너',
+          category: 'X배너',
           width_mm: 600,
           height_mm: 1800,
           material: 'PET',
@@ -107,7 +111,8 @@ export function ItemSidebar({ items, selectedItemId, onSelect, projectId, onItem
   const handleDuplicateItem = async (sourceItem: DesignItem) => {
     setIsAdding(true)
     const supabase = createClient()
-    const nextNo = String(items.length + 1).padStart(2, '0')
+    // v10.4: items.length+1 → nextDesignItemNo (삭제 후 복제 시 중복 위험 해소)
+    const nextNo = nextDesignItemNo(items)
 
     const { data: newItem } = await supabase
       .from('design_items')
