@@ -37,8 +37,8 @@ export const PROGRAM_PARTS: ReadonlyArray<ProgramPart> = [
   { code: '40.20', name: '영접영송',            group: 'attendee', hint: '입퇴장 안내·동선 사인' },
   // 홍보 (외부 사인 영향)
   { code: '40.17', name: '홍보',                group: 'promotion', hint: '옥외 광고·외부 사인·SNS 콘텐츠' },
-  // 5/22 신규 = 기타 조성 (로비·외벽·입구 등). 빵빠레 배너·외부 홍보·로비 안내 영역.
-  { code: '40.21', name: '기타 조성 (로비, 외벽, 입구 등)', group: 'other', hint: '빵빠레 배너·외벽·로비 홍보·부대시설 안내' },
+  // 5/22 신규 = 기타 조성. 빵빠레 배너·외부 홍보·로비 안내 영역.
+  { code: '40.21', name: '기타 조성', group: 'other', hint: '로비·외벽·입구 등 부대시설·외부 홍보' },
 ] as const
 
 export const PROGRAM_PART_BY_CODE: ReadonlyMap<string, ProgramPart> = new Map(
