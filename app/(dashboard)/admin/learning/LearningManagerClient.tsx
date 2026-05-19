@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { explainStorageError } from '@/lib/services/storagePaths'
-import { REGION_ORDER, VENUE_HALLS, getHallsByVenueKey, getHallsByVenueName } from '@/lib/venueIntel'
+import { REGION_ORDER, VENUE_HALLS, getHallsByVenueKey, getHallsByVenueName, extractL1L2FromComplexVenue } from '@/lib/venueIntel'
 import { STANDARD_CATEGORY_BY_KEY, type StandardCategoryKey } from '@/lib/data/signageCategoryStandards'
 import { PROGRAM_PARTS, PROGRAM_PART_GROUPS, PROGRAM_PART_SIGNAGE_HINTS, PROGRAM_PART_BY_CODE } from '@/lib/programParts'
 import { SEED_EVENT_HISTORY, estimateSignageBreakdown } from '@/lib/data/dashboardSeed'
@@ -1373,11 +1373,19 @@ export function LearningManagerClient({
                     const doneJob = venueJobs.find(j => j.status === 'done')
                     const pendingJob = venueJobs.find(j => j.status === 'queued' || j.status === 'processing')
                     const failedJob = venueJobs.find(j => j.status === 'failed')
-                    const halls = getHallsByVenueName(v.name)
-                    const isExpanded = expandedVenueId === v.id
-                    const canExpand = halls.length > 0
-                    // 5/22 사용자 명시 = L1·L2 정합 X 영역 표시. "·" "외" "/" 포함 = 복합 venue
+                    // 5/22 사용자 명시 = 복합 venue 영역 자동 분리·L1 매칭 영역에서 휘하 L2 표시
+                    let halls = getHallsByVenueName(v.name)
                     const isComplexVenue = /[·\/]|외$|외\s/.test(v.name)
+                    let extractedL2: string[] = []
+                    if (halls.length === 0 && isComplexVenue) {
+                      const split = extractL1L2FromComplexVenue(v.name)
+                      if (split.l1Info) {
+                        halls = getHallsByVenueName(split.l1Info.displayName)
+                      }
+                      extractedL2 = split.l2
+                    }
+                    const isExpanded = expandedVenueId === v.id
+                    const canExpand = halls.length > 0 || extractedL2.length > 0
                     return (
                     <React.Fragment key={v.id}>
                     <tr className="border-b border-slate-200/40 hover:bg-slate-50/30">
