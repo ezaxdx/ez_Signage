@@ -772,6 +772,33 @@ export const VENUE_FACILITY_GUIDE_SEED: VenueFacilityGuide[] = [
   },
 ]
 
+/**
+ * 5/22 사용자 명시 = 도면만 보유 행사장 (BEXCO·EXCO·DCC 등) = 기본 컨벤션 가이드 영역 자동 반환.
+ * 단순 패턴 = X배너·세로현수막 (allowed)·가로현수막·통천·천정배너 (conditional·운영팀 협의)·포디움 (allowed).
+ */
+export function buildDefaultConventionGuide(venueName: string): VenueFacilityGuide {
+  return {
+    venue_key: 'default_convention_' + venueName.replace(/[^a-zA-Z0-9가-힣]/g, '_').slice(0, 30),
+    venue_name: venueName,
+    install_allowed: [
+      { category: 'X배너', status: 'allowed', note: '전시장·로비 자립형 스탠드. 물통형 권장.' },
+      { category: '세로현수막', status: 'allowed', note: '600×1800·롤업.' },
+      { category: '가로현수막', status: 'conditional', note: '운영팀 사전 협의 의무.' },
+      { category: '통천 배너', status: 'conditional', note: '외벽 영역 운영팀 협의.' },
+      { category: '천정배너', status: 'conditional', note: '리깅 영역 운영팀 도면 확인.' },
+      { category: '포디움 타이틀', status: 'allowed', note: '600×200mm.', standard_width_mm: 600, standard_height_mm: 200 },
+      { category: 'A4·A3 POP', status: 'allowed', note: '아크릴 스탠드.' },
+    ],
+    mount_methods: { taka: 'denied', magnet: 'denied', adhesive: 'denied', hanger: 'conditional', rope: 'conditional', note: '리깅 영역 운영팀 협의.' },
+    rigging: { available: true, max_load_kg: 50, note: '운영팀 도면 영역 영역.' },
+    safety: { fire: '난연 2급 이상.', fall: '리깅 2점 이상.', electric: '220V.', weather: '실내 영역.', note: '비상구 가림 X.' },
+    warnings: [{ type: '운영팀 사전 협의 의무', description: '시설 가이드 영역 미등록 행사장·운영팀 영역 사전 협의 필수.' }],
+    digital_signage: { allowed_locations: ['전시장 LED 영역 (협의)'], content_review: true, note: '운영팀 영역.' },
+    last_updated: '2026-05-22',
+    special_notes: ['【기본 가이드 영역】 시설 가이드 미등록 행사장·운영팀 영역 사전 협의 후 발주 영역.'],
+  }
+}
+
 /** 행사장명 → venue_key 매칭 (퍼지 매칭) */
 export function findVenueKey(venueName: string | null | undefined): string | null {
   if (!venueName) return null
