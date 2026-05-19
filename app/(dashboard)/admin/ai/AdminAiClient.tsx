@@ -143,11 +143,13 @@ const MODEL_OPTIONS: Array<{ value: AiModelKey; label: string; available: boolea
 const CARD_ICONS: Record<CardKey, React.ComponentType<{ className?: string }>> = {
   recommend: Sparkles,
   floor_plan_vision: Camera,
+  venue_text_analysis: Sparkles,
 }
 
 const DEFAULT_CARD_SETTINGS: CardSettingsForm = {
-  recommend:         { model: 'gemini-2.5-flash', temperature: 0.4, system_prompt: '' },
-  floor_plan_vision: { model: 'gemini-2.5-flash', temperature: 0.4, system_prompt: '' },
+  recommend:           { model: 'gemini-2.5-flash', temperature: 0.4, system_prompt: '' },
+  floor_plan_vision:   { model: 'gemini-2.5-flash', temperature: 0.4, system_prompt: '' },
+  venue_text_analysis: { model: 'gemini-2.5-flash', temperature: 0.3, system_prompt: '' },
 }
 
 export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, stats, dailyTrend, abnormalUsers }: Props) {
@@ -161,6 +163,7 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
   const textareaRefs = useRef<Record<CardKey, HTMLTextAreaElement | null>>({
     recommend: null,
     floor_plan_vision: null,
+    venue_text_analysis: null,
   })
 
   useEffect(() => {

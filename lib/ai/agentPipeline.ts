@@ -15,7 +15,7 @@
 // 표시명·desc는 어드민 시각화 카드용. body는 Gemini SYSTEM_INSTRUCTION 본문용.
 
 export interface PipelineBlock {
-  num: 1 | 2 | 3 | 4
+  num: 1 | 2 | 3 | 4 | 5
   /** 어드민 카드 + 프롬프트 헤더 공통 표시명 */
   title: string
   /** 어드민 카드 한 줄 설명 (시각화 전용) */
@@ -26,7 +26,7 @@ export interface PipelineBlock {
   status: 'active' | 'coming'
 }
 
-export const PIPELINE_BLOCKS: Record<'step1' | 'step2' | 'step3' | 'step4', PipelineBlock> = {
+export const PIPELINE_BLOCKS: Record<'step1' | 'step2' | 'step3' | 'step4' | 'step5', PipelineBlock> = {
   step1: {
     num: 1,
     title: '파트 후보 추출',
@@ -57,6 +57,14 @@ export const PIPELINE_BLOCKS: Record<'step1' | 'step2' | 'step3' | 'step4', Pipe
     desc: '행사장 배치도 분석 → 동선·설치 위치 컨텍스트',
     body: `[보강] 행사장 배치도 Vision 분석 → 동선·설치 위치 컨텍스트`,
     status: 'active',
+  },
+  // 5/20 노션 §1 (AI 호출 3종) 정합 = 행사장 특징 분석 AI = 신규 행사장 등록 시 시설가이드 텍스트화
+  step5: {
+    num: 5,
+    title: '행사장 특징 분석',
+    desc: '신규 행사장 등록 시 시설 가이드·매뉴얼 텍스트화',
+    body: `[행사장 등록] 신규 행사장 시설 가이드 PDF·매뉴얼 텍스트화 → venues.specs_text 저장`,
+    status: 'coming',
   },
 }
 
@@ -118,10 +126,10 @@ export interface StepPersonaOverride {
   system_prompt?: string
 }
 
-export type StepOverridesMap = Partial<Record<'step1' | 'step2' | 'step3' | 'step4', StepPersonaOverride>>
+export type StepOverridesMap = Partial<Record<'step1' | 'step2' | 'step3' | 'step4' | 'step5', StepPersonaOverride>>
 
 /** v9.51 — 카드 단위 키. recommend = step1+2+3 통합, floor_plan_vision = step4 단독 */
-export type CardKey = 'recommend' | 'floor_plan_vision'
+export type CardKey = 'recommend' | 'floor_plan_vision' | 'venue_text_analysis'
 
 export type CardPersonaOverride = StepPersonaOverride
 export type CardOverridesMap = Partial<Record<CardKey, CardPersonaOverride>>
@@ -184,11 +192,22 @@ export const PIPELINE_CARDS: Record<CardKey, PipelineCard> = {
     trigger: 'on_attachment',
     default_persona: buildDefaultPersonaForCard(['step4']),
   },
+  // 5/20 노션 §1 (AI 호출 3종) 정합 = 행사장 특징 분석 AI
+  venue_text_analysis: {
+    key: 'venue_text_analysis',
+    title: '행사장 특징 분석',
+    desc: '신규 행사장 등록 시 시설가이드 PDF·매뉴얼 텍스트화',
+    notice: '',
+    steps: ['step5'],
+    trigger: 'on_attachment',
+    default_persona: buildDefaultPersonaForCard(['step5']),
+  },
 }
 
 export const PIPELINE_CARD_LIST: PipelineCard[] = [
   PIPELINE_CARDS.recommend,
   PIPELINE_CARDS.floor_plan_vision,
+  PIPELINE_CARDS.venue_text_analysis,
 ]
 
 /**
