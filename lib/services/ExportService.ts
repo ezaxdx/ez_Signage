@@ -695,6 +695,17 @@ async function exportToExcelDynamic(
   titleRow[0] = `환경 제작물  (${project.name})`
   if (headers.length >= 2) titleRow[headers.length - 1] = logoText
 
+  // 5/20 노션 §6-2 정합 = 상단 정보 영역 (전체 다운로드 시 표지 = 1~3행 행사 정보)
+  // 형식: A=라벨 / B=값 (1행 회사명·2행 협력사명·3행 설치 장소)
+  const infoRow1: (string | number)[] = new Array(headers.length).fill('')
+  infoRow1[0] = '우리 회사명'; infoRow1[1] = 'EZPMP'
+  const infoRow2: (string | number)[] = new Array(headers.length).fill('')
+  infoRow2[0] = '협력사명'; infoRow2[1] = (project as { partner_name?: string }).partner_name ?? ''
+  const infoRow3: (string | number)[] = new Array(headers.length).fill('')
+  infoRow3[0] = '설치 장소'; infoRow3[1] = project.event_venue ?? ''
+  // 4행 = 구분선 (───)
+  const separatorRow: (string | number)[] = new Array(headers.length).fill('─').map((_, i) => i === 1 ? '환경 장식물 리스트 구분선' : '───')
+
   // v4.1 질문 5: 시트 정렬 — 파트 한글 가나다순 → 종류명 가나다순
   const partLabel = (it: DesignItem) => {
     const code = it.program_part?.split(/[,，]/)[0]?.trim()
@@ -716,9 +727,10 @@ async function exportToExcelDynamic(
     return visibleColIds.map(colId => getCellValue(colId, item, contents, state.customValues, sortedItems, dateCtx))
   })
 
-  const ws = XLSX.utils.aoa_to_sheet([titleRow, headers, ...dataRows])
+  // 5/20 노션 §6 정합 = titleRow + 상단 3행 + 구분선 + headers + 데이터
+  const ws = XLSX.utils.aoa_to_sheet([titleRow, infoRow1, infoRow2, infoRow3, separatorRow, headers, ...dataRows])
 
-  // 좌상단·우상단 병합
+  // 좌상단·우상단 병합 (행 0 = 환경 제작물 / 행 5 = headers 시작)
   if (headers.length >= 3) {
     ws['!merges'] = [
       { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 2 } },
