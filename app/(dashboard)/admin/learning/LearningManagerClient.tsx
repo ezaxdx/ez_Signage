@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 import { explainStorageError } from '@/lib/services/storagePaths'
 import { REGION_ORDER, VENUE_HALLS, getHallsByVenueKey, getHallsByVenueName } from '@/lib/venueIntel'
 import { PROGRAM_PARTS, PROGRAM_PART_GROUPS, PROGRAM_PART_SIGNAGE_HINTS } from '@/lib/programParts'
+import { SEED_EVENT_HISTORY } from '@/lib/data/dashboardSeed'
 // 5/21 사용자 명시 = NIST 4단·전체 학습 요약·향후 도입 로드맵 UI 표시 롤백.
 // 시드 (LEARNING_META_SEED·NIST_RMF_STAGES·VISION_ROADMAP) 자체는 lib/data·lib/ai에 보존
 // — 곽 이사 보고 자료 외부 영역 활용 가능. 관리자 페이지 UI는 ′응?′ 룰 정합 위해 노출 X.
@@ -835,6 +836,66 @@ export function LearningManagerClient({
               </table>
             </div>
           )}
+        </section>
+
+        {/* 5/22 회의록 김연아 대리님 명시 = 학습 시킨 자료 인덱스 정리 의무
+            (5/21 1차+2차 회의: "본인이 학습 시킨 프로젝트가 뭔지 정확하지 않으면
+             어디서 어떤 게 부족하니까 더 학습을 시켜라에 대한 가이드를 줄 수가 없거든요") */}
+        <section className="bg-white border border-slate-200 rounded-xl p-5">
+          <h2 className="text-slate-900 font-semibold text-sm mb-1 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-indigo-500" />
+            학습 시킨 행사 인덱스 ({SEED_EVENT_HISTORY.length})
+          </h2>
+          <p className="text-[11px] text-slate-500 mb-3">
+            학습 데이터 확보된 행사 목록. 도면·엑셀·이미지 보유 여부와 실제 분석된 항목 수를 한눈에 확인.
+          </p>
+          <div className="overflow-x-auto border border-slate-200 rounded">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr className="text-slate-600 text-[11px]">
+                  <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">행사명</th>
+                  <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">행사장</th>
+                  <th className="px-2 py-1.5 text-center font-semibold whitespace-nowrap">연도</th>
+                  <th className="px-2 py-1.5 text-center font-semibold whitespace-nowrap">분류</th>
+                  <th className="px-2 py-1.5 text-center font-semibold whitespace-nowrap">엑셀</th>
+                  <th className="px-2 py-1.5 text-center font-semibold whitespace-nowrap">이미지</th>
+                  <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">분석 항목 수</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {SEED_EVENT_HISTORY
+                  .slice()
+                  .sort((a, b) => (b.year ?? 0) - (a.year ?? 0))
+                  .map(e => (
+                    <tr key={`${e.project_code ?? e.project_name}-${e.year ?? ''}`} className="hover:bg-slate-50">
+                      <td className="px-2 py-1.5 text-slate-800 font-medium whitespace-nowrap" title={e.project_name}>{e.project_name}</td>
+                      <td className="px-2 py-1.5 text-slate-700 whitespace-nowrap">{e.venue}</td>
+                      <td className="px-2 py-1.5 text-center text-slate-500 font-mono">{e.year ?? '—'}</td>
+                      <td className="px-2 py-1.5 text-center">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                          e.category_tag === '핵심' ? 'bg-rose-100 text-rose-700' :
+                          e.category_tag === '해외' ? 'bg-violet-100 text-violet-700' :
+                          e.category_tag === '미분류' ? 'bg-slate-100 text-slate-500' :
+                          'bg-emerald-100 text-emerald-700'
+                        }`}>{e.category_tag}</span>
+                      </td>
+                      <td className="px-2 py-1.5 text-center">
+                        {e.has_excel ? <span className="text-emerald-600">✓</span> : <span className="text-slate-300">—</span>}
+                      </td>
+                      <td className="px-2 py-1.5 text-center">
+                        {e.has_image ? <span className="text-emerald-600">✓</span> : <span className="text-slate-300">—</span>}
+                      </td>
+                      <td className="px-2 py-1.5 text-right text-slate-700 font-mono">
+                        {e.analyzed_item_count != null ? e.analyzed_item_count : <span className="text-slate-300">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-[10px] text-slate-400 mt-2">
+            ※ 분석 항목 수 = 실제 엑셀 파싱으로 추출된 환경장식물 수. "—" = 분석 미완료 또는 데이터 없음.
+          </p>
         </section>
 
         </>}
