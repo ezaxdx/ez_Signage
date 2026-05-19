@@ -581,7 +581,7 @@ export async function exportToPDF(
   const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [PAGE_W, PAGE_H], compress: true })
 
   // ── 표지 페이지 ──
-  const dateCtx = getMilestoneDates(project)
+  const dateCtx = getMilestoneDates(project.id, project.event_date ?? null)
   pdf.setFontSize(28)
   pdf.setTextColor(31, 41, 55)
   pdf.text(project.name ?? '제작물 리스트', PAGE_W / 2, 40, { align: 'center' })
@@ -686,9 +686,7 @@ export async function exportToPDF(
     } else {
       // 시안 영역 없을 때 dashed placeholder
       pdf.setDrawColor(203, 213, 225)
-      pdf.setLineDashPattern([2, 2], 0)
       pdf.rect(designX, DESIGN_Y, finalW, finalH)
-      pdf.setLineDashPattern([], 0)
       pdf.setFontSize(10)
       pdf.setTextColor(148, 163, 184)
       pdf.text('디자이너 작업 영역', PAGE_W / 2, DESIGN_Y + finalH / 2, { align: 'center' })
