@@ -3,6 +3,30 @@
 > 실패한 자율 작업에서 추출한 패턴.
 > 다음 세션 시작 시 최근 항목부터 검토하고 작업 시작.
 
+## 2026-05-20 — design_items INSERT 책임 7곳 분산 = 패치 1곳 fix가 잠재 잔존 6곳 남김
+
+**작업**: 5/19 ProjectInfoClient 부분만 fix (b979439) 후 동일 패턴 grep
+**증상**: design_items INSERT 7개 위치 중 EditorLayout (items.length+1)·SeriesGenerator (currentItemCount+1) 잠재 충돌 잔존. 삭제 후 추가 시 (project_id, no) 중복 위험.
+**원인**: SOT 부재·INSERT 책임이 7곳에 분산·"문제 발생 시 패치"로 진행하면 잔존 6곳을 grep해야만 발견됨.
+**예방**:
+- 자동화·수정 착수 시 [[feedback-intent-clarification-first]] Step 0 의도 확인 의무 (3 Why)
+- [[feedback-automation-design-upfront]] Step 2 책임 통합 검토 = "이 값 채우는 코드 몇 개?" 2개+ 시 helper·DB trigger로 묶기
+- DB trigger (set_design_items_no) = SOT·클라이언트 헬퍼 = 보조 = 이중 방어 패턴
+**관련**: decisions.md 2026-05-20 채번 SOT·feedback-automation-design-upfront·migration_v10_4_*.sql
+
+## 2026-05-20 — 환경장식물 정의 부재가 폴더링·DB·AI 학습 모든 하위 문제의 원점
+
+**작업**: 팀장님 정의 분석 미션·좋은 예/나쁜 예 폴더링 비교
+**증상**: L1_행사장 폴더에 시설가이드(.pdf 평면도)·행정 서류(.hwp 신청서)·발주서(.xlsx)·기획서(.pptx)·CAD 도면(.dwg) 등 10종 파일 타입 혼재. 환경장식물 본체와 비환경장식물이 같은 행사장 폴더에 묻힘.
+**원인**: 환경장식물의 1차 정의가 명문화되지 않음 = 분류 1차 축이 공간(행사장)인지 행사·속성인지 결정 안 됨 = 모든 하위 분류가 흔들림.
+**예방**:
+- 5단계 정의 (한 문장·외연 12파트×14종류·내포 4축·경계 7종 제외·운영 5질문) 모두 명문화
+- 분류 1차 축 = 행사·속성 (공간은 L2 이하 보조축)
+- 새 자료 분류 시 8.5절 5질문 체크리스트로 1분 판정
+**관련**: docs/환경장식물_정의_분석보고서_20260520.md·decisions.md 천장≠통천 분리
+
+---
+
 ## 형식
 
 ```

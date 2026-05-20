@@ -54,8 +54,8 @@ interface Props {
 
 // 행 추가 시 선택 가능한 환경장식물 종류 (NewProjectButton FORMAT_PRESETS와 동일)
 const SIGNAGE_PRESETS = [
-  { id: 'x_banner',           name: 'X-배너',        width: 600,  height: 1800, material: 'PET' },
-  { id: 'i_banner',           name: 'I-배너',        width: 600,  height: 1600, material: 'PET' },
+  { id: 'x_banner',           name: 'X배너',         width: 600,  height: 1800, material: 'PET' },
+  { id: 'i_banner',           name: 'I배너',         width: 600,  height: 1600, material: 'PET' },
   { id: 'streetlight_banner', name: '가로등 배너',   width: 600,  height: 1800, material: '현수막' },
   { id: 'horizontal_banner',  name: '가로 현수막',   width: 5000, height: 900,  material: '현수막' },
   { id: 'vertical_banner',    name: '세로 현수막',   width: 900,  height: 5000, material: '현수막' },

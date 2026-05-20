@@ -220,6 +220,98 @@ function main() {
     return `대시 표기 ${dashCount}건 잔존 (X-배너·I-배너 → X배너·I배너 정정 필요)`
   })
 
+  // ── 7. v10.4 신규 = design_items.no 헬퍼 정합 검증 ──
+  console.log()
+  console.log('[7] design_items.no 채번 패턴 정합 (v10.4 헬퍼 통합)')
+  check('items.length+1 패턴 잔존 (헬퍼 미정합)', () => {
+    let count = 0
+    const samples = []
+    const files = [
+      'app/(dashboard)/projects/[id]/EditorLayout.tsx',
+      'app/(dashboard)/projects/[id]/components/ItemSidebar.tsx',
+      'app/(dashboard)/projects/[id]/components/SeriesGenerator.tsx',
+      'app/(dashboard)/projects/new/case-a/page.tsx',
+      'app/(dashboard)/projects/new/case-b/page.tsx',
+      'app/(dashboard)/projects/new/case-d/page.tsx',
+      'app/(dashboard)/projects/[id]/info/ProjectInfoClient.tsx',
+      'app/(dashboard)/dashboard/components/NewProjectButton.tsx',
+    ]
+    for (const f of files) {
+      const full = join(ROOT, f)
+      if (!existsSync(full)) continue
+      const content = readFileSync(full, 'utf-8')
+      if (/items\.length\s*\+\s*1[\s\S]{0,200}no:/m.test(content) ||
+          /currentItemCount\s*\+\s*1[\s\S]{0,200}no:/m.test(content)) {
+        count++
+        samples.push(f.split('/').pop())
+      }
+    }
+    if (count === 0) return true
+    return `WARN:채번 helper 미정합 ${count}건 (${samples.join(', ')}) — nextDesignItemNo 권장`
+  })
+
+  // ── 8. 'X-배너' 대시 잔존 활성 코드 grep ──
+  console.log()
+  console.log('[8] 활성 코드 X-배너·I-배너 대시 잔존 (5/19 SOT 정합)')
+  check('활성 코드 대시 표기 잔존', () => {
+    let count = 0
+    const samples = []
+    const targetFiles = [
+      'app/(dashboard)/projects/[id]/EditorLayout.tsx',
+      'app/(dashboard)/projects/[id]/components/ItemSidebar.tsx',
+      'app/(dashboard)/projects/[id]/components/EditorGrid.tsx',
+      'app/(dashboard)/projects/new/case-d/page.tsx',
+      'lib/services/itemService.ts',
+    ]
+    for (const f of targetFiles) {
+      const full = join(ROOT, f)
+      if (!existsSync(full)) continue
+      const content = readFileSync(full, 'utf-8')
+      const m = content.match(/(?:category|name):\s*['"]X-배너['"]|(?:category|name):\s*['"]I-배너['"]/g)
+      if (m) {
+        count += m.length
+        samples.push(`${f.split('/').pop()}:${m.length}`)
+      }
+    }
+    if (count === 0) return true
+    return `WARN:활성 코드 대시 ${count}건 = ${samples.join(', ')} (5/19 SOT 정합 위반)`
+  })
+
+  // ── 9. SectionBoundary wrap 검증 (v10.4 잔존·5/25 사이클 보완 예정) ──
+  console.log()
+  console.log('[9] LearningManagerClient 6 섹션 SectionBoundary wrap')
+  check('SectionBoundary 실 wrap 적용', () => {
+    const f = join(ROOT, 'app/(dashboard)/admin/learning/LearningManagerClient.tsx')
+    if (!existsSync(f)) return 'WARN:파일 없음'
+    const content = readFileSync(f, 'utf-8')
+    const importMatch = content.includes("from '@/app/components/admin/SectionBoundary'") || content.includes("from '@/app/components/admin/SectionBoundary'")
+    const useMatch = (content.match(/<SectionBoundary\s/g) || []).length
+    if (!importMatch && useMatch === 0) return 'WARN:SectionBoundary import·사용 0건 (5/25 D+3 사이클 보완 예정)'
+    if (useMatch < 6) return `WARN:wrap ${useMatch}/6 섹션 (5/25 사이클 잔존)`
+    return true
+  })
+
+  // ── 10. SEED_PROGRAM_PART_SIGNAGE 시드 통합 검증 (5/26 D+4 사이클) ──
+  console.log()
+  console.log('[10] SEED_PROGRAM_PART_SIGNAGE vs PROGRAM_PART_SIGNAGE_DETAILS 중복 시드')
+  check('12파트 시드 단일 SOT 통합', () => {
+    const v3Seed = join(ROOT, 'lib/data/v3/programPartSignageSeed.ts')
+    const legacy = join(ROOT, 'lib/programParts.ts')
+    if (!existsSync(v3Seed) || !existsSync(legacy)) return 'WARN:파일 없음'
+    const v3Content = readFileSync(v3Seed, 'utf-8')
+    const legacyContent = readFileSync(legacy, 'utf-8')
+    const v3Used = (v3Content.match(/export const SEED_PROGRAM_PART_SIGNAGE/g) || []).length > 0
+    const legacyUsed = (legacyContent.match(/export const PROGRAM_PART_SIGNAGE_DETAILS/g) || []).length > 0
+    const importSearch = join(ROOT, 'lib/ai/recommendSignage.ts')
+    const recommendContent = existsSync(importSearch) ? readFileSync(importSearch, 'utf-8') : ''
+    const usesV3 = recommendContent.includes('SEED_PROGRAM_PART_SIGNAGE')
+    const usesLegacy = recommendContent.includes('PROGRAM_PART_SIGNAGE_DETAILS')
+    if (v3Used && legacyUsed && !usesV3 && usesLegacy) {
+      return 'WARN:v3 시드 orphan·legacy만 활성 (5/26 D+4 SOT 통합 사이클 보완 예정)'
+    }
+    return true
+  })
+
   // ── 요약 ──
   console.log()
   console.log('━━ 요약 ━━')

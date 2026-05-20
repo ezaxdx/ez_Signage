@@ -39,11 +39,11 @@ export default function CaseDPage() {
         .select().single()
       if (pErr || !project) { setError(pErr?.message || '프로젝트 생성 실패'); return }
 
-      // 빈 X배너 1개를 기본 항목으로 추가
+      // 빈 X배너 1개를 기본 항목으로 추가 (v10.4: 대시 제거·노션 §6-2 SOT 정합)
       await supabase.from('design_items').insert({
         project_id: project.id,
         no: '01',
-        category: 'X-배너',
+        category: 'X배너',
         location: '',
         purpose: 'main_promo',
         language: 'KOR',

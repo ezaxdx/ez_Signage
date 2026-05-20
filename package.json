@@ -10,7 +10,13 @@
     "check:types": "tsc --noEmit",
     "check:harness": "node scripts/harness.mjs",
     "check:v3": "node scripts/check_v3_alignment.mjs",
-    "check:all": "npm run check:types && npm run check:harness && npm run check:v3 && npm run build"
+    "check:all": "npm run check:types && npm run check:harness && npm run check:v3 && npm run build",
+    "check:morning": "node scripts/morning_check.mjs",
+    "report:weekly": "node scripts/weekly_report.mjs",
+    "list:commands": "node scripts/list_commands.mjs",
+    "events:dday": "node scripts/events_dday.mjs",
+    "log:daily": "node scripts/daily_log.mjs",
+    "kpi:automation": "node scripts/automation_kpi.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.94.0",

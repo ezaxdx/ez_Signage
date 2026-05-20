@@ -1,0 +1,10 @@
+{
+  "measure_start": "2026-05-22",
+  "baseline": {
+    "manual_signage_order_minutes": 240,
+    "manual_meeting_signage_count": 30,
+    "note": "실측 후 갱신 — 라이브 후 첫 발주 시 본인 측정"
+  },
+  "weekly": [],
+  "monthly_summary": {}
+}
