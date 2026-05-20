@@ -180,6 +180,27 @@ function SampleImageView({
   selectedItem: DesignItem | null
   matchedCategory: SignageCategoryV3 | null
 }) {
+  // HOTFIX 2026-05-20 = 학습 관리자에서 DB(signage_types.sample_image_url) 업로드 이미지 인식.
+  //   기존 localStorage 의존 = PR#4에서 mice_signage_type_samples 키 cleanup → 항상 비어있음.
+  //   기존 fallback = 정적 시드(signageCategoriesSeedV3.ts).sample_image_url → DB 업데이트 미반영.
+  //   fix: GET /api/admin/signage-types fetch + matchedCategory.label ↔ signage_types.name normalize 매칭.
+  //   React Hook rules: hooks를 조기 return 위로 이동 (matchedCategory null 시 hook 호출 누락 방지).
+  const [dbSampleByName, setDbSampleByName] = useState<Record<string, string>>({})
+  useEffect(() => {
+    fetch('/api/admin/signage-types')
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { items?: Array<{ name: string; sample_image_url?: string | null }> } | null) => {
+        if (!d?.items) return
+        const map: Record<string, string> = {}
+        const normFn = (s: string) => s.replace(/[\s\-_·\(\)\[\]]/g, '').toLowerCase()
+        for (const t of d.items) {
+          if (t.sample_image_url) map[normFn(t.name)] = t.sample_image_url
+        }
+        setDbSampleByName(map)
+      })
+      .catch(() => { /* silent — 인증 X·테이블 부재 시 정적 시드 fallback */ })
+  }, [])
+
   if (!selectedItem) {
     return <div className="p-6 text-xs text-slate-400 text-center">좌측 표에서 행을 선택하세요.</div>
   }
@@ -194,21 +215,8 @@ function SampleImageView({
       </div>
     )
   }
-  // 5/22 사용자 명시 = 관리자 업로드 이미지 영역 (signageTypeSamples localStorage) 영역 fallback
-  const [uploadedSampleUrl, setUploadedSampleUrl] = useState<string | null>(null)
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('mice_signage_type_samples')
-      if (!raw) return
-      const samples = JSON.parse(raw) as Record<string, string>
-      const url = samples[matchedCategory.key]
-      if (url) setUploadedSampleUrl(url)
-      else setUploadedSampleUrl(null)
-    } catch {
-      setUploadedSampleUrl(null)
-    }
-  }, [matchedCategory.key])
-  const imageUrl = uploadedSampleUrl ?? matchedCategory.sample_image_url
+  const normFn = (s: string) => s.replace(/[\s\-_·\(\)\[\]]/g, '').toLowerCase()
+  const imageUrl = dbSampleByName[normFn(matchedCategory.label)] ?? matchedCategory.sample_image_url ?? null
   return (
     <div className="p-4 h-full flex flex-col">
       <div className="flex items-center gap-2 mb-3">
