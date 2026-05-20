@@ -219,10 +219,14 @@ export default async function LearningManagerPage() {
     .sort((a, b) => b.item_count - a.item_count)
 
   // 시설 가이드 학습 현황 (§13-3 신규)
-  // 5/22 사용자 명시 = 3 댑스 (L1 venue → L2 halls/세부 → L3 학습 내용)
-  // 시드(VENUE_FACILITY_GUIDE_SEED) + venues.facility_guide_json (사용자 편집 영역) 합산
+  // HOTFIX (2026-05-20): 시드 + DB 같은 L1 행사장 통합 — DB row 중 시드 normalize와 일치하면 제외.
+  //   시드 = 홀 단위 (예: "킨텍스 제1전시장 5홀"), DB = 행사장 단위 (예: "KINTEX")
+  //   둘 다 normalizeVenueName → "킨텍스(KINTEX)" 같으면 시드 우선 (휘하 홀 정보 보존)
+  //   DB only (시드에 없는 신규 행사장) → 그대로 표시
   type VenuesRow = { id?: string; name?: string; facility_guide_json?: unknown; updated_at?: string }
   const venuesWithGuide = ((venuesRes.data ?? []) as VenuesRow[]).filter(v => v && v.facility_guide_json)
+  const seedNormalizedSet = new Set(VENUE_FACILITY_GUIDE_SEED.map(g => normalizeVenueName(g.venue_name)))
+  const venuesWithGuideFiltered = venuesWithGuide.filter(v => !seedNormalizedSet.has(normalizeVenueName(v.name ?? '')))
 
   const facilityGuideStatus = [
     ...VENUE_FACILITY_GUIDE_SEED.map(g => {
@@ -252,8 +256,8 @@ export default async function LearningManagerPage() {
         special_notes: g.special_notes ?? [],
       }
     }),
-    // venues.facility_guide_json (사용자 추가 영역)
-    ...venuesWithGuide.map(v => {
+    // venues.facility_guide_json (시드와 중복 안 되는 DB only 행사장만)
+    ...venuesWithGuideFiltered.map(v => {
       const j = (v.facility_guide_json ?? {}) as {
         install_allowed?: Array<{ category?: string; status?: string; note?: string }>
         warnings?: Array<{ type?: string; description?: string }>

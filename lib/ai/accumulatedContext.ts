@@ -11,6 +11,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { SEED_EVENT_HISTORY, estimateSignageBreakdown, SEED_SYNONYMS } from '@/lib/data/dashboardSeed'
+import { normalizeVenueName } from '@/lib/venueIntel'
 
 // 5/22 사용자 명시 = 모든 영역 = 동의어 → 표준명 자동 변환. AI 프롬프트 영역 표준화 영역 적용.
 function normalizeAliasKey(s: string): string {
@@ -349,7 +350,22 @@ interface EventHistoryDb {
 }
 
 export async function buildSeedEventHistoryContext(venue: string, programParts?: string[]): Promise<string> {
+  // HOTFIX (2026-05-20): PO 정책 — 학습 = L1 행사장 단위 (휘하 홀 정보는 venue 원본에 보존).
+  //   매칭 = 양쪽 normalizeVenueName 통과 후 L1 비교.
+  //   예: input "코엑스(COEX)" + e.venue "코엑스 그랜드볼룸" → 둘 다 "코엑스(COEX)" → 매칭 ✓
+  //   매칭 실패 시 기존 raw substring fallback 유지 (정규화 외 행사장 누락 방지).
+  const venueL1 = normalizeVenueName(venue)
   const venueNorm = venue.toLowerCase().replace(/\s/g, '')
+
+  function matchVenueL1(rawVenue: string | null | undefined): boolean {
+    if (!rawVenue) return false
+    const evL1 = normalizeVenueName(rawVenue)
+    // 1차: L1 표준명 정확 일치
+    if (venueL1 && evL1 && venueL1 === evL1) return true
+    // 2차: raw substring (정규화 외 행사장 — 광화문 광장·국립중앙박물관 등)
+    const evNorm = rawVenue.toLowerCase().replace(/\s/g, '')
+    return evNorm.includes(venueNorm) || venueNorm.includes(evNorm)
+  }
 
   // 1. DB 영역 SELECT (event_history 테이블 있으면)
   let dbMatched: EventHistoryDb[] = []
@@ -362,8 +378,7 @@ export async function buildSeedEventHistoryContext(venue: string, programParts?:
       .limit(500)
     if (data) {
       dbMatched = (data as EventHistoryDb[]).filter(e => {
-        const evNorm = (e.venue ?? '').toLowerCase().replace(/\s/g, '')
-        const venueMatch = evNorm.includes(venueNorm) || venueNorm.includes(evNorm)
+        const venueMatch = matchVenueL1(e.venue)
         const partsMatch = !programParts?.length || (e.program_parts ?? []).some(p => programParts.includes(p))
         return venueMatch && partsMatch
       }).slice(0, 5)
@@ -378,8 +393,7 @@ export async function buildSeedEventHistoryContext(venue: string, programParts?:
     matched = dbMatched.map(e => ({ ...e, is_db: true }))
   } else {
     matched = SEED_EVENT_HISTORY.filter(e => {
-      const evNorm = e.venue.toLowerCase().replace(/\s/g, '')
-      const venueMatch = evNorm.includes(venueNorm) || venueNorm.includes(evNorm)
+      const venueMatch = matchVenueL1(e.venue)
       const partsMatch = !programParts?.length || (e.program_parts ?? []).some(p => programParts.includes(p))
       return venueMatch && partsMatch
     }).slice(0, 5).map(e => ({
