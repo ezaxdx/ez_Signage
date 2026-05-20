@@ -34,6 +34,25 @@ export function RightPanel({ selectedItem, facilityIssues, venueName, guideSourc
     return classifyCategoryV3(selectedItem.category)
   }, [selectedItem?.category])
 
+  // HOTFIX 2026-05-20: state lifting — 기존엔 SampleImageView 내부에 dbSampleByName state.
+  //   tab 전환 시(sample↔ratio) SampleImageView conditional render로 unmount → state 초기화 → 이미지 사라짐.
+  //   부모(RightPanel)에서 fetch 1회 유지·props로 전달.
+  const [dbSampleByName, setDbSampleByName] = useState<Record<string, string>>({})
+  useEffect(() => {
+    fetch('/api/admin/signage-types')
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { items?: Array<{ name: string; sample_image_url?: string | null }> } | null) => {
+        if (!d?.items) return
+        const map: Record<string, string> = {}
+        const normFn = (s: string) => s.replace(/[\s\-_·\(\)\[\]]/g, '').toLowerCase()
+        for (const t of d.items) {
+          if (t.sample_image_url) map[normFn(t.name)] = t.sample_image_url
+        }
+        setDbSampleByName(map)
+      })
+      .catch(() => { /* silent — 인증 X·테이블 부재 시 정적 시드 fallback */ })
+  }, [])
+
   const hasViolations = facilityIssues.length > 0
   const warnCount = facilityIssues.filter(i => i.severity === 'warn').length
   const infoCount = facilityIssues.filter(i => i.severity === 'info').length
@@ -82,7 +101,7 @@ export function RightPanel({ selectedItem, facilityIssues, venueName, guideSourc
 
         <div className={`${hasViolations ? 'h-1/2 border-t border-slate-200' : 'flex-1'} overflow-y-auto bg-white`}>
           {tab === 'sample' ? (
-            <SampleImageView selectedItem={selectedItem} matchedCategory={matchedCategory} />
+            <SampleImageView selectedItem={selectedItem} matchedCategory={matchedCategory} dbSampleByName={dbSampleByName} />
           ) : (
             <RatioView selectedItem={selectedItem} matchedCategory={matchedCategory} />
           )}
@@ -176,31 +195,15 @@ function ViolationsSection({
 function SampleImageView({
   selectedItem,
   matchedCategory,
+  dbSampleByName,
 }: {
   selectedItem: DesignItem | null
   matchedCategory: SignageCategoryV3 | null
+  dbSampleByName: Record<string, string>
 }) {
-  // HOTFIX 2026-05-20 = 학습 관리자에서 DB(signage_types.sample_image_url) 업로드 이미지 인식.
-  //   기존 localStorage 의존 = PR#4에서 mice_signage_type_samples 키 cleanup → 항상 비어있음.
-  //   기존 fallback = 정적 시드(signageCategoriesSeedV3.ts).sample_image_url → DB 업데이트 미반영.
-  //   fix: GET /api/admin/signage-types fetch + matchedCategory.label ↔ signage_types.name normalize 매칭.
-  //   React Hook rules: hooks를 조기 return 위로 이동 (matchedCategory null 시 hook 호출 누락 방지).
-  const [dbSampleByName, setDbSampleByName] = useState<Record<string, string>>({})
-  useEffect(() => {
-    fetch('/api/admin/signage-types')
-      .then(r => r.ok ? r.json() : null)
-      .then((d: { items?: Array<{ name: string; sample_image_url?: string | null }> } | null) => {
-        if (!d?.items) return
-        const map: Record<string, string> = {}
-        const normFn = (s: string) => s.replace(/[\s\-_·\(\)\[\]]/g, '').toLowerCase()
-        for (const t of d.items) {
-          if (t.sample_image_url) map[normFn(t.name)] = t.sample_image_url
-        }
-        setDbSampleByName(map)
-      })
-      .catch(() => { /* silent — 인증 X·테이블 부재 시 정적 시드 fallback */ })
-  }, [])
-
+  // HOTFIX 2026-05-20 (2차): state·useEffect를 부모 RightPanel로 이동 (state lifting).
+  //   tab 전환(sample↔ratio) 시 SampleImageView conditional render = unmount → state 초기화로
+  //   업로드 이미지가 사라지는 버그 fix. props.dbSampleByName으로 안정 유지.
   if (!selectedItem) {
     return <div className="p-6 text-xs text-slate-400 text-center">좌측 표에서 행을 선택하세요.</div>
   }
