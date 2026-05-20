@@ -1,5 +1,48 @@
 # 작업 이력
 
+## 2026-05-20 (δ-PR#3 — 학습 관리자 CRUD 일관화·localStorage 폐기·CLAUDE.md §16-E)
+
+### 단위 9b: CRUD 인프라 점검
+- event_history (`/api/event-history`) — GET/POST/PATCH/DELETE 존재 ✓
+- signage_types (`/api/admin/signage-types`) — 존재 ✓
+- signage_aliases (`/api/admin/aliases`) — 존재 ✓
+- venues.facility_guide_json (`/api/admin/venues/[id]`) — 존재 ✓
+- program_parts_overrides (`/api/admin/program-parts` + migration v15) — 존재 ✓
+- 신규 마이그레이션 불필요 (사용자 영역 SQL 실행 부담 회피, D-day 안전)
+
+### 단위 9c: localStorage 폐기 + DB 영속화 wire-up
+- LearningManagerClient.tsx 변경:
+  - 프로그램 파트 (toggleHideProgramPart·saveProgramPartEdit·addCustomProgramPart) → `/api/admin/program-parts` POST/PATCH/DELETE 호출 + 마운트 시 GET fetch
+  - 이벤트 (toggleHideEvent·saveEventEdit·addCustomEvent) → `/api/event-history` PATCH/POST/DELETE 호출
+  - 1회성 클린업 useEffect 추가: legacy localStorage 키 7종 removeItem
+    - `mice_hidden_program_parts`·`mice_program_part_overrides`·`mice_custom_program_parts`
+    - `mice_hidden_events`·`mice_event_overrides`·`mice_custom_events`
+    - `mice_signage_type_overrides`
+- 잔존 localStorage (DB 컬럼 미적용 — 마이그레이션 후 폐기 예정 TODO):
+  - `mice_hidden_seed_aliases` (signage_aliases.hidden 컬럼 없음)
+  - `mice_hidden_signage_types` (signage_types.hidden 컬럼 없음)
+  - `mice_hidden_facility_venues` (venues.hidden 컬럼 없음)
+  - `mice_signage_type_samples` (signage_types.sample_image_url 컬럼 없음)
+
+### 단위 3: 문서 정합
+- `CLAUDE.md` §16-E 신설 — δ 정책 SOT 절 (마스터 4종·완료 단일 트리거·d7 lazy union·삭제 정책·AI 공식 정책·AI 컨텍스트 단일화·CRUD 범위)
+- `decisions.md` 2026-05-20 두 단락 추가 (δ 정책 채택 + AI 컨텍스트 정렬·공식 정책 변경)
+- `learnings.md` 2026-05-20 두 단락 추가 (학습 신호 분산 SOT 도입·AI 블록 폭주 통합 의무)
+
+### 검증
+- TSC 0 에러
+- Next 빌드 모든 라우트 PASS
+- harness 72/70 통과/2 warn/0 fail
+- 변경 파일: 4개 (LearningManagerClient.tsx + CLAUDE.md + decisions.md + learnings.md + PROGRESS.md)
+
+### 알려진 한계
+- 잔존 localStorage 4종 (DB 컬럼 미적용) — 신규 컬럼 마이그레이션 필요. 별도 사이클 대상.
+- 백필: status='완료'였지만 이전에 event_history POST 안 된 프로젝트의 finalized_at NULL 잔존 → 별도 backfill 스크립트 (사용자 영역 실행).
+- v2 (lib/ai/v2/recommendationLogic.ts) 안 X배너/포디움/가로등 공식은 orphan 유지 (활성 흐름 영향 0).
+- 사이드바 그룹핑 미적용 (PO 확정).
+
+---
+
 ## 2026-05-20 (δ-PR#2 — AI 컨텍스트 정렬·공식 정책 변경)
 
 ### 단위 2: 프로그램 파트 운영 통계 AI 프롬프트 주입

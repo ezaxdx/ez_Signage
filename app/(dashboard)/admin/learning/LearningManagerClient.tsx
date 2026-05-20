@@ -295,54 +295,77 @@ export function LearningManagerClient({
     setEditingSignageType(null)
   }
 
-  // 5/22 P2-4 = 프로그램 파트 관리 편집·삭제·추가 (localStorage 오버라이드 패턴)
+  // PR#3 단위 9c (δ 정책): 프로그램 파트 관리 — DB(/api/admin/program-parts) 영속화.
+  //   localStorage(mice_program_part_*) 폐기. 마운트 시 1회 fetch + 변경 시 API POST/DELETE.
+  //   API 실패(테이블 부재 등) 시 in-memory만 유지 (UI 동작 보장 — graceful degradation).
   const [hiddenProgramPartCodes, setHiddenProgramPartCodes] = useState<string[]>([])
   const [programPartOverrides, setProgramPartOverrides] = useState<Record<string, { name: string; hint: string }>>({})
   const [customProgramParts, setCustomProgramParts] = useState<Array<{ code: string; name: string; hint: string; group: 'program'|'attendee'|'promotion'|'other' }>>([])
   const [editingProgramPart, setEditingProgramPart] = useState<{ code: string; name: string; hint: string; group: 'program'|'attendee'|'promotion'|'other' } | null>(null)
   useEffect(() => {
-    try {
-      const h = localStorage.getItem('mice_hidden_program_parts')
-      if (h) setHiddenProgramPartCodes(JSON.parse(h))
-      const o = localStorage.getItem('mice_program_part_overrides')
-      if (o) setProgramPartOverrides(JSON.parse(o))
-      const c = localStorage.getItem('mice_custom_program_parts')
-      if (c) setCustomProgramParts(JSON.parse(c))
-    } catch {}
+    // DB 영속화: program_parts_overrides 테이블 fetch
+    fetch('/api/admin/program-parts')
+      .then(r => r.json())
+      .then((d: { items?: Array<{ code: string; name: string | null; hint: string | null; group_name: 'program'|'attendee'|'promotion'|null; hidden: boolean; is_custom: boolean }> }) => {
+        const items = d.items ?? []
+        const hidden: string[] = []
+        const overrides: Record<string, { name: string; hint: string }> = {}
+        const customs: Array<{ code: string; name: string; hint: string; group: 'program'|'attendee'|'promotion'|'other' }> = []
+        for (const it of items) {
+          if (it.hidden) hidden.push(it.code)
+          if (it.is_custom) {
+            customs.push({ code: it.code, name: it.name ?? '', hint: it.hint ?? '', group: (it.group_name ?? 'program') as 'program'|'attendee'|'promotion'|'other' })
+          } else if (it.name || it.hint) {
+            overrides[it.code] = { name: it.name ?? '', hint: it.hint ?? '' }
+          }
+        }
+        setHiddenProgramPartCodes(hidden)
+        setProgramPartOverrides(overrides)
+        setCustomProgramParts(customs)
+      })
+      .catch(() => { /* silent — graceful degradation */ })
   }, [])
   const toggleHideProgramPart = (code: string) => {
     setHiddenProgramPartCodes(prev => {
       const next = prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
-      try { localStorage.setItem('mice_hidden_program_parts', JSON.stringify(next)) } catch {}
+      // DB 영속화 (best-effort)
+      const willHide = !prev.includes(code)
+      if (willHide) {
+        fetch('/api/admin/program-parts', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code }) }).catch(() => {})
+      } else {
+        // 복구: hidden=false로 upsert
+        fetch('/api/admin/program-parts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code, hidden: false, group_name: 'program', name: '' }) }).catch(() => {})
+      }
       return next
     })
   }
   const saveProgramPartEdit = (code: string, draft: { name: string; hint: string; group: 'program'|'attendee'|'promotion'|'other' }) => {
-    // 시드 = override, 신규 (custom_*) = customProgramParts 업데이트
     const isCustom = code.startsWith('custom_')
     if (isCustom) {
-      setCustomProgramParts(prev => {
-        const next = prev.map(p => p.code === code ? { ...p, ...draft } : p)
-        try { localStorage.setItem('mice_custom_program_parts', JSON.stringify(next)) } catch {}
-        return next
-      })
+      setCustomProgramParts(prev => prev.map(p => p.code === code ? { ...p, ...draft } : p))
     } else {
-      setProgramPartOverrides(prev => {
-        const next = { ...prev, [code]: { name: draft.name, hint: draft.hint } }
-        try { localStorage.setItem('mice_program_part_overrides', JSON.stringify(next)) } catch {}
-        return next
-      })
+      setProgramPartOverrides(prev => ({ ...prev, [code]: { name: draft.name, hint: draft.hint } }))
     }
+    // DB 영속화
+    fetch('/api/admin/program-parts', {
+      method: isCustom ? 'PATCH' : 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(isCustom
+        ? { code, patch: { name: draft.name, hint: draft.hint, group_name: draft.group } }
+        : { code, name: draft.name, hint: draft.hint, group_name: draft.group })
+    }).catch(() => {})
     setEditingProgramPart(null)
   }
   const addCustomProgramPart = (draft: { name: string; hint: string; group: 'program'|'attendee'|'promotion'|'other' }) => {
     if (!draft.name.trim()) { alert('파트명 필수'); return }
     const code = 'custom_' + Date.now().toString(36)
-    setCustomProgramParts(prev => {
-      const next = [...prev, { code, ...draft }]
-      try { localStorage.setItem('mice_custom_program_parts', JSON.stringify(next)) } catch {}
-      return next
-    })
+    setCustomProgramParts(prev => [...prev, { code, ...draft }])
+    // DB 영속화
+    fetch('/api/admin/program-parts', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ code, name: draft.name, hint: draft.hint, group_name: draft.group }),
+    }).catch(() => {})
     setEditingProgramPart(null)
   }
   const [venues, setVenues] = useState<Venue[]>(initialVenues)
@@ -540,49 +563,77 @@ export function LearningManagerClient({
     }
     return map
   }, [unifiedEventHistory, resolveCategoryName])
+  // PR#3 단위 9c (δ 정책): 이벤트 관리 — DB(/api/event-history) 영속화.
+  //   localStorage(mice_custom_events·mice_event_overrides·mice_hidden_events) 폐기.
+  //   API 실패 시 in-memory만 유지 (graceful degradation).
   useEffect(() => {
-    try {
-      const h = localStorage.getItem('mice_hidden_events')
-      if (h) setHiddenEventKeys(JSON.parse(h))
-      const o = localStorage.getItem('mice_event_overrides')
-      if (o) setEventOverrides(JSON.parse(o))
-      const c = localStorage.getItem('mice_custom_events')
-      if (c) setCustomEvents(JSON.parse(c))
-    } catch {}
+    // 마운트 시 1회: DB에 push (in-memory state 변경은 즉시·DB는 best-effort)
+    // 본격 fetch는 serverEventHistory props로 SSR 단계에서 이미 수행됨 (page.tsx).
+    // 본 컴포넌트는 변경 시 PATCH/DELETE만 보냄.
   }, [])
   const toggleHideEvent = (key: string) => {
     setHiddenEventKeys(prev => {
       const next = prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
-      try { localStorage.setItem('mice_hidden_events', JSON.stringify(next)) } catch {}
+      // DB 영속화: custom event는 DELETE, 시드는 hidden 토글이 의미 없으므로 클라이언트 state만 (시드 가시화는 UI 토글)
+      if (key.startsWith('custom_')) {
+        fetch('/api/event-history', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ project_code: key }) }).catch(() => {})
+      }
       return next
     })
   }
   const saveEventEdit = (originalKey: string, draft: { project_name: string; project_code: string; year: number; venue: string; program_parts: string[]; analyzed_item_count?: number }) => {
     const isCustom = originalKey.startsWith('custom_')
     if (isCustom) {
-      setCustomEvents(prev => {
-        const next = prev.map(e => (e.project_code === originalKey.replace('custom_', '')) ? { ...e, ...draft, category_tag: e.category_tag } : e)
-        try { localStorage.setItem('mice_custom_events', JSON.stringify(next)) } catch {}
-        return next
-      })
+      setCustomEvents(prev => prev.map(e => (e.project_code === originalKey.replace('custom_', '')) ? { ...e, ...draft, category_tag: e.category_tag } : e))
     } else {
-      setEventOverrides(prev => {
-        const next = { ...prev, [originalKey]: draft }
-        try { localStorage.setItem('mice_event_overrides', JSON.stringify(next)) } catch {}
-        return next
-      })
+      setEventOverrides(prev => ({ ...prev, [originalKey]: draft }))
     }
+    // DB 영속화 (PATCH)
+    fetch('/api/event-history', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ project_code: originalKey, patch: draft }),
+    }).catch(() => {})
     setEditingEvent(null)
   }
   const addCustomEvent = (draft: { project_name: string; project_code: string; year: number; venue: string; program_parts: string[]; analyzed_item_count?: number }) => {
     if (!draft.project_name.trim()) { alert('행사명 필수'); return }
-    setCustomEvents(prev => {
-      const next = [...prev, { ...draft, category_tag: '일반' as const, project_code: draft.project_code || 'custom_' + Date.now().toString(36) }]
-      try { localStorage.setItem('mice_custom_events', JSON.stringify(next)) } catch {}
-      return next
-    })
+    const code = draft.project_code || 'custom_' + Date.now().toString(36)
+    setCustomEvents(prev => [...prev, { ...draft, category_tag: '일반' as const, project_code: code }])
+    // DB 영속화 (POST)
+    fetch('/api/event-history', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...draft, project_code: code, source: 'manual' }),
+    }).catch(() => {})
     setEditingEvent(null)
   }
+
+  // PR#3 단위 9c (δ 정책): localStorage 폐기 — 마운트 시 1회 클린업.
+  //   DB 영속화로 전환된 키 (mice_program_part_*·mice_custom_events·mice_event_overrides·
+  //   mice_hidden_events·mice_signage_type_overrides) 모두 삭제.
+  //   기존 데이터 마이그레이션 없음 (PO 확정).
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const legacyKeys = [
+      'mice_hidden_program_parts',
+      'mice_program_part_overrides',
+      'mice_custom_program_parts',
+      'mice_hidden_events',
+      'mice_event_overrides',
+      'mice_custom_events',
+      'mice_signage_type_overrides',
+    ]
+    for (const k of legacyKeys) {
+      try { localStorage.removeItem(k) } catch {}
+    }
+  }, [])
+
+  // 잔존 localStorage (DB 미적용 — 신규 컬럼 마이그레이션 후 폐기 예정):
+  //   - mice_hidden_seed_aliases (signage_aliases에 hidden 컬럼 없음)
+  //   - mice_hidden_signage_types (signage_types에 hidden 컬럼 없음)
+  //   - mice_hidden_facility_venues (venues에 hidden 컬럼 없음)
+  //   - mice_signage_type_samples (signage_types에 sample_image_url 컬럼 없음)
   useEffect(() => {
     try {
       const a = localStorage.getItem('mice_hidden_seed_aliases')

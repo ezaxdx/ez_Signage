@@ -27,6 +27,25 @@
 
 ---
 
+## 2026-05-20 — δ 정책: 학습 신호 소스 분산이 의도 모호화
+
+**작업**: PR#1·PR#2·PR#3 데이터 학습 관리자 흐름 정렬
+**증상**: 진단 결과 학습 신호 3곳 분산 — 완료 버튼은 program_parts 누락·EditorLayout은 event_history POST X·ExportService는 finalized_at SET 책임 떠안음.
+**원인**: SOT(단일 진실) 부재. 완료 의도가 코드 여러 곳에 흩어져 정책 변경 시마다 grep 4단계 필요.
+**예방**:
+- `lib/services/completeProject.ts` 헬퍼 도입 — 완료 처리 SOT 단일화 (status·event_history·finalized_at atomic)
+- export 다운로드 ≠ 학습 신호 (PO 정책 δ로 명시 분리)
+- "한 행위(완료) = 한 함수(completeProject)" 원칙 일관 적용
+**관련**: decisions.md 2026-05-20 δ 정책·feedback-automation-design-upfront·PROGRESS.md δ-PR#1
+
+## 2026-05-20 — AI 프롬프트 블록 폭주가 신뢰성 저하
+
+**작업**: recommendSignage.ts AI 컨텍스트 정렬
+**증상**: 시설 가이드 관련 정보가 6+개 블록에 중복 분산 (venueProfile·venueSpecs·ceiling·coverage·adminMaster.facility_guide·accumulated). 토큰 낭비 + 모델이 같은 정보 중복 학습 + 정합성 추적 어려움.
+**원인**: 매 사이클 신규 정보를 새 블록으로 추가만 하고 통합 안 함. orphan 정책 보존 비용이 가산됨.
+**예방**: 블록 추가 시 기존 블록 흡수 검토 의무 (venueProfile에 모든 시설 정보 단일화 — 단위 4)
+**관련**: PROGRESS.md δ-PR#2·decisions.md 2026-05-20 AI 컨텍스트 정렬
+
 ## 형식
 
 ```

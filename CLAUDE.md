@@ -703,6 +703,75 @@ StatusBar (하단: 실시간 동기화 상태 / mm 규격)
 
 ---
 
+## 16-E. 2026-05-20 — δ 정책: 단일 학습 신호 + 데이터 흐름 명시
+
+> PO 확정 정책. 진단 보고서·PR#1·PR#2·PR#3을 거쳐 코드 정착. 변경 시 본 절 갱신.
+
+### 마스터 4종 (단일 진실 소스)
+
+```
+#1 행사 관리 (event_history) — 시드 44건 + 운영 누적
+#2 시설 가이드 (venues + facility_guide_json)
+#3 환경장식물 관리 (signage_types — 12 카테고리 SOT)
+#4 동의어 매핑 (signage_aliases)
+  ↓ derive (read-only 뷰)
+행사장 관리·행사장 학습 현황·프로그램 파트 관리·가이드 예외 패턴·수정 요청 대기
+  ↓
+AI 추천 (recommendSignage.ts)
+```
+
+### 학습 풀 누적 트리거 (단일 진입점)
+
+- **완료 버튼** 클릭 → `lib/services/completeProject.ts` 헬퍼 (status 갱신·event_history POST·finalized_at SET, atomic)
+- **행사일 + 7일 경과** → SSR lazy union (메모리상 합성, DB INSERT 없음)
+- 누적 조건: `design_items ≥ 3건` AND event_history 미수록
+- source 태그: `seed` / `manual` / `manual_delete` / `auto_project` / `auto_d7`
+
+### 폐기: 엑셀 export 학습 신호
+
+- `ExportService.logUsage`에서 `design_items.finalized_at` UPDATE 제거 (1.5 정책)
+- export는 순수 출력 기능. 학습 신호는 완료 버튼이 단일 소스.
+
+### 프로젝트 삭제 정책
+
+- design_items ≥ 3건 → event_history UPSERT (source='manual_delete') 후 cascade 삭제
+- design_items < 3건 → 운영 데이터만 cascade (학습 보존 X)
+- Storage 이미지(master_image_url + design_items.image_url) cleanup 포함
+
+### AI 추천 공식 정책 (단위 7)
+
+- 1순위: 누적 평균 (해당 파트·행사장 누적 ≥ 3건)
+- 2순위 (동선 배너만): `max(누적평균, ceil(참가자 ÷ N))` — N은 운영 데이터 역산 평균 (fallback 500)
+- 3순위: 기본값 1개 + `[추천 없음 — 학습 데이터 부재]` rationale + no_data_flag=true
+- **폐기 공식**: X배너 `max(2, ceil(참가자÷300)+1)` · 포디움 `세션×2` · 가로등 `면적÷50` — `agentPipeline.ts:step3.body`에서 제거됨
+
+### AI 컨텍스트 정책 (단위 4)
+
+- 시설 가이드 단일 블록: `venueProfile.buildVenueProfile()`이 venueFacilityGuide·venueSpecs·ceilingBanner·coverage·adminMaster.facility_guide 모두 흡수
+- 프로그램 파트 통계: `lib/data/programPartStats.ts`가 학습 관리자 화면과 동등한 평균 리스트를 프롬프트에 주입 (중복 파트 OK)
+- "프로젝트 정보 변경" 모달에서 신규 파트 추가 시 `recommendSignage` 재호출 → 신규 환경장식물 INSERT
+
+### CRUD 범위 (γ — 단위 9b·9c)
+
+- 마스터 4종 + 프로그램 파트 관리 = 모두 DB 영구 CRUD
+  - event_history → `/api/event-history` GET/POST/PATCH/DELETE
+  - signage_types → `/api/admin/signage-types`
+  - signage_aliases → `/api/admin/aliases`
+  - venues.facility_guide_json → `/api/admin/venues/[id]` PATCH
+  - program_parts_overrides → `/api/admin/program-parts` (v15 마이그레이션)
+- 폐기 localStorage 키: `mice_program_part_*`·`mice_custom_events`·`mice_event_overrides`·`mice_hidden_events`·`mice_signage_type_overrides` — LearningManagerClient 마운트 시 1회 cleanup
+- 잔존 localStorage (DB 컬럼 미적용): `mice_hidden_seed_aliases`·`mice_hidden_signage_types`·`mice_hidden_facility_venues`·`mice_signage_type_samples` — 신규 컬럼 마이그레이션 후 폐기 예정
+
+### 검증
+
+- `npx tsc --noEmit` 0 에러
+- `npm run build` 모든 라우트 PASS
+- `node scripts/harness.mjs` 0 fail
+
+### 사이드바 그룹핑: 미적용 (PO 확정)
+
+---
+
 ## 17. 향후 확장 고려사항 (현재 미구현)
 
 - **시리즈 생성**: 같은 템플릿에서 방향/키워드/색상/언어만 바꿔 N장 동시 생성 (웨이파인딩 ←/→ 등)
