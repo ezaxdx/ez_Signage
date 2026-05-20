@@ -529,10 +529,11 @@ export function LearningManagerClient({
   const [customEvents, setCustomEvents] = useState<Array<{ project_name: string; project_code: string; year: number; venue: string; category_tag: '핵심'|'일반'|'미분류'|'해외'; program_parts: string[]; analyzed_item_count?: number }>>([])
   const [editingEvent, setEditingEvent] = useState<{ project_name: string; project_code: string; year: number; venue: string; program_parts: string[]; analyzed_item_count?: number } | null>(null)
 
-  // HOTFIX (2026-05-20) 사용자 명시 패턴 직역:
-  //   [...SEED_EVENT_HISTORY, ...userEventHistory, ...customEvents] — SEED는 항상 base, 누적·커스텀은 추가.
-  //   dbEventHistory(이전 union·OR 분기) 의존 제거 → SEED 44건 항상 표시 보장.
-  // 5/22 사용자 명시 = 행사 관리 = SOT·행사장 관리·프로그램 파트 관리·환경장식물 관리 영역 모두 영향
+  // HOTFIX 2026-05-20 (intermittent failure fix):
+  //   기존 [...SEED, ...user, ...custom] = DB event_history(serverEventHistory) 빠져서 역설 발생.
+  //   page.tsx:87이 "DB에 이미 있는 project_code는 userEventHistory skip"하므로
+  //   완료 처리 정상 INSERT된 PO 프로젝트가 unifiedEventHistory에서 사라짐 ("되다가 안돼" 원인).
+  //   fix: serverEventHistory(DB event_history)도 합산. SEED project_code와 중복은 SEED 우선.
   const unifiedEventHistory = useMemo(() => {
     const userMapped = userEventHistory.map(e => ({
       ...e,
@@ -545,8 +546,21 @@ export function LearningManagerClient({
       has_image: false,
       signage_breakdown: undefined,
     })) as unknown as typeof SEED_EVENT_HISTORY
-    return [...SEED_EVENT_HISTORY, ...userMapped, ...customMapped]
-  }, [userEventHistory, customEvents])
+    // DB event_history 합산 — SEED·user와 중복(project_code 매칭) 제거 후 추가
+    const seedCodes = new Set(SEED_EVENT_HISTORY.map(e => e.project_code).filter(Boolean) as string[])
+    const userCodes = new Set(userEventHistory.map(u => u.project_code).filter(Boolean))
+    const dbMapped = (serverEventHistory ?? [])
+      .filter(e => {
+        const code = e.project_code ?? ''
+        return code && !seedCodes.has(code) && !userCodes.has(code)
+      })
+      .map(e => ({
+        ...e,
+        has_excel: e.has_excel ?? true,
+        has_image: e.has_image ?? false,
+      })) as typeof SEED_EVENT_HISTORY
+    return [...SEED_EVENT_HISTORY, ...dbMapped, ...userMapped, ...customMapped]
+  }, [userEventHistory, customEvents, serverEventHistory])
 
   const venueAggregateByName = useMemo(() => {
     const map = new Map<string, { program_parts: Set<string>; signage: Map<string, number> }>()
@@ -2941,7 +2955,9 @@ export function LearningManagerClient({
                     return unifiedEventHistory
                       .map(e => ({ ...e, is_user_project: userCodes.has(e.project_code ?? '') }))
                       .filter(e => {
-                        const key = (e.project_code ?? '') + e.project_name
+                        // HOTFIX 2026-05-20: dedup key 강화 — project_code 우선, 빈 값일 때만 name fallback
+                        //   기존 `code + name` = SEED·DB·user 같은 project_code 동시 등장 시 둘 다 통과 (이중 표시)
+                        const key = e.project_code || e.project_name
                         if (seen.has(key)) return false
                         seen.add(key)
                         return true
