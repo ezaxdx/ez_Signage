@@ -177,6 +177,65 @@ export const SEED_SYNONYMS: SynonymSeed[] = [
   { alias: '피켓보드',       canonical_name: '피켓보드',     note: '5/22 엑셀 SOT 영역 = 영접영송 영역' },
   { alias: '영접피켓',       canonical_name: '피켓보드',     note: '영접용 피켓' },
   { alias: '입출국피켓',     canonical_name: '피켓보드',     note: '입출국 피켓' },
+
+  // ── 5/20 v10.10 = ICC WLCF·리더스 + 정답지 13건 동의어 매핑 (용도·규격 기준·SOT = 12파트 SOT) ──
+  // 블로틴 보드 (bulletin_board·510×740·유포지·PET·사무실 안내)
+  { alias: '블로틴 보드',      canonical_name: '블로틴 보드',  note: '5/20 v10.9 신규 카테고리 = ICC WLCF 8건' },
+  { alias: '블로틴',           canonical_name: '블로틴 보드',  note: '약식 표기' },
+  { alias: '블로틴보드',       canonical_name: '블로틴 보드',  note: '띄어쓰기 변형' },
+  { alias: '사무실 안내 보드', canonical_name: '블로틴 보드',  note: '용도 매핑' },
+  { alias: '라운지 보드',      canonical_name: '블로틴 보드',  note: '용도 매핑' },
+  { alias: '접견실 보드',      canonical_name: '블로틴 보드',  note: '용도 매핑' },
+  // 콘솔 배너 (console_banner·12000×1200·무대 콘솔 가로)
+  { alias: '콘솔',            canonical_name: '콘솔 배너',    note: '5/20 v10.9 신규 = ICC 리더스포럼' },
+  { alias: '콘솔 시안',        canonical_name: '콘솔 배너',    note: '시안 표기' },
+  { alias: '콘솔시안',         canonical_name: '콘솔 배너',    note: '띄어쓰기 변형' },
+  { alias: '콘솔배너',         canonical_name: '콘솔 배너',    note: '띄어쓰기 변형' },
+  { alias: '무대 콘솔',        canonical_name: '콘솔 배너',    note: '용도 매핑' },
+  { alias: '단상 가로',        canonical_name: '콘솔 배너',    note: '용도 매핑' },
+  // 파티션 배너 (partition_banner·1800×11000·세로 분할 6.1:1)
+  { alias: '파티션 배너',      canonical_name: '파티션 배너',  note: '5/20 v10.9 신규 = ICC 탐라홀' },
+  { alias: '파티션배너',       canonical_name: '파티션 배너',  note: '띄어쓰기 변형' },
+  { alias: '파티션',           canonical_name: '파티션 배너',  note: '약식 표기' },
+  { alias: '개회식 파티션',    canonical_name: '파티션 배너',  note: '용도 매핑' },
+  { alias: '탐라홀 파티션',    canonical_name: '파티션 배너',  note: 'ICC WLCF 매핑' },
+  // DID 가로형 (did_horizontal·800×500·디지털 사이니지 가로)
+  { alias: 'DID 가로',         canonical_name: 'DID 가로형',   note: '5/20 v10.9 신규 = ICC PDP송출' },
+  { alias: 'DID배경',          canonical_name: 'DID 가로형',   note: 'ICC WLCF 2015' },
+  { alias: 'PDP송출',          canonical_name: 'DID 가로형',   note: 'ICC WLCF 2015' },
+  { alias: 'LED 가로',         canonical_name: 'DID 가로형',   note: '용도 매핑' },
+  { alias: '전광판 가로',      canonical_name: 'DID 가로형',   note: '용도 매핑' },
+  // 포디움 가로형 (podium_wide·2784×1019·연단 가로·hall 사이즈별)
+  { alias: '포디움 가로',      canonical_name: '포디움 가로형', note: '5/20 v10.9 신규 = ICC WGCA' },
+  { alias: '포디움 배너',      canonical_name: '포디움 가로형', note: 'WGCA 표기' },
+  { alias: 'WGCA Podium',     canonical_name: '포디움 가로형', note: 'ICC WGCA 2022' },
+  { alias: '대형 포디움',      canonical_name: '포디움 가로형', note: '용도 매핑' },
+  { alias: 'Hall 포디움',      canonical_name: '포디움 가로형', note: 'hall 사이즈별' },
+
+  // ── 5/20 v10.10 = 정답지 13건 누적 발견 동의어 추가 (용도 기준) ──
+  // 천정·통천 영역 (이미 일부 매핑·추가)
+  { alias: '벽면배너',         canonical_name: '가로 현수막',  note: 'BCWW 2018 외벽 용도' },
+  { alias: '천정배너(대형)',   canonical_name: '통천 배너',    note: 'BCWW 2018 대형 천정' },
+  { alias: '천정배너',         canonical_name: '통천 배너',    note: '천장 행잉 일반' },
+  { alias: '행잉배너',         canonical_name: '통천 배너',    note: 'ICC WLCF 5층 행잉' },
+  { alias: '대형통천',         canonical_name: '통천 배너',    note: 'ICC WLCF 5층 14m×12m' },
+  // 세로 영역
+  { alias: '세로형 현수막',    canonical_name: '세로 현수막',  note: 'ICC WLCF 3층 한라·삼다' },
+  { alias: '드롭배너',         canonical_name: '세로 현수막',  note: '천장 드롭·세로' },
+  // 안내·시상 영역
+  { alias: '미끄럼틀',         canonical_name: '폼보드',       note: 'DDP 정부혁신박람회 특수 구조물·안내 용도' },
+  { alias: '안전발명챌린지 안내', canonical_name: 'X배너',    note: 'DDP 안내 X배너' },
+  { alias: '식당할인 안내',    canonical_name: 'X배너',        note: 'DDP 식당 안내 X배너' },
+  { alias: '공무원역할 캐릭터 포토전', canonical_name: 'X배너', note: 'DDP 안내 X배너' },
+  { alias: '기타X배너',        canonical_name: 'X배너',        note: 'DDP 기타 X배너' },
+  // KINTEX 매뉴얼 영역
+  { alias: 'LED 전광판',       canonical_name: '디지털 사이니지', note: 'KINTEX 매뉴얼 광고매체' },
+  { alias: '영상',             canonical_name: '디지털 사이니지', note: 'KINTEX 매뉴얼 광고매체·영상 송출' },
+  // ICC 5층·3층 통천 영역
+  { alias: 'VIP 접견실 통천',  canonical_name: '통천 배너',    note: 'ICC WLCF 3층 4920×2640' },
+  { alias: '프레스 센터 통천', canonical_name: '통천 배너',    note: 'ICC WLCF 3층 4000×2980' },
+  // 탐라홀 배너 (콘솔과 구분 - 파티션과 매핑)
+  { alias: '탐라홀 배너',      canonical_name: '파티션 배너',  note: 'ICC WLCF 탐라홀 1800×11000' },
 ]
 
 // ── 3. 행사 폴더 → 행사 이력 (54개) ──────────────────────────
@@ -1273,16 +1332,44 @@ export const SEED_CEILING_BANNER_PATTERNS: CeilingBannerPattern[] = [
       },
     ],
   },
-  // ── 코엑스 — 실측 데이터 미확보 (2차 AI 시험 예정)
+  // ── 코엑스 BCWW 2018 — 정답지 발주엑셀 실측 (5/20 v10.5 추가·사용자 명시 OK)
   {
     venue: '코엑스',
-    venue_hall: '코엑스 전시홀',
-    event_name: '(데이터 미확보)',
-    event_year: 0,
-    event_type: '전시회',
-    items: [],
-    no_data: true,
-    no_data_reason: '코엑스 발주엑셀 분석 전. 정답지 노출 편향 검증 후 추가 예정 (2차 AI 시험).',
+    venue_hall: '코엑스 전시장 Hall B',
+    event_name: 'BCWW 2018',
+    event_year: 2018,
+    event_type: '국제방송영상마켓',
+    attendees_approx: 5000,
+    items: [
+      {
+        location: '전시장 천정 (KBS·MBC·SBS·CJ E&M)',
+        quantity: 8,
+        width_mm: 6000,
+        height_mm: 4000,
+        note: 'BCWW 2018 Hall B 전시장 천정 메인. 방송사 4개사 (CJ E&M·MBC·SBS·KBS 등). 통천 재질.',
+      },
+      {
+        location: '전시장 천정 (해당 기업)',
+        quantity: 8,
+        width_mm: 4000,
+        height_mm: 3000,
+        note: 'BCWW 2018 Hall B 전시장 천정 부속. 참가 기업별 천정배너. 통천 재질.',
+      },
+      {
+        location: '전시장 천정 대형 (KBS·MBC·SBS)',
+        quantity: 4,
+        width_mm: 5000,
+        height_mm: 3750,
+        note: 'BCWW 2018 Hall B 대형 천정배너. KBS 2개·MBC·SBS. 통천 재질.',
+      },
+      {
+        location: '전시장 천정 BCWW 타이틀 (영문)',
+        quantity: 2,
+        width_mm: 5000,
+        height_mm: 3750,
+        note: 'BCWW 2018 Hall B 메인 타이틀 천정배너. 영문 표기. 통천 재질.',
+      },
+    ],
   },
   // ── 송도컨벤시아 — 실측 데이터 미확보
   {
@@ -1295,16 +1382,30 @@ export const SEED_CEILING_BANNER_PATTERNS: CeilingBannerPattern[] = [
     no_data: true,
     no_data_reason: '송도컨벤시아 발주엑셀 분석 전. 코엑스 시험 완료 후 순차 진행.',
   },
-  // ── ICC 제주 — 실측 데이터 미확보
+  // ── ICC 제주 5층 (WLCF 2018·IUCN 리더스포럼 2018) — 정답지 발주엑셀 실측 (5/20 v10.8 추가)
   {
     venue: 'ICC',
-    venue_hall: 'ICC 제주',
-    event_name: '(데이터 미확보)',
-    event_year: 0,
+    venue_hall: 'ICC 제주 5층',
+    event_name: '2018 WLCF (세계리더스보전포럼)·IUCN 리더스포럼 2018',
+    event_year: 2018,
     event_type: '국제회의',
-    items: [],
-    no_data: true,
-    no_data_reason: 'ICC 제주 발주엑셀 분석 전. 섬 지역 특성상 반입 규정 별도 확인 필요.',
+    attendees_approx: 2000,
+    items: [
+      {
+        location: '5층 유리벽면 (대형통천)',
+        quantity: 1,
+        width_mm: 14000,
+        height_mm: 12000,
+        note: 'WLCF 2018 5층 유리벽면 대형통천. 키 비주얼·행사 타이틀. 현수막 재질.',
+      },
+      {
+        location: '5층 행잉 배너',
+        quantity: 2,
+        width_mm: 3000,
+        height_mm: 10000,
+        note: 'WLCF 2018 5층 행잉 배너 2개. 키 비주얼·행사 타이틀. 현수막 재질.',
+      },
+    ],
   },
 ]
 

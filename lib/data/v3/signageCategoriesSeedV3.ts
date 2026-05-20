@@ -21,6 +21,7 @@
 //   3. recommendationLogic.ts·UI enum 정합
 
 // 5/22 김연아 대리님 명시 = 엑셀 SOT 12 카테고리만 영역
+// 5/20 v10.9 = 정답지 13건 전수 조사 후 신규 5 카테고리 추가 = 총 17 카테고리
 export type SignageCategoryKey =
   | 'x_banner'             // X배너
   | 'streetlight_banner'   // 가로등 배너
@@ -34,6 +35,11 @@ export type SignageCategoryKey =
   | 'digital_signage'      // 5/22 신규 = 디지털 사이니지
   | 'foam_board'           // 5/22 신규 = 폼보드
   | 'picket_board'         // 5/22 신규 = 피켓보드
+  | 'bulletin_board'       // 5/20 v10.9 신규 = 블로틴 보드 (ICC WLCF 510×740·8건 빈도·유포지·PET)
+  | 'console_banner'       // 5/20 v10.9 신규 = 콘솔 배너 (ICC 리더스포럼 4 hall = 8.6~17.2m)
+  | 'partition_banner'     // 5/20 v10.9 신규 = 파티션 배너 (ICC 탐라홀 1800×11000·세로 6.1:1)
+  | 'did_horizontal'       // 5/20 v10.9 신규 = DID 가로형 (ICC PDP송출 800×500)
+  | 'podium_wide'          // 5/20 v10.9 신규 = 포디움 가로형 (ICC WGCA 2784×1019·hall 사이즈별 차이)
 
 export type SignageLayout = 'horizontal' | 'vertical'
 
@@ -185,6 +191,57 @@ export const SIGNAGE_CATEGORIES_V3: SignageCategoryV3[] = [
     material: '폼보드 3T',
     classification: '영접영송',
     match_keywords: ['피켓보드', '영접피켓', '입출국피켓', '피켓 A4', '피켓A4', '피켓(A4)', '피켓 A3', '피켓A3', '피켓(A3)', '영접A4', '명패', '웰컴 피켓', '명패 (대)', '명패(대)'],
+  },
+  // 5/20 v10.9 = 정답지 13건 전수 조사 후 신규 5 카테고리 (ICC WLCF·리더스포럼 실측 기반)
+  {
+    key: 'bulletin_board',
+    label: '블로틴 보드',
+    description: '행사장 사무실·라운지·VIP 접견실 안내 보드. ICC WLCF 정답지 8건 빈도. 유포지·PET 재질.',
+    layout: 'vertical',
+    default_size_mm: { width: 510, height: 740 },
+    material: '유포지',
+    classification: '사무실·라운지 안내',
+    match_keywords: ['블로틴 보드', '블로틴', '블로틴보드', 'bulletin board', '사무실 안내', '라운지 보드', '접견실 보드', 'IUCN 사무국', '환경부 장관 사무실', '도지사 사무실'],
+  },
+  {
+    key: 'console_banner',
+    label: '콘솔 배너',
+    description: '무대 콘솔·hall 단상 가로 배너. ICC 리더스포럼 4 hall = 8.6m·12.2m·16m·17.2m. H1.2~1.8m. 매우 큰 가로 비율.',
+    layout: 'horizontal',
+    default_size_mm: { width: 12000, height: 1200 },
+    material: '현수막',
+    classification: '무대 콘솔',
+    match_keywords: ['콘솔', '콘솔 시안', '콘솔배너', '콘솔 배너', '무대 콘솔', 'console', '단상 가로', '탐라A 콘솔', '탐라B 콘솔', '탐라C 콘솔', '한라홀 콘솔'],
+  },
+  {
+    key: 'partition_banner',
+    label: '파티션 배너',
+    description: '개회식 파티션 분할 배너. ICC 탐라홀 1800×11000 (세로 6.1:1·4건 분할·영문 1·국문 1·영문 1·국문 1). 매우 큰 세로 비율.',
+    layout: 'vertical',
+    default_size_mm: { width: 1800, height: 11000 },
+    material: '현수막',
+    classification: '개회식 파티션',
+    match_keywords: ['파티션 배너', '파티션배너', '파티션', 'partition', '개회식 파티션', '탐라홀 파티션', 'WLCF 파티션'],
+  },
+  {
+    key: 'did_horizontal',
+    label: 'DID 가로형',
+    description: '디지털 사이니지 가로형 송출 시안. ICC WLCF 2015 PDP송출 800×500. LED 또는 모니터 송출.',
+    layout: 'horizontal',
+    default_size_mm: { width: 800, height: 500 },
+    material: 'LED·모니터',
+    classification: '디지털·전광판 (가로)',
+    match_keywords: ['DID 가로', 'DID배경', 'PDP송출', 'DID 송출', 'LED 가로', '전광판 가로', '모니터 송출', 'digital signage horizontal'],
+  },
+  {
+    key: 'podium_wide',
+    label: '포디움 가로형',
+    description: '포디움 가로형 시안 (hall 사이즈별 차이). ICC WGCA 2022 = 2784×1019. 기존 포디움 600×200 외연 초과.',
+    layout: 'horizontal',
+    default_size_mm: { width: 2784, height: 1019 },
+    material: '폼보드 5T·현수막',
+    classification: '연단 (가로형)',
+    match_keywords: ['포디움 가로', '포디움 배너', '포디움 시안', 'WGCA 포디움', 'podium banner', '포디움 (가로형)', '대형 포디움'],
   },
 ]
 

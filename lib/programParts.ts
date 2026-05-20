@@ -97,21 +97,21 @@ export function migrateLegacyEventType(legacy: string | null | undefined): strin
  */
 // 5/22 김연아 대리님 명시 = 엑셀 영역 (제작물 리스트 가이드_환경 제작물 파트별 구분_20260519-수정) SOT.
 // `구분` 컬럼만 학습 활용·`상세 구분` = 참고만.
-// signage_types 영역 = 12 카테고리 + 5/22 신규 5건 (시상보드·Q방·디지털 사이니지·폼보드·피켓보드) = 17 카테고리.
-// 5/22 사용자 명시 = 엑셀 SOT 12 카테고리 영역만 영역 = i_banner·a4_*·a3_* 영역 제거 (signage_types 영역 삭제 정합)
+// signage_types 영역 = 12 카테고리 + 5/22 신규 5건 + 5/20 v10.9 신규 5건 (블로틴·콘솔·파티션·DID 가로·포디움 가로) = 22 카테고리.
+// 5/20 v10.9 = ICC WLCF·리더스포럼 정답지 기반 신규 5 카테고리 매핑 추가.
 export const PROGRAM_PART_SIGNAGE_HINTS: Record<string, string[]> = {
-  '40.04': ['podium', 'vertical_banner', 'horizontal_banner'],
-  '40.05': ['x_banner', 'route_banner', 'chunchen_banner'],
-  '40.06': ['x_banner'],
+  '40.04': ['podium', 'podium_wide', 'vertical_banner', 'horizontal_banner', 'console_banner', 'bulletin_board'],
+  '40.05': ['x_banner', 'route_banner', 'chunchen_banner', 'partition_banner'],
+  '40.06': ['x_banner', 'bulletin_board'],
   '40.07': ['x_banner', 'route_banner', 'podium', 'award_board'],
-  '40.08': ['podium', 'award_board', 'x_banner', 'horizontal_banner', 'vertical_banner', 'chunchen_banner'],
+  '40.08': ['podium', 'podium_wide', 'award_board', 'x_banner', 'horizontal_banner', 'vertical_banner', 'chunchen_banner', 'partition_banner', 'console_banner', 'did_horizontal'],
   '40.09': ['award_board', 'x_banner', 'podium', 'horizontal_banner', 'vertical_banner'],
-  '40.10': ['horizontal_banner', 'vertical_banner', 'x_banner'],
+  '40.10': ['horizontal_banner', 'vertical_banner', 'x_banner', 'bulletin_board'],
   '40.11': ['horizontal_banner', 'q_room'],
   '40.17': ['x_banner', 'streetlight_banner'],
-  '40.19': ['x_banner', 'route_banner', 'horizontal_banner'],
+  '40.19': ['x_banner', 'route_banner', 'horizontal_banner', 'did_horizontal'],
   '40.20': ['picket_board'],
-  '40.21': ['streetlight_banner', 'x_banner', 'digital_signage', 'foam_board', 'horizontal_banner', 'vertical_banner', 'chunchen_banner'],
+  '40.21': ['streetlight_banner', 'x_banner', 'digital_signage', 'did_horizontal', 'foam_board', 'horizontal_banner', 'vertical_banner', 'chunchen_banner'],
 }
 
 /** 다중선택 결과 → 권장 환경장식물 union (중복 제거) */
