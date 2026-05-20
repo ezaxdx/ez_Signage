@@ -122,6 +122,7 @@ export function formatProgramPartStatsForPrompt(
     }
   }
   lines.push('')
-  lines.push('지침: 위 평균값을 기본 quantity로 활용. 누적 이벤트 ≥3건인 카테고리만 신뢰. ≤2건은 참고만.')
+  // HOTFIX (2026-05-20): ≥3건 → ≥1건 (PO 정책 = 1건도 학습 활용)
+  lines.push('지침: 위 평균값을 기본 quantity로 활용. 누적 이벤트 ≥1건이면 학습 활용.')
   return lines.join('\n')
 }

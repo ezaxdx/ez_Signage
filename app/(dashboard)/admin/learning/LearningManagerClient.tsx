@@ -478,6 +478,10 @@ export function LearningManagerClient({
   const [hallSplit, setHallSplit] = useState(false)
   // 5/21 사용자 명시 = 학습된 행사장 표 행 클릭 시 L2 홀 펼침
   const [expandedVenueId, setExpandedVenueId] = useState<string | null>(null)
+  // HOTFIX (2026-05-20): L1·L2 펼침 state 분리.
+  //   기존: expandedVenueId 단일로 L1(groupName)·L2(l2Key) 모두 관리 → L2 클릭 시 L1 자동 닫힘 버그
+  //   수정: L1 = expandedVenueId·L2 = expandedHallKey (둘 다 동시 펼침)
+  const [expandedHallKey, setExpandedHallKey] = useState<string | null>(null)
   // 5/21 사용자 명시 = 데이터 학습 관리자 직접 수정·삭제·편집 가능 (데이터 오류 보완).
   // localStorage hidden 패턴으로 시드 항목도 ✕ 삭제 + ↺ 복구 가능.
   const [hiddenSeedAliases, setHiddenSeedAliases] = useState<string[]>([])
@@ -1692,8 +1696,8 @@ export function LearningManagerClient({
                             <td></td>
                             <td colSpan={4} className="px-6 py-3">
                               <div className="text-[10px] text-slate-500 italic mb-2">휘하 홀 정보 미적용 — 행사장 전체 평균 표시</div>
-                              {groupEvents.length < 3 ? (
-                                <div className="text-[10px] text-slate-400 italic">학습 데이터 부재 (누적 {groupEvents.length}건 &lt; 3건)</div>
+                              {groupEvents.length < 1 ? (
+                                <div className="text-[10px] text-slate-400 italic">학습 데이터 없음</div>
                               ) : (
                                 <SignageUsageTable items={items} compact />
                               )}
@@ -1717,10 +1721,11 @@ export function LearningManagerClient({
                           }
                         }
                         const l2Key = `L2-${groupName}-${hall.name}`
-                        const isL2Open = expandedVenueId === l2Key
+                        // HOTFIX (2026-05-20): L1·L2 state 분리 → expandedHallKey 사용 (L1 닫힘 버그 회피)
+                        const isL2Open = expandedHallKey === l2Key
                         out.push(
                           <tr key={l2Key} className="hover:bg-slate-50/50 cursor-pointer"
-                              onClick={() => setExpandedVenueId(isL2Open ? null : l2Key)}>
+                              onClick={() => setExpandedHallKey(isL2Open ? null : l2Key)}>
                             <td className="p-2 text-slate-400 text-[11px] text-center">{isL2Open ? '▽' : '▷'}</td>
                             <td className="p-2 text-slate-800 pl-6">
                               <div className="flex items-center gap-1">
@@ -1736,11 +1741,12 @@ export function LearningManagerClient({
                         if (!isL2Open) return
 
                         // L3 = 환경장식물 표 (SignageUsageTable 재사용)
-                        if (hallEvents.length < 3) {
+                        // HOTFIX (2026-05-20): ≥3건 → ≥1건 (PO 정책 — "한 건이라도 보이게")
+                        if (hallEvents.length < 1) {
                           out.push(
                             <tr key={`L3-${l2Key}`} className="bg-slate-50/60">
                               <td></td>
-                              <td colSpan={4} className="px-6 py-3 text-[10px] text-slate-400 italic">학습 데이터 부재 (누적 {hallEvents.length}건 &lt; 3건)</td>
+                              <td colSpan={4} className="px-6 py-3 text-[10px] text-slate-400 italic">학습 데이터 없음</td>
                             </tr>
                           )
                           return

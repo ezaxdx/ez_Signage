@@ -122,6 +122,20 @@ export function NewProjectButton({ userId, userEmail }: Props) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // HOTFIX (2026-05-20): 동적 venues 목록 — event_history + venues 누적된 행사장만 표시
+  //   마운트 시 1회 fetch. 모달 열기 직전 재fetch 안 함 (마운트만으로 충분).
+  const [availableVenueNames, setAvailableVenueNames] = useState<Set<string> | null>(null)
+  useEffect(() => {
+    fetch('/api/venues/available')
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { items?: Array<{ name: string }> } | null) => {
+        if (d?.items && d.items.length > 0) {
+          setAvailableVenueNames(new Set(d.items.map(i => i.name.trim())))
+        }
+      })
+      .catch(() => { /* silent — null 유지 시 전체 표시 (graceful) */ })
+  }, [])
+
   const [info, setInfo] = useState({
     name: '',
     client_name: '',
@@ -922,11 +936,32 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                     <div>
                       <label className="block text-slate-500 text-xs font-medium mb-1.5 uppercase tracking-wide">행사 장소</label>
                       {(() => {
+                        // HOTFIX (2026-05-20): availableVenueNames (event_history + venues union)로 필터링.
+                        //   availableVenueNames=null이면 fetch 실패·미적용 → 전체 표시 (graceful)
+                        //   availableVenueNames=Set이면 그 안 항목만 + 누락된 누적 항목은 '기타·신규' 그룹
                         const venueGroups = groupVenuesByRegion()
                         const allRegisteredNames = VENUE_LIST.map(v => v.displayName)
-                        const venueOptions = pendingVenueNames.length > 0
-                          ? [{ region: '내가 요청한 (승인 대기)', items: pendingVenueNames.map(n => ({ displayName: n, key: n })) }, ...Object.entries(venueGroups).map(([r, items]) => ({ region: r, items }))]
-                          : Object.entries(venueGroups).map(([r, items]) => ({ region: r, items }))
+                        const filteredGroups = availableVenueNames === null
+                          ? venueGroups
+                          : Object.fromEntries(
+                              Object.entries(venueGroups).map(([r, items]) => [
+                                r,
+                                items.filter(v => availableVenueNames.has(v.displayName)),
+                              ]).filter(([, items]) => (items as typeof venueGroups[string]).length > 0)
+                            ) as typeof venueGroups
+                        // event_history에 있지만 VENUE_LIST에 없는 신규 행사장 → '기타·신규' 그룹
+                        const newVenues = availableVenueNames === null
+                          ? []
+                          : Array.from(availableVenueNames).filter(n => !allRegisteredNames.includes(n))
+                        const venueOptions = [
+                          ...(pendingVenueNames.length > 0
+                            ? [{ region: '내가 요청한 (승인 대기)', items: pendingVenueNames.map(n => ({ displayName: n, key: n })) }]
+                            : []),
+                          ...Object.entries(filteredGroups).map(([r, items]) => ({ region: r, items })),
+                          ...(newVenues.length > 0
+                            ? [{ region: '기타·신규 등록', items: newVenues.map(n => ({ displayName: n, key: n })) }]
+                            : []),
+                        ]
                         return (
                           <>
                             {/* 5/21 사용자 명시 = 리스트 너무 김. 행사장(L1) select만 표시·
