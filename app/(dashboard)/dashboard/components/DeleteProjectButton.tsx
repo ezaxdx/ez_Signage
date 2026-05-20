@@ -78,26 +78,10 @@ export function DeleteProjectButton({ projectId, projectName, isOwner }: Props) 
         }
       }
 
-      // ── (legacy) project_archive 통계 스냅샷 — 마이그레이션 v4d 적용 환경에선 백워드 호환 ──
-      if (project) {
-        const itemCategories = Array.from(new Set((preItems ?? []).map(i => i.category).filter(Boolean))) as string[]
-        const projLegacy = project as { name: string; client_name: string | null; event_venue: string | null; event_date: string | null; event_type: string | null; event_category: string | null }
-        const { error: archiveErr } = await supabase.from('project_archive').insert({
-          original_project_id: projectId,
-          name: projLegacy.name,
-          client_name: projLegacy.client_name,
-          event_venue: projLegacy.event_venue,
-          event_date: projLegacy.event_date,
-          event_type: projLegacy.event_type,
-          event_category: projLegacy.event_category,
-          item_count: preCount,
-          item_categories: itemCategories,
-          reason: '사용자 삭제',
-        })
-        if (archiveErr) {
-          console.warn('[Delete] project_archive 저장 실패 (테이블 없음 — skip):', archiveErr.message)
-        }
-      }
+      // HOTFIX (2026-05-20 δ 정책): project_archive INSERT 제거.
+      //   삭제 프로젝트 통계는 event_history (source='manual_delete')가 단일 SOT.
+      //   v4d 마이그레이션 미적용 라이브에서 404 노이즈만 발생하던 백워드 호환 코드 폐기.
+      void project  // 호환 유지·미사용 경고 방지
 
       // ── Step 2: Storage 이미지 cleanup (마스터 시안 + design_items.image_url) ──
       try {

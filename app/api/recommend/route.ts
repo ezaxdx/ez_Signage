@@ -30,18 +30,47 @@ export async function POST(req: NextRequest) {
   let result: Awaited<ReturnType<typeof recommendSignage>> | null = null
   let resultStatus: 'success' | 'fallback' | 'error' = 'success'
   let recommendErrorMsg: string | null = null
+  let userFacingMsg: string | null = null
   let httpStatus = 200
 
   try {
     result = await recommendSignage(body)
   } catch (recommendErr) {
-    console.error('[recommend] recommendSignage 실패:', recommendErr)
+    // HOTFIX (2026-05-20 버그 4): 에러 종류별 분기 + 서버 로그에 stack trace 명시.
+    //   라이브(Vercel)에서 500 발생 시 Functions 로그에서 정확한 원인 추적 가능.
+    const errStack = recommendErr instanceof Error ? recommendErr.stack : null
+    console.error('[recommend] recommendSignage 실패:', {
+      message: recommendErr instanceof Error ? recommendErr.message : String(recommendErr),
+      stack: errStack,
+      eventName: body.eventName,
+      venue: body.venue,
+    })
     recommendErrorMsg = recommendErr instanceof Error ? recommendErr.message : '추천 생성 실패'
-    if (/GEMINI_API_KEY|event_history|relation|column/.test(recommendErrorMsg)) {
-      resultStatus = 'fallback'
-    } else {
+
+    // 에러 종류별 분기 — 사용자 친화 메시지 + HTTP status 코드 차별화
+    if (/GEMINI_API_KEY/i.test(recommendErrorMsg)) {
+      // 환경변수 미설정 = 운영 설정 누락
       resultStatus = 'error'
       httpStatus = 500
+      userFacingMsg = 'AI 서비스 환경 설정이 누락되었습니다. 관리자에게 문의해주세요.'
+    } else if (/429|quota|rate.?limit/i.test(recommendErrorMsg)) {
+      // Gemini quota 초과 = 일시적 한도
+      resultStatus = 'error'
+      httpStatus = 429
+      userFacingMsg = 'AI 추천 한도가 초과되었습니다. 잠시 후 재시도해주세요.'
+    } else if (/503|unavailable|overload/i.test(recommendErrorMsg)) {
+      // Gemini 일시적 다운
+      resultStatus = 'error'
+      httpStatus = 503
+      userFacingMsg = 'AI 서비스가 일시적으로 응답하지 않습니다. 잠시 후 재시도해주세요.'
+    } else if (/event_history|relation|column|table .* does not exist/i.test(recommendErrorMsg)) {
+      // DB 마이그레이션 미적용 = 정적 fallback으로 graceful degradation
+      resultStatus = 'fallback'
+    } else {
+      // 기타 — stack trace는 서버 로그에만, 사용자엔 일반 메시지
+      resultStatus = 'error'
+      httpStatus = 500
+      userFacingMsg = 'AI 추천 생성 중 오류가 발생했습니다. 정적 추천으로 대체됩니다.'
     }
   }
 
@@ -73,12 +102,20 @@ export async function POST(req: NextRequest) {
     console.error('[usage_logs] Exception:', logEx)
   }
 
-  // 응답 분기
+  // 응답 분기 — 사용자 친화 메시지 우선·디버그 메시지는 별도 필드
   if (resultStatus === 'error') {
-    return NextResponse.json({ error: recommendErrorMsg }, { status: httpStatus })
+    return NextResponse.json({
+      error: userFacingMsg ?? recommendErrorMsg ?? '추천 생성 실패',
+      debug: recommendErrorMsg,  // 클라이언트는 사용 안 함·디버그 용
+    }, { status: httpStatus })
   }
   if (resultStatus === 'fallback') {
-    return NextResponse.json({ items: [], skipped: true, error: recommendErrorMsg }, { status: 200 })
+    return NextResponse.json({
+      items: [],
+      skipped: true,
+      error: recommendErrorMsg,
+      message: '정적 추천(HINTS) fallback 사용',
+    }, { status: 200 })
   }
   return NextResponse.json(result)
 }
