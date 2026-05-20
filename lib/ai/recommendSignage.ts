@@ -265,18 +265,19 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
   const programPartsBlock = selectedParts.length === 0 ? '' :
     '\n\n[1순위 — 프로그램 파트 매핑] (사용자 선택 ' + selectedParts.length + '개·엑셀 SOT 영역 = 환경장식물 + 역할 영역 묶음)\n' +
     selectedParts.map(code => {
-      const p = PROGRAM_PART_BY_CODE.get(code)!
+      // HOTFIX (2026-05-20 에러 2): non-null assertion 제거 — 잘못된 코드 대비 graceful
+      const p = PROGRAM_PART_BY_CODE.get(code)
+      const partName = p?.name ?? code
       const details = PROGRAM_PART_SIGNAGE_DETAILS[code] ?? []
       if (details.length > 0) {
-        return `- ${code} ${p.name}:\n` + details.map(d => {
-          const purposes = d.purposes.length > 0 ? ` [${d.purposes.join(' · ')}]` : ''
+        return `- ${code} ${partName}:\n` + details.map(d => {
+          const purposes = (d.purposes ?? []).length > 0 ? ` [${(d.purposes ?? []).join(' · ')}]` : ''
           const note = d.note ? ` (${d.note})` : ''
           return `    · ${d.signage}${purposes}${note}`
         }).join('\n')
       }
-      // fallback (기존 HINTS 영역 영역)
       const hints = PROGRAM_PART_SIGNAGE_HINTS[code] ?? []
-      return `- ${code} ${p.name} → 권장 환경장식물: ${hints.join(', ')}`
+      return `- ${code} ${partName} → 권장 환경장식물: ${hints.join(', ')}`
     }).join('\n') +
     '\n→ 위 파트별 권장 환경장식물을 1순위 후보로 사용. 역할(상세 구분) 영역 = 추천 항목 purpose·location 필드 영역 활용. 각 추천 항목에 매칭된 파트 코드 1개를 program_part 필드에 명시.'
 
@@ -349,8 +350,10 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
     input.hasVip ? `VIP/정상급 참석: 예` : '',
     input.isInternational ? `국제 행사: 예 (영문 표기 필수)` : '',
     input.budgetConstrained ? `예산 제약: 있음 (비용 절감 우선)` : '',
-    `사용 목적: ${input.purposes.join(', ') || '미지정 — 행사 유형 기준 자동 판단'}`,
-    selectedParts.length > 0 ? `프로그램 파트: ${selectedParts.map(c => `${c} ${PROGRAM_PART_BY_CODE.get(c)!.name}`).join(', ')}` : '',
+    // HOTFIX (2026-05-20 에러 2): input.purposes nullish 방어 — join of undefined 회피
+    `사용 목적: ${(input.purposes ?? []).join(', ') || '미지정 — 행사 유형 기준 자동 판단'}`,
+    // HOTFIX: PROGRAM_PART_BY_CODE.get()이 undefined 반환 가능 (잘못된 코드 입력) — ?? '' 방어
+    selectedParts.length > 0 ? `프로그램 파트: ${selectedParts.map(c => `${c} ${PROGRAM_PART_BY_CODE.get(c)?.name ?? ''}`).join(', ')}` : '',
     input.notes ? `추가 메모: ${input.notes}` : '',
   ].filter(Boolean).join('\n') + similarEventsBlock + venueSignageBlock + accumulatedBlock + seedHistoryBlock + venueProfileBlock + ceilingBannerBlock + venueSpecsBlock + coverageBlock + adminMasterBlock + programPartsBlock + programPartStatsBlock + dongseonBlock + floorPlanBlock
 

@@ -90,14 +90,14 @@ interface Stats {
 interface DailyTrend { date: string; count: number }
 interface AbnormalUser { user_id: string; project_id: string; count: number }
 
-// v9.47: KPI 카드용 정확도 요약 (행사장 평균·파트별 평균은 동일 데이터에서 추출)
-// PR#4: 신규 정확도 정의 필드 추가 (new_accuracy_*) — measuring/ready 분기
+// v9.47: KPI 카드용 정확도 요약
+// PR#4 + HOTFIX (2026-05-20): measuring 분기 제거. N 무관 즉시 % 표시.
 interface AccuracySummary {
-  venue_avg: number | null      // PR#4: created_by_ai=TRUE + finalized_at + ai_initial_* 비교 결과
-  part_avg: number | null       // PR#4: 동일 (파트별 분리는 후속 사이클)
-  floor_plan_status: string     // ′—′ 고정 (5/22 사용자 명시)
-  new_accuracy_status?: 'measuring' | 'ready'
-  new_accuracy_count?: number
+  venue_avg: number | null      // created_by_ai=TRUE + project_status='완료' + ai_initial_* 비교 결과
+  part_avg: number | null
+  floor_plan_status: string
+  new_accuracy_status?: 'ready'           // HOTFIX: 항상 ready
+  new_accuracy_count?: number              // 채점 대상 항목 수 (표시용)
   new_accuracy_breakdown?: { full_match: number; category_only: number; mismatch: number }
   legacy_venue_avg?: number | null
 }
@@ -312,34 +312,23 @@ export function AdminAiClient({ accuracySummary, totalApiCalls, accuracyRows, st
         {/* IA 목표: ai 추천 정확도(행사장/파트별/도면 커밍순) / 총 API 호출 수 / 이상 사용자 알림 */}
         <section>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* ① ai 추천 정확도 — PR#4 신규 정의 (measuring/ready 분기) */}
+            {/* ① ai 추천 정확도 — HOTFIX (2026-05-20): measuring 분기 제거·즉시 % 표시 */}
             <div className="bg-white border border-slate-200 rounded-xl px-4 py-4 shadow-sm">
               <div className="flex items-center gap-1.5 text-slate-500 text-xs mb-2">
                 <Target className="w-4 h-4" />
                 <span>ai 추천 정확도</span>
-                {accuracySummary.new_accuracy_status === 'measuring' && (
-                  <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded ml-auto">측정 중</span>
-                )}
               </div>
               <div className="space-y-1.5">
-                {accuracySummary.new_accuracy_status === 'measuring' ? (
-                  <div className="text-xs text-slate-500">
-                    <p className="text-lg font-bold text-amber-700">측정 중 ({accuracySummary.new_accuracy_count ?? 0}/10건)</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">AI 추천 + 발주 완료 항목 10건 누적 후 표시</p>
-                  </div>
-                ) : (
-                  <>
-                    <AccuracyRowMini label="전체" value={accuracySummary.venue_avg} />
-                    {accuracySummary.new_accuracy_breakdown && (
-                      <p className="text-[9px] text-slate-400">
-                        완전 {accuracySummary.new_accuracy_breakdown.full_match} ·
-                        부분 {accuracySummary.new_accuracy_breakdown.category_only} ·
-                        오답 {accuracySummary.new_accuracy_breakdown.mismatch}
-                      </p>
-                    )}
-                    <AccuracyRowMini label="도면" value={null} note={accuracySummary.floor_plan_status} />
-                  </>
+                <AccuracyRowMini label="전체" value={accuracySummary.venue_avg} />
+                {accuracySummary.new_accuracy_breakdown && (
+                  <p className="text-[9px] text-slate-400">
+                    완전 {accuracySummary.new_accuracy_breakdown.full_match} ·
+                    부분 {accuracySummary.new_accuracy_breakdown.category_only} ·
+                    오답 {accuracySummary.new_accuracy_breakdown.mismatch}
+                  </p>
                 )}
+                <p className="text-[10px] text-slate-400">상태 완료된 항목 {accuracySummary.new_accuracy_count ?? 0}건 기준</p>
+                <AccuracyRowMini label="도면" value={null} note={accuracySummary.floor_plan_status} />
               </div>
             </div>
 

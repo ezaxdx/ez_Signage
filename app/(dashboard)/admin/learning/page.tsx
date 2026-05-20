@@ -71,19 +71,17 @@ export default async function LearningManagerPage() {
   const eventHistoryDbCodes = new Set(
     ((eventHistoryRes.data ?? []) as Array<{ project_code: string | null }>).map(e => e.project_code).filter(Boolean) as string[]
   )
-  const D7_MS = 7 * 24 * 60 * 60 * 1000
-  const now = Date.now()
+  // HOTFIX (2026-05-20 옵션 A): D-7 lazy union 제거 — 완료 status만 트리거
+  // HOTFIX (2026-05-20 옵션 A): PO 정책 — 모든 완료 행사 표시.
+  //   기존 필터 (event_venue·design_items ≥3·행사일+7일) 제거.
+  //   완료 status 한 가지만 트리거. 테스트·미정·짧은 이름 행사도 모두 표시.
+  //   향후 PO가 직접 정리 예정.
   const userEventHistory = projectsList
-    .filter(p => p.event_venue)
     .map(p => {
       const pItems = itemsList.filter(it => it.project_id === p.id)
-      // δ 정책: 누적 조건 (design_items ≥3건)
-      if (pItems.length < 3) return null
-      // δ 정책: 트리거 (완료 status OR 행사일+7일 경과)
+      // 옵션 A: 완료 status 한 가지만 필요 조건
       const isCompleted = p.status === '완료'
-      const eventTime = p.event_date ? new Date(p.event_date).getTime() : NaN
-      const isPastD7 = !isNaN(eventTime) && (now - eventTime) > D7_MS
-      if (!isCompleted && !isPastD7) return null
+      if (!isCompleted) return null
       // 중복 방지: event_history DB에 이미 수록된 project_code skip
       const code12 = p.id.slice(0, 12)
       if (eventHistoryDbCodes.has(code12)) return null
@@ -103,7 +101,8 @@ export default async function LearningManagerPage() {
         project_name: p.name,
         project_code: code12,
         year: p.event_date ? new Date(p.event_date).getFullYear() : new Date(p.created_at).getFullYear(),
-        venue: normalizeVenueName(p.event_venue) || '미정',
+        // HOTFIX: event_venue nullish 방어 — 옵션 A로 venue='미정'도 표시
+        venue: (p.event_venue ? normalizeVenueName(p.event_venue) : null) || '미정',
         category_tag: '일반' as const,
         has_excel: pItems.some(it => it.finalized_at != null),
         has_image: false,
@@ -111,8 +110,8 @@ export default async function LearningManagerPage() {
         program_parts: p.program_parts ?? [],
         signage_breakdown: signage_breakdown.length > 0 ? signage_breakdown : undefined,
         is_user_project: true,
-        // source 태그: 완료 status = auto_project (completeProject 정합) / 행사일+7일 = auto_d7
-        source: (isCompleted ? 'auto_project' : 'auto_d7') as 'auto_project' | 'auto_d7',
+        // 옵션 A: 완료 status만 트리거 → 모두 'auto_project'
+        source: 'auto_project' as const,
       }
     })
     .filter((p): p is NonNullable<typeof p> => p !== null)

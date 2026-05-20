@@ -595,6 +595,13 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
     if (!result.ok) {
       alert('완료 처리 실패: ' + result.error)
       setProjectStatus(project.status ?? '진행중')
+    } else {
+      // HOTFIX (2026-05-20): history_status 분기 — event_history INSERT 실패 시 명시 알림
+      if (result.history_status === 'skipped') {
+        alert('완료 처리됨. 단 학습 풀(event_history) 적재는 건너뛰었습니다 — 라이브 DB 마이그레이션(migration_v13/v19) 적용 확인 필요. 행사 관리 메뉴에 표시 안 됨.')
+      } else if (result.history_status === 'error') {
+        alert('완료 처리됨. 단 학습 풀(event_history) 적재 실패 — 행사 관리 메뉴에 표시 안 됨. 브라우저 콘솔(F12) 확인.')
+      }
     }
   }, [projectStatus, project, supabase])
 

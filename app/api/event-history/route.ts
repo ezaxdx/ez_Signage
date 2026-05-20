@@ -83,22 +83,30 @@ export async function POST(req: NextRequest) {
     created_by: user.id,
   }
 
+  // HOTFIX (2026-05-20 에러 1): INSERT → UPSERT (재완료·중복 키 23505 회피).
+  //   ON CONFLICT (project_code) DO UPDATE — 최신 데이터 반영, updated_at NOW.
+  //   project_code 없으면 plain INSERT.
   try {
-    const { data, error } = await supabase
-      .from('event_history')
-      .insert(insertRow)
-      .select()
-      .single()
+    const useUpsert = !!insertRow.project_code
+    const query = useUpsert
+      ? supabase.from('event_history').upsert(
+          { ...insertRow, updated_at: new Date().toISOString() },
+          { onConflict: 'project_code' },
+        )
+      : supabase.from('event_history').insert(insertRow)
+    const { data, error } = await query.select().single()
 
     if (error) {
-      // 테이블 부재 (42P01) = silent skip·200 (auto_project 영역 = 라이브 영향 0)
       console.error('[event-history] POST 실패:', error.message, error.code)
       if (error.code === '42P01' || error.code === '42501') {
         return NextResponse.json({ skipped: true, error: error.message, code: error.code }, { status: 200 })
       }
       return NextResponse.json({ error: error.message, code: error.code }, { status: 500 })
     }
-    return NextResponse.json({ item: data })
+    return NextResponse.json({
+      item: data,
+      message: useUpsert ? '완료 처리 (UPSERT)' : '신규 INSERT',
+    })
   } catch (e) {
     console.error('[event-history] POST Exception:', e)
     return NextResponse.json({ skipped: true, error: e instanceof Error ? e.message : 'unknown' }, { status: 200 })

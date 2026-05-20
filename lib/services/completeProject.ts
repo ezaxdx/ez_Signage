@@ -87,12 +87,20 @@ export async function completeProject(
     })
     if (res.ok) {
       const body = await res.json().catch(() => null)
-      historyStatus = body?.skipped ? 'skipped' : 'ok'
+      if (body?.skipped) {
+        // HOTFIX (2026-05-20): silent fail 회피 — skipped 사유 명시 로그
+        console.error('[completeProject] event_history INSERT skipped:', body?.error, 'code:', body?.code)
+        historyStatus = 'skipped'
+      } else {
+        historyStatus = 'ok'
+      }
     } else {
+      const errBody = await res.text().catch(() => '')
+      console.error('[completeProject] event_history POST failed:', res.status, errBody)
       historyStatus = 'error'
     }
   } catch (e) {
-    console.warn('[completeProject] event-history POST 실패:', e)
+    console.error('[completeProject] event-history POST exception:', e)
     historyStatus = 'error'
   }
 
