@@ -2933,7 +2933,7 @@ export function LearningManagerClient({
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-slate-900 font-semibold text-sm flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-emerald-500" />
-                행사 관리 ({SEED_EVENT_HISTORY.length + customEvents.length})
+                행사 관리 ({unifiedEventHistory.length})
               </h2>
               {isAdmin && (
                 <button
@@ -2958,12 +2958,20 @@ export function LearningManagerClient({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {/* 5/22 사용자 명시 = SEED + 신규 프로젝트 (userEventHistory) + 커스텀 행사 통합·AI 추천 정확도 향상 목표 */}
-                  {[
-                    ...SEED_EVENT_HISTORY.map(e => ({ ...e, is_user_project: false })),
-                    ...userEventHistory.map(e => ({ ...e, has_excel: e.has_excel ?? true, has_image: e.has_image ?? false, is_user_project: true })),
-                    ...customEvents.map(e => ({ ...e, has_excel: true, has_image: false, signage_breakdown: undefined, is_user_project: false })),
-                  ]
+                  {/* HOTFIX 2026-05-20 = 표 row + 카운트 SOT 통일 = unifiedEventHistory (DB + user + custom + SEED fallback) 사용. */}
+                  {/*   is_user_project flag = userEventHistory project_code 매칭 + project_code dedupe로 중복 회피. */}
+                  {(() => {
+                    const userCodes = new Set(userEventHistory.map(u => u.project_code).filter(Boolean))
+                    const seen = new Set<string>()
+                    return unifiedEventHistory
+                      .map(e => ({ ...e, is_user_project: userCodes.has(e.project_code ?? '') }))
+                      .filter(e => {
+                        const key = (e.project_code ?? '') + e.project_name
+                        if (seen.has(key)) return false
+                        seen.add(key)
+                        return true
+                      })
+                  })()
                     .filter(e => !hiddenEventKeys.includes(e.project_code ?? e.project_name))
                     .map(e => {
                       // override 적용
@@ -3359,7 +3367,7 @@ export function LearningManagerClient({
                             </td>
                             <td className="px-2 py-1.5 text-slate-800 whitespace-nowrap pl-6">
                               {hidden ? <span className="line-through text-slate-400">{subName}</span> : subName}
-                              {f.source === 'db' && <span className="ml-1 text-[9px] px-1 py-0 rounded bg-emerald-100 text-emerald-700">DB</span>}
+                              {/* HOTFIX (2026-05-20): "DB" 시스템 표기 제거 — 사용자에게 출처 무관 */}
                             </td>
                         <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{f.categories_count}</td>
                         <td className="px-2 py-1.5 text-right text-slate-700 font-mono">{f.warnings_count}</td>
