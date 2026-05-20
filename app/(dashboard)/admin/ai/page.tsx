@@ -190,22 +190,37 @@ export default async function AdminAiPage() {
     }
   })
 
-  // ── PR#4 단위 5 (δ 정책): AI 추천 정확도 신규 정의 ────────────────
-  // 기존 폐기: 학습 진행률 (stage.finalized / total) — "정확도" 라벨이지만 실제론 진행률
-  // 신규: created_by_ai=TRUE AND finalized_at IS NOT NULL 항목에서 ai_initial_* vs 최종값 비교.
-  //   완전 일치 +100·category만 +50·오답 0. N<10건이면 "측정 중"
-  //   migration_v19 미적용 환경 → 빈 결과 → measuring (0/10건) 반환
+  // ── PR#4 단위 5 + HOTFIX (2026-05-20): AI 추천 정확도 ────────────────
+  //   채점 대상: created_by_ai=TRUE AND projects.status='완료' (HOTFIX: status 기준으로 변경)
+  //   measuring 분기 제거 — N 무관 즉시 % 표시.
+  //   migration_v19 미적용 환경 → 빈 결과 → 0% 반환
+  // HOTFIX: projects.status JOIN을 위해 별도 fetch
+  const projectsForAccRes = await supabase
+    .from('projects')
+    .select('id, status')
+    .limit(2000)
+  const projectsList = (projectsForAccRes.data ?? []) as Array<{ id: string; status: string | null }>
+
   const accItemsRes = await supabase
     .from('design_items')
-    .select('created_by_ai, finalized_at, category, quantity, width_mm, height_mm, ai_initial_category, ai_initial_quantity, ai_initial_width_mm, ai_initial_height_mm')
-    .not('finalized_at', 'is', null)
+    .select('project_id, created_by_ai, finalized_at, category, quantity, width_mm, height_mm, ai_initial_category, ai_initial_quantity, ai_initial_width_mm, ai_initial_height_mm')
     .limit(2000)
   type AccItem = {
+    project_id?: string | null
     created_by_ai?: boolean | null; finalized_at?: string | null
+    project_status?: string | null
     category?: string | null; quantity?: number | null; width_mm?: number | null; height_mm?: number | null
     ai_initial_category?: string | null; ai_initial_quantity?: number | null; ai_initial_width_mm?: number | null; ai_initial_height_mm?: number | null
   }
-  const accItems = (accItemsRes.data ?? []) as AccItem[]
+  const rawAccItems = (accItemsRes.data ?? []) as AccItem[]
+  // projects.status='완료' JOIN — status가 '완료'인 project_id 집합 빌드
+  const completedProjectIds = new Set(
+    projectsList.filter(p => p.status === '완료').map(p => p.id),
+  )
+  const accItems: AccItem[] = rawAccItems.map(it => ({
+    ...it,
+    project_status: it.project_id && completedProjectIds.has(it.project_id) ? '완료' : null,
+  }))
   const aiAccuracyResult = computeAiAccuracy(accItems)
 
   // 기존 accuracySummary는 backward compat (AdminAiClient에서 신규 prop 우선 사용)

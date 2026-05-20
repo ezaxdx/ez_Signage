@@ -11,19 +11,41 @@ import { isAdmin } from '@/lib/auth/role'
 
 export const runtime = 'nodejs'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: '인증 필요' }, { status: 401 })
 
-  const { data, error } = await supabase
-    .from('venues')
-    .select('id, name, short_name, region, venue_type, has_hall_split, main_entrance_note, area_sqm, floor_plan_url, contact_phone, contact_email, manual_url, notes, specs_text, specs_updated_at, facility_guide_json, facility_guide_updated_at, created_at, updated_at')
-    .order('region', { ascending: true })
-    .order('name',   { ascending: true })
+  // HOTFIX (2026-05-20 에러 3): is_hidden 컬럼 unknown 대비 graceful — full select 시도 후 실패 시 fallback
+  const hiddenOnly = req.nextUrl.searchParams.get('hidden') === 'true'
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ items: data ?? [] })
+  // 1차 시도: is_hidden 포함 select
+  const fullSelect = 'id, name, short_name, region, venue_type, has_hall_split, main_entrance_note, area_sqm, floor_plan_url, contact_phone, contact_email, manual_url, notes, specs_text, specs_updated_at, facility_guide_json, facility_guide_updated_at, is_hidden, created_at, updated_at'
+  let query = supabase.from('venues').select(fullSelect)
+  if (hiddenOnly) query = query.eq('is_hidden', true)
+  query = query.order('region', { ascending: true }).order('name', { ascending: true })
+  const first = await query
+  if (!first.error) {
+    return NextResponse.json({ items: first.data ?? [] })
+  }
+  console.error('[admin/venues] GET 1차 실패:', first.error.message, first.error.code)
+
+  // 2차 시도: is_hidden 제외 (마이그레이션 v19 미적용 graceful)
+  if (/column .* is_hidden|column .* does not exist/i.test(first.error.message)) {
+    const fallbackSelect = 'id, name, short_name, region, venue_type, has_hall_split, main_entrance_note, area_sqm, floor_plan_url, contact_phone, contact_email, manual_url, notes, specs_text, specs_updated_at, facility_guide_json, facility_guide_updated_at, created_at, updated_at'
+    const fallback = await supabase
+      .from('venues')
+      .select(fallbackSelect)
+      .order('region', { ascending: true })
+      .order('name', { ascending: true })
+    if (fallback.error) {
+      console.error('[admin/venues] GET fallback 실패:', fallback.error.message)
+      return NextResponse.json({ items: [], fallback: true, error: fallback.error.message }, { status: 200 })
+    }
+    return NextResponse.json({ items: fallback.data ?? [], fallback: true })
+  }
+
+  return NextResponse.json({ items: [], error: first.error.message, code: first.error.code, fallback: true }, { status: 200 })
 }
 
 export async function POST(req: NextRequest) {
