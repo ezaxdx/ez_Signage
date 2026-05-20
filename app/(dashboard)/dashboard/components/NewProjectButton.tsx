@@ -995,7 +995,7 @@ export function NewProjectButton({ userId, userEmail }: Props) {
                                   className={`${inputCls} mt-1.5`}
                                   defaultValue=""
                                 >
-                                  <option value="">↳ 세부 홀 선택 (선택 사항)</option>
+                                  <option value="">휘하 홀 선택…</option>
                                   {halls.map(h => (
                                     <option key={h.name} value={h.name}>{h.name}{h.note ? ` (${h.note})` : ''}</option>
                                   ))}
@@ -1606,9 +1606,17 @@ export function NewProjectButton({ userId, userEmail }: Props) {
 
                 {/* 회의록 2차: 3단계 홀딩 — step 1만 ′다음′, step 2에서 바로 ′프로젝트 만들기′ */}
                 {step === 1 ? (
-                  <button type="button" disabled={!info.name.trim()} onClick={() => setStep(2)} className="flex-1 flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm py-2.5 rounded-lg transition">
-                    다음 <ChevronRight className="w-4 h-4" />
-                  </button>
+                  (() => {
+                    // HOTFIX (2026-05-20): 휘하 홀 있는 행사장은 L2 필수. event_venue가 VENUE_LIST L1 그대로면 L2 미선택 = disable.
+                    const isL1Only = VENUE_LIST.some(v => v.displayName === info.event_venue)
+                    const l2Required = isL1Only && getHallsByVenueName(info.event_venue).length > 0
+                    const venueInvalid = !info.event_venue || l2Required
+                    return (
+                      <button type="button" disabled={!info.name.trim() || venueInvalid} onClick={() => setStep(2)} className="flex-1 flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm py-2.5 rounded-lg transition">
+                        다음 <ChevronRight className="w-4 h-4" />
+                      </button>
+                    )
+                  })()
                 ) : (
                   <button type="button" disabled={isLoading} onClick={handleCreate} className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm py-2.5 rounded-lg transition">
                     {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
