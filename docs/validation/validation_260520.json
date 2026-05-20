@@ -1,0 +1,611 @@
+[
+  {
+    "name": "BCWW 2018 (COEX Hall B)",
+    "accuracy": 20,
+    "elapsed": 14342,
+    "itemCount": 11,
+    "matrix": [
+      {
+        "cat": "x_banner",
+        "truth": 18,
+        "recommended": 0,
+        "diff": 18,
+        "ratio": 0
+      },
+      {
+        "cat": "foam_board",
+        "truth": 9,
+        "recommended": 50,
+        "diff": 41,
+        "ratio": 18
+      },
+      {
+        "cat": "chunchen_banner",
+        "truth": 30,
+        "recommended": 25,
+        "diff": 5,
+        "ratio": 83
+      },
+      {
+        "cat": "podium",
+        "truth": 1,
+        "recommended": 4,
+        "diff": 3,
+        "ratio": 25
+      },
+      {
+        "cat": "horizontal_banner",
+        "truth": 4,
+        "recommended": 5,
+        "diff": 1,
+        "ratio": 80
+      },
+      {
+        "cat": "vertical_banner",
+        "truth": 3,
+        "recommended": 10,
+        "diff": 7,
+        "ratio": 30
+      },
+      {
+        "cat": "streetlight_banner",
+        "truth": 0,
+        "recommended": 20,
+        "diff": 20,
+        "ratio": 0
+      },
+      {
+        "cat": "route_banner",
+        "truth": 0,
+        "recommended": 20,
+        "diff": 20,
+        "ratio": 0
+      },
+      {
+        "cat": "award_board",
+        "truth": 0,
+        "recommended": 2,
+        "diff": 2,
+        "ratio": 0
+      },
+      {
+        "cat": "q_room",
+        "truth": 0,
+        "recommended": 1,
+        "diff": 1,
+        "ratio": 0
+      },
+      {
+        "cat": "digital_signage",
+        "truth": 0,
+        "recommended": 15,
+        "diff": 15,
+        "ratio": 0
+      },
+      {
+        "cat": "picket_board",
+        "truth": 0,
+        "recommended": 5,
+        "diff": 5,
+        "ratio": 0
+      }
+    ],
+    "summary": "BCWW 2018은 전시회와 컨퍼런스가 결합된 대규모 국제 행사로, 메인 홍보와 동선 안내를 위한 다양한 배너류와 천정 배너, 그리고 디지털 사이니지를 포함한 종합적인 환경장식물 발주가 필요합니다.",
+    "normalized": []
+  },
+  {
+    "name": "2018 스마트국토엑스포 (COEX D2홀)",
+    "accuracy": 53,
+    "elapsed": 13411,
+    "itemCount": 12,
+    "matrix": [
+      {
+        "cat": "x_banner",
+        "truth": 32,
+        "recommended": 25,
+        "diff": 7,
+        "ratio": 78
+      },
+      {
+        "cat": "foam_board",
+        "truth": 10,
+        "recommended": 40,
+        "diff": 30,
+        "ratio": 25
+      },
+      {
+        "cat": "chunchen_banner",
+        "truth": 6,
+        "recommended": 2,
+        "diff": 4,
+        "ratio": 33
+      },
+      {
+        "cat": "podium",
+        "truth": 5,
+        "recommended": 5,
+        "diff": 0,
+        "ratio": 100
+      },
+      {
+        "cat": "streetlight_banner",
+        "truth": 0,
+        "recommended": 0,
+        "diff": 0,
+        "ratio": 100
+      },
+      {
+        "cat": "horizontal_banner",
+        "truth": 0,
+        "recommended": 7,
+        "diff": 7,
+        "ratio": 0
+      },
+      {
+        "cat": "vertical_banner",
+        "truth": 0,
+        "recommended": 12,
+        "diff": 12,
+        "ratio": 0
+      },
+      {
+        "cat": "route_banner",
+        "truth": 0,
+        "recommended": 18,
+        "diff": 18,
+        "ratio": 0
+      },
+      {
+        "cat": "award_board",
+        "truth": 0,
+        "recommended": 0,
+        "diff": 0,
+        "ratio": 100
+      },
+      {
+        "cat": "q_room",
+        "truth": 0,
+        "recommended": 0,
+        "diff": 0,
+        "ratio": 100
+      },
+      {
+        "cat": "digital_signage",
+        "truth": 0,
+        "recommended": 12,
+        "diff": 12,
+        "ratio": 0
+      },
+      {
+        "cat": "picket_board",
+        "truth": 0,
+        "recommended": 0,
+        "diff": 0,
+        "ratio": 100
+      }
+    ],
+    "summary": "2018 스마트국토엑스포의 성공적인 개최를 위해 메인 홍보, 등록, 전시, 통천, 포디움 등 다양한 목적에 부합하는 환경장식물 품목을 제안합니다.",
+    "normalized": []
+  },
+  {
+    "name": "KME 2018 환영리셉션 (송도)",
+    "accuracy": 24,
+    "elapsed": 22192,
+    "itemCount": 10,
+    "matrix": [
+      {
+        "cat": "x_banner",
+        "truth": 26,
+        "recommended": 20,
+        "diff": 6,
+        "ratio": 77
+      },
+      {
+        "cat": "foam_board",
+        "truth": 13,
+        "recommended": 15,
+        "diff": 2,
+        "ratio": 87
+      },
+      {
+        "cat": "podium",
+        "truth": 9,
+        "recommended": 1,
+        "diff": 8,
+        "ratio": 11
+      },
+      {
+        "cat": "route_banner",
+        "truth": 9,
+        "recommended": 25,
+        "diff": 16,
+        "ratio": 36
+      },
+      {
+        "cat": "chunchen_banner",
+        "truth": 4,
+        "recommended": 1,
+        "diff": 3,
+        "ratio": 25
+      },
+      {
+        "cat": "streetlight_banner",
+        "truth": 0,
+        "recommended": 10,
+        "diff": 10,
+        "ratio": 0
+      },
+      {
+        "cat": "horizontal_banner",
+        "truth": 0,
+        "recommended": 3,
+        "diff": 3,
+        "ratio": 0
+      },
+      {
+        "cat": "vertical_banner",
+        "truth": 0,
+        "recommended": 6,
+        "diff": 6,
+        "ratio": 0
+      },
+      {
+        "cat": "q_room",
+        "truth": 0,
+        "recommended": 1,
+        "diff": 1,
+        "ratio": 0
+      },
+      {
+        "cat": "digital_signage",
+        "truth": 0,
+        "recommended": 6,
+        "diff": 6,
+        "ratio": 0
+      }
+    ],
+    "summary": "KOREA MICE EXPO 2018 환영리셉션의 등록, 안내, 연단, 포토존 목적을 달성하기 위해 X배너, 동선 안내 배너, 디지털 사이니지 등 총 10가지 품목 88개의 환경장식물 발주가 제안됩니다.",
+    "normalized": []
+  },
+  {
+    "name": "KME 2019 (송도)",
+    "accuracy": 11,
+    "elapsed": 10922,
+    "itemCount": 12,
+    "matrix": [
+      {
+        "cat": "podium",
+        "truth": 9,
+        "recommended": 10,
+        "diff": 1,
+        "ratio": 90
+      },
+      {
+        "cat": "foam_board",
+        "truth": 3,
+        "recommended": 70,
+        "diff": 67,
+        "ratio": 4
+      },
+      {
+        "cat": "vertical_banner",
+        "truth": 3,
+        "recommended": 15,
+        "diff": 12,
+        "ratio": 20
+      },
+      {
+        "cat": "chunchen_banner",
+        "truth": 1,
+        "recommended": 6,
+        "diff": 5,
+        "ratio": 17
+      },
+      {
+        "cat": "x_banner",
+        "truth": 0,
+        "recommended": 80,
+        "diff": 80,
+        "ratio": 0
+      },
+      {
+        "cat": "streetlight_banner",
+        "truth": 0,
+        "recommended": 25,
+        "diff": 25,
+        "ratio": 0
+      },
+      {
+        "cat": "horizontal_banner",
+        "truth": 0,
+        "recommended": 12,
+        "diff": 12,
+        "ratio": 0
+      },
+      {
+        "cat": "route_banner",
+        "truth": 0,
+        "recommended": 40,
+        "diff": 40,
+        "ratio": 0
+      },
+      {
+        "cat": "award_board",
+        "truth": 0,
+        "recommended": 4,
+        "diff": 4,
+        "ratio": 0
+      },
+      {
+        "cat": "q_room",
+        "truth": 0,
+        "recommended": 3,
+        "diff": 3,
+        "ratio": 0
+      },
+      {
+        "cat": "digital_signage",
+        "truth": 0,
+        "recommended": 25,
+        "diff": 25,
+        "ratio": 0
+      },
+      {
+        "cat": "picket_board",
+        "truth": 0,
+        "recommended": 15,
+        "diff": 15,
+        "ratio": 0
+      }
+    ],
+    "summary": "다중 세션과 포디움 중심의 대규모 전시회 및 컨퍼런스 특성을 고려하여, 참가자 동선 안내와 정보 전달, 그리고 행사 브랜딩에 중점을 둔 환경장식물 발주 계획입니다.",
+    "normalized": []
+  },
+  {
+    "name": "DDP 정부혁신박람회 2019",
+    "accuracy": 5,
+    "elapsed": 15949,
+    "itemCount": 12,
+    "matrix": [
+      {
+        "cat": "podium",
+        "truth": 2,
+        "recommended": 1,
+        "diff": 1,
+        "ratio": 50
+      },
+      {
+        "cat": "foam_board",
+        "truth": 3,
+        "recommended": 60,
+        "diff": 57,
+        "ratio": 5
+      },
+      {
+        "cat": "x_banner",
+        "truth": 1,
+        "recommended": 35,
+        "diff": 34,
+        "ratio": 3
+      },
+      {
+        "cat": "streetlight_banner",
+        "truth": 0,
+        "recommended": 12,
+        "diff": 12,
+        "ratio": 0
+      },
+      {
+        "cat": "horizontal_banner",
+        "truth": 0,
+        "recommended": 6,
+        "diff": 6,
+        "ratio": 0
+      },
+      {
+        "cat": "vertical_banner",
+        "truth": 0,
+        "recommended": 10,
+        "diff": 10,
+        "ratio": 0
+      },
+      {
+        "cat": "chunchen_banner",
+        "truth": 0,
+        "recommended": 2,
+        "diff": 2,
+        "ratio": 0
+      },
+      {
+        "cat": "route_banner",
+        "truth": 0,
+        "recommended": 25,
+        "diff": 25,
+        "ratio": 0
+      },
+      {
+        "cat": "award_board",
+        "truth": 0,
+        "recommended": 1,
+        "diff": 1,
+        "ratio": 0
+      },
+      {
+        "cat": "q_room",
+        "truth": 0,
+        "recommended": 2,
+        "diff": 2,
+        "ratio": 0
+      },
+      {
+        "cat": "digital_signage",
+        "truth": 0,
+        "recommended": 20,
+        "diff": 20,
+        "ratio": 0
+      },
+      {
+        "cat": "picket_board",
+        "truth": 0,
+        "recommended": 12,
+        "diff": 12,
+        "ratio": 0
+      }
+    ],
+    "summary": "제1회 대한민국 정부혁신박람회는 DDP의 넓은 공간과 3,000명의 참가자를 고려하여 개막식, 체험존, 동선 안내, 포토존 등 각 목적에 맞는 다양한 환경장식물을 활용하여 효과적인 정보 전달과 행사 분위기 조성을 목표로 합니다.",
+    "normalized": []
+  },
+  {
+    "name": "WLCF 2018 (ICC 제주)",
+    "accuracy": 16,
+    "elapsed": 10964,
+    "itemCount": 6,
+    "matrix": [
+      {
+        "cat": "chunchen_banner",
+        "truth": 5,
+        "recommended": 2,
+        "diff": 3,
+        "ratio": 40
+      },
+      {
+        "cat": "vertical_banner",
+        "truth": 5,
+        "recommended": 0,
+        "diff": 5,
+        "ratio": 0
+      },
+      {
+        "cat": "foam_board",
+        "truth": 7,
+        "recommended": 12,
+        "diff": 5,
+        "ratio": 58
+      },
+      {
+        "cat": "podium",
+        "truth": 8,
+        "recommended": 1,
+        "diff": 7,
+        "ratio": 13
+      },
+      {
+        "cat": "x_banner",
+        "truth": 0,
+        "recommended": 9,
+        "diff": 9,
+        "ratio": 0
+      },
+      {
+        "cat": "digital_signage",
+        "truth": 0,
+        "recommended": 5,
+        "diff": 5,
+        "ratio": 0
+      },
+      {
+        "cat": "route_banner",
+        "truth": 0,
+        "recommended": 7,
+        "diff": 7,
+        "ratio": 0
+      }
+    ],
+    "summary": "제2회 세계리더스보전포럼의 성공적인 개최를 위해 5층 메인 천정, VIP 오찬장, 3층 각 회의실 및 동선 안내를 위한 환경장식물 발주를 제안합니다.",
+    "normalized": []
+  },
+  {
+    "name": "IUCN 리더스포럼 2018 (ICC 제주)",
+    "accuracy": 13,
+    "elapsed": 17504,
+    "itemCount": 12,
+    "matrix": [
+      {
+        "cat": "foam_board",
+        "truth": 9,
+        "recommended": 40,
+        "diff": 31,
+        "ratio": 22
+      },
+      {
+        "cat": "podium",
+        "truth": 9,
+        "recommended": 3,
+        "diff": 6,
+        "ratio": 33
+      },
+      {
+        "cat": "chunchen_banner",
+        "truth": 2,
+        "recommended": 2,
+        "diff": 0,
+        "ratio": 100
+      },
+      {
+        "cat": "x_banner",
+        "truth": 0,
+        "recommended": 15,
+        "diff": 15,
+        "ratio": 0
+      },
+      {
+        "cat": "streetlight_banner",
+        "truth": 0,
+        "recommended": 10,
+        "diff": 10,
+        "ratio": 0
+      },
+      {
+        "cat": "horizontal_banner",
+        "truth": 0,
+        "recommended": 5,
+        "diff": 5,
+        "ratio": 0
+      },
+      {
+        "cat": "vertical_banner",
+        "truth": 0,
+        "recommended": 5,
+        "diff": 5,
+        "ratio": 0
+      },
+      {
+        "cat": "route_banner",
+        "truth": 0,
+        "recommended": 15,
+        "diff": 15,
+        "ratio": 0
+      },
+      {
+        "cat": "award_board",
+        "truth": 0,
+        "recommended": 2,
+        "diff": 2,
+        "ratio": 0
+      },
+      {
+        "cat": "q_room",
+        "truth": 0,
+        "recommended": 2,
+        "diff": 2,
+        "ratio": 0
+      },
+      {
+        "cat": "digital_signage",
+        "truth": 0,
+        "recommended": 8,
+        "diff": 8,
+        "ratio": 0
+      },
+      {
+        "cat": "picket_board",
+        "truth": 0,
+        "recommended": 5,
+        "diff": 5,
+        "ratio": 0
+      }
+    ],
+    "summary": "IUCN 리더스포럼 2018의 다중 세션 및 1500명 참가자를 고려하여 폼보드 중심의 정보 전달과 명확한 동선 안내에 중점을 둔 환경장식물 발주 계획입니다.",
+    "normalized": []
+  }
+]

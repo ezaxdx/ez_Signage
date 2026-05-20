@@ -225,6 +225,30 @@ for (const [venue, files] of Object.entries(venueGroups).sort((a, b) => a[0].loc
   const sizes = [...new Set(files.map(f => f.learn_size).filter(Boolean))].sort()
   const sizeList = sizes.length > 0 ? sizes.join(' / ') : '—'
 
+  // 도면 파일명 (요약 — 최대 10건, 나머지는 +N건으로 축약)
+  const drawFiles = files.filter(f => f.source === '기본 도면')
+  const dFilesList = drawFiles.length === 0
+    ? '—'
+    : drawFiles.slice(0, 10).map(f => `• ${f.file_name}`).join('\n') +
+      (drawFiles.length > 10 ? `\n  …외 ${drawFiles.length - 10}건 (시트 2 참조)` : '')
+
+  // 진행 행사명 (코드·면적·L2 포함)
+  const eventMetaMap = new Map()
+  for (const f of learnFiles) {
+    if (!f.event_name) continue
+    if (!eventMetaMap.has(f.event_name)) {
+      eventMetaMap.set(f.event_name, { code: f.event_code, area: f.area, hall: f.l2_hall, count: 0 })
+    }
+    eventMetaMap.get(f.event_name).count++
+  }
+  const eNamesList = eventMetaMap.size === 0
+    ? '—'
+    : [...eventMetaMap.entries()].map(([name, m]) => {
+        const meta = [m.code, m.area].filter(Boolean).join(' · ')
+        const hallLine = (m.hall && m.hall !== '(L2 미상)') ? `\n   └ L2: ${m.hall}` : ''
+        return `• ${name}${meta ? ` (${meta})` : ''} — ${m.count}건${hallLine}`
+      }).join('\n')
+
   const row = wsSum.addRow({
     no: i,
     venue,
@@ -232,6 +256,8 @@ for (const [venue, files] of Object.entries(venueGroups).sort((a, b) => a[0].loc
     e_count: events.size,
     l_count: learnFiles.length,
     g_count: guideCount,
+    d_files: dFilesList,
+    e_names: eNamesList,
     cat_dist: catDist,
     size_list: sizeList,
   })
@@ -241,15 +267,22 @@ for (const [venue, files] of Object.entries(venueGroups).sort((a, b) => a[0].loc
   row.getCell('e_count').alignment = { horizontal: 'center', vertical: 'middle' }
   row.getCell('l_count').alignment = { horizontal: 'center', vertical: 'middle' }
   row.getCell('g_count').alignment = { horizontal: 'center', vertical: 'middle' }
-  const lines = Math.max(catDist.split(' · ').length, sizes.length, 1)
-  row.height = Math.min(Math.max(lines * 16, 24), 200)
+  // 행 높이 = 가장 긴 컬럼 줄 수 × 16px
+  const lines = Math.max(
+    dFilesList.split('\n').length,
+    eNamesList.split('\n').length,
+    catDist.split(' · ').length,
+    sizes.length,
+    1
+  )
+  row.height = Math.min(Math.max(lines * 16, 30), 600)
 }
 
 wsSum.getRow(1).font = { bold: true, size: 11 }
 wsSum.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } }
 wsSum.getRow(1).alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }
 wsSum.getRow(1).height = 30
-wsSum.autoFilter = { from: 'A1', to: `H${i + 1}` }
+wsSum.autoFilter = { from: 'A1', to: `J${i + 1}` }
 wsSum.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }]
 
 // 시트 2: 학습 파일 상세 (long format)
