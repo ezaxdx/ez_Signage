@@ -501,35 +501,9 @@ export function LearningManagerClient({
   const [expandedFacilityGroup, setExpandedFacilityGroup] = useState<string | null>(null)
   // 5/22 사용자 명시 = L3 학습 내용 = JSON.stringify X·실제 가이드 패널 영역 같은 사람 보기
   const [facilityPanelVenue, setFacilityPanelVenue] = useState<string | null>(null)
-  // 5/22 사용자 명시 = 유기 연동. event_history DB 영역 fetch → SEED + DB 통합 SOT.
-  // 행사 삭제 (deleted_at) = 즉시 모든 영역 (행사장 학습 현황·프로그램 파트 매칭·환경장식물 빈도·AI) 반영.
-  // 5/22 영역 A2 = SSR 영역 영역 초기값 영역 = serverEventHistory 영역 (라이브 즉시 표시·useEffect 영역 보조)
-  const [dbEventHistory, setDbEventHistory] = useState<typeof SEED_EVENT_HISTORY>(serverEventHistory)
-  const [eventHistoryFallback, setEventHistoryFallback] = useState(false)
-  useEffect(() => {
-    fetch('/api/event-history')
-      .then(r => r.json())
-      .then(d => {
-        if (d.fallback) {
-          setEventHistoryFallback(true)
-          setDbEventHistory([])
-        } else {
-          setDbEventHistory((d.items ?? []).map((e: { project_name: string; project_code: string | null; year: number | null; venue: string; category_tag: string; program_parts: string[]; signage_breakdown: Array<{ category: string; quantity: number; sizes?: string }>; analyzed_item_count: number | null; is_seed: boolean }) => ({
-            project_name: e.project_name,
-            project_code: e.project_code,
-            year: e.year,
-            venue: e.venue,
-            category_tag: (e.category_tag ?? '일반') as '핵심' | '일반' | '미분류' | '해외',
-            has_excel: true,
-            has_image: false,
-            analyzed_item_count: e.analyzed_item_count ?? undefined,
-            program_parts: e.program_parts ?? [],
-            signage_breakdown: e.signage_breakdown ?? [],
-          })))
-        }
-      })
-      .catch(() => setEventHistoryFallback(true))
-  }, [])
+  // HOTFIX (2026-05-20): dbEventHistory·eventHistoryFallback state·fetch 제거.
+  //   사용자 명시 패턴 = [...SEED_EVENT_HISTORY, ...userEventHistory] → DB 의존 없음.
+  //   serverEventHistory props는 호환 위해 시그니처만 유지 (page.tsx에서 전달).
   // 5/22 사용자 명시 = 동의어 매핑에 있는 값 = 표준명으로 변환. signage_breakdown.category 영역 자동 표준화.
   const allAliases = useMemo(() => {
     return [
@@ -555,21 +529,11 @@ export function LearningManagerClient({
   const [customEvents, setCustomEvents] = useState<Array<{ project_name: string; project_code: string; year: number; venue: string; category_tag: '핵심'|'일반'|'미분류'|'해외'; program_parts: string[]; analyzed_item_count?: number }>>([])
   const [editingEvent, setEditingEvent] = useState<{ project_name: string; project_code: string; year: number; venue: string; program_parts: string[]; analyzed_item_count?: number } | null>(null)
 
-  // HOTFIX (2026-05-20): DB ∪ SEED union — DB row 1건이라도 있으면 SEED 44건 사라지던 결함 fix.
-  //   행사장 학습 현황(venueLearningStatus)은 projects + SEED 둘 다 합산하는 반면,
-  //   기존 unifiedEventHistory는 DB OR SEED 분기여서 데이터 소스 불일치 발생.
-  //   project_code 기준 dedupe (DB가 우선·SEED는 보완).
+  // HOTFIX (2026-05-20) 사용자 명시 패턴 직역:
+  //   [...SEED_EVENT_HISTORY, ...userEventHistory, ...customEvents] — SEED는 항상 base, 누적·커스텀은 추가.
+  //   dbEventHistory(이전 union·OR 분기) 의존 제거 → SEED 44건 항상 표시 보장.
   // 5/22 사용자 명시 = 행사 관리 = SOT·행사장 관리·프로그램 파트 관리·환경장식물 관리 영역 모두 영향
   const unifiedEventHistory = useMemo(() => {
-    const dbActive = dbEventHistory.length > 0 && !eventHistoryFallback
-    let base: typeof SEED_EVENT_HISTORY
-    if (!dbActive) {
-      base = SEED_EVENT_HISTORY
-    } else {
-      const dbCodes = new Set(dbEventHistory.map(e => e.project_code).filter(Boolean) as string[])
-      const seedRest = SEED_EVENT_HISTORY.filter(e => !e.project_code || !dbCodes.has(e.project_code))
-      base = [...dbEventHistory, ...seedRest]
-    }
     const userMapped = userEventHistory.map(e => ({
       ...e,
       has_excel: e.has_excel ?? true,
@@ -581,8 +545,8 @@ export function LearningManagerClient({
       has_image: false,
       signage_breakdown: undefined,
     })) as unknown as typeof SEED_EVENT_HISTORY
-    return [...base, ...userMapped, ...customMapped]
-  }, [dbEventHistory, eventHistoryFallback, userEventHistory, customEvents])
+    return [...SEED_EVENT_HISTORY, ...userMapped, ...customMapped]
+  }, [userEventHistory, customEvents])
 
   const venueAggregateByName = useMemo(() => {
     const map = new Map<string, { program_parts: Set<string>; signage: Map<string, number> }>()
