@@ -149,6 +149,7 @@ interface Props {
     last_edited_by: string | null
   }>
   // 5/22 사용자 명시 = 신규 행사 (사용자 프로젝트) 자동 행사 관리에 누적·AI 추천 정확도 향상 목표
+  // PR#1 단위 8 (δ 정책): source 태그 추가 — 'auto_project' (완료 status) / 'auto_d7' (행사일+7일)
   userEventHistory?: Array<{
     project_name: string
     project_code: string
@@ -161,6 +162,7 @@ interface Props {
     program_parts?: string[]
     signage_breakdown?: Array<{ category: string; quantity: number; sizes?: string }>
     is_user_project?: boolean
+    source?: 'auto_project' | 'auto_d7'
   }>
   signageTypeCount?: number
   synonyms?: SynonymRow[]

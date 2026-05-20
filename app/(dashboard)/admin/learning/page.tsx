@@ -62,11 +62,32 @@ export default async function LearningManagerPage() {
     }
   })
 
-  // 5/22 사용자 명시 = 신규 행사 (사용자 프로젝트) 자동 행사 관리에 누적
+  // PR#1 단위 8 (δ 정책): userEventHistory 누적 조건 강화 (lazy union 패턴).
+  //   ① 완료 status — 완료 버튼이 event_history POST 실패해도 lazy union으로 합쳐서 표시
+  //   ② 행사일 + 7일 경과 — 자동 누적 (별도 cron 없음, 화면 진입 시점에 합성)
+  //   AND design_items ≥3건 (1~2건 노이즈 제거)
+  //   AND event_history DB에 미수록 (project_code slice(0,12) 매칭 — completeProject 헬퍼와 정합)
+  //   source 태그로 시드·완료수동·자동 D+7 구분.
+  const eventHistoryDbCodes = new Set(
+    ((eventHistoryRes.data ?? []) as Array<{ project_code: string | null }>).map(e => e.project_code).filter(Boolean) as string[]
+  )
+  const D7_MS = 7 * 24 * 60 * 60 * 1000
+  const now = Date.now()
   const userEventHistory = projectsList
     .filter(p => p.event_venue)
     .map(p => {
       const pItems = itemsList.filter(it => it.project_id === p.id)
+      // δ 정책: 누적 조건 (design_items ≥3건)
+      if (pItems.length < 3) return null
+      // δ 정책: 트리거 (완료 status OR 행사일+7일 경과)
+      const isCompleted = p.status === '완료'
+      const eventTime = p.event_date ? new Date(p.event_date).getTime() : NaN
+      const isPastD7 = !isNaN(eventTime) && (now - eventTime) > D7_MS
+      if (!isCompleted && !isPastD7) return null
+      // 중복 방지: event_history DB에 이미 수록된 project_code skip
+      const code12 = p.id.slice(0, 12)
+      if (eventHistoryDbCodes.has(code12)) return null
+
       const sigByCategory = new Map<string, { quantity: number; sizes: Set<string> }>()
       for (const it of pItems) {
         if (!it.category) continue
@@ -80,9 +101,8 @@ export default async function LearningManagerPage() {
         .sort((a, b) => b.quantity - a.quantity)
       return {
         project_name: p.name,
-        project_code: p.id.slice(0, 8),
+        project_code: code12,
         year: p.event_date ? new Date(p.event_date).getFullYear() : new Date(p.created_at).getFullYear(),
-        // 5/22 사용자 명시 = 행사장 = 기존 영역 매칭 정합 (행사 관리 venue 영역)
         venue: normalizeVenueName(p.event_venue) || '미정',
         category_tag: '일반' as const,
         has_excel: pItems.some(it => it.finalized_at != null),
@@ -91,8 +111,11 @@ export default async function LearningManagerPage() {
         program_parts: p.program_parts ?? [],
         signage_breakdown: signage_breakdown.length > 0 ? signage_breakdown : undefined,
         is_user_project: true,
+        // source 태그: 완료 status = auto_project (completeProject 정합) / 행사일+7일 = auto_d7
+        source: (isCompleted ? 'auto_project' : 'auto_d7') as 'auto_project' | 'auto_d7',
       }
     })
+    .filter((p): p is NonNullable<typeof p> => p !== null)
   const venueByPid = new Map<string, string>()
   const programPartsByPid = new Map<string, string[]>()
   for (const p of projectsList) {

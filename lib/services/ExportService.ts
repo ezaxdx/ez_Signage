@@ -520,8 +520,10 @@ export async function exportToPPT(
 }
 
 // ══════════════════════════════════════════════════════════
-// v4.1 신규-G: usage_logs INSERT (다운로드 트리거 기록)
-// v9.2 회의록: 엑셀 내보내기 = ′완료본′ → design_items.finalized_at 자동 UPDATE
+// v4.1 신규-G: usage_logs INSERT (다운로드 트리거 기록).
+// δ 정책 (2026-05-20): 학습 신호는 완료 버튼이 단일 소스. export ≠ 학습 신호.
+//   엑셀·PPT 다운로드 시 design_items.finalized_at 자동 SET 로직 제거 (PR#1 단위 1.5).
+//   finalized_at SET 책임은 lib/services/completeProject.ts로 일원화.
 // ══════════════════════════════════════════════════════════
 async function logUsage(action: 'export_excel' | 'export_pptx' | 'recommend' | 'venue_request', metadata: Record<string, unknown>) {
   if (typeof window === 'undefined') return
@@ -536,48 +538,7 @@ async function logUsage(action: 'export_excel' | 'export_pptx' | 'recommend' | '
       action,
       metadata,
     })
-    // 엑셀·PPT 내보내기 시: 해당 프로젝트의 모든 design_items.finalized_at = now()
-    // 5/22 사용자 명시 = 행사 종료 ≠ 다운로드. event_history 영역 자동 누적 X = ProjectCard 완료 버튼 영역에서만 진행
-    if ((action === 'export_excel' || action === 'export_pptx') && typeof metadata.project_id === 'string') {
-      await supabase
-        .from('design_items')
-        .update({ finalized_at: new Date().toISOString(), confirmed: true })
-        .eq('project_id', metadata.project_id)
-        .is('finalized_at', null)
-
-      // 5/22 영역 정정 = event_history 영역 자동 누적 = ProjectCard handleComplete 영역에서만 진행 (행사 종료 키 영역)
-      // 다음 영역 = 회수 가능한 영역 (try/catch 영역 보존)
-      try {
-        const projectId = metadata.project_id
-        const { data: proj } = await supabase
-          .from('projects')
-          .select('id, name, event_venue, event_date, program_parts')
-          .eq('id', projectId)
-          .single()
-        const { data: items } = await supabase
-          .from('design_items')
-          .select('category, quantity, width_mm, height_mm')
-          .eq('project_id', projectId)
-        if (proj && items) {
-          const sigByCategory = new Map<string, { quantity: number; sizes: Set<string> }>()
-          for (const it of items as Array<{ category: string | null; quantity: number | null; width_mm: number | null; height_mm: number | null }>) {
-            if (!it.category) continue
-            const prev = sigByCategory.get(it.category) ?? { quantity: 0, sizes: new Set() }
-            prev.quantity += it.quantity ?? 1
-            if (it.width_mm && it.height_mm) prev.sizes.add(`${it.width_mm}×${it.height_mm}`)
-            sigByCategory.set(it.category, prev)
-          }
-          const signage_breakdown = Array.from(sigByCategory.entries())
-            .map(([category, v]) => ({ category, quantity: v.quantity, sizes: Array.from(v.sizes).join('·') || undefined }))
-            .sort((a, b) => b.quantity - a.quantity)
-          const projWithParts = proj as { id: string; name: string; event_venue: string | null; event_date: string | null; program_parts: string[] | null }
-          // 5/22 영역 정정 = 다운로드 영역에서는 event_history 영역 호출 X (handleComplete 영역에서만)
-          void projWithParts; void signage_breakdown
-        }
-      } catch (err) {
-        console.warn('[event-history] 행사 종료 시 영역 자동 누적 실패:', err)
-      }
-    }
+    // 학습 신호는 완료 버튼이 단일 소스 (PO 정책 δ, 2026-05-20)
   } catch {
     // usage_logs 테이블 없거나 권한 없음 — silent
   }

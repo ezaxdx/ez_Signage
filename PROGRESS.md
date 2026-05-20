@@ -1,5 +1,51 @@
 # 작업 이력
 
+## 2026-05-20 (δ-PR#1 — 데이터 누적 정상화: 완료 단일 학습 신호 + lazy union + 삭제 학습 추출)
+
+### 사용자 요청
+PO 명령서 (δ 정책): 데이터 학습 관리자 흐름 정합 — 완료 버튼이 학습 풀 단일 진입점. 엑셀 export는 학습 신호 아님. 행사일+7일 lazy union. 프로젝트 삭제 시 학습 데이터 보존.
+
+### 단위 1·1.5: 완료 버튼 단일화 + ExportService 분리
+- 신규 `lib/services/completeProject.ts` — 완료 처리 SOT 헬퍼 (status 갱신·event_history POST·finalized_at SET, atomic)
+- `ProjectCard.tsx`·`EditorLayout.tsx`: 두 완료 경로 모두 completeProject 헬퍼 사용 (이전엔 EditorLayout만 status만 set·event_history 호출 X)
+- `ProjectCard.handleComplete`: `program_parts: project.program_parts ?? []` 추가 (진단 §4 누락 fix)
+- `ExportService.logUsage`: 엑셀·PPT 시 `design_items.finalized_at` UPDATE 로직 제거 (1.5). 학습 신호는 완료 버튼 단일 소스 주석.
+- `EditorLayout.markFinalized`: no-op 변환 (export ≠ 학습 신호)
+
+### 단위 6: 프로젝트 정보 변경 모달 AI 재호출
+- `ProjectInfoClient.handleSaveInfo`: 프로그램 파트 추가 시 정적 `PROGRAM_PART_SIGNAGE_HINTS` 대신 `/api/recommend` 호출 (신규 파트만 input.programParts). 응답 중 기존 design_items.category에 없는 것만 INSERT.
+- AI 실패·결과 0건 → 정적 HINTS fallback (안전망).
+- 토스트 메시지: "프로그램 파트 추가로 환경장식물 N개가 자동 추가되었습니다"
+
+### 단위 8: 행사일 + 7일 lazy union
+- `app/(dashboard)/admin/learning/page.tsx` `userEventHistory` 생성 변경:
+  - 조건 강화: design_items ≥3건 AND (status='완료' OR 행사일+7일 경과) AND event_history DB 미수록
+  - source 태그: `'auto_project'` (완료) / `'auto_d7'` (행사일+7일)
+- `LearningManagerClient` Props.userEventHistory에 `source` 필드 추가
+- 메모리상 합성 — DB INSERT 없음 (lazy union)
+
+### 단위 9a: 프로젝트 삭제 학습 추출 + cascade
+- `DeleteProjectButton.tsx` 전면 개편:
+  - Step 1: design_items ≥3건이면 event_history UPSERT (source='manual_delete'). 실패 시 삭제 abort.
+  - Step 2: Storage 이미지 cleanup (master_image_url + design_items.image_url, design-images 버킷에서 path 추출 후 remove)
+  - Step 3: item_contents → design_items → project_members → slot_styles → projects cascade 삭제
+  - confirm 텍스트 분기: ≥3건 = "학습 데이터로 보존됩니다" / <3건 = "보존 안 됨"
+- 백워드 호환: project_archive INSERT 유지
+
+### 검증
+- TSC 0 에러
+- Next 빌드 모든 라우트 PASS
+- harness 72/70 통과/2 warn/0 fail
+- 변경 파일: 6개 (1 신규 + 5 수정)
+  - 신규: `lib/services/completeProject.ts`
+  - 수정: ProjectCard.tsx·EditorLayout.tsx·ExportService.ts·ProjectInfoClient.tsx·page.tsx (admin/learning)·LearningManagerClient.tsx·DeleteProjectButton.tsx
+
+### 알려진 한계
+- 백필 미실행: status='완료'였지만 이전에 event_history POST 안 된 프로젝트의 finalized_at NULL 상태 잔존. 별도 backfill 스크립트 필요.
+- d7 lazy union은 학습 관리자 UI에만 적용. AI recommendSignage는 event_history DB만 봄 (auto_d7는 SSR 메모리상만).
+
+---
+
 ## 2026-05-20 (v10.4 — design_items.no 책임 통합 + 12파트 시드 + ErrorBoundary + 정의 분석 보고서)
 
 ### 사용자 요청

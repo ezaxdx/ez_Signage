@@ -3,6 +3,32 @@
 > 작은 결정도 누적. "왜 X를 쓰는가?" 질문 시 검색.
 > CLAUDE.md를 부풀리지 않으면서 일관성 유지.
 
+## 2026-05-20 — δ 정책 채택: 완료 버튼이 학습 풀 단일 진입점
+
+**컨텍스트**: 진단 §4 결과 — 완료 버튼이 `program_parts: []` 빈 배열로 하드코딩, `finalized_at`은 export 시점에 set, EditorLayout 완료 경로는 event_history POST 호출 안 함. 학습 신호 출처 3곳(완료/export/누적) 분산 → 사용자 의도 모호. PO 확정: 완료 버튼 = 학습 풀 단일 진입점.
+
+**선택**:
+1. `lib/services/completeProject.ts` SOT 헬퍼 신설 — projects.status UPDATE → event_history POST → finalized_at SET (atomic, POST 성공 시에만 finalized_at SET)
+2. ProjectCard·EditorLayout 두 완료 경로 모두 헬퍼 호출 (분산 X·단일 진실)
+3. ExportService.logUsage에서 finalized_at SET 제거 — export = 순수 출력
+4. 누적 트리거 보강: 행사일+7일 lazy union (design_items ≥3건·event_history 미수록·메모리상만 합성, DB INSERT 안 함)
+5. 프로젝트 삭제 시 design_items ≥3건이면 event_history UPSERT 후 cascade — 학습 데이터 보존
+
+**대안**:
+- DB trigger로 projects.status='완료' → event_history 자동 INSERT (사용자 영역 SQL 실행 부담·D-day 회피)
+- finalized_at SET을 다중 경로 유지 (사용자 의도 위반·신뢰 신호 모호)
+- 행사일+7일 cron 작업 (별도 인프라 부담·lazy union으로 충분)
+
+**이유**:
+- decisions.md 2026-05-20 채번 trigger 패턴과 같은 철학 (책임 통합, [[feedback-automation-design-upfront]])
+- export ≠ 행사 종료 (다운로드는 시안 검토 단계에서도 발생)
+- lazy union은 별도 인프라 0건·메모리상 즉시 합성·운영 데이터 영향 0
+
+**되돌릴 수 있는가**: 매우 쉬움 — completeProject 헬퍼 import 제거 + 이전 인라인 로직 복원 + ExportService logUsage에 finalized_at UPDATE 한 줄 복원
+
+**관련**: feedback-automation-design-upfront·feedback-intent-clarification-first·PROGRESS.md 2026-05-20 δ-PR#1
+
+
 ## 2026-05-20 — design_items.no 채번 SOT = DB trigger + 클라이언트 헬퍼 (v10.4)
 
 **컨텍스트**: 5/19 b979439 ProjectInfoClient.tsx 1곳 fix 후 EditorLayout (items.length+1)·SeriesGenerator (currentItemCount+1) 등 다른 INSERT 경로에서 잠재 충돌 (삭제 후 추가 시 (project_id, no) 중복). 5/19 환경장식물 회고 = "설계 미스 = SOT 부재·INSERT 책임 7곳 분산"이 근본 원인.
