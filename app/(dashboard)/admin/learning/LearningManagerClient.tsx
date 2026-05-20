@@ -1571,21 +1571,21 @@ export function LearningManagerClient({
                   {(() => {
                     const validTypeNames = new Set(signageTypeList.map(s => s.name))
 
-                    // ① venue 그룹핑: unifiedEventHistory + venues 합쳐서 L1 그룹명 추출 (첫 단어)
+                    // HOTFIX (2026-05-20) 사용자 명시: 시드 venues + DB venues 합쳐서 표시·
+                    //   normalizeVenueName 결과를 그룹 키로 사용 → 같은 행사장은 자동 통합 (중복 없이).
+                    //   first word(split[0]) 휴리스틱 폐기 — "킨텍스(KINTEX)" 같은 풀네임(약어) 형식 키 그대로 사용.
                     const groupedEvents = new Map<string, typeof unifiedEventHistory>()
                     for (const ev of unifiedEventHistory) {
                       const vname = (ev.venue ?? '').trim()
                       if (!vname || vname === '미정' || vname === '미상') continue
-                      const normName = normalizeVenueName(vname)
-                      const groupName = (normName.split(' ')[0] || normName || vname)
+                      const groupName = normalizeVenueName(vname) || vname
                       if (!groupedEvents.has(groupName)) groupedEvents.set(groupName, [])
                       groupedEvents.get(groupName)!.push(ev)
                     }
-                    // venues DB 에만 있는 행사장도 보강 (행사 0건이라도 표시)
+                    // venues DB 에만 있는 행사장도 보강 (행사 0건이라도 표시) — 같은 normalize 키로 자동 통합
                     for (const v of venues) {
                       if (!v.name) continue
-                      const normName = normalizeVenueName(v.name)
-                      const groupName = (normName.split(' ')[0] || normName || v.name)
+                      const groupName = normalizeVenueName(v.name) || v.name
                       if (!groupedEvents.has(groupName)) groupedEvents.set(groupName, [])
                     }
 
@@ -1608,7 +1608,7 @@ export function LearningManagerClient({
                           if (validTypeNames.has(standard)) l1CatSet.add(standard)
                         }
                       }
-                      const l1Venue = venues.find(v => normalizeVenueName(v.name).startsWith(groupName))
+                      const l1Venue = venues.find(v => normalizeVenueName(v.name) === groupName)
 
                       out.push(
                         <tr key={`L1-${groupName}`} className="bg-indigo-50/60 hover:bg-indigo-50 cursor-pointer border-t-2 border-indigo-100"
