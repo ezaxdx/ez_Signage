@@ -1475,6 +1475,10 @@ export function LearningManagerClient({
         </section>
           )
         })()}
+        </>}
+        {/* HOTFIX (2026-05-20): 3번째 false && 가드 닫기를 도면 학습 큐 직후로 이동.
+            이전엔 학습된 행사장 section도 같은 가드에 갇혀 venues 메뉴 클릭 시 빈 화면 버그.
+            학습된 행사장 section은 venues 메뉴의 핵심 컨텐츠이므로 가드 밖에서 항상 렌더. */}
 
         {/* 5/21 사용자 명시 = 표준 행사장 계층 트리 + 학습된 행사장 표 = 한 표로 통합.
             VenueHierarchyTree 별도 컴포넌트 제거. 학습된 행사장 표 행 클릭 시 하위 L2 홀 펼침. */}
@@ -2036,7 +2040,8 @@ export function LearningManagerClient({
         </section>
 
         </>}
-        </>}
+        {/* HOTFIX (2026-05-20): 위 </>} 1개 = venues 블록 닫기.
+            이전엔 가드 닫기 + venues 블록 닫기 2개였으나 가드를 도면 학습 큐 직후로 옮김. */}
         {/* v9.33: 환경장식물 종류 섹션은 SYNONYM_SUBTABS 버튼바 아래(동의어 블록 안)로 이동
             — 이전엔 이 위치에 렌더 → 버튼바가 종류 표 아래에 표시되는 버그 발생 */}
         {false && (
