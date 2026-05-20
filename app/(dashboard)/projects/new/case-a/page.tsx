@@ -15,7 +15,7 @@ import { formatNoteText } from '@/lib/text/normalizeAiText'
 import { STANDARD_CATEGORY_BY_KEY, type StandardCategoryKey } from '@/lib/data/signageCategoryStandards'
 import { PROGRAM_PARTS, PROGRAM_PART_GROUPS } from '@/lib/programParts'
 import { SEED_SIGNAGE_TYPES } from '@/lib/data/dashboardSeed'
-import { getHallsByVenueName } from '@/lib/venueIntel'
+import { getHallsByVenueName, VENUE_LIST, groupVenuesByRegion } from '@/lib/venueIntel'
 
 // 과거 수행실적에서 발주처·주관기관 후보 추출 (자동완성용)
 const KNOWN_CLIENTS = Array.from(new Set(SEED_PERFLIST.map(p => p.client))).sort()
@@ -130,7 +130,11 @@ export default function CaseAPage() {
 
   // 필수
   const [eventName, setEventName] = useState('')
-  const [venue, setVenue] = useState('')
+  // HOTFIX (2026-05-20): 행사 장소 2단계 드롭다운 (L1 + L2). 자유 입력 차단.
+  const [venueL1, setVenueL1] = useState('')
+  const [venueL2, setVenueL2] = useState('')
+  // 휘하 홀 있으면 L1 + ' ' + L2·없으면 L1만 = DB 저장값
+  const venue = venueL2 ? `${venueL1} ${venueL2}` : venueL1
 
   // HOTFIX (2026-05-20): 동적 행사장 목록 — event_history.venue DISTINCT + venues(is_hidden=false)
   //   마운트 시 1회 fetch. 실패 시 KNOWN_VENUES (SEED_PERFLIST) fallback.
@@ -193,8 +197,13 @@ export default function CaseAPage() {
 
   const handleRecommend = async () => {
     setError(null)
-    if (!eventName.trim() || !venue.trim()) {
+    if (!eventName.trim() || !venueL1.trim()) {
       setError('행사명·장소는 필수입니다')
+      return
+    }
+    // HOTFIX (2026-05-20): 휘하 홀 있는 행사장이면 L2 필수
+    if (venueL1 && getHallsByVenueName(venueL1).length > 0 && !venueL2) {
+      setError('휘하 홀을 선택해주세요')
       return
     }
     setLoading(true)
@@ -417,27 +426,48 @@ export default function CaseAPage() {
                 <input value={eventName} onChange={e => setEventName(e.target.value)} placeholder="예: 2026 K-콘텐츠 엑스포" className={inputCls} />
               </Field>
               <Field label="행사 장소 *">
-                <input list="known-venues" value={venue} onChange={e => setVenue(e.target.value)} placeholder="예: 코엑스 그랜드볼룸 / 인천 송도 컨벤시아" className={inputCls} />
-                <datalist id="known-venues">
-                  {/* HOTFIX (2026-05-20): 정적 KNOWN_VENUES → 동적 dynamicVenues (event_history + venues fetch) */}
-                  {dynamicVenues.map(v => <option key={v} value={v} />)}
-                </datalist>
-                {/* 5/21 사용자 명시 = L2 홀 단위 선택 (노션 §9 정합). 매칭 venue면 hall dropdown 노출. */}
+                {/* HOTFIX (2026-05-20): 2단계 드롭다운 (L1 행사장 + L2 휘하 홀). 자유 입력 차단. */}
                 {(() => {
-                  const halls = getHallsByVenueName(venue)
+                  const venueGroups = groupVenuesByRegion()
+                  const allRegisteredNames = VENUE_LIST.map(v => v.displayName)
+                  // dynamicVenues 안 항목 중 VENUE_LIST 미등록 = 신규 그룹
+                  const newVenues = dynamicVenues.filter(n => !allRegisteredNames.includes(n))
+                  return (
+                    <select
+                      value={venueL1}
+                      onChange={e => { setVenueL1(e.target.value); setVenueL2('') }}
+                      className={inputCls}
+                    >
+                      <option value="">행사장 선택…</option>
+                      {Object.entries(venueGroups).map(([region, items]) => (
+                        <optgroup key={region} label={region}>
+                          {items.map(v => (
+                            <option key={v.displayName} value={v.displayName}>{v.displayName}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                      {newVenues.length > 0 && (
+                        <optgroup label="기타·신규 등록">
+                          {newVenues.map(n => (
+                            <option key={n} value={n}>{n}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
+                  )
+                })()}
+                {/* L1 선택 후·휘하 홀 있는 행사장만 L2 select 노출·필수 */}
+                {(() => {
+                  if (!venueL1) return null
+                  const halls = getHallsByVenueName(venueL1)
                   if (halls.length === 0) return null
                   return (
                     <select
-                      onChange={e => {
-                        const hall = e.target.value
-                        if (!hall) return
-                        const base = venue.replace(/\s+\S+(?:홀|볼룸|관|광장|올레|컨퍼런스룸|오디토리움)?$/, '').trim()
-                        setVenue(`${base || venue} ${hall}`.trim())
-                      }}
+                      value={venueL2}
+                      onChange={e => setVenueL2(e.target.value)}
                       className={`${inputCls} mt-1.5`}
-                      defaultValue=""
                     >
-                      <option value="">↳ 세부 홀 선택 (선택 사항)</option>
+                      <option value="">휘하 홀 선택…</option>
                       {halls.map(h => (
                         <option key={h.name} value={h.name}>{h.name}{h.note ? ` (${h.note})` : ''}</option>
                       ))}
