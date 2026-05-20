@@ -324,23 +324,49 @@ export default function CaseAPage() {
         project = r1.data
       }
 
-      const rows = items.map((it, i) => ({
-        project_id: project!.id,
-        no: String(i + 1).padStart(2, '0'),
-        category: it.category_label,
-        location: it.location,
-        purpose: it.purpose,
-        language: (language && language !== 'multi' ? language : 'KOR') as 'KOR' | 'EN' | 'EN/KOR',
-        quantity: it.quantity,
-        material: it.material,
-        width_mm: it.width_mm,
-        height_mm: it.height_mm,
-        // v9.31: 파트 매칭 자동 채움 (사용자 강한 지적: "파트별로 적용되는 사항 왜 적용 안 됨?")
-        // recommendSignage.ts 후처리에서 program_part·program_part_name 채워줌. 엑셀 '파트' 컬럼에 노출.
-        part: it.program_part_name ?? null,
-        program_part: it.program_part ?? null,
+      // PR#4 단위 3 (δ 정책): AI INSERT 시 ai_initial_* 5컬럼 + normalizeCategory 통합.
+      //   created_by_ai=TRUE → 정확도 측정 대상 (computeAiAccuracy)
+      //   ai_initial_* → 사용자 수정 전 원본 (수정 비교 baseline)
+      //   normalizeCategory → 학습 풀 포함 여부 결정 (matched/unmatched)
+      const { normalizeCategory } = await import('@/lib/services/normalizeCategory')
+      const rows = await Promise.all(items.map(async (it, i) => {
+        const norm = await normalizeCategory(supabase, it.category_label)
+        return {
+          project_id: project!.id,
+          no: String(i + 1).padStart(2, '0'),
+          category: it.category_label,
+          location: it.location,
+          purpose: it.purpose,
+          language: (language && language !== 'multi' ? language : 'KOR') as 'KOR' | 'EN' | 'EN/KOR',
+          quantity: it.quantity,
+          material: it.material,
+          width_mm: it.width_mm,
+          height_mm: it.height_mm,
+          part: it.program_part_name ?? null,
+          program_part: it.program_part ?? null,
+          // PR#4: AI 정확도 측정 컬럼
+          created_by_ai: true,
+          ai_initial_category: it.category_label,
+          ai_initial_quantity: it.quantity,
+          ai_initial_width_mm: it.width_mm,
+          ai_initial_height_mm: it.height_mm,
+          // PR#4: 동의어 자동 변환
+          category_normalized: norm.normalized,
+          category_normalize_status: norm.status,
+        }
       }))
-      const { error: iErr } = await supabase.from('design_items').insert(rows)
+      // 마이그레이션 v19 미적용 시 신규 컬럼 unknown — 기본 컬럼만 재시도 (graceful degradation)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let { error: iErr } = await supabase.from('design_items').insert(rows as any)
+      if (iErr && /created_by_ai|ai_initial|category_normalized|column/i.test(iErr.message)) {
+        const fallback = rows.map(r => {
+          const { created_by_ai: _a, ai_initial_category: _b, ai_initial_quantity: _c, ai_initial_width_mm: _d, ai_initial_height_mm: _e, category_normalized: _f, category_normalize_status: _g, ...rest } = r
+          void _a; void _b; void _c; void _d; void _e; void _f; void _g
+          return rest
+        })
+        const retry = await supabase.from('design_items').insert(fallback)
+        iErr = retry.error
+      }
       if (iErr) { setError(iErr.message); setStage('review'); return }
 
       router.push(`/projects/${project!.id}`)

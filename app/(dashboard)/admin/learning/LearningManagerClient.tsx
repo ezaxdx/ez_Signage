@@ -208,6 +208,13 @@ export function LearningManagerClient({
   const [correctionRequests, setCorrectionRequests] = useState<CorrectionRequest[]>([])
   const [correctionLoading, setCorrectionLoading] = useState(false)
 
+  // PR#4 단위 4 (δ 정책): 미분류 카테고리 매핑 큐
+  interface UnmatchedRow { id: string; raw_category: string; occurrences: number; first_seen: string; last_seen: string }
+  const [unmatchedList, setUnmatchedList] = useState<UnmatchedRow[]>([])
+  const [unmatchedLoading, setUnmatchedLoading] = useState(false)
+  const [resolvingRaw, setResolvingRaw] = useState<string | null>(null)
+  const [resolveTarget, setResolveTarget] = useState<string>('')
+
   const [synonymFilter, setSynonymFilter] = useState('')
   const [aliasList, setAliasList] = useState<DbAlias[]>(dbAliases)
   const [newAlias, setNewAlias] = useState('')
@@ -410,6 +417,17 @@ export function LearningManagerClient({
   const [activeSection, setActiveSection] = useState<SectionKey>('venue-status')
   // v9.47: VenueSubKey/SynonymSubKey 타입과 venueSubTab/synonymSubTab state는 dead code (v9.36에서
   //   섹션 내 서브탭 가로바 제거 후 사용처 0건). VENUE_SUBTABS 상수도 동일 — 타입 단순화 위해 모두 제거.
+
+  // PR#4 단위 4: synonyms-mapping 진입 시 미분류 카테고리 큐 fetch
+  useEffect(() => {
+    if (activeSection !== 'synonyms-mapping') return
+    setUnmatchedLoading(true)
+    fetch('/api/admin/unmatched-categories')
+      .then(r => r.json())
+      .then((d: { items?: UnmatchedRow[] }) => setUnmatchedList(d.items ?? []))
+      .catch(() => setUnmatchedList([]))
+      .finally(() => setUnmatchedLoading(false))
+  }, [activeSection])
 
   // v9.36: 시설 가이드 / 예외 패턴 진입 시 예외 빈도 조회 (6 평면 메뉴 기준)
   useEffect(() => {
@@ -623,35 +641,63 @@ export function LearningManagerClient({
       'mice_event_overrides',
       'mice_custom_events',
       'mice_signage_type_overrides',
+      // PR#4 단위 5: 잔존 4종도 DB 영속화로 전환 — 클린업 추가
+      'mice_hidden_seed_aliases',
+      'mice_hidden_signage_types',
+      'mice_hidden_facility_venues',
+      'mice_signage_type_samples',
     ]
     for (const k of legacyKeys) {
       try { localStorage.removeItem(k) } catch {}
     }
   }, [])
 
-  // 잔존 localStorage (DB 미적용 — 신규 컬럼 마이그레이션 후 폐기 예정):
-  //   - mice_hidden_seed_aliases (signage_aliases에 hidden 컬럼 없음)
-  //   - mice_hidden_signage_types (signage_types에 hidden 컬럼 없음)
-  //   - mice_hidden_facility_venues (venues에 hidden 컬럼 없음)
-  //   - mice_signage_type_samples (signage_types에 sample_image_url 컬럼 없음)
+  // PR#4 단위 5 (δ 정책): 잔존 localStorage 4종 → DB 영속화 (migration_v19).
+  //   - mice_hidden_seed_aliases  → signage_aliases.is_hidden
+  //   - mice_hidden_signage_types → signage_types.is_hidden
+  //   - mice_hidden_facility_venues → venues.is_hidden
+  //   - mice_signage_type_samples → signage_types.sample_image_url
+  // 마운트 시 DB에서 fetch (graceful degradation — 마이그레이션 미적용 시 in-memory만).
   useEffect(() => {
-    try {
-      const a = localStorage.getItem('mice_hidden_seed_aliases')
-      if (a) setHiddenSeedAliases(JSON.parse(a))
-      const s = localStorage.getItem('mice_hidden_signage_types')
-      if (s) setHiddenSignageTypeIds(JSON.parse(s))
-      const f = localStorage.getItem('mice_hidden_facility_venues')
-      if (f) setHiddenFacilityVenues(JSON.parse(f))
-      const samples = localStorage.getItem('mice_signage_type_samples')
-      if (samples) setSignageTypeSamples(JSON.parse(samples))
-    } catch {}
+    // 1) signage_aliases is_hidden
+    fetch('/api/admin/aliases?hidden=true')
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { items?: Array<{ alias_name: string }> } | null) => {
+        if (d?.items) setHiddenSeedAliases(d.items.map(i => i.alias_name))
+      })
+      .catch(() => { /* silent — DB·컬럼 미적용 */ })
+    // 2) signage_types is_hidden + sample_image_url
+    fetch('/api/admin/signage-types')
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { items?: Array<{ id: string; is_hidden?: boolean; sample_image_url?: string | null }> } | null) => {
+        if (!d?.items) return
+        const hidden = d.items.filter(t => t.is_hidden).map(t => t.id)
+        const samples: Record<string, string> = {}
+        for (const t of d.items) {
+          if (t.sample_image_url) samples[t.id] = t.sample_image_url
+        }
+        setHiddenSignageTypeIds(hidden)
+        setSignageTypeSamples(samples)
+      })
+      .catch(() => { /* silent */ })
+    // 3) venues is_hidden
+    fetch('/api/admin/venues?hidden=true')
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { items?: Array<{ id: string }> } | null) => {
+        if (d?.items) setHiddenFacilityVenues(d.items.map(v => v.id))
+      })
+      .catch(() => { /* silent */ })
   }, [])
-  const saveSignageTypeSample = (typeId: string, url: string) => {
-    setSignageTypeSamples(prev => {
-      const next = { ...prev, [typeId]: url }
-      try { localStorage.setItem('mice_signage_type_samples', JSON.stringify(next)) } catch {}
-      return next
-    })
+  const saveSignageTypeSample = async (typeId: string, url: string) => {
+    setSignageTypeSamples(prev => ({ ...prev, [typeId]: url }))
+    // DB 영속화 (모든 사용자 공유) — API 실패 시 in-memory만
+    try {
+      await fetch(`/api/admin/signage-types/${typeId}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sample_image_url: url }),
+      })
+    } catch { /* silent */ }
   }
   // 5/22 P1-2 = 이미지 교체·삭제 영역 (Storage upload + sample localStorage)
   // 5/22 사용자 명시 = "사진 넣어도 적용 안 됨" 정정 = path 영역 ASCII safe·console.log 디버그·alert 명확
@@ -694,28 +740,50 @@ export function LearningManagerClient({
     setSignageTypeSamples(prev => {
       const next = { ...prev }
       delete next[t.id]
-      try { localStorage.setItem('mice_signage_type_samples', JSON.stringify(next)) } catch {}
       return next
     })
+    // PR#4 단위 5: DB sample_image_url 클리어
+    fetch(`/api/admin/signage-types/${t.id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sample_image_url: null }),
+    }).catch(() => {})
   }
+  // PR#4 단위 5: DB 영속화 (signage_aliases·signage_types·venues 의 is_hidden 컬럼)
   const toggleHideSeedAlias = (alias: string) => {
     setHiddenSeedAliases(prev => {
-      const next = prev.includes(alias) ? prev.filter(a => a !== alias) : [...prev, alias]
-      try { localStorage.setItem('mice_hidden_seed_aliases', JSON.stringify(next)) } catch {}
+      const willHide = !prev.includes(alias)
+      const next = willHide ? [...prev, alias] : prev.filter(a => a !== alias)
+      // DB best-effort
+      fetch('/api/admin/aliases', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ alias_name: alias, is_hidden: willHide }),
+      }).catch(() => {})
       return next
     })
   }
   const toggleHideSignageType = (id: string) => {
     setHiddenSignageTypeIds(prev => {
-      const next = prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]
-      try { localStorage.setItem('mice_hidden_signage_types', JSON.stringify(next)) } catch {}
+      const willHide = !prev.includes(id)
+      const next = willHide ? [...prev, id] : prev.filter(a => a !== id)
+      fetch(`/api/admin/signage-types/${id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ is_hidden: willHide }),
+      }).catch(() => {})
       return next
     })
   }
   const toggleHideFacilityVenue = (key: string) => {
     setHiddenFacilityVenues(prev => {
-      const next = prev.includes(key) ? prev.filter(a => a !== key) : [...prev, key]
-      try { localStorage.setItem('mice_hidden_facility_venues', JSON.stringify(next)) } catch {}
+      const willHide = !prev.includes(key)
+      const next = willHide ? [...prev, key] : prev.filter(a => a !== key)
+      fetch(`/api/admin/venues/${key}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ is_hidden: willHide }),
+      }).catch(() => {})
       return next
     })
   }
@@ -2607,6 +2675,115 @@ export function LearningManagerClient({
               </tbody>
             </table>
           </div>
+        </section>
+
+        {/* PR#4 단위 4 (δ 정책): 미분류 카테고리 매핑 큐 — 관리자 검토 필요 */}
+        <section className="bg-white border border-amber-200 rounded-xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-slate-900 font-semibold text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-500" />
+              매핑 실패 사례 — 관리자 검토 필요 ({unmatchedList.length}건)
+            </h2>
+            <p className="text-[10px] text-slate-500">12 표준 카테고리에 매칭 안 된 입력 누적</p>
+          </div>
+          {unmatchedLoading ? (
+            <div className="text-xs text-slate-400 py-4 text-center">불러오는 중…</div>
+          ) : unmatchedList.length === 0 ? (
+            <div className="text-xs text-slate-400 py-4 text-center italic">매핑 실패 사례 없음 (12 카테고리에 모두 매칭됨)</div>
+          ) : (
+            <div className="overflow-y-auto max-h-80 border border-slate-200 rounded">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+                  <tr className="text-slate-600 text-[11px]">
+                    <th className="px-2 py-1.5 text-left font-semibold">raw_category</th>
+                    <th className="px-2 py-1.5 text-right font-semibold w-16">누적</th>
+                    <th className="px-2 py-1.5 text-left font-semibold w-32">최근</th>
+                    <th className="px-2 py-1.5 text-center font-semibold w-32">작업</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {unmatchedList.map(u => {
+                    const isResolving = resolvingRaw === u.raw_category
+                    const lastAgo = (() => {
+                      const ms = Date.now() - new Date(u.last_seen).getTime()
+                      const min = Math.floor(ms / 60000)
+                      if (min < 1) return '방금'
+                      if (min < 60) return `${min}분 전`
+                      const hr = Math.floor(min / 60)
+                      if (hr < 24) return `${hr}시간 전`
+                      return `${Math.floor(hr / 24)}일 전`
+                    })()
+                    return (
+                      <tr key={u.id} className="hover:bg-amber-50/30">
+                        <td className="px-2 py-1.5 text-slate-800 font-medium">{u.raw_category}</td>
+                        <td className="px-2 py-1.5 text-right font-mono text-amber-700 font-semibold">{u.occurrences}건</td>
+                        <td className="px-2 py-1.5 text-slate-500 text-[10px]">{lastAgo}</td>
+                        <td className="px-2 py-1.5">
+                          {isResolving ? (
+                            <div className="flex gap-1 items-center">
+                              <select
+                                value={resolveTarget}
+                                onChange={e => setResolveTarget(e.target.value)}
+                                className="flex-1 bg-white border border-slate-300 rounded px-1.5 py-0.5 text-[10px]"
+                              >
+                                <option value="">표준명 선택</option>
+                                {signageTypeList.map(t => (
+                                  <option key={t.id} value={t.name}>{t.name}</option>
+                                ))}
+                              </select>
+                              <button
+                                disabled={!resolveTarget}
+                                onClick={async () => {
+                                  try {
+                                    const res = await fetch('/api/admin/unmatched-categories', {
+                                      method: 'POST',
+                                      headers: { 'content-type': 'application/json' },
+                                      body: JSON.stringify({ rawCategory: u.raw_category, standardName: resolveTarget }),
+                                    })
+                                    const data = await res.json()
+                                    if (!res.ok) {
+                                      alert('매핑 실패: ' + (data.error ?? 'unknown'))
+                                      return
+                                    }
+                                    alert(`매핑 완료. 기존 ${data.updatedCount}건의 디자인 아이템도 자동 재변환됨.`)
+                                    setUnmatchedList(prev => prev.filter(x => x.id !== u.id))
+                                    setResolvingRaw(null)
+                                    setResolveTarget('')
+                                  } catch (e) {
+                                    alert('매핑 호출 실패: ' + (e instanceof Error ? e.message : 'unknown'))
+                                  }
+                                }}
+                                className="px-1.5 py-0.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-300 text-white text-[10px] rounded"
+                              >저장</button>
+                              <button
+                                onClick={() => { setResolvingRaw(null); setResolveTarget('') }}
+                                className="px-1.5 py-0.5 text-slate-500 hover:text-slate-700 text-[10px]"
+                              >취소</button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-1 justify-center">
+                              <button
+                                onClick={() => { setResolvingRaw(u.raw_category); setResolveTarget('') }}
+                                className="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] rounded"
+                              >매핑</button>
+                              <button
+                                onClick={async () => {
+                                  if (!confirm(`'${u.raw_category}' 매핑 무시? (표준 카테고리 외로 분류)`)) return
+                                  await fetch(`/api/admin/unmatched-categories?raw=${encodeURIComponent(u.raw_category)}`, { method: 'DELETE' })
+                                  setUnmatchedList(prev => prev.filter(x => x.id !== u.id))
+                                }}
+                                className="px-2 py-0.5 text-slate-500 hover:text-rose-500 text-[10px]"
+                              >무시</button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
         </>}
 

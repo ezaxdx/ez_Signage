@@ -3,6 +3,30 @@
 > 실패한 자율 작업에서 추출한 패턴.
 > 다음 세션 시작 시 최근 항목부터 검토하고 작업 시작.
 
+## 2026-05-20 — 정답지 검증 8% 결함이 "정확도" 라벨 오역에서 시작
+
+**작업**: PR#4 AI 추천 정확도 신규 정의
+**증상**: 기존 "AI 추천 정확도" UI 라벨은 단계별 가중치 (입력 10·중간 30·컨펌 70·완료 100) 평균값이었음. 사용자는 "AI가 추천한 게 얼마나 정확한가" 의미로 읽었지만 실제로는 "학습 진행률(누적률)"이었음. 정답지 7건 검증(scripts/validate_correct_answers.mjs) 시 표시값 70%였으나 실제 발주 정합률은 8%.
+**원인**: 라벨과 의미의 미스매치. "정확도"는 추천값 vs 실측값 비교가 정의인데, 코드는 "학습 단계 진행률" 합산. design_items에 ai_initial_* 컬럼 없어 진짜 정확도 측정 불가능했음.
+**예방**:
+- ai_initial_* 컬럼 5종 추가 (created_by_ai·ai_initial_category·ai_initial_quantity·ai_initial_width_mm·ai_initial_height_mm)
+- computeAiAccuracy(items): created_by_ai=TRUE + finalized_at 항목만 채점 (완전 일치 +100·category만 +50·오답 0)
+- N<10건이면 "측정 중 (N/10건)" 표시 — 통계적 의미 없는 값 표시 회피
+- 라벨과 정의 일치 의무 — 사용자가 읽을 의미로 명명
+**관련**: PROGRESS.md δ-PR#4·decisions.md 2026-05-20 PR#4·lib/services/computeAiAccuracy.ts
+
+## 2026-05-20 — 동의어 미분류 옵션 A vs B = 노이즈 비용 비교
+
+**작업**: PR#4 동의어 자동 변환 정책 결정
+**증상**: 사용자가 "빵빠레 배너" 같은 비표준 입력 시 두 옵션 — A(강제 매핑·임의 표준에 자동 분류) vs B(미분류 태그·학습 풀 제외).
+**원인**: 옵션 A는 매칭 실패 시 학습 데이터에 잘못된 정답 누적·옵션 B는 누적량이 작아도 신뢰도 높은 데이터만 학습.
+**예방**:
+- 옵션 B 채택 (PO 확정) — category_normalize_status='unmatched' 명시 + unmatched_category_log 누적
+- 관리자가 학습 관리자 UI에서 매핑 결정 → resolveUnmatchedCategory로 일괄 재변환
+- 학습 풀은 status='matched' OR 'manual_override'만 포함
+- 신호 vs 노이즈 trade-off에서 노이즈 회피 우선 ([[feedback-incremental-accuracy]] 정합)
+**관련**: lib/services/normalizeCategory.ts·decisions.md 2026-05-20 PR#4
+
 ## 2026-05-20 — design_items INSERT 책임 7곳 분산 = 패치 1곳 fix가 잠재 잔존 6곳 남김
 
 **작업**: 5/19 ProjectInfoClient 부분만 fix (b979439) 후 동일 패턴 grep

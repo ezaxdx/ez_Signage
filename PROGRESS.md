@@ -1,5 +1,65 @@
 # 작업 이력
 
+## 2026-05-20 (δ-PR#4 — AI 정확도 신규 정의 + 동의어 자동 변환 + 잔존 localStorage 4종 DB 영속화)
+
+### 사용자 요청
+PO 정책 결정 6개 확정. PR#1·#2·#3 머지(`643a4ab`)·HOTFIX(`9ff78a6`) 푸시 완료 후 PR#4 진입.
+
+### 단위 1: migration_v19 SQL 작성
+- `supabase/migration_v19_ai_accuracy_normalize.sql` 신규
+  - `design_items` 5+2 컬럼 (created_by_ai·ai_initial_* 4종·category_normalized·category_normalize_status)
+  - `unmatched_category_log` 신규 테이블 (RLS admin 전체·user INSERT/SELECT)
+  - `signage_aliases·signage_types·venues` is_hidden / `signage_types.sample_image_url`
+- 사용자 영역 실행 (자동 적용 X)
+
+### 단위 2: normalizeCategory 헬퍼 + API
+- `lib/services/normalizeCategory.ts` 신규 — 4단계 매칭 (표준 12·SEED·DB alias·unmatched 로그)
+- `resolveUnmatchedCategory(rawCategory, standardName)` — 관리자 매핑 결정 + 기존 design_items 일괄 재변환
+- `app/api/admin/unmatched-categories/route.ts` 신규 GET/POST/DELETE (admin 가드)
+
+### 단위 3: design_items INSERT 경로 통합
+- `case-a/page.tsx`: AI 응답 INSERT 시 `created_by_ai=true` + `ai_initial_*` 4컬럼 + `normalizeCategory` 호출
+- `ProjectInfoClient.tsx`: 정보 변경 모달 AI 호출 시 동일 통합
+- `EditorLayout.tsx`: 사용자 직접 추가 시 `created_by_ai=false`·normalize 호출 (학습 풀 분류만)
+- 마이그레이션 미적용 graceful degradation (컬럼 unknown 시 기본 컬럼만 재시도)
+
+### 단위 4: 학습 관리자 미분류 매핑 큐 UI
+- `LearningManagerClient.tsx` 동의어 매핑 섹션 하단 "매핑 실패 사례 N건" 신설
+- [매핑] 버튼 → 12 표준 카테고리 dropdown → POST `/api/admin/unmatched-categories`
+- 매핑 성공 시 "기존 N건 일괄 재변환" 알림
+- [무시] 버튼 → DELETE (resolved_to=null, 학습 풀 영구 제외)
+
+### 단위 5: computeAiAccuracy + 예시 이미지 공유화
+- `lib/services/computeAiAccuracy.ts` 신규 — 정답(+100)·부분(+50)·오답(0) 채점. N<10 = "측정 중"
+- `admin/ai/page.tsx`: design_items 2000건 fetch + computeAiAccuracy 결과를 accuracySummary에 신규 필드로 전달
+- `AdminAiClient.tsx` KPI 카드 분기: measuring 시 "측정 중 (N/10건)" + 브레이크다운(완전·부분·오답)
+- 잔존 localStorage 4종 → DB 영속화:
+  - `mice_hidden_seed_aliases` → `signage_aliases.is_hidden`
+  - `mice_hidden_signage_types` → `signage_types.is_hidden`
+  - `mice_hidden_facility_venues` → `venues.is_hidden`
+  - `mice_signage_type_samples` → `signage_types.sample_image_url` (모든 사용자 공유)
+- 4종 localStorage 키 마운트 시 1회 cleanup 추가
+
+### 단위 6: 문서 갱신
+- `CLAUDE.md` §16-F 신설 — PR#4 SOT (PO 정책 6개 + 신규 정확도 + 동의어 + localStorage 폐기)
+- `decisions.md` 단락 추가 — PO 정책 6개 결정 + 옵션 B 채택 사유
+- `learnings.md` 두 단락 추가 — "정답지 8% 결함이 라벨 오역에서 시작" + "옵션 A vs B 노이즈 비용 비교"
+
+### 검증
+- TSC 0 에러
+- Next 빌드 모든 라우트 PASS
+- harness 72·0 fail
+- 변경 파일: 11개
+  - 신규 4: `migration_v19_ai_accuracy_normalize.sql`·`normalizeCategory.ts`·`computeAiAccuracy.ts`·`api/admin/unmatched-categories/route.ts`
+  - 수정: ProjectInfoClient·EditorLayout·case-a·LearningManagerClient·admin/ai page·AdminAiClient·CLAUDE.md·decisions.md·learnings.md·PROGRESS.md
+
+### 알려진 한계
+- `migration_v19` 사용자 영역 실행 필요 — 미적용 시 정확도는 "측정 중 0/10건"·동의어 정규화는 SEED만 동작
+- `/api/admin/signage-types/[id]` PATCH·`/api/admin/aliases` PATCH·`/api/admin/venues/[id]` PATCH가 is_hidden·sample_image_url 컬럼을 명시 처리해야 함 (현재 라우트는 일반 PATCH로 받음 — 컬럼 unknown 시 silent fail)
+- AI 정확도는 누적 10건 도달까지 시간 필요 — 실제 운영 후 측정 가능
+
+---
+
 ## 2026-05-20 (δ-PR#3 — 학습 관리자 CRUD 일관화·localStorage 폐기·CLAUDE.md §16-E)
 
 ### 단위 9b: CRUD 인프라 점검
