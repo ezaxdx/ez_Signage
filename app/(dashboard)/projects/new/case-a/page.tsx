@@ -3,7 +3,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Sparkles, Loader2, CheckCircle2, ChevronDown, ChevronUp, Download, AlertTriangle } from 'lucide-react'
@@ -131,6 +131,20 @@ export default function CaseAPage() {
   // 필수
   const [eventName, setEventName] = useState('')
   const [venue, setVenue] = useState('')
+
+  // HOTFIX (2026-05-20): 동적 행사장 목록 — event_history.venue DISTINCT + venues(is_hidden=false)
+  //   마운트 시 1회 fetch. 실패 시 KNOWN_VENUES (SEED_PERFLIST) fallback.
+  const [dynamicVenues, setDynamicVenues] = useState<string[]>(KNOWN_VENUES)
+  useEffect(() => {
+    fetch('/api/venues/available')
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { items?: Array<{ name: string }> } | null) => {
+        if (d?.items && d.items.length > 0) {
+          setDynamicVenues(d.items.map(i => i.name))
+        }
+      })
+      .catch(() => { /* silent — KNOWN_VENUES fallback 유지 */ })
+  }, [])
 
   // 권장 (행사 분류·규모)
   const [eventType, setEventType] = useState<EventType | ''>('')
@@ -405,7 +419,8 @@ export default function CaseAPage() {
               <Field label="행사 장소 *">
                 <input list="known-venues" value={venue} onChange={e => setVenue(e.target.value)} placeholder="예: 코엑스 그랜드볼룸 / 인천 송도 컨벤시아" className={inputCls} />
                 <datalist id="known-venues">
-                  {KNOWN_VENUES.map(v => <option key={v} value={v} />)}
+                  {/* HOTFIX (2026-05-20): 정적 KNOWN_VENUES → 동적 dynamicVenues (event_history + venues fetch) */}
+                  {dynamicVenues.map(v => <option key={v} value={v} />)}
                 </datalist>
                 {/* 5/21 사용자 명시 = L2 홀 단위 선택 (노션 §9 정합). 매칭 venue면 hall dropdown 노출. */}
                 {(() => {
