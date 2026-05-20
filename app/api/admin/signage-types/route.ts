@@ -16,16 +16,36 @@ export async function GET() {
   if (!user) return NextResponse.json({ items: [], error: '인증 필요' }, { status: 200 })
 
   // 5/22 fallback = v14 미적용 시 'layout'·'updated_at' 컬럼 부재 (42703) → 단순 컬럼 재시도. 테이블 부재 (42P01) → 빈 배열 200.
+  // HOTFIX 2026-05-20: v14 'hidden' + v19 'is_hidden' 두 컬럼 공존 → 응답엔 is_hidden(SOT) 통일.
+  //   row.is_hidden ?? row.hidden ?? false 로 v14 데이터도 자동 흡수 (client는 is_hidden만 봄).
   try {
     const full = await supabase
       .from('signage_types')
-      .select('id, name, default_width_mm, default_height_mm, default_material, category, layout, is_standard, sort_order, notes, updated_at, sample_image_url, hidden')
+      .select('id, name, default_width_mm, default_height_mm, default_material, category, layout, is_standard, sort_order, notes, updated_at, sample_image_url, hidden, is_hidden')
       .order('sort_order', { ascending: true })
 
-    if (!full.error) return NextResponse.json({ items: full.data ?? [] })
+    if (!full.error) {
+      const items = (full.data ?? []).map((r: Record<string, unknown>) => ({
+        ...r,
+        is_hidden: (r.is_hidden ?? r.hidden ?? false) as boolean,
+      }))
+      return NextResponse.json({ items })
+    }
 
     console.error('[signage-types] GET full failed:', full.error.message, full.error.code)
     if (full.error.code === '42703') {
+      // 컬럼 부재 = v14 hidden만 시도 (v19 is_hidden 미적용 환경 graceful)
+      const v14 = await supabase
+        .from('signage_types')
+        .select('id, name, default_width_mm, default_height_mm, default_material, category, layout, is_standard, sort_order, notes, updated_at, sample_image_url, hidden')
+        .order('sort_order', { ascending: true })
+      if (!v14.error) {
+        const items = (v14.data ?? []).map((r: Record<string, unknown>) => ({
+          ...r,
+          is_hidden: (r.hidden ?? false) as boolean,
+        }))
+        return NextResponse.json({ items, partial: true, missing_columns: 'v19 (is_hidden)' })
+      }
       // 컬럼 부재 = 기본 컬럼만 재조회
       const basic = await supabase
         .from('signage_types')

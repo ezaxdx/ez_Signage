@@ -53,7 +53,15 @@ export async function PATCH(req: NextRequest, { params }: RouteCtx) {
   }
   // 5/22 사용자 명시 = sample_image_url·hidden 영역 DB 영역 정합 (migration_v14 영역)
   if (typeof body.sample_image_url === 'string' || body.sample_image_url === null) patch.sample_image_url = body.sample_image_url
-  if (typeof body.hidden === 'boolean') patch.hidden = body.hidden
+  // HOTFIX 2026-05-20: client는 body.is_hidden(v19 SOT)를 보냄. 기존 body.hidden(v14)만 받아 silent fail.
+  //   v14(hidden)·v19(is_hidden) 두 컬럼 DB에 공존 → 양쪽 동기화로 호환 보장.
+  if (typeof body.is_hidden === 'boolean') {
+    patch.is_hidden = body.is_hidden
+    patch.hidden = body.is_hidden
+  } else if (typeof body.hidden === 'boolean') {
+    patch.is_hidden = body.hidden
+    patch.hidden = body.hidden
+  }
   if (!existing.is_standard && typeof body.name === 'string') {
     const n = body.name.trim()
     if (!n) return NextResponse.json({ error: '이름 빈 값 불가' }, { status: 400 })

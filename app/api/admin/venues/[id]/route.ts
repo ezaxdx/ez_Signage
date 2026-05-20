@@ -12,6 +12,7 @@ const EDITABLE = [
   'name', 'short_name', 'region', 'venue_type', 'has_hall_split',
   'main_entrance_note', 'area_sqm', 'floor_plan_url',
   'contact_phone', 'contact_email', 'manual_url', 'notes', 'specs_text',
+  'is_hidden',  // HOTFIX 2026-05-20: PR#4 v19 영속화. 누락 시 client toggleHideFacilityVenue silent fail.
 ] as const
 
 export async function PATCH(req: NextRequest, { params }: RouteCtx) {
@@ -36,6 +37,7 @@ export async function PATCH(req: NextRequest, { params }: RouteCtx) {
       continue
     }
     if (key === 'has_hall_split') { patch[key] = !!body[key]; continue }
+    if (key === 'is_hidden') { patch[key] = !!body[key]; continue }
     // 그 외 text 필드: 빈 문자열은 null로 정규화
     patch[key] = body[key] === '' ? null : body[key]
   }
