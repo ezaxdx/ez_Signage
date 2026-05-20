@@ -2,20 +2,20 @@
 // 서버 사이드 전용 (GEMINI_API_KEY 노출 금지).
 // .env.local 에 GEMINI_API_KEY=AIzaSy... 추가 필요.
 
-import { findSimilarPastEvents, findCeilingBannerContext, getVenueSpecs, formatVenueSpecsContext } from '@/lib/data/dashboardSeed'
+import { findSimilarPastEvents } from '@/lib/data/dashboardSeed'
 import { findSimilarVenueSignage, formatVenueSignageContext } from '@/lib/data/venueSignageHelper'
-import { buildAccumulatedContext, formatAccumulatedContext, buildSeedEventHistoryContext } from '@/lib/ai/accumulatedContext'
+import { buildSeedEventHistoryContext } from '@/lib/ai/accumulatedContext'
 import { buildVenueProfile } from '@/lib/ai/venueProfile'
 import { buildAdminMasterContext } from '@/lib/ai/adminMasterContext'
 import { analyzeFloorPlan } from '@/lib/ai/visionFloorPlan'
 import {
   resolveCoverageForVenue,
-  formatCoverageForPrompt,
   classifyCategory,
   type StandardCategoryKey,
 } from '@/lib/data/signageCategoryStandards'
 import { SIGNAGE_CATEGORIES_V3 } from '@/lib/data/v3/signageCategoriesSeedV3'
 import { PROGRAM_PART_BY_CODE, PROGRAM_PART_SIGNAGE_HINTS, PROGRAM_PART_SIGNAGE_DETAILS, partsForFormat, programPartName } from '@/lib/programParts'
+import { formatProgramPartStatsForPrompt, computeDongseonRatio } from '@/lib/data/programPartStats'
 import {
   buildPipelineLogicSection,
   buildPipelineLogicSectionWith,
@@ -233,42 +233,32 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
     ? formatVenueSignageContext(venueSignageContext) + '\n→ 같은 행사장의 실제 발주 패턴을 참고하여 카테고리·수량을 추정하세요.'
     : ''
 
-  // v9: 점진적 정확도 향상 — 앱 누적 데이터 (단계별 가중치 부여)
-  let accumulatedBlock = ''
-  try {
-    const accCtx = await buildAccumulatedContext({
-      venue: input.venue,
-      eventType: input.eventType ?? null,
-      limit: 5,
-    })
-    accumulatedBlock = formatAccumulatedContext(accCtx)
-  } catch { /* silent */ }
+  // PR#2 단위 4 (δ 정책): accumulatedBlock 폐기 — finalized_at 신호 기반 신뢰가 흔들리고
+  //   동일 정보가 seedHistoryBlock과 venueProfileBlock에 중복 주입됨.
+  //   seedHistoryBlock이 event_history DB 우선 → SEED fallback으로 같은 역할 일원화.
+  const accumulatedBlock = ''
 
   // 5/22 사용자 명시 = 행사 관리 SOT → AI 컨텍스트 주입. venue·programParts 매칭 5건 signage_breakdown.
   const seedHistoryBlock = await buildSeedEventHistoryContext(input.venue, input.programParts)
 
-  // v9.6: 회의록 ′학습해 가지고 텍스트 파일 형태로 이거는 어떤 행사장이다가 나올 거예요′
-  // 행사장 메타(venues) + 시설 가이드 시드(venueFacilityGuide) + 예외 누적(facility_exception_log) 통합
+  // PR#2 단위 4 (δ 정책): 시설 가이드 단일화 — venueProfileBlock이 다음을 모두 흡수.
+  //   ① venueFacilityGuide (install_allowed + max·standard 규격 + rigging + safety + warnings + digital_signage + special_notes)
+  //   ② venueSpecs (면적·천장고·부스수)
+  //   ③ ceilingBannerBlock (천정배너 실측 패턴)
+  //   ④ coverageBlock (6대 카테고리 학습 커버리지)
+  //   ⑤ adminMaster.facility_guide_loaded → 같은 venueFacilityGuide 시드를 보지만 adminMasterBlock은 보조 (어드민 추가분만)
   let venueProfileBlock = ''
   try {
     const profile = await buildVenueProfile(input.venue)
     if (profile.has_data) {
-      venueProfileBlock = '\n\n' + profile.text + '\n→ 위 행사장 시설 기준을 추천 항목에 우선 반영. 설치 불가 카테고리는 제외하고, 조건부는 비고에 표기.'
+      venueProfileBlock = '\n\n' + profile.text + '\n→ 위 행사장 시설 기준을 추천 항목에 우선 반영. 설치 불가 카테고리는 제외하고, 조건부는 비고에 표기. 규모(면적·천장고)는 수량 스케일링 기준.'
     }
   } catch { /* silent */ }
 
-  // v9.17: 천정배너 실측 패턴 주입 (docs/VENUE_LEARNING_INSIGHTS_260511.md §4)
-  const ceilingBannerBlock = findCeilingBannerContext(input.venue)
-
-  // v9.18: 행사장 규모 스펙 주입 (수량 스케일링 기준 — 면적/천장고/부스수/출입구)
-  const venueSpecs = getVenueSpecs(input.venue)
-  const venueSpecsBlock = venueSpecs
-    ? '\n\n' + formatVenueSpecsContext(venueSpecs) + '\n→ 위 행사장 규모 기준으로 수량 스케일링 적용.'
-    : ''
-
-  // v9.22: 6대 표준 카테고리 학습 데이터 커버리지 주입
-  // "이 행사장은 외벽·천정만 학습됨" → AI가 미학습 카테고리에 quantity=0 + 추천없음 표기하도록 명시
-  const coverageBlock = formatCoverageForPrompt(input.venue)
+  // PR#2 단위 4 폐기: ceilingBannerBlock·venueSpecsBlock·coverageBlock — venueProfileBlock에 흡수됨.
+  const ceilingBannerBlock = ''
+  const venueSpecsBlock = ''
+  const coverageBlock = ''
 
   // v9.31 + 5/22: 프로그램 파트 매핑 컨텍스트 (1순위) + 역할(상세 구분) 영역 = 엑셀 SOT 정합
   const selectedParts = (input.programParts ?? []).filter(c => PROGRAM_PART_BY_CODE.has(c))
@@ -290,14 +280,27 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
     }).join('\n') +
     '\n→ 위 파트별 권장 환경장식물을 1순위 후보로 사용. 역할(상세 구분) 영역 = 추천 항목 purpose·location 필드 영역 활용. 각 추천 항목에 매칭된 파트 코드 1개를 program_part 필드에 명시.'
 
-  // v9.40: 어드민 마스터 데이터 자동 주입 (signage_types 추가 + signage_aliases manual + venues.facility_guide_json)
-  // 어드민이 학습 관리자에서 DB에 직접 적재한 추가 자료를 AI가 즉시 활용하도록 합침.
-  // (기존 시드 13종·47건·7개 행사장은 dashboardSeed·venueFacilityGuide 경유로 이미 반영)
+  // v9.40: 어드민 마스터 데이터 자동 주입 (signage_types 추가 + signage_aliases manual)
+  //   PR#2 단위 4: facility_guide는 venueProfile이 단일 담당 — adminMasterBlock에서 제외됨
   let adminMasterBlock = ''
   try {
     const am = await buildAdminMasterContext(input.venue)
     if (am.has_data) adminMasterBlock = am.text
   } catch { /* silent */ }
+
+  // PR#2 단위 2 (δ 정책): 프로그램 파트별 운영 누적 통계 (학습 관리자 program-parts 탭 평균 리스트 그대로 주입)
+  const programPartStatsBlock = formatProgramPartStatsForPrompt(
+    selectedParts,
+    PROGRAM_PART_BY_CODE,
+  )
+
+  // PR#2 단위 7 (δ 정책): 동선 배너 공식 N 산출 (누적 데이터 부족 시 N=500 fallback)
+  const dongseonN = computeDongseonRatio()
+  const dongseonAttendees = input.attendeesCount ?? 0
+  const dongseonCalc = dongseonAttendees > 0 ? Math.ceil(dongseonAttendees / dongseonN) : 0
+  const dongseonBlock = dongseonAttendees > 0
+    ? `\n\n[동선 배너 공식 (δ 정책)]\n- N = ${dongseonN} (누적 [동선 배너 수 ÷ 참가자 수] 역산 평균)\n- ceil(${dongseonAttendees} ÷ ${dongseonN}) = ${dongseonCalc}\n- 최종 동선 배너 quantity = max(누적평균, ${dongseonCalc})\n- 폐기 공식 (사용 금지): X배너 ÷300+1 · 포디움 세션×2 · 가로등 ÷50`
+    : ''
 
   // v9.33: 행사장 배치도 Vision 분석 — 동선·설치 위치 컨텍스트 보강
   // 1순위(파트별 후보) 결과의 location 필드 정확도를 높이는 보조 컨텍스트.
@@ -349,7 +352,7 @@ export async function recommendSignage(input: RecommendInput): Promise<Recommend
     `사용 목적: ${input.purposes.join(', ') || '미지정 — 행사 유형 기준 자동 판단'}`,
     selectedParts.length > 0 ? `프로그램 파트: ${selectedParts.map(c => `${c} ${PROGRAM_PART_BY_CODE.get(c)!.name}`).join(', ')}` : '',
     input.notes ? `추가 메모: ${input.notes}` : '',
-  ].filter(Boolean).join('\n') + similarEventsBlock + venueSignageBlock + accumulatedBlock + seedHistoryBlock + venueProfileBlock + ceilingBannerBlock + venueSpecsBlock + coverageBlock + adminMasterBlock + programPartsBlock + floorPlanBlock
+  ].filter(Boolean).join('\n') + similarEventsBlock + venueSignageBlock + accumulatedBlock + seedHistoryBlock + venueProfileBlock + ceilingBannerBlock + venueSpecsBlock + coverageBlock + adminMasterBlock + programPartsBlock + programPartStatsBlock + dongseonBlock + floorPlanBlock
 
   // v9.51 — 카드 오버라이드(우선) → step 오버라이드(레거시 호환) → PIPELINE_BLOCKS 기본 순.
   // 추천 카드 페르소나는 변수 토큰 치환을 한 번 거친 뒤 step1·2·3에 일괄 적용.

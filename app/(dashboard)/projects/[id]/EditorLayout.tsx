@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { completeProject } from '@/lib/services/completeProject'
 import { EditorGrid } from './components/EditorGrid'
 import { CanvasBoard } from './components/CanvasBoard'
 import { EditorToolbar } from './components/EditorToolbar'
@@ -553,29 +554,30 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
     return window.confirm(lines)
   }, [facilityViolationSummary])
 
-  // v8 §11-2: 다운로드 완료 시 finalized_at 기록 (학습 가중치 100% — 정답 풀)
+  // δ 정책 (2026-05-20): markFinalized no-op (학습 신호는 완료 버튼이 단일 소스, PO 정책 δ).
+  // 엑셀·PPT export는 순수 출력 기능으로만 동작. finalized_at SET 책임은 completeProject 헬퍼.
   const markFinalized = useCallback(async () => {
-    const now = new Date().toISOString()
-    const ids = items.map(i => i.id)
-    if (ids.length === 0) return
-    // best-effort — DB 마이그레이션 안 됐어도 silent fail
-    supabase.from('design_items').update({ finalized_at: now }).in('id', ids).then(() => {}, () => {})
-  }, [items, supabase])
+    return  // PR#1 단위 1.5: 레거시 정리. export ≠ 학습 신호.
+  }, [])
 
-  // ── 완료 처리 (노션 §7 = 다운로드 클릭 → 완료 버튼 클릭) ────
+  // ── 완료 처리 (δ 정책 = 학습 풀 단일 진입점) ────
   const handleMarkCompleted = useCallback(async () => {
-    // 5/22 사용자 보고 = projects_status_check 위반 = 허용 값 '준비중·진행중·완료' (한국어).
-    // 'completed' → '완료'로 정정 (DB schema CHECK constraint 정합)
     if (projectStatus === '완료') return
     const ok = window.confirm('이 프로젝트를 완료 상태로 표시하시겠습니까?\n발주·다운로드가 끝난 뒤에만 클릭하세요.')
     if (!ok) return
     setProjectStatus('완료')
-    const { error } = await supabase.from('projects').update({ status: '완료' }).eq('id', project.id)
-    if (error) {
-      alert('완료 처리 실패: ' + error.message)
+    const result = await completeProject(supabase, {
+      id: project.id,
+      name: project.name,
+      event_date: project.event_date,
+      event_venue: project.event_venue,
+      program_parts: project.program_parts,
+    })
+    if (!result.ok) {
+      alert('완료 처리 실패: ' + result.error)
       setProjectStatus(project.status ?? '진행중')
     }
-  }, [projectStatus, project.id, project.status, supabase])
+  }, [projectStatus, project, supabase])
 
   // ── Excel 전체 내보내기 ────────────────────────────────────
   const handleExcelExport = useCallback(async () => {

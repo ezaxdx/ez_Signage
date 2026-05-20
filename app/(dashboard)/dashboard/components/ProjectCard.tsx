@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Calendar, MapPin, Package, ArrowRight, Settings, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import type { ProjectWithCount, ProjectStatus, ProjectStage } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+import { completeProject } from '@/lib/services/completeProject'
 import { DeleteProjectButton } from './DeleteProjectButton'
 
 const STAGES: ProjectStage[] = ['의뢰서작성', '발주완료', '시안검수', '수정중', '확정', '납품완료']
@@ -63,48 +64,18 @@ export function ProjectCard({ project, isOwner = true }: Props) {
     if (!confirm(`'${project.name}' 프로젝트를 완료 처리하시겠습니까?`)) return
     setCompleting(true)
     const supabase = createClient()
-    const { error } = await supabase
-      .from('projects')
-      .update({ status: '완료' })
-      .eq('id', project.id)
-    if (error) {
-      alert('완료 처리 실패: ' + error.message)
+    // δ 정책 (2026-05-20): 완료 처리 = 학습 풀 단일 진입점 (completeProject 헬퍼 SOT).
+    const result = await completeProject(supabase, {
+      id: project.id,
+      name: project.name,
+      event_date: project.event_date,
+      event_venue: project.event_venue,
+      program_parts: project.program_parts,
+    })
+    if (!result.ok) {
+      alert('완료 처리 실패: ' + result.error)
     } else {
       setCompleted(true)
-      // 5/22 = 완료 버튼 클릭 = event_history UPSERT (signage_breakdown 자동 집계)
-      try {
-        const { data: items } = await supabase
-          .from('design_items')
-          .select('category, quantity, width_mm, height_mm')
-          .eq('project_id', project.id)
-        const sigByCategory = new Map<string, { quantity: number; sizes: Set<string> }>()
-        for (const it of (items ?? []) as Array<{ category: string | null; quantity: number | null; width_mm: number | null; height_mm: number | null }>) {
-          if (!it.category) continue
-          const prev = sigByCategory.get(it.category) ?? { quantity: 0, sizes: new Set() }
-          prev.quantity += it.quantity ?? 1
-          if (it.width_mm && it.height_mm) prev.sizes.add(`${it.width_mm}×${it.height_mm}`)
-          sigByCategory.set(it.category, prev)
-        }
-        const signage_breakdown = Array.from(sigByCategory.entries())
-          .map(([category, v]) => ({ category, quantity: v.quantity, sizes: Array.from(v.sizes).join('·') || undefined }))
-          .sort((a, b) => b.quantity - a.quantity)
-        await fetch('/api/event-history', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            project_code: project.id.slice(0, 12),
-            project_name: project.name,
-            year: project.event_date ? new Date(project.event_date).getFullYear() : new Date().getFullYear(),
-            venue: project.event_venue || '미정',
-            program_parts: [],
-            signage_breakdown,
-            analyzed_item_count: items?.length ?? 0,
-            source: 'auto_project',
-          }),
-        })
-      } catch (e) {
-        console.warn('[event-history] 완료 시 영역 자동 누적 실패:', e)
-      }
     }
     setCompleting(false)
   }

@@ -1,5 +1,135 @@
 # 작업 이력
 
+## 2026-05-20 (δ-PR#3 — 학습 관리자 CRUD 일관화·localStorage 폐기·CLAUDE.md §16-E)
+
+### 단위 9b: CRUD 인프라 점검
+- event_history (`/api/event-history`) — GET/POST/PATCH/DELETE 존재 ✓
+- signage_types (`/api/admin/signage-types`) — 존재 ✓
+- signage_aliases (`/api/admin/aliases`) — 존재 ✓
+- venues.facility_guide_json (`/api/admin/venues/[id]`) — 존재 ✓
+- program_parts_overrides (`/api/admin/program-parts` + migration v15) — 존재 ✓
+- 신규 마이그레이션 불필요 (사용자 영역 SQL 실행 부담 회피, D-day 안전)
+
+### 단위 9c: localStorage 폐기 + DB 영속화 wire-up
+- LearningManagerClient.tsx 변경:
+  - 프로그램 파트 (toggleHideProgramPart·saveProgramPartEdit·addCustomProgramPart) → `/api/admin/program-parts` POST/PATCH/DELETE 호출 + 마운트 시 GET fetch
+  - 이벤트 (toggleHideEvent·saveEventEdit·addCustomEvent) → `/api/event-history` PATCH/POST/DELETE 호출
+  - 1회성 클린업 useEffect 추가: legacy localStorage 키 7종 removeItem
+    - `mice_hidden_program_parts`·`mice_program_part_overrides`·`mice_custom_program_parts`
+    - `mice_hidden_events`·`mice_event_overrides`·`mice_custom_events`
+    - `mice_signage_type_overrides`
+- 잔존 localStorage (DB 컬럼 미적용 — 마이그레이션 후 폐기 예정 TODO):
+  - `mice_hidden_seed_aliases` (signage_aliases.hidden 컬럼 없음)
+  - `mice_hidden_signage_types` (signage_types.hidden 컬럼 없음)
+  - `mice_hidden_facility_venues` (venues.hidden 컬럼 없음)
+  - `mice_signage_type_samples` (signage_types.sample_image_url 컬럼 없음)
+
+### 단위 3: 문서 정합
+- `CLAUDE.md` §16-E 신설 — δ 정책 SOT 절 (마스터 4종·완료 단일 트리거·d7 lazy union·삭제 정책·AI 공식 정책·AI 컨텍스트 단일화·CRUD 범위)
+- `decisions.md` 2026-05-20 두 단락 추가 (δ 정책 채택 + AI 컨텍스트 정렬·공식 정책 변경)
+- `learnings.md` 2026-05-20 두 단락 추가 (학습 신호 분산 SOT 도입·AI 블록 폭주 통합 의무)
+
+### 검증
+- TSC 0 에러
+- Next 빌드 모든 라우트 PASS
+- harness 72/70 통과/2 warn/0 fail
+- 변경 파일: 4개 (LearningManagerClient.tsx + CLAUDE.md + decisions.md + learnings.md + PROGRESS.md)
+
+### 알려진 한계
+- 잔존 localStorage 4종 (DB 컬럼 미적용) — 신규 컬럼 마이그레이션 필요. 별도 사이클 대상.
+- 백필: status='완료'였지만 이전에 event_history POST 안 된 프로젝트의 finalized_at NULL 잔존 → 별도 backfill 스크립트 (사용자 영역 실행).
+- v2 (lib/ai/v2/recommendationLogic.ts) 안 X배너/포디움/가로등 공식은 orphan 유지 (활성 흐름 영향 0).
+- 사이드바 그룹핑 미적용 (PO 확정).
+
+---
+
+## 2026-05-20 (δ-PR#2 — AI 컨텍스트 정렬·공식 정책 변경)
+
+### 단위 2: 프로그램 파트 운영 통계 AI 프롬프트 주입
+- 신규 `lib/data/programPartStats.ts` — `getProgramPartStats(partCode, extraEvents?)` + `formatProgramPartStatsForPrompt(partCodes, partNameMap)`
+- 동의어 → 표준명 정규화 + 12 카테고리 화이트리스트 필터 (LearningManagerClient.tsx와 동등)
+- `recommendSignage.ts`에 `programPartStatsBlock` 추가 — 선택된 파트별 평균 사용 수량 + 행사 수, AI가 기본 quantity로 활용
+- 중복 파트 입력 시 중복 출력 OK (PO 명시 의도)
+
+### 단위 4: 시설 가이드 블록 통일
+- `venueProfile.ts` 강화: `install_allowed` 항목별 `max_width_mm·max_height_mm·standard_width_mm·standard_height_mm` 포함, `mount_methods·rigging.max_load_kg·special_notes` 출력 추가
+- 흡수된 블록 (recommendSignage.ts에서 폐기):
+  - `accumulatedBlock` (finalized_at 신호 신뢰 흔들림 + seedHistoryBlock 중복)
+  - `venueSpecsBlock` → venueProfile에 흡수
+  - `ceilingBannerBlock` → venueProfile에 흡수
+  - `coverageBlock` → venueProfile에 흡수
+  - `adminMasterBlock.facility_guide` 절 → venueProfile이 단일 담당 (adminMasterContext.ts에서 facility_guide 절 제거, signage_types·signage_aliases만 유지)
+- 토큰 절감: 5개 블록 → 1개로 통합
+
+### 단위 7: AI 공식 정책 변경
+- `agentPipeline.ts:step3.body` 재작성:
+  - 1순위: 누적 평균 (≥3건)
+  - 2순위 (동선 배너만): `max(누적평균, ceil(참가자 ÷ N))` — N = 운영 데이터 역산 평균, fallback 500
+  - 3순위: 기본값 1개 + `[추천 없음 — 학습 데이터 부재]` + no_data_flag=true
+  - 폐기 공식 명시: X배너 ÷300+1 · 포디움 세션×2 · 가로등 ÷50
+- `programPartStats.ts:computeDongseonRatio()` 신규 (현재 SEED는 attendees 없음 → fallback 500)
+- `recommendSignage.ts`에 `dongseonBlock` 추가 — 참가자 수 입력 시 N과 계산값을 프롬프트에 명시
+
+### 검증
+- TSC 0 에러
+- Next 빌드 모든 라우트 PASS
+- harness 72/70 통과/2 warn/0 fail
+- 변경 파일: 4개
+  - 신규: `lib/data/programPartStats.ts`
+  - 수정: `lib/ai/recommendSignage.ts`·`lib/ai/venueProfile.ts`·`lib/ai/adminMasterContext.ts`·`lib/ai/agentPipeline.ts`
+
+### 알려진 한계
+- 동선 배너 N=500 fallback (SEED 베이스에 attendees 컬럼 없음). event_history DB에 attendees 누적되면 server-side 실측 N 산출 가능 — 다음 사이클 후보.
+- v2 (lib/ai/v2/recommendationLogic.ts) 안 폐기 공식은 orphan 코드라 그대로 보존 — 활성 흐름 영향 0.
+
+---
+
+## 2026-05-20 (δ-PR#1 — 데이터 누적 정상화: 완료 단일 학습 신호 + lazy union + 삭제 학습 추출)
+
+### 사용자 요청
+PO 명령서 (δ 정책): 데이터 학습 관리자 흐름 정합 — 완료 버튼이 학습 풀 단일 진입점. 엑셀 export는 학습 신호 아님. 행사일+7일 lazy union. 프로젝트 삭제 시 학습 데이터 보존.
+
+### 단위 1·1.5: 완료 버튼 단일화 + ExportService 분리
+- 신규 `lib/services/completeProject.ts` — 완료 처리 SOT 헬퍼 (status 갱신·event_history POST·finalized_at SET, atomic)
+- `ProjectCard.tsx`·`EditorLayout.tsx`: 두 완료 경로 모두 completeProject 헬퍼 사용 (이전엔 EditorLayout만 status만 set·event_history 호출 X)
+- `ProjectCard.handleComplete`: `program_parts: project.program_parts ?? []` 추가 (진단 §4 누락 fix)
+- `ExportService.logUsage`: 엑셀·PPT 시 `design_items.finalized_at` UPDATE 로직 제거 (1.5). 학습 신호는 완료 버튼 단일 소스 주석.
+- `EditorLayout.markFinalized`: no-op 변환 (export ≠ 학습 신호)
+
+### 단위 6: 프로젝트 정보 변경 모달 AI 재호출
+- `ProjectInfoClient.handleSaveInfo`: 프로그램 파트 추가 시 정적 `PROGRAM_PART_SIGNAGE_HINTS` 대신 `/api/recommend` 호출 (신규 파트만 input.programParts). 응답 중 기존 design_items.category에 없는 것만 INSERT.
+- AI 실패·결과 0건 → 정적 HINTS fallback (안전망).
+- 토스트 메시지: "프로그램 파트 추가로 환경장식물 N개가 자동 추가되었습니다"
+
+### 단위 8: 행사일 + 7일 lazy union
+- `app/(dashboard)/admin/learning/page.tsx` `userEventHistory` 생성 변경:
+  - 조건 강화: design_items ≥3건 AND (status='완료' OR 행사일+7일 경과) AND event_history DB 미수록
+  - source 태그: `'auto_project'` (완료) / `'auto_d7'` (행사일+7일)
+- `LearningManagerClient` Props.userEventHistory에 `source` 필드 추가
+- 메모리상 합성 — DB INSERT 없음 (lazy union)
+
+### 단위 9a: 프로젝트 삭제 학습 추출 + cascade
+- `DeleteProjectButton.tsx` 전면 개편:
+  - Step 1: design_items ≥3건이면 event_history UPSERT (source='manual_delete'). 실패 시 삭제 abort.
+  - Step 2: Storage 이미지 cleanup (master_image_url + design_items.image_url, design-images 버킷에서 path 추출 후 remove)
+  - Step 3: item_contents → design_items → project_members → slot_styles → projects cascade 삭제
+  - confirm 텍스트 분기: ≥3건 = "학습 데이터로 보존됩니다" / <3건 = "보존 안 됨"
+- 백워드 호환: project_archive INSERT 유지
+
+### 검증
+- TSC 0 에러
+- Next 빌드 모든 라우트 PASS
+- harness 72/70 통과/2 warn/0 fail
+- 변경 파일: 6개 (1 신규 + 5 수정)
+  - 신규: `lib/services/completeProject.ts`
+  - 수정: ProjectCard.tsx·EditorLayout.tsx·ExportService.ts·ProjectInfoClient.tsx·page.tsx (admin/learning)·LearningManagerClient.tsx·DeleteProjectButton.tsx
+
+### 알려진 한계
+- 백필 미실행: status='완료'였지만 이전에 event_history POST 안 된 프로젝트의 finalized_at NULL 상태 잔존. 별도 backfill 스크립트 필요.
+- d7 lazy union은 학습 관리자 UI에만 적용. AI recommendSignage는 event_history DB만 봄 (auto_d7는 SSR 메모리상만).
+
+---
+
 ## 2026-05-20 (v10.4 — design_items.no 책임 통합 + 12파트 시드 + ErrorBoundary + 정의 분석 보고서)
 
 ### 사용자 요청

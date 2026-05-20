@@ -170,39 +170,80 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
     let insertCount = 0
     let deleteCount = 0
     if (addRecommend && addedParts.length > 0) {
-      // 추가 파트별 환경장식물 ID 영역 = design_items 영역 INSERT
-      const newIds = new Set<string>()
-      for (const code of addedParts) {
-        for (const id of PROGRAM_PART_SIGNAGE_HINTS[code] ?? []) newIds.add(id)
-      }
-      // 5/22 라이브 D-2 정정: design_items.no NOT NULL 위반 = 추가 시 저장 실패 원인
-      // 기존 no 최대값 + 1 부터 채움 (ItemSidebar·NewProjectButton·case-a 패턴 정합)
+      // PR#1 단위 6 (δ 정책): 정적 HINTS 대신 recommendSignage() 호출.
+      //   신규 파트만 input.programParts에 포함하여 AI가 권장 환경장식물 추천.
+      //   응답 중 기존 design_items.category에 없는 것만 INSERT (덮어쓰기 금지).
+      //   AI 호출 실패 → 정적 HINTS fallback (기존 동작 보존).
       const { data: existing } = await supabase.from('design_items').select('no, category').eq('project_id', project.id)
       const existingNos = (existing ?? []).map(r => parseInt((r.no as string) || '0', 10) || 0)
       const startNo = existingNos.length > 0 ? Math.max(...existingNos) + 1 : 1
       const existingCats = new Set((existing ?? []).map(r => r.category as string))
-      const toInsert = Array.from(newIds)
-        .filter(id => !existingCats.has(id))
-        .map((id, idx) => {
-          const type = SEED_SIGNAGE_TYPES.find(t => t.id === id)
-          return {
-            project_id: project.id,
-            no: String(startNo + idx).padStart(2, '0'),
-            category: id,
-            material: type?.default_material ?? '인쇄',
-            width_mm: type?.width_mm ?? 600,
-            height_mm: type?.height_mm ?? 1800,
-            quantity: 1,
-            program_part: addedParts.find(c => (PROGRAM_PART_SIGNAGE_HINTS[c] ?? []).includes(id)) ?? null,
-            part: addedParts.map(c => PROGRAM_PART_BY_CODE.get(c)?.name ?? c).join('·'),
-          }
+
+      interface RecItem { category: string; width_mm: number; height_mm: number; material: string; program_part?: string | null; program_part_name?: string | null; quantity: number; location?: string; purpose?: string }
+      let toInsert: Array<Record<string, unknown>> = []
+      try {
+        const recRes = await fetch('/api/recommend', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            eventName: project.name,
+            venue: project.event_venue ?? '미정',
+            programParts: addedParts,
+            purposes: [],
+            attendeesCount: attendeesCount ? parseInt(attendeesCount) : undefined,
+            clientName: project.client_name ?? undefined,
+          } satisfies Partial<import('@/lib/ai/recommendSignage').RecommendInput>),
         })
+        if (recRes.ok) {
+          const rec = (await recRes.json()) as { items?: RecItem[] }
+          toInsert = (rec.items ?? [])
+            .filter(it => !existingCats.has(it.category))
+            .map((it, idx) => ({
+              project_id: project.id,
+              no: String(startNo + idx).padStart(2, '0'),
+              category: it.category,
+              material: it.material ?? '인쇄',
+              width_mm: it.width_mm ?? 600,
+              height_mm: it.height_mm ?? 1800,
+              quantity: it.quantity ?? 1,
+              location: it.location ?? null,
+              purpose: it.purpose ?? null,
+              program_part: it.program_part ?? null,
+              part: it.program_part_name ?? addedParts.map(c => PROGRAM_PART_BY_CODE.get(c)?.name ?? c).join('·'),
+            }))
+        }
+      } catch (e) {
+        console.warn('[ProjectInfo] recommendSignage 호출 실패 — 정적 HINTS fallback:', e)
+      }
+
+      // AI 실패·결과 0건 시 정적 HINTS fallback (기존 동작)
+      if (toInsert.length === 0) {
+        const newIds = new Set<string>()
+        for (const code of addedParts) {
+          for (const id of PROGRAM_PART_SIGNAGE_HINTS[code] ?? []) newIds.add(id)
+        }
+        toInsert = Array.from(newIds)
+          .filter(id => !existingCats.has(id))
+          .map((id, idx) => {
+            const type = SEED_SIGNAGE_TYPES.find(t => t.id === id)
+            return {
+              project_id: project.id,
+              no: String(startNo + idx).padStart(2, '0'),
+              category: id,
+              material: type?.default_material ?? '인쇄',
+              width_mm: type?.width_mm ?? 600,
+              height_mm: type?.height_mm ?? 1800,
+              quantity: 1,
+              program_part: addedParts.find(c => (PROGRAM_PART_SIGNAGE_HINTS[c] ?? []).includes(id)) ?? null,
+              part: addedParts.map(c => PROGRAM_PART_BY_CODE.get(c)?.name ?? c).join('·'),
+            }
+          })
+      }
+
       if (toInsert.length > 0) {
-        // 5/22 사용자 명시 = 추가 = 저장 X 영역 정정. program_part 컬럼 미적용 영역 fallback (migration_v6 X 환경)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let { error: insertErr } = await supabase.from('design_items').insert(toInsert as any)
         if (insertErr && /program_part|column/i.test(insertErr.message)) {
-          // program_part 컬럼 영역 X 영역 → 영역 제거 후 재시도
           const fallback = toInsert.map(item => {
             const { program_part: _unused, ...rest } = item
             void _unused
@@ -244,7 +285,7 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
     setInfoSaved(true)
     // 5/22 사용자 명시 = INSERT/DELETE 완료 후 = 즉시 편집 창 복귀 (setTimeout X·저장 보장)
     // 알림 메시지 + 즉시 이동 (1.5초 대기 시 INSERT 영역 race 영역 가능성 영역 회피)
-    const msg = (insertCount > 0 ? `환경장식물 ${insertCount}개 추가·` : '') + (deleteCount > 0 ? `${deleteCount}개 삭제·` : '') + '저장 완료'
+    const msg = (insertCount > 0 ? `프로그램 파트 추가로 환경장식물 ${insertCount}개가 자동 추가되었습니다·` : '') + (deleteCount > 0 ? `${deleteCount}개 삭제·` : '') + '저장 완료'
     if (insertCount > 0 || deleteCount > 0) alert(msg)
     router.push(`/projects/${project.id}`)
   }
