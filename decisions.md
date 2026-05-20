@@ -3,6 +3,36 @@
 > 작은 결정도 누적. "왜 X를 쓰는가?" 질문 시 검색.
 > CLAUDE.md를 부풀리지 않으면서 일관성 유지.
 
+## 2026-05-20 — PR#4: AI 정확도 신규 정의 + 동의어 자동 변환 (옵션 B) + 예시 이미지 공유화
+
+**컨텍스트**: PR#1-3에서 단일 학습 신호·CRUD 일관화 완료. PO 6대 정책 결정 추가:
+1. AI 추천 정확도 = "AI 추천 그대로 발주 완료 비율" — 기존 단계별 가중치(10/30/70/100)는 "학습 진행률"이라 라벨 오역
+2. 동의어 자동 변환 = 옵션 B (미분류 태그 + 학습 풀 제외 — 옵션 A는 매핑 강제로 노이즈 추가)
+3. 예시 이미지 = 모든 사용자 공유 (localStorage → DB)
+4-6. programParts SOT·빵빠레 배너 매핑·"사용자 수정해도 받아들이는" 목표
+
+**선택**:
+1. `lib/services/computeAiAccuracy.ts` 신규 — `created_by_ai=TRUE AND finalized_at IS NOT NULL` 대상 채점 (완전 일치 +100·category만 +50·오답 0). N<10건 = "측정 중"
+2. `lib/services/normalizeCategory.ts` 신규 — 표준 12 카테고리 매칭 SOT (4단계: 표준명·SEED·DB alias·unmatched_category_log)
+3. `unmatched_category_log` 테이블 신설 — admin이 학습 관리자 UI에서 매핑 결정, `resolveUnmatchedCategory`가 기존 design_items 일괄 재변환
+4. case-a·EditorLayout·ProjectInfoClient INSERT 경로 통합 — AI 응답엔 ai_initial_* 5컬럼 채움
+5. signage_types.sample_image_url로 예시 이미지 모든 사용자 공유 (개인별 localStorage 폐기)
+6. graceful degradation — migration_v19 미적용 환경에서도 정상 동작 (컬럼 unknown 시 기본 컬럼만 재시도)
+
+**대안**:
+- 정확도 신규 정의를 ai_initial_* 5컬럼이 아닌 audit log 방식 (변경 이력 별도 테이블) — design_items 컬럼 확장이 더 단순·query 효율적
+- 동의어 옵션 A (강제 매핑) — 미분류 카테고리도 임의 표준에 강제 매핑 → 노이즈 증가
+- 예시 이미지 개인별 localStorage 유지 — 모든 사용자 공유가 더 자연스럽고 DB 단일 SOT
+
+**이유**:
+- PR#1 δ 정책(완료 = 학습 풀 단일 진입점)과 정합 — created_by_ai 측정이 그 시점에 결정됨
+- 사용자 입력 데이터 신뢰성: 옵션 B는 미분류를 학습 풀에서 명시 제외해 노이즈 차단·관리자 검토 후 편입
+- 마이그레이션 미적용 환경 graceful degradation = D-day 안전 (사용자 영역 SQL 실행 부담 최소화)
+
+**되돌릴 수 있는가**: 쉬움 — computeAiAccuracy·normalizeCategory 두 헬퍼만 제거하면 v9.47 동작 복귀. 신규 컬럼·테이블은 unused로 보존 (drop 위험 회피).
+
+**관련**: feedback-incremental-accuracy·feedback-recipient-first-thinking·PROGRESS.md 2026-05-20 δ-PR#4
+
 ## 2026-05-20 — AI 컨텍스트 정렬 및 공식 정책 변경 (δ-PR#2)
 
 **컨텍스트**: 진단 §5 — recommendSignage.ts에 6+개 블록이 시설 가이드 관련 정보를 중복 주입 (venueProfile + venueSpecs + ceiling + coverage + adminMaster.facility_guide). 토큰 낭비·추적성 저하. 또한 X배너/포디움/가로등 공식이 SYSTEM_INSTRUCTION에 하드코딩되어 학습 데이터를 무시함.

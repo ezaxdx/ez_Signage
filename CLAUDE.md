@@ -772,6 +772,71 @@ AI 추천 (recommendSignage.ts)
 
 ---
 
+## 16-F. 2026-05-20 — PR#4: AI 정확도 신규 정의 + 동의어 자동 변환 + 잔존 localStorage 4종 DB 영속화
+
+> PO 정책 결정 6개 확정 사항 코드 정착. 변경 시 본 절 갱신.
+
+### PO 정책 결정 6개 (확정)
+
+1. **AI 추천 정확도** = "AI 추천 그대로 발주 완료 비율" (옵션 1)
+2. 5/19 SOT 정합 = `programParts.ts` 이미 완료 (확인 불요)
+3. **동의어 자동 변환** = 옵션 B (미분류 태그 + 학습 풀 제외)
+4. **예시 이미지** = localStorage → DB 공유화 (`signage_types.sample_image_url`)
+5. 빵빠레 배너 = `streetlight_banner`에 note로 처리 (적용됨)
+6. 목표 = "사용자 수정해도 구분에 맞는 이름으로 받아들이도록"
+
+### AI 추천 정확도 신규 정의 (단위 5)
+
+**기존 폐기**: 단계별 가중치 10/30/70/100 — 라벨은 "정확도"였지만 실제론 "학습 진행률"
+
+**신규**: `lib/services/computeAiAccuracy.ts`
+- 대상: `design_items.created_by_ai=TRUE AND finalized_at IS NOT NULL`
+- 채점: category·quantity·width·height 모두 ai_initial_*과 일치 → +100 / category만 일치 → +50 / 오답 → 0
+- N < 10건 → "측정 중 (N/10건)" (사용자 알림)
+- N >= 10건 → 실제 % 표시
+- breakdown: full_match·category_only·mismatch 세부 표시
+
+### 동의어 자동 변환 (단위 2·3)
+
+**SOT**: `lib/services/normalizeCategory.ts`
+- 호출 순서: ① 표준 12 카테고리 직접 매칭 → ② SEED_SYNONYMS → ③ signage_aliases DB → ④ 실패 시 unmatched_category_log UPSERT
+- `design_items.category_normalize_status`:
+  - `matched`: 학습 풀 포함
+  - `unmatched`: 학습 풀 제외 + 로그 누적
+  - `manual_override`: 관리자 매핑 결정 후
+- `category` 원본 보존·`category_normalized`에 표준명 분리
+
+### 미분류 매핑 큐 (단위 4)
+
+- API: `/api/admin/unmatched-categories` GET/POST/DELETE
+- UI: 학습 관리자 동의어 매핑 섹션 하단 "매핑 실패 사례 N건"
+- [매핑] 버튼 → 12 표준 카테고리 dropdown → `resolveUnmatchedCategory` 호출
+- 매핑 후 기존 `design_items` 일괄 재변환 (manual_override 상태로)
+
+### 잔존 localStorage 4종 → DB 영속화 (단위 5)
+
+| localStorage 키 | DB 컬럼 |
+|---|---|
+| `mice_hidden_seed_aliases` | `signage_aliases.is_hidden` |
+| `mice_hidden_signage_types` | `signage_types.is_hidden` |
+| `mice_hidden_facility_venues` | `venues.is_hidden` |
+| `mice_signage_type_samples` | `signage_types.sample_image_url` (모든 사용자 공유) |
+
+- 마운트 시 4종 키 모두 1회 cleanup (`localStorage.removeItem`)
+- toggle·save·delete 모두 DB API 호출 (graceful degradation)
+
+### DB 마이그레이션
+
+**파일**: `supabase/migration_v19_ai_accuracy_normalize.sql`
+
+- `design_items`: created_by_ai·ai_initial_category·ai_initial_quantity·ai_initial_width_mm·ai_initial_height_mm 5컬럼 + category_normalized·category_normalize_status 2컬럼
+- `unmatched_category_log` 신규 테이블 (RLS: admin 전체·user INSERT/SELECT)
+- `signage_aliases.is_hidden` / `signage_types.is_hidden·sample_image_url` / `venues.is_hidden`
+- 사용자 영역(Supabase Studio) 실행 — 자동 적용 안 함
+- 미적용 환경 graceful degradation: 컬럼 unknown → 기본 컬럼만 재시도
+
+---
+
 ## 17. 향후 확장 고려사항 (현재 미구현)
 
 - **시리즈 생성**: 같은 템플릿에서 방향/키워드/색상/언어만 바꿔 N장 동시 생성 (웨이파인딩 ←/→ 등)

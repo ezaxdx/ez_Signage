@@ -4,6 +4,7 @@ import { isAdmin } from '@/lib/auth/role'
 import { AdminAiClient } from './AdminAiClient'
 import { STANDARD_CATEGORIES, computeVenueCategoryCoverage } from '@/lib/data/signageCategoryStandards'
 import type { AccuracyRow } from './AccuracyTable'
+import { computeAiAccuracy } from '@/lib/services/computeAiAccuracy'
 
 export const metadata = { title: '관리자 페이지 — AI 관리 | 제작물 리스트 가이드' }
 // 5/22 사용자 진단 #4 = 정적 prerender 회피·매 요청마다 usage_logs fresh fetch
@@ -189,14 +190,37 @@ export default async function AdminAiPage() {
     }
   })
 
-  // ── v9.47: IA SOT 정렬 — KPI 3 카드 데이터 ────────────────
-  // ① ai 추천 정확도: AccuracyTable 행 평균 (행사장·파트별 동일 데이터 사용, 도면은 ′커밍순′)
+  // ── PR#4 단위 5 (δ 정책): AI 추천 정확도 신규 정의 ────────────────
+  // 기존 폐기: 학습 진행률 (stage.finalized / total) — "정확도" 라벨이지만 실제론 진행률
+  // 신규: created_by_ai=TRUE AND finalized_at IS NOT NULL 항목에서 ai_initial_* vs 최종값 비교.
+  //   완전 일치 +100·category만 +50·오답 0. N<10건이면 "측정 중"
+  //   migration_v19 미적용 환경 → 빈 결과 → measuring (0/10건) 반환
+  const accItemsRes = await supabase
+    .from('design_items')
+    .select('created_by_ai, finalized_at, category, quantity, width_mm, height_mm, ai_initial_category, ai_initial_quantity, ai_initial_width_mm, ai_initial_height_mm')
+    .not('finalized_at', 'is', null)
+    .limit(2000)
+  type AccItem = {
+    created_by_ai?: boolean | null; finalized_at?: string | null
+    category?: string | null; quantity?: number | null; width_mm?: number | null; height_mm?: number | null
+    ai_initial_category?: string | null; ai_initial_quantity?: number | null; ai_initial_width_mm?: number | null; ai_initial_height_mm?: number | null
+  }
+  const accItems = (accItemsRes.data ?? []) as AccItem[]
+  const aiAccuracyResult = computeAiAccuracy(accItems)
+
+  // 기존 accuracySummary는 backward compat (AdminAiClient에서 신규 prop 우선 사용)
   const validAcc = accuracyRows.map(r => r.avg_accuracy).filter((v): v is number => v !== null)
-  const venueAvg = validAcc.length > 0 ? Math.round(validAcc.reduce((a, b) => a + b, 0) / validAcc.length) : null
+  const legacyVenueAvg = validAcc.length > 0 ? Math.round(validAcc.reduce((a, b) => a + b, 0) / validAcc.length) : null
   const accuracySummary = {
-    venue_avg: venueAvg,
-    part_avg: venueAvg, // 현 사이클은 동일 데이터 (파트별 분리는 후속 사이클)
-    floor_plan_status: '—', // 5/22 사용자 명시 = "커밍순" 워딩 빼고 "—"
+    // PR#4: 신규 정의 정확도 (legacy venueAvg는 무시·신규 값으로 일원화)
+    venue_avg: aiAccuracyResult.value,
+    part_avg: aiAccuracyResult.value,
+    floor_plan_status: '—',
+    // PR#4: measuring/ready 상태 + count (UI에서 "측정 중 N/10건" 분기)
+    new_accuracy_status: aiAccuracyResult.status,
+    new_accuracy_count: aiAccuracyResult.count,
+    new_accuracy_breakdown: aiAccuracyResult.breakdown,
+    legacy_venue_avg: legacyVenueAvg,
   }
 
   // ② 총 API 호출 수 — usage_logs 전체 recommend 카운트 (월 한정 X, IA의 ′총′ 의미)

@@ -316,7 +316,13 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
     // SOT = DB trigger (set_design_items_no)·클라이언트는 보조. 동시성은 trigger fallback.
     const { nextDesignItemNo } = await import('@/lib/services/designItemNo')
     const nextNo = nextDesignItemNo(items)
-    const newItem: Partial<DesignItem> = {
+    // PR#4 단위 3: 사용자 직접 추가 → created_by_ai=FALSE·정확도 측정 대상 외.
+    //   category가 있으면 normalizeCategory 호출하여 학습 풀 분류·미분류 시 unmatched_category_log 누적.
+    const { normalizeCategory } = await import('@/lib/services/normalizeCategory')
+    const norm = preset?.category
+      ? await normalizeCategory(supabase, preset.category)
+      : { matched: false, normalized: null, raw: '', status: 'unmatched' as const }
+    const newItem: Record<string, unknown> = {
       project_id: project.id,
       no: nextNo,
       category: preset?.category ?? '',
@@ -324,8 +330,21 @@ export function EditorLayout({ project, initialItems, userEmail }: Props) {
       width_mm: preset?.width_mm ?? 600,
       height_mm: preset?.height_mm ?? 1800,
       material: preset?.material ?? null,
+      // PR#4: 사용자 직접 추가 표시 (정확도 측정 대상 외)
+      created_by_ai: false,
+      category_normalized: norm.normalized,
+      category_normalize_status: preset?.category ? norm.status : null,
     }
-    const { data, error } = await supabase.from('design_items').insert(newItem).select().single()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let { data, error } = await supabase.from('design_items').insert(newItem as any).select().single()
+    // 마이그레이션 v19 미적용 graceful degradation
+    if (error && /created_by_ai|category_normalized|column/i.test(error.message)) {
+      const { created_by_ai: _a, category_normalized: _b, category_normalize_status: _c, ...rest } = newItem
+      void _a; void _b; void _c
+      const retry = await supabase.from('design_items').insert(rest).select().single()
+      data = retry.data
+      error = retry.error
+    }
     if (error || !data) {
       alert('제작물 추가 실패: ' + (error?.message ?? ''))
       return

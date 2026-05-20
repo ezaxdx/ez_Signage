@@ -196,21 +196,36 @@ export function ProjectInfoClient({ project, members: initialMembers, isOwner, u
         })
         if (recRes.ok) {
           const rec = (await recRes.json()) as { items?: RecItem[] }
-          toInsert = (rec.items ?? [])
-            .filter(it => !existingCats.has(it.category))
-            .map((it, idx) => ({
-              project_id: project.id,
-              no: String(startNo + idx).padStart(2, '0'),
-              category: it.category,
-              material: it.material ?? '인쇄',
-              width_mm: it.width_mm ?? 600,
-              height_mm: it.height_mm ?? 1800,
-              quantity: it.quantity ?? 1,
-              location: it.location ?? null,
-              purpose: it.purpose ?? null,
-              program_part: it.program_part ?? null,
-              part: it.program_part_name ?? addedParts.map(c => PROGRAM_PART_BY_CODE.get(c)?.name ?? c).join('·'),
-            }))
+          // PR#4 단위 3: AI INSERT 시 ai_initial_* + normalizeCategory 통합
+          const { normalizeCategory } = await import('@/lib/services/normalizeCategory')
+          toInsert = await Promise.all(
+            (rec.items ?? [])
+              .filter(it => !existingCats.has(it.category))
+              .map(async (it, idx) => {
+                const norm = await normalizeCategory(supabase, it.category)
+                return {
+                  project_id: project.id,
+                  no: String(startNo + idx).padStart(2, '0'),
+                  category: it.category,
+                  material: it.material ?? '인쇄',
+                  width_mm: it.width_mm ?? 600,
+                  height_mm: it.height_mm ?? 1800,
+                  quantity: it.quantity ?? 1,
+                  location: it.location ?? null,
+                  purpose: it.purpose ?? null,
+                  program_part: it.program_part ?? null,
+                  part: it.program_part_name ?? addedParts.map(c => PROGRAM_PART_BY_CODE.get(c)?.name ?? c).join('·'),
+                  // PR#4: AI 정확도 측정 + 정규화 결과
+                  created_by_ai: true,
+                  ai_initial_category: it.category,
+                  ai_initial_quantity: it.quantity ?? 1,
+                  ai_initial_width_mm: it.width_mm ?? 600,
+                  ai_initial_height_mm: it.height_mm ?? 1800,
+                  category_normalized: norm.normalized,
+                  category_normalize_status: norm.status,
+                }
+              }),
+          )
         }
       } catch (e) {
         console.warn('[ProjectInfo] recommendSignage 호출 실패 — 정적 HINTS fallback:', e)
