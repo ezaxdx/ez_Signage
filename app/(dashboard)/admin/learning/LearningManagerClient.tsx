@@ -555,10 +555,21 @@ export function LearningManagerClient({
   const [customEvents, setCustomEvents] = useState<Array<{ project_name: string; project_code: string; year: number; venue: string; category_tag: '핵심'|'일반'|'미분류'|'해외'; program_parts: string[]; analyzed_item_count?: number }>>([])
   const [editingEvent, setEditingEvent] = useState<{ project_name: string; project_code: string; year: number; venue: string; program_parts: string[]; analyzed_item_count?: number } | null>(null)
 
-  // 통합 SOT = DB 영역 있으면 우선·없으면 SEED 영역 + 사용자 프로젝트 + 커스텀 영역 통합
+  // HOTFIX (2026-05-20): DB ∪ SEED union — DB row 1건이라도 있으면 SEED 44건 사라지던 결함 fix.
+  //   행사장 학습 현황(venueLearningStatus)은 projects + SEED 둘 다 합산하는 반면,
+  //   기존 unifiedEventHistory는 DB OR SEED 분기여서 데이터 소스 불일치 발생.
+  //   project_code 기준 dedupe (DB가 우선·SEED는 보완).
   // 5/22 사용자 명시 = 행사 관리 = SOT·행사장 관리·프로그램 파트 관리·환경장식물 관리 영역 모두 영향
   const unifiedEventHistory = useMemo(() => {
-    const base = dbEventHistory.length > 0 && !eventHistoryFallback ? dbEventHistory : SEED_EVENT_HISTORY
+    const dbActive = dbEventHistory.length > 0 && !eventHistoryFallback
+    let base: typeof SEED_EVENT_HISTORY
+    if (!dbActive) {
+      base = SEED_EVENT_HISTORY
+    } else {
+      const dbCodes = new Set(dbEventHistory.map(e => e.project_code).filter(Boolean) as string[])
+      const seedRest = SEED_EVENT_HISTORY.filter(e => !e.project_code || !dbCodes.has(e.project_code))
+      base = [...dbEventHistory, ...seedRest]
+    }
     const userMapped = userEventHistory.map(e => ({
       ...e,
       has_excel: e.has_excel ?? true,
