@@ -62,12 +62,12 @@ export const PIPELINE_BLOCKS: Record<'step1' | 'step2' | 'step3' | 'step4' | 'st
     desc: '행사장 시설 가이드 표준 규격·수량 적용',
     body: `[3순위] 행사장 시설 가이드 표준 수량 — 각 후보 quantity 지정
 - 입력: 행사 장소 ({{venue}}) + 과거 사례 ({{past_events}}).
-- 동작: standard_width_mm·standard_height_mm 기반 규격 결정. 행사장 누적 데이터 빈도 기준 quantity 산출.
-- 면적·천장고·참가자·세션 수 기반 계산식 적용:
-  · X배너: max(2, ceil(참가자÷300) + 1)
-  · 포디움: 세션 수 × 2 (사회자·연사)
-  · 가로등 배너: 면적÷50 (외부 동선)
-- 학습 데이터 없는 카테고리 = "[추천 없음 — 학습 데이터 부재]" rationale 강제 prepend + no_data_flag=true.`,
+- 동작: standard_width_mm·standard_height_mm 기반 규격 결정.
+- δ 정책 (2026-05-20) 기본 quantity 계산 흐름:
+  · 1순위: 누적 평균 (해당 파트·행사장 누적 ≥3건일 때 — [프로그램 파트별 운영 누적 통계] 블록 활용)
+  · 2순위 (동선 배너만): max(누적평균, ceil(참가자 ÷ N)) — N = 누적 데이터에서 [동선 배너 수 ÷ 참가자 수] 역산 평균 (불충분 시 N=500 fallback)
+  · 3순위: 기본값 1개 + "[추천 없음 — 학습 데이터 부재]" rationale prepend + no_data_flag=true
+- 폐기된 공식 (PR#2 단위 7): X배너 max(2, ceil(참가자÷300)+1) · 포디움 세션×2 · 가로등 면적÷50 — 모두 사용 금지.`,
     status: 'active',
   },
   step4: {

@@ -6,6 +6,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { getFacilityGuide, getFacilityGuideAsync } from '@/lib/data/venueFacilityGuide'
+import { getVenueSpecs, formatVenueSpecsContext, findCeilingBannerContext } from '@/lib/data/dashboardSeed'
+import { formatCoverageForPrompt } from '@/lib/data/signageCategoryStandards'
 
 /**
  * 노션 컴펌 본 §5 행사장 학습 시드 (5/18 페이지 36148589-8ea1-81d7-8b55-d1bd771a40a1)
@@ -71,33 +73,69 @@ export async function buildVenueProfile(venueName: string | null | undefined): P
   if (guide) {
     hasData = true
     if (guide.install_allowed?.length) {
-      const allowed = guide.install_allowed
-        .filter(it => it.status === 'allowed')
-        .map(it => it.category).join(', ')
-      const denied = guide.install_allowed
-        .filter(it => it.status === 'denied')
-        .map(it => it.category).join(', ')
-      const cond = guide.install_allowed
-        .filter(it => it.status === 'conditional')
-        .map(it => it.category).join(', ')
+      // PR#2 단위 4: install_allowed 항목별 규격 정보(max·standard) 포함
+      const detailFor = (status: string) => guide.install_allowed!
+        .filter(it => it.status === status)
+        .map(it => {
+          const parts: string[] = [it.category]
+          if (it.max_width_mm || it.max_height_mm) parts.push(`max ${it.max_width_mm ?? '?'}×${it.max_height_mm ?? '?'}mm`)
+          if (it.standard_width_mm || it.standard_height_mm) parts.push(`표준 ${it.standard_width_mm ?? '?'}×${it.standard_height_mm ?? '?'}mm`)
+          return parts.join(' ')
+        }).join(', ')
+      const allowed = detailFor('allowed')
+      const denied  = detailFor('denied')
+      const cond    = detailFor('conditional')
       if (allowed) lines.push(`- 설치 가능: ${allowed}`)
       if (cond)    lines.push(`- 조건부: ${cond}`)
       if (denied)  lines.push(`- 설치 불가: ${denied}`)
     }
+    if (guide.mount_methods) {
+      const mm = guide.mount_methods as Record<string, unknown>
+      const allowedMounts = Object.entries(mm)
+        .filter(([k, v]) => k !== 'note' && (v === 'allowed' || v === 'conditional'))
+        .map(([k, v]) => `${k}=${v as string}`).join(', ')
+      if (allowedMounts) lines.push(`- 부착 방법: ${allowedMounts}`)
+    }
     if (guide.rigging?.available != null) {
-      lines.push(`- 행잉: ${guide.rigging.available ? '가능' : '불가'}${guide.rigging.note ? ` (${guide.rigging.note})` : ''}`)
+      const maxLoad = guide.rigging.max_load_kg ? ` · 최대 ${guide.rigging.max_load_kg}kg` : ''
+      lines.push(`- 행잉: ${guide.rigging.available ? '가능' : '불가'}${maxLoad}${guide.rigging.note ? ` (${guide.rigging.note})` : ''}`)
     }
     if (guide.safety) {
       const safety = [guide.safety.fire, guide.safety.fall, guide.safety.electric, guide.safety.weather].filter(Boolean).join(' / ')
       if (safety) lines.push(`- 안전: ${safety}`)
     }
     if (guide.warnings?.length) {
-      lines.push(`- 주의: ${guide.warnings.slice(0, 3).map(w => w.description).join(' / ')}`)
+      lines.push(`- 주의: ${guide.warnings.slice(0, 5).map(w => w.description).join(' / ')}`)
     }
     if (guide.digital_signage?.allowed_locations?.length) {
       lines.push(`- 디지털 사이니지: ${guide.digital_signage.allowed_locations.join(', ')}`)
     }
+    if (Array.isArray(guide.special_notes) && guide.special_notes.length > 0) {
+      lines.push(`- 특이사항: ${guide.special_notes.slice(0, 3).join(' / ')}`)
+    }
     if (guide.last_updated) lines.push(`  ※ 시설 가이드 학습 시점: ${guide.last_updated}`)
+  }
+
+  // PR#2 단위 4: 흡수 — venueSpecs (면적·천장고·부스수·출입구·리깅여부)
+  const specs = getVenueSpecs(venueName)
+  if (specs) {
+    hasData = true
+    lines.push('')
+    lines.push(formatVenueSpecsContext(specs))
+  }
+
+  // PR#2 단위 4: 흡수 — 천정배너 실측 패턴
+  const ceiling = findCeilingBannerContext(venueName)
+  if (ceiling && ceiling.trim().length > 0) {
+    hasData = true
+    lines.push(ceiling)
+  }
+
+  // PR#2 단위 4: 흡수 — 6대 카테고리 학습 커버리지
+  const coverage = formatCoverageForPrompt(venueName)
+  if (coverage && coverage.trim().length > 0) {
+    hasData = true
+    lines.push(coverage)
   }
 
   // ② venues 테이블 메타 + ③ 예외 누적

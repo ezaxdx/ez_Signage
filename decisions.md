@@ -3,6 +3,30 @@
 > 작은 결정도 누적. "왜 X를 쓰는가?" 질문 시 검색.
 > CLAUDE.md를 부풀리지 않으면서 일관성 유지.
 
+## 2026-05-20 — AI 컨텍스트 정렬 및 공식 정책 변경 (δ-PR#2)
+
+**컨텍스트**: 진단 §5 — recommendSignage.ts에 6+개 블록이 시설 가이드 관련 정보를 중복 주입 (venueProfile + venueSpecs + ceiling + coverage + adminMaster.facility_guide). 토큰 낭비·추적성 저하. 또한 X배너/포디움/가로등 공식이 SYSTEM_INSTRUCTION에 하드코딩되어 학습 데이터를 무시함.
+
+**선택**:
+1. `venueProfile.buildVenueProfile()` 강화 — venueSpecs·ceilingBanner·coverage 모두 흡수. install_allowed 항목별 max·standard 규격 + mount_methods + rigging.max_load_kg + special_notes 출력 추가.
+2. `accumulatedBlock` 폐기 — finalized_at 신호가 export에서 제거된 이상 신뢰 기반 흔들림. seedHistoryBlock(event_history DB → SEED fallback)이 같은 역할 일원화.
+3. `adminMasterContext.ts`에서 facility_guide 절 제거 — venueProfile 단일 담당. signage_types·signage_aliases만 유지.
+4. `programPartStats.ts` 신설 — 학습 관리자 program-parts 탭의 평균 리스트를 동일 로직으로 AI 프롬프트에 주입. 12 카테고리 화이트리스트 필터·동의어 정규화 포함.
+5. AI 공식 정책 변경 — X배너/포디움/가로등 공식 폐기, 동선 배너만 `max(누적평균, ceil(참가자÷N))` 신규 공식(N은 운영 데이터 역산 평균, fallback 500). agentPipeline.ts step3 body 재작성.
+
+**대안**:
+- accumulatedBlock 보존 (중복 + 신호 약화)
+- 공식 자체를 코드에서 enforce (PO는 SYSTEM_INSTRUCTION 텍스트만 변경하기를 명시 — 후처리는 변경 없음)
+
+**이유**:
+- δ 정책 (PR#1) 완료 버튼 단일 학습 신호와 정합 — finalized_at 출처 단순화 후 accumulatedBlock 가치 축소
+- 시설 가이드 5개 블록 분산 = 모델이 같은 정보를 중복 학습·토큰 낭비
+- 누적 데이터 기반 추천이 PO 의도 ("학습 데이터를 무시하지 않게")
+
+**되돌릴 수 있는가**: 쉬움 — venueProfile.ts 추가 import 제거 + recommendSignage.ts에서 폐기된 블록 복원 + agentPipeline.ts step3 body 복원
+
+**관련**: feedback-incremental-accuracy·PROGRESS.md 2026-05-20 δ-PR#2
+
 ## 2026-05-20 — δ 정책 채택: 완료 버튼이 학습 풀 단일 진입점
 
 **컨텍스트**: 진단 §4 결과 — 완료 버튼이 `program_parts: []` 빈 배열로 하드코딩, `finalized_at`은 export 시점에 set, EditorLayout 완료 경로는 event_history POST 호출 안 함. 학습 신호 출처 3곳(완료/export/누적) 분산 → 사용자 의도 모호. PO 확정: 완료 버튼 = 학습 풀 단일 진입점.

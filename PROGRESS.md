@@ -1,5 +1,46 @@
 # 작업 이력
 
+## 2026-05-20 (δ-PR#2 — AI 컨텍스트 정렬·공식 정책 변경)
+
+### 단위 2: 프로그램 파트 운영 통계 AI 프롬프트 주입
+- 신규 `lib/data/programPartStats.ts` — `getProgramPartStats(partCode, extraEvents?)` + `formatProgramPartStatsForPrompt(partCodes, partNameMap)`
+- 동의어 → 표준명 정규화 + 12 카테고리 화이트리스트 필터 (LearningManagerClient.tsx와 동등)
+- `recommendSignage.ts`에 `programPartStatsBlock` 추가 — 선택된 파트별 평균 사용 수량 + 행사 수, AI가 기본 quantity로 활용
+- 중복 파트 입력 시 중복 출력 OK (PO 명시 의도)
+
+### 단위 4: 시설 가이드 블록 통일
+- `venueProfile.ts` 강화: `install_allowed` 항목별 `max_width_mm·max_height_mm·standard_width_mm·standard_height_mm` 포함, `mount_methods·rigging.max_load_kg·special_notes` 출력 추가
+- 흡수된 블록 (recommendSignage.ts에서 폐기):
+  - `accumulatedBlock` (finalized_at 신호 신뢰 흔들림 + seedHistoryBlock 중복)
+  - `venueSpecsBlock` → venueProfile에 흡수
+  - `ceilingBannerBlock` → venueProfile에 흡수
+  - `coverageBlock` → venueProfile에 흡수
+  - `adminMasterBlock.facility_guide` 절 → venueProfile이 단일 담당 (adminMasterContext.ts에서 facility_guide 절 제거, signage_types·signage_aliases만 유지)
+- 토큰 절감: 5개 블록 → 1개로 통합
+
+### 단위 7: AI 공식 정책 변경
+- `agentPipeline.ts:step3.body` 재작성:
+  - 1순위: 누적 평균 (≥3건)
+  - 2순위 (동선 배너만): `max(누적평균, ceil(참가자 ÷ N))` — N = 운영 데이터 역산 평균, fallback 500
+  - 3순위: 기본값 1개 + `[추천 없음 — 학습 데이터 부재]` + no_data_flag=true
+  - 폐기 공식 명시: X배너 ÷300+1 · 포디움 세션×2 · 가로등 ÷50
+- `programPartStats.ts:computeDongseonRatio()` 신규 (현재 SEED는 attendees 없음 → fallback 500)
+- `recommendSignage.ts`에 `dongseonBlock` 추가 — 참가자 수 입력 시 N과 계산값을 프롬프트에 명시
+
+### 검증
+- TSC 0 에러
+- Next 빌드 모든 라우트 PASS
+- harness 72/70 통과/2 warn/0 fail
+- 변경 파일: 4개
+  - 신규: `lib/data/programPartStats.ts`
+  - 수정: `lib/ai/recommendSignage.ts`·`lib/ai/venueProfile.ts`·`lib/ai/adminMasterContext.ts`·`lib/ai/agentPipeline.ts`
+
+### 알려진 한계
+- 동선 배너 N=500 fallback (SEED 베이스에 attendees 컬럼 없음). event_history DB에 attendees 누적되면 server-side 실측 N 산출 가능 — 다음 사이클 후보.
+- v2 (lib/ai/v2/recommendationLogic.ts) 안 폐기 공식은 orphan 코드라 그대로 보존 — 활성 흐름 영향 0.
+
+---
+
 ## 2026-05-20 (δ-PR#1 — 데이터 누적 정상화: 완료 단일 학습 신호 + lazy union + 삭제 학습 추출)
 
 ### 사용자 요청

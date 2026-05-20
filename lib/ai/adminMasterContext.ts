@@ -90,46 +90,10 @@ export async function buildAdminMasterContext(venueName?: string | null): Promis
     }
   } catch { /* silent */ }
 
-  // ③ 어드민이 등록한 행사장 시설 가이드 JSON (venues.facility_guide_json)
-  if (venueName && venueName.trim()) {
-    try {
-      const { data, error } = await supabase
-        .from('venues')
-        .select('name, facility_guide_json, facility_guide_updated_at')
-        .ilike('name', `%${venueName.trim()}%`)
-        .not('facility_guide_json', 'is', null)
-        .limit(1)
-        .maybeSingle()
-
-      if (!error && data && data.facility_guide_json) {
-        counts.facility_guide_loaded = true
-        const guide = data.facility_guide_json as Record<string, unknown>
-        lines.push(`[어드민 등록 시설 가이드 — ${data.name}]`)
-        // 가이드 JSON은 자유 형식 — 주요 키 우선 출력, 나머지는 JSON 요약
-        const allowed = (guide.install_allowed as unknown[] | undefined) ?? []
-        if (Array.isArray(allowed) && allowed.length > 0) {
-          const lbls = allowed.slice(0, 12).map(it => {
-            const x = it as { category?: string; status?: string }
-            return `${x.category}(${x.status ?? 'allowed'})`
-          }).join(', ')
-          lines.push(`- 설치 가능 카테고리: ${lbls}`)
-        }
-        const warnings = (guide.warnings as unknown[] | undefined) ?? []
-        if (Array.isArray(warnings) && warnings.length > 0) {
-          const w = warnings.slice(0, 5).map(it => {
-            const x = it as { title?: string; description?: string }
-            return x.title ?? x.description ?? ''
-          }).filter(Boolean).join(' / ')
-          if (w) lines.push(`- 주의사항: ${w}`)
-        }
-        if (data.facility_guide_updated_at) {
-          lines.push(`- 가이드 갱신: ${String(data.facility_guide_updated_at).slice(0, 10)}`)
-        }
-        lines.push('→ 위 어드민 등록 시설 가이드는 시드 가이드보다 우선 반영. 설치 불가는 quantity=0 + ′[설치 불가 — 행사장 제약]′ 표기.')
-        lines.push('')
-      }
-    } catch { /* silent */ }
-  }
+  // PR#2 단위 4 (δ 정책): 시설 가이드 통합 — venueProfile.buildVenueProfile()이 venues.facility_guide_json도
+  //   getFacilityGuideAsync로 함께 로드하여 단일 블록으로 출력. 여기서 facility_guide 별도 블록 제거 (중복 방지).
+  //   venueName 매개변수는 호환 위해 보존 (호출 시그니처 변경 없음).
+  void venueName  // 호환 유지·미사용 경고 방지
 
   if (lines.length === 0) return EMPTY
   return {
