@@ -13,7 +13,10 @@ import { STANDARD_CATEGORY_BY_KEY, type StandardCategoryKey } from '@/lib/data/s
 import { PROGRAM_PARTS, PROGRAM_PART_GROUPS, PROGRAM_PART_SIGNAGE_HINTS, PROGRAM_PART_BY_CODE } from '@/lib/programParts'
 import { SEED_EVENT_HISTORY, estimateSignageBreakdown } from '@/lib/data/dashboardSeed'
 import { FacilityGuidePanel } from '@/app/components/facility/FacilityGuidePanel'
-import { ProgramPartSignageMatrix } from './components/ProgramPartSignageMatrix'
+// HOTFIX (2026-05-20): 12파트 × 환경장식물 표준 매트릭스 UI 박스 삭제 (사용자 명시).
+//   시드 파일(lib/data/v3/programPartSignageSeed.ts)·컴포넌트 자체는 보존.
+// import { ProgramPartSignageMatrix } from './components/ProgramPartSignageMatrix'
+import { SignageUsageTable } from './components/SignageUsageTable'
 // 5/21 사용자 명시 = NIST 4단·전체 학습 요약·향후 도입 로드맵 UI 표시 롤백.
 // 시드 (LEARNING_META_SEED·NIST_RMF_STAGES·VISION_ROADMAP) 자체는 lib/data·lib/ai에 보존
 // — 곽 이사 보고 자료 외부 영역 활용 가능. 관리자 페이지 UI는 ′응?′ 룰 정합 위해 노출 X.
@@ -1551,11 +1554,14 @@ export function LearningManagerClient({
         {/* 5/21 사용자 명시 = 표준 행사장 계층 트리 + 학습된 행사장 표 = 한 표로 통합.
             VenueHierarchyTree 별도 컴포넌트 제거. 학습된 행사장 표 행 클릭 시 하위 L2 홀 펼침. */}
 
-        {/* ── 학습된 행사장 현황 (L1 → L2 펼침 통합 — 노션 §9 정합) ── */}
+        {/* ── HOTFIX (2026-05-20): 행사장 관리 3단계 트리 (L1 행사장·L2 홀·L3 환경장식물 표) ── */}
+        {/*   PO 명세 — 컬럼: 행사장 / 누적 행사 수 / 환경장식물 종류 수 / 행위
+              L2 (홀 펼침): 같은 컬럼·홀 이름
+              L3 (홀 펼침): SignageUsageTable (종류·표준 규격·평균 수량)
+              홀 데이터 부재 행사장 → L2 스킵·L1 펼침 시 바로 L3 (graceful degradation) */}
         <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-slate-900 font-semibold text-sm mb-4 flex items-center gap-2">
             <Building2 className="w-4 h-4 text-emerald-400" />
-            {/* 5/22 사용자 명시 = venues + unifiedEventHistory venue 자동 보강 합산 카운트 */}
             학습된 행사장 — 과거 진행 내역 ({(() => {
               const set = new Set<string>()
               for (const v of venues) if (v.name) set.add(v.name.trim())
@@ -1566,259 +1572,201 @@ export function LearningManagerClient({
               return set.size
             })()})
           </h2>
-          <p className="text-[10px] text-slate-500 mb-3">행사장별 과거 진행 행사·환경장식물 사용 내역 = AI 추천 영역에 학습 데이터로 자동 주입. 행사장의 규칙(설치 가능 카테고리·주의사항·도면)은 <span className="text-indigo-600 font-medium">시설 가이드</span> 메뉴 영역에서 관리.</p>
+          <p className="text-[10px] text-slate-500 mb-3">행사장별 과거 진행 행사·환경장식물 사용 내역 = AI 추천에 학습 데이터로 자동 주입. 행사장의 규칙은 <span className="text-indigo-600 font-medium">시설 가이드</span>에서 관리.</p>
           {venues.length === 0 && unifiedEventHistory.length === 0 ? (
-            <p className="text-slate-400 text-xs italic">아직 등록된 행사장·진행 행사 영역이 없습니다. <span className="text-indigo-600">시설 가이드</span> 메뉴에서 행사장 규칙 추가 또는 <span className="text-emerald-600">행사 관리</span> 메뉴에서 행사 추가.</p>
+            <p className="text-slate-400 text-xs italic">아직 등록된 행사장·진행 행사가 없습니다.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-slate-500 border-b border-slate-200 text-[11px]">
-                    {/* 5/22 사용자 명시 = 행사장 학습 현황과 동일 댑스. L1 행사장 그룹 → L2 휘하 홀. 헤더 = 휘하 영역 정합. */}
                     <th className="text-left p-2 w-6"></th>
                     <th className="text-left p-2">행사장 / 휘하 홀</th>
-                    <th className="text-left p-2">권역</th>
-                    <th className="text-left p-2">유형</th>
-                    <th className="text-right p-2">휘하 행사</th>
-                    <th className="text-right p-2">환경장식물</th>
-                    <th className="text-left p-2">도면</th>
+                    <th className="text-right p-2">누적 행사 수</th>
+                    <th className="text-right p-2">환경장식물 종류 수</th>
                     <th className="text-right p-2">행위</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {/* 5/22 사용자 명시 = 행사장 학습 현황과 동일 댑스. L1 그룹 (코엑스·킨텍스 등) + ▶ 펼침 = L2 휘하 홀 행.
-                      venues 비어있을 때 = unifiedEventHistory venue 자동 추출 (행사 데이터 영역 venue → 자동 행사장). */}
+                  {/* HOTFIX 3단계 트리: L1 행사장 / L2 홀 / L3 환경장식물 표 (SignageUsageTable) */}
                   {(() => {
-                    // venues DB 영역 + unifiedEventHistory venue 자동 보강 영역
-                    type VenueLike = typeof venues[number]
-                    const venueByName = new Map<string, VenueLike>()
-                    for (const v of venues) {
-                      if (v.name) venueByName.set(v.name.trim(), v)
-                    }
-                    // unifiedEventHistory venue 영역에서 = venues 영역에 없는 venue 자동 추가
+                    const validTypeNames = new Set(signageTypeList.map(s => s.name))
+
+                    // ① venue 그룹핑: unifiedEventHistory + venues 합쳐서 L1 그룹명 추출 (첫 단어)
+                    const groupedEvents = new Map<string, typeof unifiedEventHistory>()
                     for (const ev of unifiedEventHistory) {
                       const vname = (ev.venue ?? '').trim()
-                      if (!vname || vname === '미정' || vname === '미상' || venueByName.has(vname)) continue
-                      // 5/22 사용자 명시 = "행사장 관리 값 왜 없음?" = venues 비어있어도 행사 venue 영역 자동 표시
-                      venueByName.set(vname, {
-                        id: `auto_${vname}`,
-                        name: vname,
-                        region: null,
-                        venue_type: null,
-                        area_sqm: null,
-                        main_entrance_note: null,
-                        floor_plan_url: null,
-                        hall_split_requested: false,
-                        has_hall_split: false,
-                        created_at: new Date().toISOString(),
-                      } as VenueLike)
+                      if (!vname || vname === '미정' || vname === '미상') continue
+                      const normName = normalizeVenueName(vname)
+                      const groupName = (normName.split(' ')[0] || normName || vname)
+                      if (!groupedEvents.has(groupName)) groupedEvents.set(groupName, [])
+                      groupedEvents.get(groupName)!.push(ev)
                     }
-                    const sortedVenues = Array.from(venueByName.values()).sort((a, b) => {
-                      const ad = a.created_at ? new Date(a.created_at).getTime() : 0
-                      const bd = b.created_at ? new Date(b.created_at).getTime() : 0
-                      if (ad !== bd) return bd - ad
-                      return a.name.localeCompare(b.name, 'ko')
-                    })
-                    const venueGroups = new Map<string, typeof sortedVenues>()
-                    for (const v of sortedVenues) {
-                      // 5/22 = normalizeVenueName 영역 적용 = 같은 행사장 영역 같은 L1 그룹
-                      const normName = normalizeVenueName(v.name ?? '')
-                      const g = (normName.split(' ')[0] || normName || v.name)
-                      if (!venueGroups.has(g)) venueGroups.set(g, [])
-                      venueGroups.get(g)!.push(v)
+                    // venues DB 에만 있는 행사장도 보강 (행사 0건이라도 표시)
+                    for (const v of venues) {
+                      if (!v.name) continue
+                      const normName = normalizeVenueName(v.name)
+                      const groupName = (normName.split(' ')[0] || normName || v.name)
+                      if (!groupedEvents.has(groupName)) groupedEvents.set(groupName, [])
                     }
+
+                    const sortedGroups = Array.from(groupedEvents.entries())
+                      .sort(([, a], [, b]) => b.length - a.length)
+
                     const out: React.ReactNode[] = []
-                    const validTypeNames = new Set(signageTypeList.map(s => s.name))
-                    const typeByName = new Map(signageTypeList.map(s => [s.name, s] as const))
-                    Array.from(venueGroups.entries()).forEach(([groupName, members]) => {
-                      const isGroupOpen = expandedVenueId === groupName
-                      // 그룹 통계 (signage_breakdown 미정 영역 = estimateSignageBreakdown fallback)
-                      let groupEventCount = 0
-                      let groupSigQty = 0
-                      for (const v of members) {
-                        const venueEvents = unifiedEventHistory.filter(ev => {
-                          const vname = (ev.venue ?? '').trim()
-                          if (!vname) return false
-                          return vname === v.name || vname.includes(v.name) || v.name.includes(vname)
-                        })
-                        groupEventCount += venueEvents.length
-                        for (const ev of venueEvents) {
-                          const breakdown = ev.signage_breakdown && ev.signage_breakdown.length > 0
-                            ? ev.signage_breakdown
-                            : estimateSignageBreakdown(ev.program_parts, ev.analyzed_item_count)
-                          for (const s of breakdown) {
-                            if (validTypeNames.has(s.category)) groupSigQty += s.quantity
-                          }
+
+                    sortedGroups.forEach(([groupName, groupEvents]) => {
+                      const isL1Open = expandedVenueId === groupName
+
+                      // L1 행사장 row: 누적 행사 수·환경장식물 종류 수
+                      const l1CatSet = new Set<string>()
+                      for (const ev of groupEvents) {
+                        const bd = ev.signage_breakdown && ev.signage_breakdown.length > 0
+                          ? ev.signage_breakdown
+                          : estimateSignageBreakdown(ev.program_parts, ev.analyzed_item_count)
+                        for (const s of bd) {
+                          const standard = resolveCategoryName(s.category)
+                          if (validTypeNames.has(standard)) l1CatSet.add(standard)
                         }
                       }
-                      // L1 = 행사장 그룹 행
+                      const l1Venue = venues.find(v => normalizeVenueName(v.name).startsWith(groupName))
+
                       out.push(
                         <tr key={`L1-${groupName}`} className="bg-indigo-50/60 hover:bg-indigo-50 cursor-pointer border-t-2 border-indigo-100"
-                            onClick={() => setExpandedVenueId(isGroupOpen ? null : groupName)}>
-                          <td className="p-2 text-indigo-700 text-center font-semibold">{isGroupOpen ? '▼' : '▶'}</td>
+                            onClick={() => setExpandedVenueId(isL1Open ? null : groupName)}>
+                          <td className="p-2 text-indigo-700 text-center font-semibold">{isL1Open ? '▼' : '▶'}</td>
                           <td className="p-2 text-indigo-900 font-semibold">
                             <div className="flex items-center gap-1.5">
                               <Building2 className="w-3 h-3 text-indigo-500" />
-                              {groupName} <span className="text-[10px] text-indigo-500 ml-1 font-normal">(휘하 홀 {members.length})</span>
+                              {groupName}
                             </div>
                           </td>
-                          <td className="p-2 text-indigo-500 text-[10px]">—</td>
-                          <td className="p-2 text-indigo-500 text-[10px]">—</td>
-                          <td className="p-2 text-right text-emerald-700 font-mono">{groupEventCount}건</td>
-                          <td className="p-2 text-right text-amber-700 font-mono">{groupSigQty}개</td>
-                          <td colSpan={2} className="p-2"></td>
-                        </tr>
-                      )
-                      if (!isGroupOpen) return
-                      // L2 = 휘하 홀 (각 venue 행)
-                      members.forEach(v => {
-                        let halls = getHallsByVenueName(v.name)
-                        const isComplexVenue = /[·\/]|외$|외\s/.test(v.name)
-                        if (halls.length === 0 && isComplexVenue) {
-                          const split = extractL1L2FromComplexVenue(v.name)
-                          if (split.l1Info) halls = getHallsByVenueName(split.l1Info.displayName)
-                        }
-                        const venueEvents = unifiedEventHistory.filter(ev => {
-                          const vname = (ev.venue ?? '').trim()
-                          if (!vname) return false
-                          return vname === v.name || vname.includes(v.name) || v.name.includes(vname)
-                        })
-                        // 5/22 사용자 명시 = 환경장식물별 사용 확률·평균 수량·가장 많이 사용한 규격 영역.
-                        // signage_breakdown 미정 영역 = estimateSignageBreakdown fallback (프로그램 파트 관리 패턴 정합).
-                        const sigCountMap = new Map<string, number>()          // 종류 → 총 수량
-                        const sigEventMap = new Map<string, number>()          // 종류 → 사용 행사 수
-                        const sigSizeFreqMap = new Map<string, Map<string, number>>() // 종류 → (규격 → 빈도)
-                        for (const ev of venueEvents) {
-                          const seenInEvent = new Set<string>()
-                          const breakdown = ev.signage_breakdown && ev.signage_breakdown.length > 0
-                            ? ev.signage_breakdown
-                            : estimateSignageBreakdown(ev.program_parts, ev.analyzed_item_count)
-                          for (const s of breakdown) {
-                            if (!validTypeNames.has(s.category)) continue
-                            sigCountMap.set(s.category, (sigCountMap.get(s.category) ?? 0) + s.quantity)
-                            if (!seenInEvent.has(s.category)) {
-                              sigEventMap.set(s.category, (sigEventMap.get(s.category) ?? 0) + 1)
-                              seenInEvent.add(s.category)
-                            }
-                            if (s.sizes) {
-                              const fm = sigSizeFreqMap.get(s.category) ?? new Map<string, number>()
-                              s.sizes.split('·').forEach(z => {
-                                const k = z.trim()
-                                if (k) fm.set(k, (fm.get(k) ?? 0) + s.quantity)
-                              })
-                              sigSizeFreqMap.set(s.category, fm)
-                            }
-                          }
-                        }
-                        const sigSorted = Array.from(sigCountMap.entries()).sort((a, b) => b[1] - a[1])
-                        const totalSigQty = Array.from(sigCountMap.values()).reduce((a, b) => a + b, 0)
-                        const isVenueOpen = expandedVenueId === `L2-${v.id}`
-                        const subName = v.name.startsWith(groupName + ' ') ? v.name.slice(groupName.length + 1) : v.name
-                        out.push(
-                          <tr key={`L2-row-${v.id}`} className="hover:bg-slate-50/50 cursor-pointer"
-                              onClick={() => setExpandedVenueId(isVenueOpen ? null : `L2-${v.id}`)}>
-                            <td className="p-2 text-slate-400 text-[11px] text-center">{isVenueOpen ? '▽' : '▷'}</td>
-                            <td className="p-2 text-slate-800 pl-6">
-                              <div className="flex items-center gap-1">
-                                <MapPin className="w-3 h-3 text-slate-400" />
-                                {subName}
-                                {halls.length > 0 && <span className="text-[9px] text-indigo-500 ml-1">(노션 §9 매칭 {halls.length})</span>}
-                              </div>
-                            </td>
-                            <td className="p-2 text-slate-500 text-[10px]">{v.region ?? '—'}</td>
-                            <td className="p-2 text-slate-500 text-[10px]">{v.venue_type ?? '—'}</td>
-                            <td className="p-2 text-right text-emerald-600 font-mono">{venueEvents.length > 0 ? `${venueEvents.length}건` : <span className="text-slate-300">—</span>}</td>
-                            <td className="p-2 text-right">
-                              <div className="text-amber-700 font-mono text-[11px]">{sigCountMap.size}<span className="text-[9px] text-slate-400 ml-0.5">종</span></div>
-                              <div className="text-slate-500 font-mono text-[9px]">{totalSigQty}개</div>
-                            </td>
-                            <td className="p-2">
-                              {v.floor_plan_url ? (
-                                <a href={v.floor_plan_url} target="_blank" rel="noopener" onClick={e => e.stopPropagation()} className="text-indigo-500 hover:underline flex items-center gap-1 text-[10px]">
-                                  <FileText className="w-3 h-3" /> 보기
-                                </a>
-                              ) : (
-                                <span className="text-slate-300 text-[10px]">없음</span>
-                              )}
-                            </td>
-                            <td className="p-2 text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                          <td className="p-2 text-right text-emerald-700 font-mono">{groupEvents.length}건</td>
+                          <td className="p-2 text-right text-amber-700 font-mono">{l1CatSet.size}종</td>
+                          <td className="p-2 text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                            {l1Venue && (
                               <button
                                 onClick={async () => {
-                                  const newName = prompt('행사장 이름', v.name)
+                                  const newName = prompt('행사장 이름', l1Venue.name)
                                   if (newName === null) return
-                                  const newRegion = prompt('권역', v.region ?? '')
-                                  if (newRegion === null) return
-                                  const newType = prompt('유형', v.venue_type ?? '')
-                                  if (newType === null) return
                                   try {
-                                    const res = await fetch(`/api/admin/venues/${v.id}`, {
-                                      method: 'PATCH',
-                                      headers: { 'content-type': 'application/json' },
-                                      body: JSON.stringify({ name: newName.trim(), region: newRegion.trim() || null, venue_type: newType.trim() || null }),
+                                    const res = await fetch(`/api/admin/venues/${l1Venue.id}`, {
+                                      method: 'PATCH', headers: { 'content-type': 'application/json' },
+                                      body: JSON.stringify({ name: newName.trim() }),
                                     })
                                     if (!res.ok) { const d = await res.json(); throw new Error(d.error || res.statusText) }
-                                    setVenues(prev => prev.map(x => x.id === v.id ? { ...x, name: newName.trim(), region: newRegion.trim() || null, venue_type: newType.trim() || null } : x))
+                                    setVenues(prev => prev.map(x => x.id === l1Venue.id ? { ...x, name: newName.trim() } : x))
                                   } catch (e) { alert('수정 실패: ' + (e instanceof Error ? e.message : 'unknown')) }
                                 }}
                                 title="편집"
-                                className="text-[11px] text-slate-400 hover:text-indigo-600"
+                                className="text-[11px] text-slate-400 hover:text-indigo-600 mr-1"
                               >✎</button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+
+                      if (!isL1Open) return
+
+                      // L2 홀 데이터 — getHallsByVenueName으로 시드 매칭
+                      const halls = getHallsByVenueName(groupName)
+
+                      if (halls.length === 0) {
+                        // graceful degradation: 홀 데이터 부재 → L2 스킵·L1 펼침 시 바로 L3 (해당 그룹 전체 평균)
+                        const sigQty = new Map<string, number>()
+                        for (const ev of groupEvents) {
+                          const bd = ev.signage_breakdown && ev.signage_breakdown.length > 0
+                            ? ev.signage_breakdown
+                            : estimateSignageBreakdown(ev.program_parts, ev.analyzed_item_count)
+                          for (const s of bd) {
+                            const standard = resolveCategoryName(s.category)
+                            if (!validTypeNames.has(standard)) continue
+                            sigQty.set(standard, (sigQty.get(standard) ?? 0) + s.quantity)
+                          }
+                        }
+                        const items = Array.from(sigQty.entries())
+                          .map(([category, total]) => ({ category, avg_quantity: groupEvents.length > 0 ? total / groupEvents.length : 0 }))
+                          .filter(s => s.avg_quantity > 0)
+                        out.push(
+                          <tr key={`L3-${groupName}-direct`} className="bg-slate-50/60">
+                            <td></td>
+                            <td colSpan={4} className="px-6 py-3">
+                              <div className="text-[10px] text-slate-500 italic mb-2">휘하 홀 정보 미적용 — 행사장 전체 평균 표시</div>
+                              {groupEvents.length < 3 ? (
+                                <div className="text-[10px] text-slate-400 italic">학습 데이터 부재 (누적 {groupEvents.length}건 &lt; 3건)</div>
+                              ) : (
+                                <SignageUsageTable items={items} compact />
+                              )}
                             </td>
                           </tr>
                         )
-                        // L2 펼침 = 환경장식물 종류·규격·평균 수량 표 (사용자 명시 = 환경장식물 규격 영역 제공)
-                        if (isVenueOpen) {
+                        return
+                      }
+
+                      // L2 = 휘하 홀 행 (각 홀 누적 행사 수·환경장식물 종류 수)
+                      halls.forEach(hall => {
+                        const hallEvents = groupEvents.filter(ev => (ev.venue ?? '').includes(hall.name))
+                        const hallCatSet = new Set<string>()
+                        for (const ev of hallEvents) {
+                          const bd = ev.signage_breakdown && ev.signage_breakdown.length > 0
+                            ? ev.signage_breakdown
+                            : estimateSignageBreakdown(ev.program_parts, ev.analyzed_item_count)
+                          for (const s of bd) {
+                            const standard = resolveCategoryName(s.category)
+                            if (validTypeNames.has(standard)) hallCatSet.add(standard)
+                          }
+                        }
+                        const l2Key = `L2-${groupName}-${hall.name}`
+                        const isL2Open = expandedVenueId === l2Key
+                        out.push(
+                          <tr key={l2Key} className="hover:bg-slate-50/50 cursor-pointer"
+                              onClick={() => setExpandedVenueId(isL2Open ? null : l2Key)}>
+                            <td className="p-2 text-slate-400 text-[11px] text-center">{isL2Open ? '▽' : '▷'}</td>
+                            <td className="p-2 text-slate-800 pl-6">
+                              <div className="flex items-center gap-1">
+                                <MapPin className="w-3 h-3 text-slate-400" />
+                                {hall.name}
+                              </div>
+                            </td>
+                            <td className="p-2 text-right text-emerald-600 font-mono">{hallEvents.length > 0 ? `${hallEvents.length}건` : <span className="text-slate-300">—</span>}</td>
+                            <td className="p-2 text-right text-amber-600 font-mono">{hallCatSet.size > 0 ? `${hallCatSet.size}종` : <span className="text-slate-300">—</span>}</td>
+                            <td className="p-2"></td>
+                          </tr>
+                        )
+                        if (!isL2Open) return
+
+                        // L3 = 환경장식물 표 (SignageUsageTable 재사용)
+                        if (hallEvents.length < 3) {
                           out.push(
-                            <tr key={`L2-detail-${v.id}`} className="bg-slate-50/60">
+                            <tr key={`L3-${l2Key}`} className="bg-slate-50/60">
                               <td></td>
-                              <td colSpan={7} className="px-4 py-3">
-                                <div className="text-[10px] text-slate-600 font-semibold mb-2">{subName} — 환경장식물 사용 내역 (종류·규격·수량)</div>
-                                {sigSorted.length === 0 ? (
-                                  <div className="text-[10px] text-slate-400 italic">— 매칭된 행사·환경장식물 사용 내역 없음</div>
-                                ) : (
-                                  <table className="w-full text-[11px]">
-                                    <thead>
-                                      <tr className="text-slate-500 text-[10px] border-b border-slate-200">
-                                        <th className="px-2 py-1 text-left">환경장식물 종류</th>
-                                        <th className="px-2 py-1 text-right" title="해당 행사장에서 진행한 행사 중 이 환경장식물을 사용한 비율">사용 확률</th>
-                                        <th className="px-2 py-1 text-right" title="사용한 행사 1건당 평균 수량">평균 수량/행사</th>
-                                        <th className="px-2 py-1 text-left" title="실제 발주에서 가장 많이 사용된 규격 (빈도 1위)">가장 많이 사용 규격</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {sigSorted.map(([name, qty], i) => {
-                                        const usedEvents = sigEventMap.get(name) ?? 0
-                                        const probability = venueEvents.length > 0 ? Math.round((usedEvents / venueEvents.length) * 100) : 0
-                                        const avg = usedEvents > 0 ? (qty / usedEvents).toFixed(1) : '—'
-                                        const freqMap = sigSizeFreqMap.get(name)
-                                        const topSize = freqMap && freqMap.size > 0
-                                          ? Array.from(freqMap.entries()).sort((a, b) => b[1] - a[1])[0][0]
-                                          : null
-                                        const t = typeByName.get(name)
-                                        const fallbackSize = t ? `${t.width_mm}×${t.height_mm}` : '—'
-                                        const probColor = probability >= 70 ? 'text-emerald-700' : probability >= 30 ? 'text-amber-700' : 'text-slate-500'
-                                        return (
-                                          <tr key={i} className="border-t border-slate-200">
-                                            <td className="px-2 py-1 text-slate-800">{name}</td>
-                                            <td className={`px-2 py-1 text-right font-mono ${probColor}`}>{probability}%<span className="text-[9px] text-slate-400 ml-0.5">({usedEvents}/{venueEvents.length})</span></td>
-                                            <td className="px-2 py-1 text-right font-mono text-emerald-700">{avg}개</td>
-                                            <td className="px-2 py-1 text-slate-700 font-mono text-[10px]">
-                                              {topSize ? (
-                                                <span className="inline-block px-1 py-0 bg-indigo-50 text-indigo-700 rounded">{topSize}mm</span>
-                                              ) : (
-                                                <span className="text-slate-400">{fallbackSize}mm <span className="text-[9px]">(기본 규격)</span></span>
-                                              )}
-                                            </td>
-                                          </tr>
-                                        )
-                                      })}
-                                    </tbody>
-                                  </table>
-                                )}
-                              </td>
+                              <td colSpan={4} className="px-6 py-3 text-[10px] text-slate-400 italic">학습 데이터 부재 (누적 {hallEvents.length}건 &lt; 3건)</td>
                             </tr>
                           )
+                          return
                         }
+                        const sigQty = new Map<string, number>()
+                        for (const ev of hallEvents) {
+                          const bd = ev.signage_breakdown && ev.signage_breakdown.length > 0
+                            ? ev.signage_breakdown
+                            : estimateSignageBreakdown(ev.program_parts, ev.analyzed_item_count)
+                          for (const s of bd) {
+                            const standard = resolveCategoryName(s.category)
+                            if (!validTypeNames.has(standard)) continue
+                            sigQty.set(standard, (sigQty.get(standard) ?? 0) + s.quantity)
+                          }
+                        }
+                        const items = Array.from(sigQty.entries())
+                          .map(([category, total]) => ({ category, avg_quantity: total / hallEvents.length }))
+                          .filter(s => s.avg_quantity > 0)
+                        out.push(
+                          <tr key={`L3-${l2Key}`} className="bg-slate-50/60">
+                            <td></td>
+                            <td colSpan={4} className="px-6 py-3">
+                              <SignageUsageTable items={items} compact />
+                            </td>
+                          </tr>
+                        )
                       })
                     })
                     return out
@@ -2315,9 +2263,8 @@ export function LearningManagerClient({
         {/* v9.36 시안 매칭: 환경장식물 종류·동의어 매핑은 평면 메뉴로 분리 (서브탭 바 제거) */}
         {activeSection === 'signage-types' && (
           <>
-          {/* v10.4 신규: 12파트 × 환경장식물 표준 매트릭스 (SOT 시각화) */}
-          <ProgramPartSignageMatrix />
-          <section className="bg-white border border-slate-200 rounded-xl p-5 mt-4">
+          {/* HOTFIX (2026-05-20): 12파트 매트릭스 박스 삭제 (사용자 명시). 시드 파일 보존. */}
+          <section className="bg-white border border-slate-200 rounded-xl p-5">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-slate-900 font-semibold text-sm flex items-center gap-2">
                 <Inbox className="w-4 h-4 text-indigo-500" />
@@ -2957,26 +2904,11 @@ export function LearningManagerClient({
                               <td></td>
                               <td colSpan={isAdmin ? 5 : 4} className="px-2 py-2">
                                 <div className="text-[10px] text-slate-600 mb-2 font-semibold">사용된 환경장식물 (평균 수량/행사)</div>
-                                {sigArr.length === 0 ? (
-                                  <div className="text-[10px] text-slate-400 italic">— 사용된 행사 없음</div>
-                                ) : (
-                                  <table className="w-full text-[11px]">
-                                    <thead>
-                                      <tr className="text-slate-500 text-[10px]">
-                                        <th className="px-2 py-1 text-left">환경장식물 종류</th>
-                                        <th className="px-2 py-1 text-right">평균 수량</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {sigArr.map((s, i) => (
-                                        <tr key={i} className="border-t border-slate-200">
-                                          <td className="px-2 py-1">{s.category}</td>
-                                          <td className="px-2 py-1 text-right font-mono">{s.avg.toFixed(1)}개</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                )}
+                                {/* HOTFIX (2026-05-20): SignageUsageTable로 교체 — 표준 규격 컬럼 자동 추가 */}
+                                <SignageUsageTable
+                                  items={sigArr.map(s => ({ category: s.category, avg_quantity: s.avg }))}
+                                  compact
+                                />
                               </td>
                             </tr>
                           )}
