@@ -3,6 +3,31 @@
 > 실패한 자율 작업에서 추출한 패턴.
 > 다음 세션 시작 시 최근 항목부터 검토하고 작업 시작.
 
+## 2026-05-20 — 환경장식물 5건 hotfix 메타 패턴 (525a7cf·c12cf01·826ce06·a2d5a53·3f95d7b)
+
+**작업**: 사용자 직접 발견 결함 5건 일괄 fix·라이브 적용
+**증상**: 행사 관리 표 "되다가 안돼"·예시 이미지 미노출·탭 전환 후 사라짐·hidden 토글 silent fail·L1 드롭다운에 L2 섞임
+**원인 (메타 패턴 5건)**:
+1. **SOT 분산** (525a7cf): unifiedEventHistory가 SEED + user만 합산·DB event_history union 누락·page.tsx의 "DB skip" 조합으로 정상 INSERT 데이터가 사라지는 역설
+2. **localStorage → DB 전환 잔존** (c12cf01): PR#4에서 localStorage cleanup됐는데 RightPanel은 여전히 읽음·정적 시드만 fallback·DB 업로드 절대 미반영
+3. **React conditional render state 초기화** (826ce06): tab='sample'↔'ratio' 전환 시 자식 컴포넌트 unmount → fetch state 초기화 → state lifting 의무
+4. **DB schema 컬럼명 미스매치** (a2d5a53): v14 `hidden` vs v19 `is_hidden` 공존·client는 is_hidden 전송·API PATCH는 hidden 받음·GET은 hidden select·EDITABLE에 is_hidden 누락 = silent fail 3건
+5. **API raw 응답 정규화 누락** (3f95d7b): event_history.venue 합성 형식("코엑스 그랜드볼룸")이 /api/venues/available 응답에 그대로 노출·VENUE_LIST와 매칭 X·L1 드롭다운에 L2 섞임
+
+**예방**:
+- 신규 union·dedup·합성 코드 작성 시 = 데이터 소스 모두 grep (시드·DB·user·custom)
+- dedup key = `code || name` (안티 패턴 `code ?? '' + name` 회피)
+- localStorage → DB 전환 시 = 모든 client 사용처 grep + 정적 시드 fallback 명시
+- React 자식 컴포넌트가 conditional render 안에 있음 + server fetch 보유 = state lifting 의무
+- DB schema 변경 시 = client·API GET/POST/PATCH·EDITABLE 화이트리스트 4중 정합
+- 공존 컬럼 (v* hidden·v** is_hidden) = 양쪽 동기화 update 의무
+- API 응답 = 원본 보존 정책과 별개·표시 단위에 맞게 정규화·dedup·노이즈 필터 의무
+- 기존 정규화 헬퍼 활용 (normalizeVenueName·normalizeCategory·aliasResolver) 우선 grep
+- intermittent failure ("되다가 안돼") 진단 = 강제 새로고침·쿠키 삭제 후에도 재현 시 = 코드 결함 확정
+
+**관련**: 메모리 5건 박제 (feedback-signage-data-sot-sync·localstorage-db-migration·react-state-lifting·db-schema-column-sync·api-response-normalize 260520) + CLAUDE.md §7 #27·#28·#29·#30 + decisions.md 2026-05-20 채번 SOT·δ 정책 정합
+
+
 ## 2026-05-20 — 정답지 검증 8% 결함이 "정확도" 라벨 오역에서 시작
 
 **작업**: PR#4 AI 추천 정확도 신규 정의
